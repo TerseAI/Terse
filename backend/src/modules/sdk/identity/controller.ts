@@ -12,15 +12,12 @@ import {
 } from "terse-types/types"
 import { ZodError } from "zod"
 
-import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { createApiToken } from "../../../modules/auth/helpers/apiTokens"
 import { getAuthProvider } from "../../../services/authProvider"
 import { AuthTokenError } from "../../../services/authProvider/AuthProvider"
 import { getOrganizationProvider } from "../../../services/organizationProvider"
 import { settings } from "../../../settings"
-
-const featureFlagService = FeatureFlagService.getInstance()
 
 const CLI_LOGIN_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000
 function cliLoginExpiry(): Date {
@@ -56,9 +53,6 @@ export async function identify(req: Request, res: Response) {
 
         if (!user) return res.status(401).json({ error: "Unauthorized" })
 
-        const isSdkEnabled = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.SDK_INTERFACE, user.email, { email: user.email })
-        if (!isSdkEnabled) return res.status(403).json({ error: "SDK interface is not enabled for your account" })
-
         const memberships = await getOrganizationProvider().getMemberships(userId)
 
         const orgs = memberships.map(m => ({ id: m.organizationId, name: m.organizationName, roles: m.roles }))
@@ -90,9 +84,6 @@ export async function deviceTokenExchange(req: Request, res: Response) {
         const { userId } = await verifyUserAccessToken(accessToken)
         const user = await getAuthProvider().getUser(userId)
         if (!user) return res.status(401).json({ error: "Unauthorized" })
-
-        const isSdkEnabled = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.SDK_INTERFACE, user.email, { email: user.email })
-        if (!isSdkEnabled) return res.status(403).json({ error: "SDK interface is not enabled for your account" })
 
         const memberships = await getOrganizationProvider().getMemberships(userId)
         const membership = memberships.find(m => m.organizationId === organizationId)

@@ -22,7 +22,7 @@ export default function RunHistoryEmptyState({ hasActiveFilters, onClearAll }: P
                 <EmptyDescription>
                     {hasActiveFilters
                         ? "Try adjusting your filters or search query."
-                        : "Every agent run lands here— successes, failures, approvals, and skips— so you can audit what happened and open the chat transcript when available."}
+                        : "Every job run lands here— successes, failures, approvals, and skips— so you can audit what happened and open the chat transcript when available."}
                 </EmptyDescription>
             </EmptyHeader>
             {hasActiveFilters ? (
@@ -34,7 +34,7 @@ export default function RunHistoryEmptyState({ hasActiveFilters, onClearAll }: P
             ) : (
                 <EmptyContent className="flex-row flex-wrap justify-center gap-2">
                     <Button size="sm" asChild>
-                        <Link to={FrontendRoutes.HOME}>View your agents</Link>
+                        <Link to={FrontendRoutes.HOME}>View your jobs</Link>
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                         <Link to={FrontendRoutes.STATS}>Open stats</Link>

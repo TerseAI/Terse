@@ -6,7 +6,7 @@ icon: "wrench"
 
 Skills define what integrations your workflow can interact with. Each skill exposes a set of tools that the agent can call (via agentic loops) or that you can call deterministically (via `agent.tools.*`).
 
-In TypeScript, `terse generate` writes a single **`Skills`** object in `src/terse.generated.ts`. Import **`Skills`** and call the nested factories (for example **`Skills.github({ repos: [...] })`**, **`Skills.slack({ channel: ... })`**). Built-in capabilities use **`Skills.web()`** and **`Skills.imageEdit()`** instead of a separate `Terse` export.
+In TypeScript, `terse generate` writes a single `Skills` object in `src/terse.generated.ts`. Import it and call the nested factory for the integration you want (for example `Skills.github({ repos: [...] })`). Built-in capabilities like `Skills.web()` and `Skills.imageEdit()` are documented in their sections below.
 
 ## GitHub
 
@@ -16,15 +16,15 @@ Read-only access to repositories.
 skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })]
 ```
 
-| Tool                          | Description                     | Access |
-| ----------------------------- | ------------------------------- | ------ |
-| `search_code`                 | Search code across repositories | Read   |
-| `grep_code`                   | Grep-like code search           | Read   |
-| `read_file`                   | Read file contents              | Read   |
-| `list_directory`              | List directory contents         | Read   |
-| `list_pull_requests`          | List pull requests              | Read   |
-| `list_commits`                | List commits                    | Read   |
-| `summarize_pull_request_diff` | Summarize PR changes            | Read   |
+| Tool                              | Description                                  | Access |
+| --------------------------------- | -------------------------------------------- | ------ |
+| `searchGitHubCode`                | Semantic code search across repositories     | Read   |
+| `grepGitHubCode`                  | Exact-match code search (grep-like)          | Read   |
+| `readGitHubFile`                  | Read file contents                           | Read   |
+| `listGitHubDirectory`             | List directory contents                      | Read   |
+| `listGitHubPullRequests`          | List pull requests                           | Read   |
+| `listGitHubCommits`               | List commits                                 | Read   |
+| `summarizeGitHubPullRequestDiff`  | Summarize PR changes                         | Read   |
 
 ## Slack
 
@@ -41,7 +41,7 @@ skills: [Skills.slack({ channel: SlackChannel.Engineering })]
 | `slack_list_channels`     | List channels                    | Read   |
 | `slack_read_conversation` | Read conversation history        | Read   |
 
-For **`slack_send_message`**, pass **`channelId`** (public/private channel id, or an existing DM channel id) **or** **`slackUserId`** (a member id, `U…`). Terse opens the DM if needed. If you pass both, **`channelId` wins** and the message goes there. After **`terse generate`**, use **`SlackChannel.*.channelId`** and **`SlackUser.*.userId`** from `src/terse.generated.ts` instead of hand-copying ids.
+For `slack_send_message`, pass either `channelId` (a public or private channel id, or an existing DM channel id) or `slackUserId` (a member id, `U…`). Terse opens the DM if needed. If you pass both, `channelId` wins and the message goes there. After `terse generate`, use `SlackChannel.*.channelId` and `SlackUser.*.userId` from `src/terse.generated.ts` instead of hand-copying ids.
 
 ## Linear
 
@@ -53,7 +53,7 @@ skills: [Skills.linear()]
 
 | Tool                    | Description               | Access |
 | ----------------------- | ------------------------- | ------ |
-| `linear_search_tickets` | Search tickets            | Read   |
+| `linear_search_ticket`  | Search tickets            | Read   |
 | `linear_get_teams`      | List teams                | Read   |
 | `linear_get_states`     | Get issue states          | Read   |
 | `linear_get_labels`     | Get available labels      | Read   |
@@ -80,11 +80,15 @@ skills: [Skills.attio({ object: AttioObject.People })]
 
 ## Notion
 
-Read and write databases and pages.
+Read and write databases and pages. Optionally scope to specific databases or pages.
 
 ```ts
-skills: [Skills.notion()]
+import { NotionDatabase, NotionPage, Skills } from "./terse.generated"
+
+skills: [Skills.notion({ databases: [NotionDatabase.Roadmap], pages: [NotionPage.OnCallRunbook] })]
 ```
+
+`databases` and `pages` are both optional. Omit them to give the model access to every database and page the integration can reach.
 
 | Tool                                   | Description                       | Access |
 | -------------------------------------- | --------------------------------- | ------ |
@@ -98,15 +102,26 @@ skills: [Skills.notion()]
 
 ## Gmail
 
-Send emails and create drafts.
+Send emails (auto-send, no human review).
 
 ```ts
 skills: [Skills.gmail()]
 ```
 
+| Tool               | Description                     | Access |
+| ------------------ | ------------------------------- | ------ |
+| `gmail_send_email` | Send emails or reply to threads | Write  |
+
+## Gmail Draft
+
+Create draft emails for a human to review and send manually.
+
+```ts
+skills: [Skills.gmailDraft()]
+```
+
 | Tool                 | Description                          | Access |
 | -------------------- | ------------------------------------ | ------ |
-| `gmail_send_email`   | Send emails or reply to threads      | Write  |
 | `gmail_create_draft` | Create draft emails for human review | Write  |
 
 ## Snowflake
@@ -117,25 +132,29 @@ Read-only SQL query execution.
 skills: [Skills.snowflake()]
 ```
 
-| Tool                      | Description                                | Access |
-| ------------------------- | ------------------------------------------ | ------ |
-| `snowflake_explain_query` | Explain query execution plan               | Read   |
-| `snowflake_execute_query` | Execute SELECT queries (requires approval) | Read   |
+| Tool                    | Description                                | Access |
+| ----------------------- | ------------------------------------------ | ------ |
+| `snowflakeExplainQuery` | Explain query execution plan               | Read   |
+| `snowflakeExecuteQuery` | Execute SELECT queries (requires approval) | Read   |
 
 ## Datadog
 
-Read-only access to logs and RUM events.
+Read-only access to logs and RUM events. Optionally scope to specific log indexes.
 
 ```ts
-skills: [Skills.datadog()]
+import { DatadogIndex, Skills } from "./terse.generated"
+
+skills: [Skills.datadog({ indexes: [DatadogIndex.Main] })]
 ```
 
-| Tool                   | Description              | Access |
-| ---------------------- | ------------------------ | ------ |
-| `search_datadog_logs`  | Search logs              | Read   |
-| `list_rum_events`      | List RUM events          | Read   |
-| `search_rum_events`    | Search RUM events        | Read   |
-| `aggregate_rum_events` | Aggregate RUM event data | Read   |
+`indexes` is optional. Omit it to search across every index the integration can reach.
+
+| Tool                 | Description              | Access |
+| -------------------- | ------------------------ | ------ |
+| `searchDatadogLogs`  | Search logs              | Read   |
+| `listRumEvents`      | List RUM events          | Read   |
+| `searchRumEvents`    | Search RUM events        | Read   |
+| `aggregateRumEvents` | Aggregate RUM event data | Read   |
 
 ## PostHog
 
@@ -144,16 +163,15 @@ Read-only access to product analytics.
 ```ts
 import { PosthogProject, Skills } from "./terse.generated"
 
-// Use a `PosthogProject.*` static emitted for your workspace (open `terse.generated.ts` and autocomplete `PosthogProject.`).
 skills: [Skills.posthog({ project: PosthogProject.MyTeam })]
 ```
 
-| Tool                         | Description              | Access |
-| ---------------------------- | ------------------------ | ------ |
-| `search_posthog_logs`        | Search logs              | Read   |
-| `search_posthog_sessions`    | Search sessions          | Read   |
-| `get_posthog_session_events` | Get events for a session | Read   |
-| `search_posthog_events`      | Search events            | Read   |
+| Tool                       | Description              | Access |
+| -------------------------- | ------------------------ | ------ |
+| `searchPosthogLogs`        | Search logs              | Read   |
+| `searchPosthogSessions`    | Search sessions          | Read   |
+| `getPosthogSessionEvents`  | Get events for a session | Read   |
+| `searchPosthogEvents`      | Search events            | Read   |
 
 ## LaunchDarkly
 
@@ -162,14 +180,13 @@ Read-only access to feature flags.
 ```ts
 import { LaunchDarklyProject, Skills } from "./terse.generated"
 
-// Use a `LaunchDarklyProject.*` static emitted for your workspace.
 skills: [Skills.launchDarkly({ project: LaunchDarklyProject.MyFlags, environmentKeys: ["production"] })]
 ```
 
-| Tool                            | Description        | Access |
-| ------------------------------- | ------------------ | ------ |
-| `list_launchdarkly_flags`       | List feature flags | Read   |
-| `get_launchdarkly_flag_details` | Get flag details   | Read   |
+| Tool                         | Description        | Access |
+| ---------------------------- | ------------------ | ------ |
+| `listLaunchDarklyFlags`      | List feature flags | Read   |
+| `getLaunchDarklyFlagDetails` | Get flag details   | Read   |
 
 ## WorkOS
 
@@ -179,15 +196,15 @@ Read-only access to users and organizations.
 skills: [Skills.workOS()]
 ```
 
-| Tool                        | Description        | Access |
-| --------------------------- | ------------------ | ------ |
-| `list_workos_users`         | List users         | Read   |
-| `list_workos_organizations` | List organizations | Read   |
-| `get_workos_user`           | Get user details   | Read   |
+| Tool                      | Description        | Access |
+| ------------------------- | ------------------ | ------ |
+| `listWorkOSUsers`         | List users         | Read   |
+| `listWorkOSOrganizations` | List organizations | Read   |
+| `getWorkOSUser`           | Get user details   | Read   |
 
-## Terse (built-in)
+## Web (built-in)
 
-Web search and image tools available to all workflows.
+Web search and research tools available to all workflows.
 
 ```ts
 skills: [Skills.web()]
@@ -198,4 +215,15 @@ skills: [Skills.web()]
 | `web_search`   | Search the web                          | Read   |
 | `web_extract`  | Extract and process web page content    | Read   |
 | `web_research` | Research and synthesize web information | Read   |
-| `edit_image`   | Edit and manipulate images              | Read   |
+
+## Image Edit (built-in)
+
+Edit and generate images.
+
+```ts
+skills: [Skills.imageEdit()]
+```
+
+| Tool         | Description                | Access |
+| ------------ | -------------------------- | ------ |
+| `image_edit` | Edit and manipulate images | Write  |

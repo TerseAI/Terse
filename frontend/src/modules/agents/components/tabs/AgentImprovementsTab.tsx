@@ -34,7 +34,7 @@ export default function AgentImprovementsTab({ agentId }: AgentImprovementsTabPr
     const pendingImprovements = useMemo(() => improvements.filter(i => i.status === "PENDING"), [improvements])
 
     if (!agentId) {
-        return <div className="p-4 text-sm text-muted-foreground">Save this agent first to receive weekly improvements.</div>
+        return <div className="p-4 text-sm text-muted-foreground">Save this job first to receive weekly improvements.</div>
     }
 
     const handleToggleEnabled = async (enabled: boolean) => {
@@ -90,7 +90,7 @@ export default function AgentImprovementsTab({ agentId }: AgentImprovementsTabPr
                 ) : (
                     <p className="text-sm text-muted-foreground">
                         {!improvementsEnabled
-                            ? "Enable weekly reviews to get AI-generated improvement recommendations for this agent."
+                            ? "Enable weekly reviews to get AI-generated improvement recommendations for this job."
                             : improvementsEnabled && review
                               ? "No pending recommendations. Check back next week for new reviews."
                               : "No review available yet. Reviews are generated weekly."}

@@ -5,7 +5,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { UserSession } from "terse-types/types"
 
-import { FeatureFlag, FeatureFlagService } from "../../../common/featureFlags"
+import { FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
@@ -63,7 +63,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
         })
         resolveUserInOrg
         const userCache = new Map<string, Awaited<ReturnType<typeof resolveUserInOrg>>>()
-        const featureFlagCache = new Map<string, boolean>()
         const emailGroups = new Map<string, EmailGroup>()
         const failures: Array<{ automationId: string; error: string }> = []
 
@@ -86,12 +85,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
                     failures.push({ automationId: automation.id, error: "User not found for organization context" })
                     continue
                 }
-
-                if (!featureFlagCache.has(user.email)) {
-                    const isEnabled = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.WEEKLY_REVIEW_EMAILS, user.email, { email: user.email })
-                    featureFlagCache.set(user.email, isEnabled)
-                }
-                if (!featureFlagCache.get(user.email)) continue
 
                 if (!emailGroups.has(user.id)) {
                     emailGroups.set(user.id, { emailAddress: user.email, organizationId: user.organizationId, agents: [] })
@@ -165,7 +158,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 improvementsCreated += improvementRecords.length
 
                 if (improvementRecords.length > 0) {
-                    const improvementsPath = buildRoute(FrontendRoutes.AGENTS.IMPROVEMENTS, { id: automation.id })
+                    const improvementsPath = buildRoute(FrontendRoutes.JOBS.IMPROVEMENTS, { id: automation.id })
                     const improvementsUrl = settings.urls.frontend ? `${settings.urls.frontend}${improvementsPath}` : improvementsPath
                     const group = emailGroups.get(automation.user.id)!
                     group.agents.push({

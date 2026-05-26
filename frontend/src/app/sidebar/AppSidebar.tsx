@@ -6,7 +6,6 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { Agent } from "terse-types/types"
 
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
-import { FeatureFlags, useFeatureFlag } from "@/hooks/useFeatureFlag"
 import { useAgents } from "@/modules/agents/api/useAgents"
 import { useAuth } from "@/modules/auth/context/AuthProvider"
 import { usePendingApprovals } from "@/modules/notifications/api/usePendingApprovals"
@@ -93,7 +92,6 @@ function SettingsNavigation() {
     const location = useLocation()
     const { approvals } = usePendingApprovals({ status: "pending" })
     const pendingCount = approvals.length
-    const showSdkInterface = useFeatureFlag(FeatureFlags.SDK_INTERFACE)
     const { user } = useAuth()
     const isAdmin = user?.roles.includes("admin")
     const showBilling = Boolean(isAdmin)
@@ -102,7 +100,7 @@ function SettingsNavigation() {
         { title: "Integrations", url: FrontendRoutes.INTEGRATIONS, icon: Plug, iconColor: "text-primary" },
         { title: "Notifications", url: FrontendRoutes.NOTIFICATIONS, icon: Bell, iconColor: "text-primary" },
         ...(showBilling ? [{ title: "Billing", url: FrontendRoutes.BILLING, icon: CreditCard, iconColor: "text-primary" }] : []),
-        ...(showSdkInterface ? [{ title: "API Tokens", url: FrontendRoutes.API_TOKENS, icon: KeyRound, iconColor: "text-primary" }] : [])
+        { title: "API Tokens", url: FrontendRoutes.API_TOKENS, icon: KeyRound, iconColor: "text-primary" }
     ]
 
     return (

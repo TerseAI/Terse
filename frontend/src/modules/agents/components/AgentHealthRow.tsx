@@ -43,7 +43,7 @@ export const HEALTH_RANK: Record<HealthStatus, number> = {
 }
 
 export function AgentRow({ agent, health }: { agent: Agent; health: AgentHealth }) {
-    const agentRoute = buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: agent.id })
+    const agentRoute = buildRoute(FrontendRoutes.JOBS.BY_ID, { id: agent.id })
     const isUnhealthy = health.status === "failing"
 
     return (
@@ -94,7 +94,7 @@ function RunDot({ run, agentId }: { run: RunHistoryRecordWithAgent | undefined; 
     if (!run) {
         return <span className="bg-muted-foreground/25 block h-4 w-1 rounded-sm" aria-hidden />
     }
-    const runRoute = buildRoute(FrontendRoutes.AGENTS.RUN_HISTORY, { id: agentId, runId: run.id })
+    const runRoute = buildRoute(FrontendRoutes.JOBS.RUN_HISTORY, { id: agentId, runId: run.id })
     return (
         <Tooltip>
             <TooltipTrigger asChild>

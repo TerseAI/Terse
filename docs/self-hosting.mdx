@@ -13,6 +13,21 @@ Terse still runs the rest of the platform.
     run history stay on Terse.
 </Note>
 
+## When self-hosting is the right choice
+
+Pick self-hosting when your workflow needs something only your environment can provide.
+
+| Reason                            | Examples                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Private data access**           | Internal Postgres, Snowflake on a private link, a service mesh, an on-prem warehouse             |
+| **Secrets in your own env**       | Credentials managed in AWS Secrets Manager, GCP Secret Manager, Vault, or your platform's vars   |
+| **VPC-only services**             | Internal APIs, microservices, or databases that are not reachable from public infrastructure     |
+| **Compliance and data residency** | Customer data must stay in a specific region, account, or tenancy                                |
+| **Reusing existing app code**     | You already have a Node service with shared libraries, models, or clients you want to import     |
+| **Custom runtime needs**          | Specific Node version, native modules, large dependencies, or a long-running process you operate |
+
+If none of those apply, the default [hosted deployment](/hosting) is simpler. There is nothing to operate, and triggers, scheduling, and runs are fully managed.
+
 ## Setting it up
 
 <Steps>
@@ -88,7 +103,7 @@ Terse still runs the rest of the platform.
         terse deploy
         ```
 
-        Terse reads `remoteServerUrl`, registers your workflows on the platform, and configures triggers to call your server instead of the Terse-hosted runtime.
+        Terse reads `remoteServerUrl`, registers your workflows on the platform, and routes every future trigger to your server.
     </Step>
 
 </Steps>
@@ -100,41 +115,11 @@ Terse still runs the rest of the platform.
 
 ## Identity verification
 
-Every request Terse sends to your server is signed with HMAC-SHA256 using `TERSE_SIGNING_SECRET`. `handleTrigger` does the verification for you, but it's worth understanding what it checks so you can debug failures and make informed decisions about middleware order.
-
-### What gets signed
-
-Terse sends two headers on every request:
-
-| Header              | Description                                                                             |
-| ------------------- | --------------------------------------------------------------------------------------- |
-| `x-terse-timestamp` | Unix timestamp (seconds) when the request was signed.                                   |
-| `x-terse-signature` | The signature, formatted as `v0=<hex>` where `<hex>` is HMAC-SHA256 of the base string. |
-
-The base string is `v0:<timestamp>:<rawBody>`, hashed with `TERSE_SIGNING_SECRET` as the key. `handleTrigger` recomputes that hash on your side and rejects the request unless it matches via constant-time comparison.
-
-### What `handleTrigger` enforces
-
-<Steps>
-    <Step title="Both headers are present">
-        Missing either header throws. This usually means a browser or other client is hitting the endpoint, or a reverse proxy is stripping headers — make sure your proxy forwards `x-terse-*`
-        through unchanged.
-    </Step>
-    <Step title="The timestamp is recent">
-        Requests older than **5 minutes** are rejected to prevent replay attacks. If you see timestamp errors in production, your server's clock is drifting — sync NTP.
-    </Step>
-    <Step title="The signature matches">
-        The recomputed HMAC must equal the value in `x-terse-signature`. Any mismatch fails the request without invoking your handler.
-    </Step>
-    <Step title="The challenge handshake (first deploy)">
-        When Terse first registers your workflows, it sends a `{ type: "challenge", challenge: "<token>" }` payload. `handleTrigger` re-signs the token with `TERSE_SIGNING_SECRET` and returns the
-        result. This proves your server actually holds the secret before the platform routes real triggers to it. You don't need to handle this case yourself — `handleTrigger` covers both phases.
-    </Step>
-</Steps>
+`handleTrigger` verifies every incoming request against `TERSE_SIGNING_SECRET` and rejects anything older than 5 minutes or with a mismatched signature. Failing requests never reach your handler.
 
 <Note>
-    If you parse the request body before calling `handleTrigger` (for example with `express.json()`), the SDK re-serializes it with `JSON.stringify` to recompute the HMAC. Don't mutate `req.body`
-    between parsing and the call, or the signature will no longer match.
+    If you parse the request body before calling `handleTrigger` (for example with `express.json()`), the SDK re-serializes it with `JSON.stringify` to recompute the signature. Don't mutate `req.body`
+    between parsing and the call, or verification will fail.
 </Note>
 
 ## What you host vs. what Terse hosts
@@ -150,48 +135,9 @@ The base string is `v0:<timestamp>:<rawBody>`, hashed with `TERSE_SIGNING_SECRET
 
 When a trigger fires, Terse signs the event and POSTs it to your server. Your server verifies the signature with `handleTrigger`, looks up the registered workflow by name, and runs your `onTrigger` closure in your process. Tool calls, agent runs, and approvals continue to flow through the Terse backend so Activity, Notifications, and history all keep working.
 
-## How a run flows when self-hosted
-
-<Steps>
-    <Step title="A trigger fires on Terse">An integration event arrives, a cron schedule ticks, or a public webhook URL receives a request. Terse handles ingestion, signing, and delivery.</Step>
-    <Step title="Terse POSTs a signed payload to your server">
-        The platform sends the trigger to `remoteServerUrl` from `terse.config.json`, at the path mounted by `TERSE_JOB_WEBHOOK_TRIGGER_PATH`.
-    </Step>
-    <Step title="`handleTrigger` verifies and dispatches">
-        Your HTTP handler calls `terse.handleTrigger(body, headers)`. The SDK verifies the HMAC signature against `TERSE_SIGNING_SECRET`, finds the registered workflow by name, and invokes its
-        `onTrigger` closure.
-    </Step>
-    <Step title="Your handler runs in your environment">
-        The closure has access to your env vars, secret stores, private network, and any code you import. Deterministic tools, agent runs, and approvals still call back into Terse so Activity stays
-        complete.
-    </Step>
-</Steps>
-
-## When self-hosting is the right choice
-
-Pick self-hosting when your workflow needs something only your environment can provide.
-
-| Reason                            | Examples                                                                                         |
-| --------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Private data access**           | Internal Postgres, Snowflake on a private link, a service mesh, an on-prem warehouse             |
-| **Secrets in your own env**       | Credentials managed in AWS Secrets Manager, GCP Secret Manager, Vault, or your platform's vars   |
-| **VPC-only services**             | Internal APIs, microservices, or databases that are not reachable from public infrastructure     |
-| **Compliance and data residency** | Customer data must stay in a specific region, account, or tenancy                                |
-| **Reusing existing app code**     | You already have a Node service with shared libraries, models, or clients you want to import     |
-| **Custom runtime needs**          | Specific Node version, native modules, large dependencies, or a long-running process you operate |
-
-If none of those apply, the default [hosted deployment](/hosting) is simpler. There is nothing to operate, and triggers, scheduling, and runs are fully managed.
-
 ## What stays the same
 
-Even though execution moves into your infrastructure, the rest of the developer experience is unchanged:
-
-- `createJob()` is still the unit of automation. See [Jobs](/core-concepts/jobs).
-- `agent.tools.*` and `TerseAgent` work identically. See [Deterministic tool calls](/core-concepts/deterministic-tool-calls).
-- Runs, actions, approvals, and the Activity tab keep working as expected.
-- Integration auth and skill definitions continue to come from Terse.
-
-The only difference is the box your `onTrigger` runs inside.
+Even though execution moves into your infrastructure, the only difference is the box your `onTrigger` runs inside. `createJob()`, `agent.tools.*`, runs, approvals, and the Activity tab all keep working as they do for hosted workflows.
 
 ## Where to go next
 

@@ -1,7 +1,7 @@
 import { localDb } from "../../loaders/prisma"
 
-import { decryptFromLocalStore, encryptForLocalStore } from "./localSecretEncryption"
 import { SecretManagerClient } from "./SecretManagerClient"
+import { decryptFromLocalStore, encryptForLocalStore } from "./localSecretEncryption"
 
 export class LocalSecretManagerClient implements SecretManagerClient {
     async getSecretOrNull(blobId: string): Promise<string | null> {

@@ -35,13 +35,13 @@ export async function history(jobName?: string, options: HistoryOptions = {}, pr
     try {
         agentId = await resolveAgentIdByJobName(job.name, apiKey)
     } catch (error) {
-        spinner?.fail(chalk.red("Failed to look up agent"))
+        spinner?.fail(chalk.red("Failed to look up job"))
         throw error
     }
 
     if (!agentId) {
-        spinner?.fail(chalk.red(`No deployed agent found for job "${job.name}"`))
-        throw new CliError("no_deployed_agent", `No deployed agent found for job "${job.name}"`, {
+        spinner?.fail(chalk.red(`Job "${job.name}" is not deployed`))
+        throw new CliError("no_deployed_agent", `Job "${job.name}" is not deployed`, {
             detail: "Have you run `terse deploy` for this job?"
         })
     }

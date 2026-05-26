@@ -30,7 +30,7 @@ export function AppRoutes() {
                 <Route index element={<Navigate to="home" replace />} />
                 <Route path="home" element={<HomePage />} />
                 <Route path="pricing" element={<PricingPage />} />
-                <Route path={FrontendRoutes.AGENTS.BY_ID} element={<AgentDetailPage />} />
+                <Route path={FrontendRoutes.JOBS.BY_ID} element={<AgentDetailPage />} />
                 <Route path={FrontendRoutes.PROJECTS.BY_ID} element={<ProjectDetailPage />} />
                 <Route path={FrontendRoutes.PROJECTS.DEPLOYS} element={<ProjectDeploysPage />} />
                 <Route path="activity" element={<ActivityPage />} />

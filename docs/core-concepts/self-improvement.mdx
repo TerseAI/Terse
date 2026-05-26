@@ -4,18 +4,18 @@ description: "Terse reviews your runs every week and ships patches against your 
 icon: "sparkles"
 ---
 
-Once a week, a cron sweeps each workflow with **improvements enabled**, reads the last seven days of runs alongside your deployed source, and produces patches — real `git diff`s against the prompt, trigger, skills, or code in your workflow file.
+Once a week, a cron sweeps each workflow with improvements enabled, reads the last seven days of runs alongside your deployed source, and writes up to four improvement cards. Cards targeting **code** ship with a real `git diff` patch (Claude Code edits your sources in a sandbox to produce it). Cards targeting trigger config, output config, or general advice are text recommendations with no patch.
 
-Patches show up in the **Improvements** tab and in a weekly summary email. Apply them locally with the CLI:
+Cards show up in the **Improvements** tab and in a weekly summary email. Apply code patches locally with the CLI:
 
 ```bash
 terse list improvements
 terse apply <improvement-id>
 ```
 
-`terse apply` runs `git apply` (with 3-way and `--reject` fallbacks if your code has drifted) and marks the improvement as **Applied** in the UI. **Dismiss** a card to hide it permanently.
+`terse apply` runs `git apply` (with `--3way` and an interactive `--reject` fallback if your working copy has drifted) and marks the improvement as **Applied** in the UI. **Dismiss** clears a card from the pending list; the toast offers a one-shot undo right after.
 
-<Note>Workflows with no runs in the period, or four or more pending improvements, are skipped. Manual and test runs are ignored.</Note>
+<Note>Workflows with no runs in the seven-day window, or four or more improvements already on file (in any status), are skipped that week. The reviewer is also instructed to disregard manual and test runs when judging behavior.</Note>
 
 ## Where to go next
 

@@ -2,6 +2,7 @@ import { log } from "@clack/prompts"
 import { select } from "@inquirer/prompts"
 import chalk from "chalk"
 import { type DeviceTokenExchangeResponse, type IdentifyResponse, type UserSession, authModeResponseSchema } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
@@ -14,7 +15,6 @@ import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setActiveOrgToken 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"
 const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code"
-const ORG_CREATE_PATH = "/app/organizations/create"
 const IDENTIFY_POLL_INTERVAL_MS = 3000
 
 function sleep(ms: number): Promise<void> {
@@ -198,7 +198,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
 
     if (identity.organizations.length === 0) {
         s.stop("Account ready — finish setup in your browser")
-        const orgCreateUrl = `${FRONTEND_URL}${ORG_CREATE_PATH}`
+        const orgCreateUrl = `${FRONTEND_URL}${FrontendRoutes.ORGANIZATIONS.CREATE}`
         openUrlInBrowser(orgCreateUrl)
         log.info("Finish creating your organization in the browser. If the tab didn't open, visit:")
         log.info(`  ${chalk.cyan(orgCreateUrl)}`)

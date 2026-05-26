@@ -1,5 +1,5 @@
 import chalk from "chalk"
-import { exec, execSync } from "node:child_process"
+import { exec, execFile, execSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
@@ -22,6 +22,7 @@ import { prepareTemplateContext } from "./prepareCodegenData.js"
 import { renderGeneratedCode } from "./templateEngine.js"
 
 const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 class TypeScriptProvider implements LanguageProvider {
     readonly language = "typescript" as const
@@ -80,6 +81,27 @@ class TypeScriptProvider implements LanguageProvider {
 
     renderGeneratedCode(input: CodegenInput): string {
         return renderGeneratedCode(prepareTemplateContext(input))
+    }
+
+    async typecheck(): Promise<void> {
+        const cwd = process.cwd()
+        const tscScript = path.join(cwd, "node_modules", "typescript", "bin", "tsc")
+
+        if (!fs.existsSync(tscScript)) {
+            throw new CliError("typescript_not_installed", "TypeScript is not installed in this project.", {
+                detail: "Install it as a dev dependency, then re-run deploy:\n  npm install --save-dev typescript"
+            })
+        }
+
+        try {
+            await execFileAsync(process.execPath, [tscScript, "--noEmit"], { cwd, maxBuffer: 10 * 1024 * 1024 })
+        } catch (error) {
+            const e = error as { stdout?: string; stderr?: string }
+            const output = ((e.stdout ?? "") + (e.stderr ?? "")).trim()
+            throw new CliError("typecheck_failed", "TypeScript compilation check failed.", {
+                detail: output || (error instanceof Error ? error.message : String(error))
+            })
+        }
     }
 
     async loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>> {

@@ -48,7 +48,7 @@ export default function HomePage() {
             <div className="mx-auto w-full max-w-6xl px-6 py-10 space-y-8">
                 <header>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Home</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">Agent health across your org.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Job health across your org.</p>
                 </header>
 
                 {!approvalsLoading && approvals.length > 0 && <ApprovalsStrip count={approvals.length} />}
@@ -108,7 +108,7 @@ function ProjectGroup({ group }: { group: AgentGroupData }) {
             <div className="flex items-baseline justify-between mb-3 px-1">
                 <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{group.projectName}</h2>
                 <span className="text-xs text-muted-foreground tabular-nums">
-                    {group.agents.length} {group.agents.length === 1 ? "agent" : "agents"}
+                    {group.agents.length} {group.agents.length === 1 ? "job" : "jobs"}
                 </span>
             </div>
             <ul className="divide-y divide-border/60 border-y border-border/60">
@@ -124,7 +124,7 @@ function ProjectGroup({ group }: { group: AgentGroupData }) {
 // Empty state
 // ---------------------------------------------------------------------------
 
-const CLI_LINES = ["npm i -g terse-cli", "terse init my-agent"]
+const CLI_LINES = ["npm i -g terse-cli", "terse init my-job"]
 
 function EmptyState() {
     const [copied, setCopied] = useState(false)
@@ -149,8 +149,8 @@ function EmptyState() {
                     <span className="font-mono text-sm tracking-tight text-foreground">terse</span>
                 </div>
 
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">Build your first agent from your terminal.</h1>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">Terse agents are built locally. Run the commands below to get started.</p>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">Build your first job from your terminal.</h1>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">Terse jobs are built locally. Run the commands below to get started.</p>
 
                 <div className="mt-6 group relative">
                     <pre className="rounded-md bg-muted/60 border border-border/60 px-4 py-3 font-mono text-sm text-foreground">

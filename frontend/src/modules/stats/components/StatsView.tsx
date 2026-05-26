@@ -172,7 +172,7 @@ function DailyEventsSection({ eventsPerDay, timezone }: { eventsPerDay: { date: 
                                 <BarChart3 className="text-primary" />
                             </EmptyMedia>
                             <EmptyTitle>No events yet</EmptyTitle>
-                            <EmptyDescription>Event data will appear here once your agents start running</EmptyDescription>
+                            <EmptyDescription>Event data will appear here once your jobs start running</EmptyDescription>
                         </EmptyHeader>
                     </Empty>
                 )}
@@ -191,8 +191,8 @@ function AgentLeaderboard({ agents }: { agents: AgentActivityItem[] }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Most Active Agents</CardTitle>
-                <CardDescription>Top agents by run count this period</CardDescription>
+                <CardTitle>Most Active Jobs</CardTitle>
+                <CardDescription>Top jobs by run count this period</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">
@@ -202,7 +202,7 @@ function AgentLeaderboard({ agents }: { agents: AgentActivityItem[] }) {
                             <div key={agent.agentId} className="group">
                                 <div className="flex items-center justify-between mb-1">
                                     <button
-                                        onClick={() => navigate(buildRoute(FrontendRoutes.AGENTS.BY_ID, { id: agent.agentId }))}
+                                        onClick={() => navigate(buildRoute(FrontendRoutes.JOBS.BY_ID, { id: agent.agentId }))}
                                         className="text-sm font-medium text-foreground hover:underline underline-offset-4 transition-colors truncate max-w-[200px]"
                                     >
                                         {agent.agentName}
@@ -391,7 +391,7 @@ function StatsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <StatCard label="Events Processed" value={formatNumber(stats.totalEventsProcessed)} change={stats.totalEventsProcessedChange} />
                             <StatCard label="Actions Taken" value={formatNumber(stats.actionsTaken)} change={stats.actionsTakenChange} />
-                            <StatCard label="Active Agents" value={formatNumber(stats.numberOfAgents)} change={stats.numberOfAgentsChange} />
+                            <StatCard label="Active Jobs" value={formatNumber(stats.numberOfAgents)} change={stats.numberOfAgentsChange} />
                         </div>
 
                         {/* ── Daily Events Chart ──────────────────────────── */}
@@ -406,11 +406,11 @@ function StatsPage() {
                         {/* ── Insights Row 2 ──────────────────────────────── */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <HorizontalBarSection title="Trigger Sources" description="Where your events originate from" data={stats.triggerIntegrations ?? []} />
-                            <HorizontalBarSection title="Action Integrations" description="Where your agents take action" data={stats.actionIntegrations ?? []} />
+                            <HorizontalBarSection title="Action Integrations" description="Where your jobs take action" data={stats.actionIntegrations ?? []} />
                         </div>
 
                         {/* ── Action Types ────────────────────────────────── */}
-                        {(stats.actionTypes?.length ?? 0) > 0 && <HorizontalBarSection title="Action Types" description="Types of actions your agents perform" data={stats.actionTypes ?? []} />}
+                        {(stats.actionTypes?.length ?? 0) > 0 && <HorizontalBarSection title="Action Types" description="Types of actions your jobs perform" data={stats.actionTypes ?? []} />}
                     </>
                 )}
             </div>
