@@ -39,8 +39,8 @@ The flow, in order:
 
 Options:
 
-| Flag                    | Description                                                                                                       |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Flag                    | Description                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `-y, --non-interactive` | Fail fast instead of prompting. Requires a prior `terse auth login`. Implied automatically when stdin is not a TTY. |
 
 ### `terse attach`
@@ -64,8 +64,8 @@ What it does:
 
 Options:
 
-| Flag                    | Description                                                                                                       |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Flag                    | Description                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `-y, --non-interactive` | Fail fast instead of prompting. Requires a prior `terse auth login`. Implied automatically when stdin is not a TTY. |
 
 Before you run `terse deploy`, set `remoteServerUrl` in `terse.config.json` to the URL where your Terse SDK server is running.
@@ -96,11 +96,11 @@ If you only have one workflow, the CLI selects it automatically. If you have mor
 
 Options:
 
-| Flag                  | Description                              | Default              |
-| --------------------- | ---------------------------------------- | -------------------- |
-| `-v, --verbose`       | Show agent stream output during the run  | Enabled              |
-| `--no-verbose`        | Hide agent stream output                 |                      |
-| `--entry-file <path>` | Override the default workflow entry file | `src/terse.jobs.ts`  |
+| Flag                  | Description                              | Default             |
+| --------------------- | ---------------------------------------- | ------------------- |
+| `-v, --verbose`       | Show agent stream output during the run  | Enabled             |
+| `--no-verbose`        | Hide agent stream output                 |                     |
+| `--entry-file <path>` | Override the default workflow entry file | `src/terse.jobs.ts` |
 
 Loads your local workflow, lets you pick a real or synthesized sample event, and runs the handler in-process.
 
@@ -186,7 +186,6 @@ What happens:
 - New workflows are created on the platform
 - Existing workflows are updated
 - Workflows removed from your code are removed from Terse
-- For each deployed job, the CLI prints a link to its page in the app (`/app/jobs/<id>`)
 - For each workflow that includes a webhook trigger, the CLI prints a Webhook URL line after deploy so you can wire up external systems without opening the app
 - For managed (non-self-hosted) projects with a local `.env`, the CLI offers to upload any variables not already stored as project secrets before the deploy runs. Use [`terse secrets`](#terse-secrets) for finer-grained control.
 
@@ -209,9 +208,9 @@ The interactive flow fetches your current integrations, shows provider-specific 
 
 Connection types:
 
-| Type  | Flow                                                                       | Integrations                                              |
-| ----- | -------------------------------------------------------------------------- | --------------------------------------------------------- |
-| OAuth | Opens a browser for authorization and waits for the connection to complete | GitHub, Slack, Gmail, Linear, Notion, Attio               |
+| Type  | Flow                                                                       | Integrations                                                |
+| ----- | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| OAuth | Opens a browser for authorization and waits for the connection to complete | GitHub, Slack, Gmail, Linear, Notion, Attio                 |
 | Form  | Prompts for credentials or account details in the terminal                 | Datadog, PostHog, Snowflake, LaunchDarkly, WorkOS, HeyReach |
 
 #### `terse integrate list`
@@ -316,9 +315,9 @@ terse secrets list
 
 Lists secret names (not values) stored on the linked Terse project.
 
-| Flag     | Description    |
-| -------- | -------------- |
-| `--json` | Emit JSON      |
+| Flag     | Description |
+| -------- | ----------- |
+| `--json` | Emit JSON   |
 
 #### `terse secrets add <NAME>`
 
@@ -329,9 +328,9 @@ terse secrets add OPENAI_API_KEY
 printf '%s' "$OPENAI_API_KEY" | terse secrets add OPENAI_API_KEY --value-stdin
 ```
 
-| Flag             | Description                              |
-| ---------------- | ---------------------------------------- |
-| `--value-stdin`  | Read the secret value from stdin         |
+| Flag            | Description                      |
+| --------------- | -------------------------------- |
+| `--value-stdin` | Read the secret value from stdin |
 
 #### `terse secrets remove <NAME>`
 
@@ -341,9 +340,9 @@ Removes one secret. Prompts for confirmation in a terminal; pass `--yes` in scri
 terse secrets remove OPENAI_API_KEY --yes
 ```
 
-| Flag     | Description                          |
-| -------- | ------------------------------------ |
-| `--yes`  | Skip the confirmation prompt         |
+| Flag    | Description                  |
+| ------- | ---------------------------- |
+| `--yes` | Skip the confirmation prompt |
 
 #### `terse secrets import <file>`
 
@@ -354,9 +353,9 @@ terse secrets import .env
 terse secrets import .env --overwrite
 ```
 
-| Flag           | Description                                       |
-| -------------- | ------------------------------------------------- |
-| `--overwrite`  | Update existing server-side secrets with new values |
+| Flag          | Description                                         |
+| ------------- | --------------------------------------------------- |
+| `--overwrite` | Update existing server-side secrets with new values |
 
 ### `terse generate`
 
@@ -370,12 +369,12 @@ terse generate
 
 What the generated file contains:
 
-| Category                    | Example                                                              |
-| --------------------------- | -------------------------------------------------------------------- |
-| Resource constants          | `SlackChannel.Engineering`                                           |
-| Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.schedule.cron()`           |
-| Skill constructors          | `Skills.github({ repos: [...] })`                                    |
-| Deterministic tool wrappers | `toolbox.slack.sendMessage()`, `agent.tools.slack.sendMessage()`     |
+| Category                    | Example                                                          |
+| --------------------------- | ---------------------------------------------------------------- |
+| Resource constants          | `SlackChannel.Engineering`                                       |
+| Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.schedule.cron()`       |
+| Skill constructors          | `Skills.github({ repos: [...] })`                                |
+| Deterministic tool wrappers | `toolbox.slack.sendMessage()`, `agent.tools.slack.sendMessage()` |
 
 `toolbox.*` calls a tool directly with no `TerseAgent` and is not limited by skills. `agent.tools.*` calls the same tool but is limited to skills the agent was created with. See the [Triggers](/reference/triggers) and [Skills](/reference/skills) reference for every helper.
 
@@ -409,11 +408,12 @@ terse apply imp_abc123 --non-interactive
 
 Options:
 
-| Flag                    | Description                                                                                                |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Flag                    | Description                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `-y, --non-interactive` | Fail fast instead of prompting. Requires an improvement id and a clean apply (no `--reject` fallback prompt). |
 
 ## Observability
+
 ### `terse listen [job-name]`
 
 Streams live trigger events for a deployed workflow and executes the matching local workflow on your machine.
@@ -437,11 +437,11 @@ Requirements:
 
 Options:
 
-| Flag                  | Description                              | Default              |
-| --------------------- | ---------------------------------------- | -------------------- |
-| `-v, --verbose`       | Show agent stream output during the run  | Enabled              |
-| `--no-verbose`        | Hide agent stream output                 |                      |
-| `--entry-file <path>` | Override the default workflow entry file | `src/terse.jobs.ts`  |
+| Flag                  | Description                              | Default             |
+| --------------------- | ---------------------------------------- | ------------------- |
+| `-v, --verbose`       | Show agent stream output during the run  | Enabled             |
+| `--no-verbose`        | Hide agent stream output                 |                     |
+| `--entry-file <path>` | Override the default workflow entry file | `src/terse.jobs.ts` |
 
 Common errors:
 
@@ -499,8 +499,6 @@ terse dashboard
 
 If `TERSE_FRONTEND_URL` is set, the CLI opens that URL instead of production.
 
- 
-
 ## Authentication
 
 ### `terse auth login`
@@ -544,9 +542,9 @@ terse auth org list --json
 
 Options:
 
-| Flag     | Description    |
-| -------- | -------------- |
-| `--json` | Emit JSON      |
+| Flag     | Description |
+| -------- | ----------- |
+| `--json` | Emit JSON   |
 
 ### `terse auth org switch [org-id]`
 

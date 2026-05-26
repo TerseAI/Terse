@@ -46,7 +46,6 @@
 
 - Prioritize external developer docs for TypeScript workflows, CLI workflows, templates, and the parts of the web UI needed to operate them.
 - Document the user-visible app areas that matter for code workflows: Home, Jobs (per project), Integrations, Activity, Stats, Notifications, API Tokens, and Profile.
-- Mention the old `/app/agents/*` URLs only when users need migration context.
 - Treat templates and comparison pages as first-class product docs, not side content.
 - Frame planned GTM integrations as waitlist or coming soon. Keep the current path clear.
 - Do not document internal admin tools, internal-only templates, implementation details of backend services, or unreleased product behavior.

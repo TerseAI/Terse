@@ -6,10 +6,6 @@ icon: "boxes"
 
 A job is the core building block in Terse. It connects an event (the trigger) to the code that should run when that event happens (the handler). When you deploy a Terse project, you're deploying one or more jobs.
 
-In the SDK, you define jobs with `createJob()`. Across these docs, we often call them **workflows** in prose; in the Terse app they appear under each project as **jobs** (for example `https://app.useterse.ai/app/jobs/<id>`). `TerseAgent` is separate: it is the in-handler runtime for agentic loops, not the deployed job itself.
-
-<Note>App URLs moved from `/app/agents/*` to `/app/jobs/*`. Update bookmarks and deep links accordingly.</Note>
-
 ## Anatomy of a job
 
 Every job has four parts:
@@ -18,8 +14,8 @@ Every job has four parts:
 createJob({
     name: "new-deal-enrichment",
     triggers: [Triggers.attio.onRecordCreated({ object: AttioObject.Deal })],
-    filter: (event) => event.record.values.stage === "contract-sent",
-    onTrigger: async (event) => {
+    filter: event => event.record.values.stage === "contract-sent",
+    onTrigger: async event => {
         // your logic here
     }
 })
@@ -56,24 +52,22 @@ Trigger fires → Filter (optional) → Handler executes → Run recorded in Act
 
 Inside a handler, you have two ways to get things done:
 
-| Approach          | How                                | When to use                                                  |
-| ----------------- | ---------------------------------- | ------------------------------------------------------------ |
+| Approach          | How                                                         | When to use                                                  |
+| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------ |
 | **Deterministic** | `toolbox.*`, `agent.tools.*`, or `TerseAgent.executeTool()` | You know exactly which tool to call and with what parameters |
-| **Agentic**       | `run()` or `runAndWait()`          | You need the model to reason, summarize, classify, or decide |
+| **Agentic**       | `run()` or `runAndWait()`                                   | You need the model to reason, summarize, classify, or decide |
 
 Most production jobs combine both. Use deterministic calls for predictable operations (fetch data, update a record, send a message) and agentic calls when the model adds value (scoring, summarizing, routing).
 
 ```ts
-onTrigger: async (event) => {
+onTrigger: async event => {
     const agent = TerseAgent.create({
         prompt: "You enrich new deals with research and clear summaries.",
         skills: [Skills.attio({ object: AttioObject.Deal }), Skills.web()]
     })
 
     // Agentic: let the model research and summarize
-    const summary = await agent.runAndWait(
-        `Research ${event.record.values.company_name} and summarize what they do for the account owner.`
-    )
+    const summary = await agent.runAndWait(`Research ${event.record.values.company_name} and summarize what they do for the account owner.`)
 
     // Deterministic: always write the result back
     await agent.tools.attio.upsertRecord({
@@ -92,8 +86,8 @@ Not every event needs a full run. Use `filter` to skip events that don't match y
 createJob({
     name: "contract-alerts",
     triggers: [Triggers.attio.onRecordUpdated({ object: AttioObject.Deal })],
-    filter: (event) => event.record.values.stage === "contract-sent",
-    onTrigger: async (event) => {
+    filter: event => event.record.values.stage === "contract-sent",
+    onTrigger: async event => {
         const agent = TerseAgent.create({
             prompt: "You notify the deal desk when contracts are sent.",
             skills: [Skills.slack({ channel: SlackChannel.DealDesk })]
