@@ -80,11 +80,15 @@ skills: [Skills.attio({ object: AttioObject.People })]
 
 ## Notion
 
-Read and write databases and pages.
+Read and write databases and pages. Optionally scope to specific databases or pages.
 
 ```ts
-skills: [Skills.notion()]
+import { NotionDatabase, NotionPage, Skills } from "./terse.generated"
+
+skills: [Skills.notion({ databases: [NotionDatabase.Roadmap], pages: [NotionPage.OnCallRunbook] })]
 ```
+
+`databases` and `pages` are both optional. Omit them to give the model access to every database and page the integration can reach.
 
 | Tool                                   | Description                       | Access |
 | -------------------------------------- | --------------------------------- | ------ |
@@ -98,15 +102,26 @@ skills: [Skills.notion()]
 
 ## Gmail
 
-Send emails and create drafts.
+Send emails (auto-send, no human review).
 
 ```ts
 skills: [Skills.gmail()]
 ```
 
+| Tool               | Description                     | Access |
+| ------------------ | ------------------------------- | ------ |
+| `gmail_send_email` | Send emails or reply to threads | Write  |
+
+## Gmail Draft
+
+Create draft emails for a human to review and send manually.
+
+```ts
+skills: [Skills.gmailDraft()]
+```
+
 | Tool                 | Description                          | Access |
 | -------------------- | ------------------------------------ | ------ |
-| `gmail_send_email`   | Send emails or reply to threads      | Write  |
 | `gmail_create_draft` | Create draft emails for human review | Write  |
 
 ## Snowflake
@@ -124,11 +139,15 @@ skills: [Skills.snowflake()]
 
 ## Datadog
 
-Read-only access to logs and RUM events.
+Read-only access to logs and RUM events. Optionally scope to specific log indexes.
 
 ```ts
-skills: [Skills.datadog()]
+import { DatadogIndex, Skills } from "./terse.generated"
+
+skills: [Skills.datadog({ indexes: [DatadogIndex.Main] })]
 ```
+
+`indexes` is optional. Omit it to search across every index the integration can reach.
 
 | Tool                 | Description              | Access |
 | -------------------- | ------------------------ | ------ |

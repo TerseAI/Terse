@@ -56,7 +56,7 @@ The Activity tab shows all runs across your workflows in one place, with the mos
 
 **Inspect a run** by clicking any row. This opens a drawer with the full run replay: the trigger payload, the model conversation, tool calls with their arguments and results, and the final output. For runs awaiting approval, you can approve or reject directly from here.
 
-From the run drawer or list, you can **re-trigger** the workflow with the same trigger payload, creating a new run on Terse. To replay that payload against your local code instead, use [`terse replay`](/reference/cli#terse-replay-run-id) with the run ID. To list past runs and their payloads from the terminal, use [`terse history`](/reference/cli#terse-history-job-name).
+From the run list, you can **re-trigger** the workflow with the same trigger payload, creating a new run on Terse. The run drawer surfaces a ready-to-copy [`terse replay`](/reference/cli#terse-replay-run-id) command to replay the same payload against your local code instead. To list past runs and their payloads from the terminal, use [`terse history`](/reference/cli#terse-history-job-name).
 
 ## Stats dashboard
 
@@ -66,7 +66,7 @@ The Stats page aggregates run data into a dashboard with configurable time inter
 | ------ | ------------- |
 | **Events processed** | Total runs (excluding skipped), with change vs. prior period |
 | **Actions taken** | Total write actions across all runs |
-| **Active agents** | Count of workflows that executed at least once |
+| **Active agents** | Count of currently active workflows in your organization |
 | **Event volume over time** | Run count over time, bucketed by the selected interval |
 | **Most active agents** | Top 10 workflows by run count |
 | **Run status breakdown** | Distribution across success, failed, cancelled, etc. |
@@ -83,7 +83,7 @@ Terse can notify you about run outcomes through multiple channels:
 | **Email** | Action notifications, approval requests, weekly improvement reviews |
 | **In-app** | Pending approvals, sent notification history |
 
-You configure notifications per-workflow. Choose which action types to notify on (creates, updates, deletes, errors, and approval requests) and Terse delivers to your preferred channel. Terse uses Slack when you have an active Slack destination configured; otherwise it falls back to email.
+You configure notifications per-workflow. Choose which action types to notify on (creates, updates, deletes, reads, errors, and approval requests) and Terse delivers to your preferred channel. Terse uses Slack when you have an active Slack destination configured; otherwise it falls back to email.
 
 Terse records every notification it sends in your notification history, so you have an audit trail of what went out and when.
 

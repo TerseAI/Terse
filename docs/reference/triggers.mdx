@@ -20,7 +20,7 @@ In TypeScript, `terse generate` writes a single `Triggers` object in `src/terse.
 | `Triggers.github.onPRClosed()`       | `GithubPRClosedTrigger`       | A pull request is closed             |
 | `Triggers.github.onPRSynchronized()` | `GithubPRSynchronizedTrigger` | New commits are pushed to a PR       |
 | `Triggers.github.onPR()`             | `GithubPRTrigger`             | Any pull request event               |
-| `Triggers.github.trigger()`          | `GithubTrigger`               | Other GitHub events you configure    |
+| `Triggers.github.trigger()`          | `GithubTrigger`               | Any GitHub event you select with `eventTypes` |
 
 Config: Scoped to specific repositories via `repo` parameter.
 
@@ -84,10 +84,12 @@ triggers: [Triggers.slack.onMessage({ channel: SlackChannel.Engineering })]
 
 ### Linear
 
-| Trigger                   | Event type    | Description         |
-| ------------------------- | ------------- | ------------------- |
-| `Triggers.linear.onIssueCreated()` | `LinearIssueCreatedTrigger` | An issue is created |
-| `Triggers.linear.onIssueUpdated()` | `LinearIssueUpdatedTrigger` | An issue is updated |
+| Trigger                              | Event type                     | Description                                   |
+| ------------------------------------ | ------------------------------ | --------------------------------------------- |
+| `Triggers.linear.onIssueCreated()`   | `LinearIssueCreatedTrigger`    | An issue is created                           |
+| `Triggers.linear.onIssueUpdated()`   | `LinearIssueUpdatedTrigger`    | An issue is updated                           |
+| `Triggers.linear.onComment()`        | `LinearCommentCreatedTrigger`  | A comment is added to an issue                |
+| `Triggers.linear.trigger()`          | `LinearTrigger` (union)        | Any Linear event you select with `eventTypes` |
 
 Config: Optionally scoped to a team and/or project using generated `LinearTeam` / `LinearProject` constants (same pattern as `SlackChannel` for Slack).
 
@@ -98,11 +100,11 @@ triggers: [Triggers.linear.onIssueCreated({ team: LinearTeam.Engineering, projec
 </CodeGroup>
 
 <Expandable title="Event payload">
-  - `action` - `"create"` or `"update"`
-  - `type` - the entity that fired the event (e.g. `"Issue"`)
+  - `action` - `"create"`, `"update"`, or `"remove"`
+  - `type` - the entity that fired the event, `"Issue"` or `"Comment"`
   - `actor` - `{ id, name, email, url, type }`
   - `createdAt`, `organizationId`, `webhookTimestamp`, `webhookId`, `url?`
-  - `data` - issue details: `{ id, identifier, title, description, priorityLabel, state, team, assignee, labels, url, … }`
+  - `data` - shape depends on `type`. For `"Issue"`: `{ id, identifier, title, description, priorityLabel, state, team, assignee, labels, url, … }`. For `"Comment"`: `{ id, body?, issueId? }`.
 </Expandable>
 
 ### Attio
@@ -158,9 +160,10 @@ Record triggers include a `record` object with Attio ids/slugs plus `values` (an
 
 ### Gmail
 
-| Trigger              | Event type   | Description             |
-| -------------------- | ------------ | ----------------------- |
-| `Triggers.gmail.onEmail()` | `GmailTrigger` | A new email is received |
+| Trigger                    | Event type             | Description                                  |
+| -------------------------- | ---------------------- | -------------------------------------------- |
+| `Triggers.gmail.onEmail()` | `GmailTrigger`         | A new email is received                      |
+| `Triggers.gmail.trigger()` | `GmailTrigger` (union) | Any Gmail event you select with `eventTypes` |
 
 <CodeGroup>
 ```ts TypeScript

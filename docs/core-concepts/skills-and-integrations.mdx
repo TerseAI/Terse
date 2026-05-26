@@ -14,8 +14,8 @@ Terse supports two connection types:
 
 | Type      | Flow                                                        | Examples                                            |
 | --------- | ----------------------------------------------------------- | --------------------------------------------------- |
-| **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Linear, Notion, Attio, WorkOS |
-| **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly           |
+| **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Linear, Notion, Attio         |
+| **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, WorkOS   |
 
 After connecting, run `terse generate` to turn your active integrations into typed code.
 
@@ -41,7 +41,9 @@ This is the key distinction:
 This means you can be precise about the model's reach for a given job, while still calling any connected integration from your handler code through `toolbox`:
 
 ```ts
-import { toolbox, Skills, SlackChannel, AttioObject, Triggers } from "./terse.generated"
+import { TerseAgent, createJob } from "terse-sdk"
+
+import { AttioObject, Skills, SlackChannel, Triggers, toolbox } from "./terse.generated"
 
 createJob({
     name: "weekly-digest",

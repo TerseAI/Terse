@@ -6,7 +6,7 @@ icon: "boxes"
 
 A job is the core building block in Terse. It connects an event (the trigger) to the code that should run when that event happens (the handler). When you deploy a Terse project, you're deploying one or more jobs.
 
-In the SDK, you define jobs with `createJob()`. In the Terse app and across these docs, we call them workflows. Same thing, different name.
+In the SDK, you define jobs with `createJob()`. Across these docs, we sometimes call them workflows, and the Terse app surfaces them as agents. Same thing, different names.
 
 ## Anatomy of a job
 
@@ -47,7 +47,7 @@ Trigger fires → Filter (optional) → Handler executes → Run recorded in Act
 
 1. **Trigger fires.** An event arrives from the connected integration or on the configured schedule.
 2. **Filter evaluates.** If you defined a `filter` function, Terse calls it with the event. Return `false` to skip the run entirely. No tokens spent, no side effects.
-3. **Handler executes.** Your `onTrigger` runs with the event payload and a `TerseAgent`. You control the logic: call tools deterministically, hand off to the model, or both.
+3. **Handler executes.** Your `onTrigger` runs with the event payload.
 4. **Run is recorded.** Every execution, whether it succeeds or fails, is logged in Activity with the full action trace so you can inspect what happened.
 
 ## Deterministic vs. agentic
@@ -106,7 +106,7 @@ createJob({
 
 ## Tool approvals
 
-For jobs that write to production systems, you can require human approval before specific tools execute. List the tool names in `toolApprovals`. During local testing, the CLI prompts in your terminal. In production, approval requests appear in the Terse app under **Notifications**.
+For jobs that write to production systems, you can require human approval before specific tools execute. List the tool names in `toolApprovals` on `TerseAgent.create()`. During local testing, the CLI prompts in your terminal. In production, approval requests appear in the Terse app under **Notifications**.
 
 ## Lifecycle
 

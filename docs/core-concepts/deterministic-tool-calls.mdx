@@ -13,7 +13,7 @@ Deterministic tool calls let you call integration tools directly from your workf
 |                    | Deterministic                                         | Agentic                                                 |
 | ------------------ | ----------------------------------------------------- | ------------------------------------------------------- |
 | **How it works**   | Your code calls a specific tool with exact parameters | The model chooses which tools to call based on a prompt |
-| **API surface**    | `toolbox.*`, `agent.tools.*`, or `TerseAgent.executeTool()` | `run()` or `runAndWait()`                               |
+| **API surface**    | `toolbox.*` or `agent.tools.*`                        | `run()` or `runAndWait()`                               |
 | **When to use**    | You know the tool, parameters, and order in advance   | You need the model to reason, summarize, or decide      |
 | **Predictability** | Always runs the same way                              | Output varies across runs                               |
 | **Token cost**     | Zero LLM tokens                                       | Tokens consumed per run                                 |
@@ -59,20 +59,6 @@ await toolbox.slack.sendMessage({
     message: "Shipped without constructing TerseAgent."
 })
 ```
-
-## `TerseAgent.executeTool(...)`
-
-For lower-level control, call any tool by its string name with `TerseAgent.executeTool`. This is useful when the tool name is dynamic or when you prefer not to use generated wrappers.
-
-```ts
-const result = await TerseAgent.executeTool("attio_upsert_record", {
-    objectSlug: AttioObject.Deal.apiSlug,
-    matchingAttribute: "record_id",
-    records: JSON.stringify([{ record_id: event.record.id, fit_score: 92 }])
-})
-```
-
-`TerseAgent.executeTool` hits the same backend path as `toolbox.*` and `agent.tools.*`. The only difference is that you pass the tool name as a string and arguments in the backend's wire format, instead of calling a typed method.
 
 ## Mixing deterministic and agentic calls
 
@@ -130,7 +116,7 @@ Every integration you connect generates deterministic wrappers. Run `terse gener
 | ------------- | ---------------------------------------------------------------------- |
 | **Attio**     | `queryRecords`, `upsertRecord`, `listObjects`                          |
 | **Slack**     | `sendMessage`, `listChannels`, `listUsers`, `readConversation`         |
-| **GitHub**    | `searchCode`, `grepCode`, `readFile`, `listPullRequests`, `addComment` |
+| **GitHub**    | `searchCode`, `grepCode`, `readFile`, `listPullRequests`, `listCommits` |
 | **Linear**    | `createTicket`, `updateTicket`, `searchTicket`, `addComment`           |
 | **Snowflake** | `executeQuery`                                                         |
 | **Gmail**     | `sendEmail`, `createDraft`                                             |
@@ -144,6 +130,6 @@ Every integration you connect generates deterministic wrappers. Run `terse gener
         How `terse generate` creates typed helpers from your workspace.
     </Card>
     <Card title="TypeScript SDK reference" icon="braces" href="/reference/typescript-sdk">
-        Full reference for `TerseAgent.executeTool`, `toolbox.*`, `agent.tools.*`, and more.
+        Full reference for `toolbox.*`, `agent.tools.*`, and more.
     </Card>
 </CardGroup>
