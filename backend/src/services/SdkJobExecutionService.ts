@@ -258,17 +258,7 @@ export class SdkJobExecutionService {
             })
             throw error
         }
-        const executorContext = this.createRuntimeExecutorContext(
-            sb,
-            sandboxEnv,
-            runId,
-            agentId,
-            jobName,
-            sandboxService.getProjectPath(sb),
-            sandboxService.getCliCachePath(sb),
-            true,
-            cliVersion
-        )
+        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
     }

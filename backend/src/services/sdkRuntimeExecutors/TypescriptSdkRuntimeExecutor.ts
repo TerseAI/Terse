@@ -58,10 +58,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         // Install into a prefix inside the sandbox working dir so the CLI is captured in the snapshotted image.
         // A global (-g without --prefix) install lands in /usr/local, which the local sandbox provider does not snapshot,
         // so the binary would disappear when the backend container is recreated (e.g. docker-compose down/up).
-        await context.ensureSandboxCommand(
-            "install terse cli",
-            `npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`
-        )
+        await context.ensureSandboxCommand("install terse cli", `npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
         await context.ensureSandboxCommand("install cached TypeScript dependencies", this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg))
     }
 
