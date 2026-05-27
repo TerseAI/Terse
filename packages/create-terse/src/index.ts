@@ -4,7 +4,6 @@ import chalk from "chalk"
 import { execSync, spawn } from "node:child_process"
 import { exec } from "node:child_process"
 import { randomBytes } from "node:crypto"
-import { existsSync } from "node:fs"
 import fs from "node:fs/promises"
 import net from "node:net"
 import path from "node:path"
@@ -13,9 +12,6 @@ import { promisify } from "node:util"
 
 const execAsync = promisify(exec)
 
-const REPO_URL = "https://github.com/TerseAI/Terse.git"
-const DEFAULT_INSTALL_BRANCH = "main"
-const INSTALL_BRANCH = process.env.TERSE_INSTALL_BRANCH?.trim() || DEFAULT_INSTALL_BRANCH
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const TEMPLATES_DIR = path.resolve(SCRIPT_DIR, "../templates")
 
@@ -25,9 +21,9 @@ async function main(): Promise<void> {
     const targetDir = await prompt("Where should we set up Terse?", "./terse")
     const resolved = path.resolve(targetDir)
 
-    await cloneIfMissing(resolved)
-
+    await fs.mkdir(resolved, { recursive: true })
     await fs.copyFile(path.join(TEMPLATES_DIR, "docker-compose.yml"), path.join(resolved, "docker-compose.yml"))
+    await fs.copyFile(path.join(TEMPLATES_DIR, "README.md"), path.join(resolved, "README.md"))
 
     const frontendUrl = await prompt("Frontend URL (as seen from your browser)", "http://localhost:5173")
     const backendUrl = await prompt("Backend URL (as seen from your browser)", "http://localhost:3001")
@@ -37,13 +33,10 @@ async function main(): Promise<void> {
         log.warn(`Port 5432 is taken on this machine, exposing the Terse Postgres container on ${postgresPort} instead.`)
     }
 
-    await writeComposeEnv(resolved, postgresPort)
-    await writeBackendEnv(resolved, { frontendUrl, backendUrl, postgresPort })
-    log.success("Wrote backend/.env with generated JWT + Fernet secrets")
-    await writeFrontendEnv(resolved, { backendUrl })
-    log.success(`Wrote frontend/.env pointing at ${backendUrl}`)
+    await writeEnv(resolved, { frontendUrl, backendUrl, postgresPort })
+    log.success(`Wrote .env (edit ${path.join(targetDir, ".env")} to tweak ports, URLs, or secrets)`)
 
-    await runStepStreaming("Building Terse Docker image (first run takes a few minutes)", "docker compose build", resolved)
+    await runStepStreaming("Pulling Terse image (first run downloads ~500MB)", "docker compose pull", resolved)
     await runStep("Starting Terse services", "docker compose up -d", resolved)
     await waitForBackend(backendUrl)
 
@@ -61,6 +54,7 @@ function printNextSteps(args: { frontendUrl: string }): void {
             `  1. Open ${chalk.cyan(args.frontendUrl)} ${chalk.dim("to bootstrap your single admin user.")}`,
             `  2. ${chalk.cyan("terse init my-job")}    ${chalk.dim("# scaffold your first job (CLI is installed and pointed at your local backend).")}`,
             "",
+            chalk.dim("See `README.md` in this folder for daily ops (logs, upgrades, backups, troubleshooting)."),
             chalk.dim("Run `terse target` any time to see which backend the CLI is pointing at.")
         ].join("\n")
     )
@@ -92,48 +86,38 @@ function commandExists(name: string): boolean {
     }
 }
 
-async function cloneIfMissing(targetDir: string): Promise<void> {
-    if (existsSync(path.join(targetDir, "backend/prisma/schema.prisma"))) {
-        log.info("Existing Terse checkout detected, skipping clone")
-        return
-    }
-    const s = spinner()
-    s.start(`Cloning Terse (${INSTALL_BRANCH}) → ${targetDir}`)
-    try {
-        await execAsync(`git clone --depth=1 --branch ${shellEscape(INSTALL_BRANCH)} ${REPO_URL} ${shellEscape(targetDir)}`)
-        s.stop(`Cloned into ${targetDir}`)
-    } catch (err) {
-        s.stop("Clone failed")
-        throw err
-    }
-}
-
-async function writeBackendEnv(targetDir: string, config: { frontendUrl: string; backendUrl: string; postgresPort: number }): Promise<void> {
-    // DATABASE_URL and LOCAL_DB_URL are overridden by docker-compose for the
-    // in-container case. The values below are only used if a developer runs
-    // backend commands directly on the host.
-    const localDbPath = path.join(targetDir, "backend/prisma/local/local.db")
+async function writeEnv(targetDir: string, config: { frontendUrl: string; backendUrl: string; postgresPort: number }): Promise<void> {
+    const socketUrl = toWebSocketUrl(config.backendUrl)
     const lines = [
-        `DATABASE_URL=postgres://postgres:postgres@localhost:${config.postgresPort}/terse`,
-        `LOCAL_DB_URL=file:${localDbPath}`,
-        `JWT_SECRET=${randomBytes(32).toString("base64url")}`,
-        `LOCAL_SECRETS_ENCRYPTION_KEY=${randomBytes(32).toString("base64url")}`,
+        "# Terse self-host config. Edit values then `docker compose up -d` to apply.",
+        "",
+        "# ── URLs (what your browser sees) ─────────────────────────────",
         `FRONTEND_URL=${config.frontendUrl}`,
         `BACKEND_URL=${config.backendUrl}`,
-        `NODE_ENV=development`,
+        "",
+        "# ── Postgres ──────────────────────────────────────────────────",
+        "POSTGRES_USER=postgres",
+        "POSTGRES_PASSWORD=postgres",
+        "POSTGRES_DB=terse",
+        `POSTGRES_PORT=${config.postgresPort}`,
+        "",
+        "# ── Secrets (rotate by replacing the values) ──────────────────",
+        `JWT_SECRET=${randomBytes(32).toString("base64url")}`,
+        `LOCAL_SECRETS_ENCRYPTION_KEY=${randomBytes(32).toString("base64url")}`,
+        "",
+        "# ── Frontend (must match BACKEND_URL above) ───────────────────",
+        `VITE_API_BASE_URL=${config.backendUrl}`,
+        `VITE_BACKEND_REDIRECT_URL=${config.backendUrl}`,
+        `VITE_SOCKET_URL=${socketUrl}`,
+        "",
+        "# ── Runtime ───────────────────────────────────────────────────",
+        "NODE_ENV=development",
+        "",
+        "# ── Image (uncomment to pin to a specific tag) ────────────────",
+        "# TERSE_IMAGE=us-central1-docker.pkg.dev/terse-prod/public/terse:latest",
         ""
     ]
-    await fs.writeFile(path.join(targetDir, "backend/.env"), lines.join("\n"))
-}
-
-async function writeComposeEnv(targetDir: string, postgresPort: number): Promise<void> {
-    await fs.writeFile(path.join(targetDir, ".env"), `POSTGRES_PORT=${postgresPort}\n`)
-}
-
-async function writeFrontendEnv(targetDir: string, config: { backendUrl: string }): Promise<void> {
-    const socketUrl = toWebSocketUrl(config.backendUrl)
-    const lines = [`VITE_API_BASE_URL=${config.backendUrl}`, `VITE_BACKEND_REDIRECT_URL=${config.backendUrl}`, `VITE_SOCKET_URL=${socketUrl}`, ""]
-    await fs.writeFile(path.join(targetDir, "frontend/.env"), lines.join("\n"))
+    await fs.writeFile(path.join(targetDir, ".env"), lines.join("\n"))
 }
 
 function toWebSocketUrl(httpUrl: string): string {

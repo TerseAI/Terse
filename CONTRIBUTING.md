@@ -97,7 +97,14 @@ Terse is a pnpm monorepo. The workspaces you'll touch most often:
 
 - **Node.js 20+** (the backend and Vite both target modern Node).
 - **pnpm 9+** — install with `npm install -g pnpm` or `corepack enable`.
-- **PostgreSQL 14+** running locally, with a database named `terse` reachable at `postgres://postgres@localhost/terse`. Adjust `DATABASE_URL` in `backend/.env` if your setup differs.
+- **PostgreSQL 14+** running locally, with a database named `terse` reachable at `postgres://postgres@localhost/terse`. Pick whichever install path matches your machine:
+
+    - **macOS (Homebrew)** — `brew install postgresql@16 && brew services start postgresql@16 && createuser -s postgres && createdb -O postgres terse`. The `createuser -s postgres` step is load-bearing: Homebrew's `initdb` makes your OS user the bootstrap superuser, not `postgres`, so without it the default `DATABASE_URL` in `.env.example` fails with `role "postgres" does not exist`.
+    - **macOS (GUI)** — [Postgres.app](https://postgresapp.com) ships with a `postgres` superuser already configured. Install it, click Start, then `createdb terse`.
+    - **Linux (Debian/Ubuntu)** — `sudo apt install postgresql-16 && sudo -u postgres createdb terse`.
+    - **Windows** — use the [official installer](https://www.postgresql.org/download/windows/), which prompts for a `postgres` password during install, then run `createdb -U postgres terse` from the bundled `psql` shell.
+
+    Adjust `DATABASE_URL` in `backend/.env` if your setup differs.
 
 ### Setup
 
@@ -118,23 +125,32 @@ Terse is a pnpm monorepo. The workspaces you'll touch most often:
 
    Open `backend/.env` and fill in the values you need. The minimum to boot the server is:
 
-   - `JWT_SECRET` — any random string for local dev.
-   - `DATABASE_URL` — your local Postgres URL.
-   - `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD` (32+ chars), `WORKOS_REDIRECT_URI` — required for auth. Grab keys from the [WorkOS dashboard](https://dashboard.workos.com).
-   - `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` — required to run workflows that use those providers.
+   - `JWT_SECRET` — any 16+ character random string. Generate one with `openssl rand -base64 32`.
+   - `DATABASE_URL` — the default (`postgres://postgres@localhost/terse`) matches the Postgres install from Prerequisites. Adjust only if you went a different route.
+   - `FRONTEND_URL` / `BACKEND_URL` — defaults are correct for local dev (`http://localhost:5173` / `http://localhost:3001`).
+   - `LOCAL_DB_URL=file:./prisma/local/local.db` — **add this line manually**, it isn't in `.env.example` yet. The running server defaults this internally, but the Prisma CLI reads it from `.env` (see `backend/prisma/local/schema.prisma`), so the `db:push:local` step below fails without it.
 
-   Everything else is optional and falls back to sensible defaults — see `backend/src/config/settings.ts` for the source of truth. The frontend `.env` defaults work as-is for local dev.
+   `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` are optional but recommended if you want to actually run workflows against those providers. Everything else is optional and falls back to sensible defaults; see `backend/src/settings.ts` for the source of truth. The frontend `.env` defaults work as-is for local dev.
+
+   > **Heads up: auth in local dev.** Leave every `WORKOS_*` variable blank.
+   > When the backend sees no WorkOS config, it boots into single-user local-auth
+   > mode: the first request to the frontend bootstraps an admin user named
+   > after your OS login (`whoami@localhost`) and you're signed in. No login
+   > form, no signup, no WorkOS account required. If you accidentally fill in
+   > a `WORKOS_*` variable, the backend switches to WorkOS SSO and your dev
+   > login will break. That's the most common first-run failure.
 
 3. **Set up the database.**
 
    ```bash
    cd backend
-   pnpm run db:generate   # generate the Prisma client
-   pnpm run db:push       # apply the schema to your local Postgres
+   pnpm run db:generate     # generate both Prisma clients (main + local)
+   pnpm run db:push         # apply the main schema to your local Postgres
+   pnpm run db:push:local   # apply the local-auth schema to SQLite (./prisma/local/local.db)
    cd ..
    ```
 
-   You can inspect the database any time with `pnpm --filter backend run db:studio`.
+   Terse uses two Prisma clients: the main app schema (`backend/prisma/schema.prisma`, Postgres) and a local-only SQLite schema (`backend/prisma/local/schema.prisma`) that holds the singleton admin user and integration secrets used by local-auth mode. `db:generate` builds both clients; `db:push` applies the Postgres schema; `db:push:local` applies the SQLite schema. The `db:push:local` step is required: without it, the first request to the backend fails with `no such table: local_identities`. Inspect either with `pnpm --filter backend run db:studio`.
 
 4. **Run the dev stack.**
 
@@ -166,6 +182,16 @@ Terse is a pnpm monorepo. The workspaces you'll touch most often:
 - **Backend tests.** `pnpm --filter backend run test`
 - **Frontend lint.** `pnpm --filter frontend run lint`
 - **Edit the Prisma schema.** Update `backend/prisma/schema.prisma`, then re-run `pnpm --filter backend run db:generate && pnpm --filter backend run db:push`.
+
+### Troubleshooting
+
+- **Redirected to a WorkOS login page instead of landing on the dashboard.** At least one `WORKOS_*` variable in `backend/.env` is set. Clear all of them and restart the backend; the local-auth path activates when every WorkOS var is blank.
+- **Backend exits with `ECONNREFUSED` on port 5432.** Postgres isn't running. See the install commands in Prerequisites. On macOS, `brew services restart postgresql@16` usually does it.
+- **`role "postgres" does not exist`.** You skipped `createuser -s postgres` during the Homebrew install (or installed Postgres a different way). Either run `createuser -s postgres && createdb -O postgres terse`, or change `DATABASE_URL` in `backend/.env` to `postgres://$(whoami)@localhost/terse`.
+- **`Error: Environment variable not found: LOCAL_DB_URL`** when running `db:push:local`. Add `LOCAL_DB_URL=file:./prisma/local/local.db` to `backend/.env`. Prisma reads it from there, and it isn't in `.env.example` yet.
+- **`no such table: local_identities`** on first frontend load. You skipped `pnpm --filter backend run db:push:local` in step 3. Run it, then restart the backend.
+- **Port 3001 or 5173 already in use.** Find the offender with `lsof -ti:3001` / `lsof -ti:5173` and kill it, or change `BACKEND_URL` (and matching `VITE_BACKEND_REDIRECT_URL` / `VITE_SOCKET_URL` in `frontend/.env`) / Vite's port.
+- **Prisma engine errors on Apple Silicon or other unusual platforms.** Re-run `pnpm --filter backend run db:generate`. This re-downloads the Prisma engine binary for your architecture.
 
 ### Submitting a PR
 
