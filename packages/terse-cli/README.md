@@ -19,7 +19,7 @@ terse test
 terse deploy
 ```
 
-`terse init` scaffolds the project, installs dependencies, runs `terse login`, walks you through integrations, and runs `terse generate` to produce a typed SDK from your workspace.
+`terse init` scaffolds the project, installs dependencies, runs `terse auth login`, walks you through integrations, and runs `terse generate` to produce a typed SDK from your workspace.
 
 See the [full quickstart](https://docs.useterse.ai/quickstart) for a guided walkthrough.
 
@@ -36,7 +36,7 @@ See the [full quickstart](https://docs.useterse.ai/quickstart) for a guided walk
 | `terse replay <run-id>` | Re-run a past run's trigger event against your local code. |
 | `terse history [job]` | List past runs or fetch full chat events for a single run. |
 | `terse dashboard` | Open the Terse web app. |
-| `terse login` / `terse logout` | Manage CLI credentials. |
+| `terse auth login` / `terse auth logout` / `terse auth status` | Manage CLI credentials. Use `terse auth org switch` to change the active organization. |
 | `terse docs` | Open the docs site. |
 
 Full flag reference for every command: [docs.useterse.ai/reference/cli](https://docs.useterse.ai/reference/cli).

@@ -8,8 +8,8 @@ export async function replay(runId: string, provider: LanguageProvider = resolve
     const apiKey = readApiKeyOrBail()
 
     if (!runId) {
-        throw new CliError("missing_run_id", "--run-id is required.", {
-            detail: "Usage: terse replay --run-id <run-id>"
+        throw new CliError("missing_run_id", "Run id is required.", {
+            detail: "Usage: terse replay <run-id>"
         })
     }
 

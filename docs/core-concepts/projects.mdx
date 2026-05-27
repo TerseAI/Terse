@@ -44,11 +44,13 @@ The config file is the only thing the platform needs to recognize the directory:
 
 To register an existing codebase as a project without scaffolding, run `terse attach` in its root.
 
-## Hosted vs. self-hosted
+## Where the project runs
 
-By default, `terse deploy` zips your code and Terse hosts it serverlessly. No infrastructure to manage.
+Terse splits into a **control plane** (orchestrator, triggers, dashboard, history) and a **data plane** (the runtime that executes your `onTrigger` code). Each can run on Terse Cloud or in your own infrastructure. A project's `terse.config.json` controls only the data plane choice; the control plane choice is set by `TERSE_BACKEND_URL` at the CLI/SDK level.
 
-To run jobs on your own infrastructure, add two fields to `terse.config.json`:
+By default, `terse deploy` zips your code and the Terse Cloud data plane runs it serverlessly. No infrastructure to manage.
+
+To route execution to a data plane you operate, add two fields to `terse.config.json`:
 
 <CodeGroup>
 
@@ -63,7 +65,7 @@ To run jobs on your own infrastructure, add two fields to `terse.config.json`:
 
 </CodeGroup>
 
-In this mode, Terse calls your server when triggers fire instead of executing the handler itself. See [Self-hosting](/self-hosting) for the full setup.
+In this mode, the control plane calls your server when triggers fire instead of running the handler itself. See [Self-hosting the data plane](/self-hosting) for the full setup, or [Self-hosting the control plane](/self-hosting-control-plane) to run the orchestrator inside your network too.
 
 ## Where to go next
 

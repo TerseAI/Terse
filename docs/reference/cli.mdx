@@ -45,20 +45,20 @@ Options:
 
 ### `terse attach`
 
-Links an existing repo to Terse in self-hosted mode.
+Links an existing repo to Terse with a self-hosted data plane (the Hybrid deployment).
 
 ```bash
 terse attach
 ```
 
-Use `terse attach` when you already have an application repo and want Terse to sync workflows to infrastructure you control instead of uploading source to Terse hosting.
+Use `terse attach` when you already have an application repo and want the control plane to sync workflows to a data plane you operate instead of uploading source to be run on the Terse Cloud data plane.
 
 What it does:
 
-1. Authenticates with Terse, prompting you to pick which organization owns this project when your account belongs to more than one
-2. Prints the `TERSE_API_KEY` for the chosen organization so you can add it to your server environment
+1. Authenticates with the control plane, prompting you to pick which organization owns this project when your account belongs to more than one
+2. Prints the `TERSE_API_KEY` for the chosen organization so you can add it to your data plane environment
 3. Creates a Terse project if the repo is not already linked
-4. Writes `terse.config.json` with self-hosted mode enabled
+4. Writes `terse.config.json` with the self-hosted data plane enabled
 5. Reviews existing integrations and, in an interactive terminal, lets you connect more
 6. Runs `terse generate` when the current directory matches a supported project layout
 
@@ -187,12 +187,12 @@ What happens:
 - Existing workflows are updated
 - Workflows removed from your code are removed from Terse
 - For each workflow that includes a webhook trigger, the CLI prints a Webhook URL line after deploy so you can wire up external systems without opening the app
-- For managed (non-self-hosted) projects with a local `.env`, the CLI offers to upload any variables not already stored as project secrets before the deploy runs. Use [`terse secrets`](#terse-secrets) for finer-grained control.
+- For managed projects (Terse Cloud data plane) with a local `.env`, the CLI offers to upload any variables not already stored as project secrets before the deploy runs. Use [`terse secrets`](#terse-secrets) for finer-grained control.
 
-Deployment modes:
+Data plane targets:
 
-- Hosted: the CLI zips the current project directory, uploads it, and Terse hosts the workflow for you
-- Self-hosted: the CLI reads `remoteServerUrl` from `terse.config.json` and configures Terse to call your own server instead of uploading source. On the first self-hosted deploy, the CLI prints a new `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` — save these into your server's environment, they will not be shown again.
+- Managed (Terse Cloud data plane): the CLI zips the current project directory, uploads it, and the control plane runs the workflow on Terse Cloud sandboxes
+- Self-hosted data plane: the CLI reads `remoteServerUrl` from `terse.config.json` and configures the control plane to call your own server instead of uploading source. On the first deploy with a self-hosted data plane, the CLI prints a new `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` — save these into your data plane environment, they will not be shown again.
 
 ## Build with workspace context
 
@@ -305,7 +305,7 @@ The `list`, `describe`, `connect`, `disconnect`, and `wait` subcommands do not r
 
 ### `terse secrets`
 
-Manages project secrets for managed (non-self-hosted) projects. Secrets are stored on Terse and injected into hosted runs as environment variables. Self-hosted projects manage their own runtime env vars and these commands return an error there.
+Manages project secrets for projects using the Terse Cloud data plane. Secrets are stored on the control plane and injected into Terse Cloud sandbox runs as environment variables. Projects with a self-hosted data plane manage their own runtime env vars and these commands return an error there.
 
 ```bash
 terse secrets list
@@ -595,8 +595,10 @@ Commands that call the Terse API resolve credentials in this order:
 1. `TERSE_API_KEY` in the current process environment (including `.env` loaded from the project root)
 2. The API key saved by `terse auth login`
 
-Those values are **user** API tokens (the same kind you create in the Terse app). Hosted executions use separate **project-scoped** tokens that Terse injects for you automatically — you don't paste those into `.env` and you don't need to set anything in your hosted runtime.
+Those values are **user** API tokens (the same kind you create in the Terse app). Runs on the Terse Cloud data plane use separate **project-scoped** tokens that the control plane injects automatically — you don't paste those into `.env` and you don't need to set anything in the sandbox runtime.
 
 After `terse init` or `terse auth login`, you usually don't need a project `.env` file for the CLI either, because authentication is stored per user on your machine.
 
-For **self-hosted** deployments, your own server needs `TERSE_API_KEY` in its environment so it can authenticate with Terse at runtime. `terse attach` prints the per-organization key, and `terse deploy` prints a project-scoped key and `TERSE_SIGNING_SECRET` the first time you deploy in self-hosted mode — copy these into your server's secret store. `terse secrets` is for your own application secrets (database URLs, third-party API keys); it intentionally refuses any name that starts with `TERSE_`.
+For a **self-hosted data plane**, your own server needs `TERSE_API_KEY` in its environment so it can authenticate with the control plane at runtime. `terse attach` prints the per-organization key, and `terse deploy` prints a project-scoped key and `TERSE_SIGNING_SECRET` the first time you deploy against a self-hosted data plane — copy these into your data plane secret store. `terse secrets` is for your own application secrets (database URLs, third-party API keys); it intentionally refuses any name that starts with `TERSE_`.
+
+To point the CLI at a **self-hosted control plane**, set `TERSE_BACKEND_URL` (default `https://api.useterse.ai`) in your shell before running any `terse` command.

@@ -1,20 +1,19 @@
 import { useSearchParams } from "react-router-dom"
 
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
-import { Monitor, Shield, User2, Users } from "lucide-react"
+import { Shield, User2, Users } from "lucide-react"
 
 import { useAuth } from "@/modules/auth/context/AuthProvider"
 import { UserTable } from "@/modules/users/components/UserManagement"
 import { UserProfileWidget } from "@/modules/users/components/UserProfileWidget"
 import { UserSecurityWidget } from "@/modules/users/components/UserSecurityWidget"
-import { UserSessionsWidget } from "@/modules/users/components/UserSessionsWidget"
 
 const tabClass = ({ selected }: { selected: boolean }) =>
     `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${
         selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
     }`
 
-const TAB_KEYS = ["profile", "sessions", "security", "users"] as const
+const TAB_KEYS = ["profile", "security", "users"] as const
 
 export default function ProfilePage() {
     const { user } = useAuth()
@@ -38,10 +37,6 @@ export default function ProfilePage() {
                         <span>Profile</span>
                     </Tab>
                     <Tab className={tabClass}>
-                        <Monitor className="h-4 w-4" />
-                        <span>Sessions</span>
-                    </Tab>
-                    <Tab className={tabClass}>
                         <Shield className="h-4 w-4" />
                         <span>Security</span>
                     </Tab>
@@ -55,9 +50,6 @@ export default function ProfilePage() {
                 <TabPanels className="flex-1 min-h-0 flex flex-col pt-4">
                     <TabPanel className="flex-1 min-h-0 flex flex-col">
                         <UserProfileWidget />
-                    </TabPanel>
-                    <TabPanel className="flex-1 min-h-0 flex flex-col">
-                        <UserSessionsWidget />
                     </TabPanel>
                     <TabPanel className="flex-1 min-h-0 flex flex-col">
                         <UserSecurityWidget />

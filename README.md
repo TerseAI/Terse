@@ -54,7 +54,8 @@ AI agents are fast to build but make mistakes. Deterministic workflows are relia
 - **Mix tools and agents.** Call a tool deterministically when you know what you want. Hand off to an agent when you need judgment. Same workflow, same types.
 - **Scoped skills, no surprises.** Tool access is bounded by the skills you declare. The agent can't reach outside that scope. No more catastrophic deletions caused by hallucinations.
 - **Secrets and OAuth, handled.** Integration credentials live in Terse's secret manager (using Google Secret Manager) with automatic OAuth refresh.
-- **Serverless deploys.** `terse deploy` ships your workflows to Terse's hosted runtime. Every run is logged with a complete action trail.
+- **Serverless deploys.** `terse deploy` ships your workflows to the Terse Cloud data plane (isolated Modal sandboxes). Every run is logged with a complete action trail.
+- **Run it where you want.** Terse splits into a **control plane** (orchestrator, triggers, dashboard, history) and a **data plane** (your job code). Each runs on Terse Cloud or in your network, independently — see [Deployment](#deployment) below.
 
 ## Quickstart
 
@@ -78,7 +79,19 @@ npx skills add TerseAI/Terse
 /terse:create describe your workflow
 ```
 
-That's it. `terse deploy` ships to Terse's hosted runtime — no infra to stand up.
+That's it. `terse deploy` ships to the Terse Cloud data plane — no infra to stand up.
+
+## Deployment
+
+Terse has two planes you can place independently. Most users pick one of the named tiers below.
+
+| Tier            | Control plane          | Data plane             | How to set up                                                              |
+| --------------- | ---------------------- | ---------------------- | -------------------------------------------------------------------------- |
+| **Managed**     | Terse Cloud            | Terse Cloud (Modal)    | Default after `terse init`                                                 |
+| **Hybrid**      | Terse Cloud            | Your infrastructure    | `terse attach` ([guide](https://docs.useterse.ai/self-hosting))            |
+| **Self-hosted** | Your infrastructure    | Your infrastructure    | `npx create-terse` ([guide](https://docs.useterse.ai/self-hosting-control-plane)) |
+
+`npx create-terse` clones the repo, mints secrets, brings up Postgres in Docker, runs migrations, starts the app, and writes the env so `terse-cli` already points at your self-hosted control plane.
 
 ## Example
 
