@@ -12,7 +12,7 @@ import { settings } from "../settings"
 
 const config: LoggerConfig = {
     isDevelopment: settings.nodeEnv === "development",
-    usePostHog: !(settings.nodeEnv === "development") || settings.posthog.enableInDevelopment,
+    usePostHog: !!settings.posthog.apiKey && (!(settings.nodeEnv === "development") || settings.posthog.enableInDevelopment),
     posthog: {
         url: "https://us.i.posthog.com/i/v1/logs",
         apiKey: settings.posthog.apiKey,
@@ -317,7 +317,7 @@ interface LoggerConfig {
     usePostHog: boolean
     posthog: {
         url: string
-        apiKey: string
+        apiKey: string | undefined
         serviceName: string
     }
     batchProcessor: {

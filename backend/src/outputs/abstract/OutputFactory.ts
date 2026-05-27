@@ -19,6 +19,7 @@ import {
 import { IntegrationType } from "terse-types/Integrations"
 
 import { convertPrismaOutputConfigToConfigData } from "../../common/typeConverters"
+import { settings } from "../../settings"
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
 import { AttioOutput } from "../attio/AttioOutput"
 import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
@@ -45,22 +46,25 @@ let _toolIntegrationMap: Map<string, IntegrationType> | null = null
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigData>> = new Map<OutputConfigType, () => Output<ConfigData>>([
-        [OutputConfigType.NOTION, () => new NotionOutput()],
-        [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
-        [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
-        [OutputConfigType.GMAIL, () => new GmailOutput()],
-        [OutputConfigType.GMAIL_DRAFT, () => new GmailDraftOutput()],
-        [OutputConfigType.WEB, () => new WebOutput()],
-        [OutputConfigType.IMAGE_EDIT, () => new ImageEditOutput()],
-        [OutputConfigType.ATTIO, () => new AttioOutput()],
-        [OutputConfigType.GITHUB, () => new GithubSkillOutput()],
-        [OutputConfigType.POSTHOG, () => new PosthogSkillOutput()],
-        [OutputConfigType.DATADOG, () => new DatadogSkillOutput()],
-        [OutputConfigType.LAUNCHDARKLY, () => new LaunchDarklySkillOutput()],
-        [OutputConfigType.WORKOS, () => new WorkOSOutput()],
-        [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()]
-    ])
+    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigData>> = (() => {
+        const entries: Array<[OutputConfigType, () => Output<ConfigData>]> = [
+            [OutputConfigType.NOTION, () => new NotionOutput()],
+            [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
+            [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
+            [OutputConfigType.GMAIL, () => new GmailOutput()],
+            [OutputConfigType.GMAIL_DRAFT, () => new GmailDraftOutput()],
+            [OutputConfigType.ATTIO, () => new AttioOutput()],
+            [OutputConfigType.GITHUB, () => new GithubSkillOutput()],
+            [OutputConfigType.POSTHOG, () => new PosthogSkillOutput()],
+            [OutputConfigType.DATADOG, () => new DatadogSkillOutput()],
+            [OutputConfigType.LAUNCHDARKLY, () => new LaunchDarklySkillOutput()],
+            [OutputConfigType.WORKOS, () => new WorkOSOutput()],
+            [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()]
+        ]
+        if (settings.tavily.apiKey) entries.push([OutputConfigType.WEB, () => new WebOutput()])
+        if (settings.gemini.apiKey) entries.push([OutputConfigType.IMAGE_EDIT, () => new ImageEditOutput()])
+        return new Map(entries)
+    })()
 
     static createOutput(integrationType: OutputConfigType): Output<ConfigData> | null {
         const factory = this.OUTPUT_REGISTRY.get(integrationType)

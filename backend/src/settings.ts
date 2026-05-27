@@ -56,15 +56,15 @@ export const settings = {
     },
 
     openai: {
-        apiKey: requireEnv("OPENAI_API_KEY")
+        apiKey: optionalEnv("OPENAI_API_KEY")
     },
 
     tavily: {
-        apiKey: requireEnv("TAVILY_API_KEY")
+        apiKey: optionalEnv("TAVILY_API_KEY")
     },
 
     gemini: {
-        apiKey: requireEnv("GEMINI_API_KEY")
+        apiKey: optionalEnv("GEMINI_API_KEY")
     },
 
     // Application URLs
@@ -155,16 +155,16 @@ export const settings = {
 
     // Posthog Logs
     posthog: {
-        apiKey: requireEnv("POSTHOG_API_KEY"),
+        apiKey: optionalEnv("POSTHOG_API_KEY"),
         serviceName: optionalEnv("POSTHOG_SERVICE_NAME", "terse-backend"),
         enableInDevelopment: optionalEnv("POSTHOG_ENABLE_IN_DEV", "false") === "true",
         host: optionalEnv("POSTHOG_HOST", "https://us.i.posthog.com")
     },
 
     anthropic: {
-        apiKey: requireEnv("ANTHROPIC_API_KEY"),
-        improvementApiKey: requireEnv("ANTHROPIC_IMPROVEMENT_API_KEY"),
-        improvementWorkspaceId: requireEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
+        apiKey: optionalEnv("ANTHROPIC_API_KEY"),
+        improvementApiKey: optionalEnv("ANTHROPIC_IMPROVEMENT_API_KEY"),
+        improvementWorkspaceId: optionalEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
     },
 
     // Modal — opt-in. Used by ModalSandboxService; absent falls through to LocalSandboxService.
