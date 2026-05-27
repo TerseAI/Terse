@@ -1,0 +1,122 @@
+---
+title: "Self-hosting the control plane"
+description: "Run the Terse orchestrator inside your own network. Bootstraps a full Terse instance (backend, frontend, Postgres) with `npx create-terse`."
+icon: "server-cog"
+---
+
+This page covers the **fully self-hosted** deployment: you run the control plane (backend, dashboard, triggers, run history) and, by default, the data plane (your job code) in your own infrastructure. The `npx create-terse` bootstrap script clones the repo, mints secrets, brings up Postgres, runs migrations, and starts the app.
+
+If you only want to run job code locally and keep using Terse Cloud as the control plane, see [Self-hosting the data plane](/self-hosting) instead. For an overview of all three deployment options, see [Hosting overview](/hosting).
+
+<Note>
+    Self-hosted Terse falls under the [Sustainable Use License](https://github.com/TerseAI/Terse/blob/main/LICENSE.md). You can run it for internal business use; you can't redistribute it commercially or operate it as a competing hosted product for third parties.
+</Note>
+
+## Prerequisites
+
+- Node 20+ and `pnpm`
+- Docker (for the bundled Postgres container)
+- Git
+
+## Bootstrap
+
+From any directory:
+
+```bash
+npx create-terse
+```
+
+The script walks you through:
+
+<Steps>
+    <Step title="Pick a target directory">
+        Defaults to `./terse`. The script clones the Terse repo into that directory if it isn't already a checkout.
+    </Step>
+    <Step title="Confirm URLs">
+        Frontend URL (defaults to `http://localhost:5173`) and backend URL (defaults to `http://localhost:3001`). Use your real domains here if you're setting up a long-lived instance.
+    </Step>
+    <Step title="Secrets are generated for you">
+        The script writes `backend/.env` with freshly-minted values:
+
+        | Variable                       | Purpose                                                                                                 |
+        | ------------------------------ | ------------------------------------------------------------------------------------------------------- |
+        | `JWT_SECRET`                   | Signs session cookies for the self-hosted auth provider.                                                |
+        | `LOCAL_SECRETS_ENCRYPTION_KEY` | Fernet-style key used to encrypt project secrets in the local store. **Back this up.** If you lose it, every encrypted secret is unrecoverable. |
+        | `DATABASE_URL`                 | Points at the bundled Postgres container.                                                               |
+        | `LOCAL_DB_URL`                 | Points at the SQLite database used for the local auth provider.                                         |
+        | `FRONTEND_URL` / `BACKEND_URL` | The URLs you confirmed in the prior step.                                                               |
+    </Step>
+    <Step title="Dependencies, database, migrations">
+        The script installs dependencies, brings up the Postgres container with `docker compose up -d --wait postgres`, generates the Prisma clients, and runs migrations for the main schema **and** the local auth SQLite schema.
+    </Step>
+    <Step title="Start the app">
+        When the script finishes:
+
+        ```bash
+        cd terse        # or whatever directory you picked
+        pnpm dev
+        ```
+
+        The frontend is at `http://localhost:5173` (or your configured `FRONTEND_URL`). The backend is at `http://localhost:3001`.
+    </Step>
+</Steps>
+
+## First login
+
+On the first request from `localhost` (or any non-production `NODE_ENV`), Terse auto-creates the OS user as the first admin and mints a session. No "create your first user" page; you land in the dashboard signed in.
+
+Subsequent users register with email + password from the sign-in page.
+
+<Warning>
+    The whoami bootstrap is intentionally guarded by `NODE_ENV !== "production"` and the request originating from localhost. Set `NODE_ENV=production` before exposing the instance off your machine. After that, new users have to register through the normal email-and-password flow.
+</Warning>
+
+## Pointing the CLI at your instance
+
+`npx create-terse` writes `TERSE_BACKEND_URL` and `TERSE_FRONTEND_URL` into your local CLI config as part of the bootstrap, so `terse-cli` already targets your self-hosted control plane (and `terse dashboard` opens your own UI) after the script finishes. You don't need to export anything by hand:
+
+```bash
+terse auth login
+terse init my-project
+```
+
+If you're setting up a teammate's machine, or pointing an existing CLI install at the instance, export both variables in their shell:
+
+```bash
+export TERSE_BACKEND_URL=https://terse.your-company.com
+export TERSE_FRONTEND_URL=https://app.terse.your-company.com
+```
+
+`TERSE_BACKEND_URL` controls where the CLI and SDK reach the API. `TERSE_FRONTEND_URL` controls where `terse dashboard` opens. `Terse` SDK clients running in self-hosted data plane processes pick up `TERSE_BACKEND_URL` the same way.
+
+## Where job code runs
+
+`npx create-terse` sets up the control plane. By default, jobs you deploy with `terse deploy` run inside a local sandbox process on the same machine.
+
+If you want to run jobs in your own remote runtime instead (e.g. a dedicated worker fleet, an internal Kubernetes cluster), the Hybrid setup applies in the same way it does for Terse Cloud — see [Self-hosting the data plane](/self-hosting) and use `terse attach` with a `remoteServerUrl` pointing at that runtime.
+
+## Operations
+
+| Concern               | Where it lives                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| Main app data         | Postgres (the bundled container or your own — change `DATABASE_URL`)                             |
+| Local auth identities | SQLite, file path from `LOCAL_DB_URL`                                                            |
+| Project secrets       | Encrypted in the local store with `LOCAL_SECRETS_ENCRYPTION_KEY`. Back this key up out of band.  |
+| Migrations            | `pnpm --filter backend exec prisma migrate deploy` (main) and the same with `--schema=./prisma/local/schema.prisma` (auth) |
+
+## Where to go next
+
+<CardGroup cols={2}>
+    <Card title="Hosting overview" icon="cloud-upload" href="/hosting">
+        Compare the three deployment options at a glance.
+    </Card>
+    <Card title="Self-host the data plane" icon="server" href="/self-hosting">
+        Run job code in a separate runtime from the control plane.
+    </Card>
+    <Card title="CLI reference" icon="terminal" href="/reference/cli">
+        Every `terse` command, including auth against a custom `TERSE_BACKEND_URL`.
+    </Card>
+    <Card title="Quickstart" icon="rocket" href="/quickstart">
+        Build your first workflow against the running instance.
+    </Card>
+</CardGroup>

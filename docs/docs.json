@@ -20,7 +20,11 @@
         "groups": [
             {
                 "group": "Getting started",
-                "pages": ["index", "quickstart", "context-as-code", "hosting", "self-hosting"]
+                "pages": ["index", "quickstart", "context-as-code"]
+            },
+            {
+                "group": "Deployment",
+                "pages": ["hosting", "self-hosting", "self-hosting-control-plane"]
             },
             {
                 "group": "Core Concepts",

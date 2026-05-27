@@ -1,21 +1,21 @@
 ---
-title: "Self-hosting"
-description: "Run your workflow handlers in your own infrastructure while Terse continues to manage triggers, scheduling, and run history."
+title: "Self-hosting the data plane"
+description: "Run your workflow handlers in your own infrastructure while Terse Cloud continues to handle triggers, scheduling, and run history (Hybrid deployment)."
 icon: "server"
 ---
 
-Self-hosting in Terse means **your workflow code runs in your infrastructure**. The `createJob()` registry and every `onTrigger` closure execute inside a Node process you operate, behind your network, with your environment variables and secrets.
+This page covers the **Hybrid** deployment: Terse Cloud runs the control plane, you run the data plane. Your `createJob()` registry and every `onTrigger` closure execute inside a Node process you operate, behind your network, with your environment variables and secrets.
 
-Terse still runs the rest of the platform.
+If you want to run the control plane in your network as well, see [Self-hosting the control plane](/self-hosting-control-plane). For an overview of all three deployment options, see [Hosting overview](/hosting).
 
 <Note>
-    Self-hosting is about **where workflow handlers execute**. It is not about running your own event processor. Trigger ingestion, webhook URLs, scheduling, integration auth, signing, retries, and
-    run history stay on Terse.
+    Self-hosting the data plane is about **where workflow handlers execute**. It is not about running your own event processor. Trigger ingestion, webhook URLs, scheduling, integration auth, signing, retries, and
+    run history stay on the Terse Cloud control plane.
 </Note>
 
-## When self-hosting is the right choice
+## When the Hybrid deployment is the right choice
 
-Pick self-hosting when your workflow needs something only your environment can provide.
+Pick this when your workflow needs something only your environment can provide.
 
 | Reason                            | Examples                                                                                         |
 | --------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -26,7 +26,7 @@ Pick self-hosting when your workflow needs something only your environment can p
 | **Reusing existing app code**     | You already have a Node service with shared libraries, models, or clients you want to import     |
 | **Custom runtime needs**          | Specific Node version, native modules, large dependencies, or a long-running process you operate |
 
-If none of those apply, the default [hosted deployment](/hosting) is simpler. There is nothing to operate, and triggers, scheduling, and runs are fully managed.
+If none of those apply, the default [Managed deployment](/hosting#managed) is simpler. There is nothing to operate, and triggers, scheduling, and runs are fully managed.
 
 ## Setting it up
 
@@ -38,7 +38,7 @@ If none of those apply, the default [hosted deployment](/hosting) is simpler. Th
         terse attach
         ```
 
-        This authenticates, links the repo to a Terse project, and writes `terse.config.json` with self-hosted mode enabled. See [`terse attach`](/reference/cli#terse-attach) for the full flow.
+        This authenticates, links the repo to a Terse project, and writes `terse.config.json` with the self-hosted data plane enabled. See [`terse attach`](/reference/cli#terse-attach) for the full flow.
     </Step>
     <Step title="Point Terse at your server">
         Set `remoteServerUrl` to the public URL of your service:
@@ -53,7 +53,7 @@ If none of those apply, the default [hosted deployment](/hosting) is simpler. Th
         ```
     </Step>
     <Step title="Set the required environment variables">
-        Your server needs two values from Terse, both available in the dashboard under your project's settings:
+        Your data plane needs two values from the control plane, both available in the dashboard under your project's settings:
 
         ```bash .env
         TERSE_API_KEY=terse_...
@@ -62,15 +62,15 @@ If none of those apply, the default [hosted deployment](/hosting) is simpler. Th
 
         | Variable               | Purpose                                                                                                                  |
         | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-        | `TERSE_API_KEY`        | Authenticates outbound calls from your handler to Terse: opening a session, executing tools, requesting approvals.       |
-        | `TERSE_SIGNING_SECRET` | Verifies that incoming trigger requests really came from Terse. Used as the HMAC key for the `x-terse-signature` header. |
+        | `TERSE_API_KEY`        | Authenticates outbound calls from your data plane to the control plane: opening a session, executing tools, requesting approvals. |
+        | `TERSE_SIGNING_SECRET` | Verifies that incoming trigger requests really came from the control plane. Used as the HMAC key for the `x-terse-signature` header. |
 
         <Warning>Treat `TERSE_SIGNING_SECRET` like any other webhook secret. Never log it, never ship it to the client, never commit it. Rotate it from the dashboard if it leaks.</Warning>
 
         Load both into your process the same way you load any other secret — `.env` for local development, your platform's secret store in production.
     </Step>
     <Step title="Mount the trigger handler">
-        Expose the SDK's webhook handler on your HTTP server so Terse can deliver events. Mount it at `TERSE_JOB_WEBHOOK_TRIGGER_PATH` so URLs match what the platform expects.
+        Expose the SDK's webhook handler on your HTTP server so the control plane can deliver events to your data plane. Mount it at `TERSE_JOB_WEBHOOK_TRIGGER_PATH` so URLs match what the platform expects.
 
         ```ts src/server.ts
         import express from "express"
@@ -97,20 +97,20 @@ If none of those apply, the default [hosted deployment](/hosting) is simpler. Th
         The side-effect import of `./terse.jobs` (or whichever entry file holds your `createJob()` calls) is what makes the registry available at request time. `handleTrigger` reads `TERSE_SIGNING_SECRET` and `TERSE_API_KEY` from the process env on every call. See [`Terse`](/reference/typescript-sdk#terse) in the SDK reference for the full client surface.
     </Step>
     <Step title="Deploy your code, then sync workflows">
-        Ship your service the way you normally ship Node code (Render, Fly, ECS, your own Kubernetes, …). Once it's reachable at `remoteServerUrl`, run:
+        Ship your data plane the way you normally ship Node code (Render, Fly, ECS, your own Kubernetes, …). Once it's reachable at `remoteServerUrl`, run:
 
         ```bash
         terse deploy
         ```
 
-        Terse reads `remoteServerUrl`, registers your workflows on the platform, and routes every future trigger to your server.
+        The CLI reads `remoteServerUrl`, registers your workflows on the control plane, and routes every future trigger to your server.
     </Step>
 
 </Steps>
 
 <Tip>
-    You can keep using `terse test`, `terse history`, and `terse replay` exactly as you would with hosted workflows. They run your local code against real sample events and the stored event stream
-    from the platform.
+    You can keep using `terse test`, `terse history`, and `terse replay` exactly as you would with managed workflows. They run your local code against real sample events and the stored event stream
+    from the control plane.
 </Tip>
 
 ## Identity verification
@@ -122,36 +122,36 @@ If none of those apply, the default [hosted deployment](/hosting) is simpler. Th
     between parsing and the call, or verification will fail.
 </Note>
 
-## What you host vs. what Terse hosts
+## Data plane vs. control plane in this deployment
 
-| You host                                                 | Terse hosts                                           |
-| -------------------------------------------------------- | ----------------------------------------------------- |
-| The Node process that loads `src/terse.jobs.ts`          | Trigger ingestion from integrations (Attio, Slack, …) |
-| Every `createJob()` registration                         | Webhook URLs, signing, and delivery                   |
-| Every `onTrigger` handler closure                        | Cron and interval scheduling                          |
-| Every `agent.tools.*` call your handler makes            | Integration auth and tool definitions                 |
-| Private clients, DB drivers, or internal SDKs you import | Run history, action traces, and approvals             |
-| The HTTP endpoint that receives signed payloads          | The control plane and dashboard                       |
+| Your data plane                                          | Terse Cloud control plane                              |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| The Node process that loads `src/terse.jobs.ts`          | Trigger ingestion from integrations (Attio, Slack, …)  |
+| Every `createJob()` registration                         | Webhook URLs, signing, and delivery                    |
+| Every `onTrigger` handler closure                        | Cron and interval scheduling                           |
+| Every `agent.tools.*` call your handler makes            | Integration auth and tool definitions                  |
+| Private clients, DB drivers, or internal SDKs you import | Run history, action traces, and approvals              |
+| The HTTP endpoint that receives signed payloads          | The dashboard                                          |
 
-When a trigger fires, Terse signs the event and POSTs it to your server. Your server verifies the signature with `handleTrigger`, looks up the registered workflow by name, and runs your `onTrigger` closure in your process. Tool calls, agent runs, and approvals continue to flow through the Terse backend so Activity, Notifications, and history all keep working.
+When a trigger fires, the control plane signs the event and POSTs it to your data plane. Your server verifies the signature with `handleTrigger`, looks up the registered workflow by name, and runs your `onTrigger` closure in your process. Tool calls, agent runs, and approvals continue to flow back to the control plane so Activity, Notifications, and history all keep working.
 
 ## What stays the same
 
-Even though execution moves into your infrastructure, the only difference is the box your `onTrigger` runs inside. `createJob()`, `agent.tools.*`, runs, approvals, and the Activity tab all keep working as they do for hosted workflows.
+Even though execution moves into your infrastructure, the only difference is the box your `onTrigger` runs inside. `createJob()`, `agent.tools.*`, runs, approvals, and the Activity tab all keep working as they do for managed workflows.
 
 ## Where to go next
 
 <CardGroup cols={2}>
-    <Card title="Hosting & deployment" icon="cloud-upload" href="/hosting">
-        How `terse deploy` packages and runs hosted workflows.
+    <Card title="Hosting overview" icon="cloud-upload" href="/hosting">
+        The control plane / data plane split and the three deployment options.
+    </Card>
+    <Card title="Self-host the control plane" icon="server" href="/self-hosting-control-plane">
+        Run the orchestrator in your network with `npx create-terse`.
     </Card>
     <Card title="`terse attach`" icon="terminal" href="/reference/cli#terse-attach">
-        CLI reference for linking an existing repo in self-hosted mode.
+        CLI reference for linking an existing repo to a self-hosted data plane.
     </Card>
     <Card title="`Terse` client" icon="braces" href="/reference/typescript-sdk#terse">
         SDK reference for `handleTrigger` and signed payload verification.
-    </Card>
-    <Card title="Jobs" icon="boxes" href="/core-concepts/jobs">
-        The shape of `createJob()` and the `onTrigger` handler.
     </Card>
 </CardGroup>
