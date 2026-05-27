@@ -68,7 +68,7 @@ Evaluate each area below. Not every area will need changes — focus on the ones
 - **Deterministic vs AI**: For actions with known parameters, use `toolbox` (no agent) or `agent.tools.*` — not `runAndWait`. Read available methods in `src/terse.generated.ts`.
 - **Unnecessary agents**: If the handler only runs deterministic tools, remove `TerseAgent` entirely and call `toolbox` directly.
 - **Prompts doing integration work**: Phrases like "post to Slack", "create a Linear issue", or "add label X" in a prompt usually mean that step should be code. Keep prompts for judgment only (summarize, triage, draft).
-- **Model access vs code access**: Missing entries in `skills` break model-driven tool use inside `run()` / `runAndWait()`, but they do not limit `toolbox` or `agent.tools.*`.
+- **Skill scoping**: `skills` controls both what tools the model can pick during `run()` / `runAndWait()` *and* which integrations are present on `agent.tools.<integration>`. Without the matching skill, `agent.tools.<integration>` is undefined. `toolbox.<integration>` is unaffected by `skills` — use it when you want a deterministic call without configuring an agent.
 - **Multi-step**: Deterministic setup first (`toolbox.slack.sendMessage`), then a narrow `runAndWait` for the part that needs reasoning (thread reply with summary).
 - **Tool results**: Capture return values from deterministic calls when later steps need them (e.g. `message.message_ts` for threading).
 
@@ -86,13 +86,6 @@ Evaluate each area below. Not every area will need changes — focus on the ones
 - **Draft/WIP**: Should draft PRs or WIP items be ignored?
 - **Specific sources**: Should events from certain users, repos, or channels be filtered?
 - **Cost**: Every unfiltered event triggers an agent run. Filters save real money.
-
-#### Tool Usage
-
-- **Deterministic vs AI**: For actions with known parameters, prefer generated deterministic wrappers from `src/terse.generated.ts` over an agent run. Use `agent.tools.*` or `agent.executeTool()`.
-- **Model access vs code access**: Missing entries in `skills` break model-driven tool use inside `run()` / `runAndWait()`, but they do not automatically prevent direct deterministic calls from code.
-- **Multi-step**: Could a two-step approach work better? E.g., send a Slack message first with `agent.tools.slack.sendMessage()`, then use `agent.runAndWait()` to post an AI-generated summary as a thread reply.
-- **Tool results**: When using `agent.tools.*`, capture the return value if subsequent steps need it (e.g., `message.message_ts` for threading).
 
 #### Error Handling
 
@@ -169,13 +162,13 @@ Example prompt:
 ### Add bot filtering
 ```typescript
 // BEFORE: runs on every event
-onTrigger: async (event, agent: TerseAgent) => { ... }
+onTrigger: async (event) => { ... }
 
 // AFTER: skip bot events
 filter: async (event: GithubPRTrigger) => {
     return !event.sender.login.includes("[bot]") && !event.pullRequest.merged
 },
-onTrigger: async (event: GithubPRTrigger, agent: TerseAgent) => { ... }
+onTrigger: async (event: GithubPRTrigger) => { ... }
 ```
 
 ### Improve prompt specificity
@@ -198,8 +191,10 @@ await agent.runAndWait(
 // BEFORE: agent decides everything including the message send
 await agent.runAndWait(`Send a welcome message and summarize: ${event.formatForAgentRunner()}`)
 
-// AFTER: deterministic send, then AI analysis in thread
-const message = await agent.tools.slack.sendMessage({
+// AFTER: deterministic send via toolbox (no skill needed), then AI analysis in thread
+import { toolbox } from "./terse.generated"
+
+const message = await toolbox.slack.sendMessage({
     channelId: SlackChannel.Engineering.channelId,
     message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
     thread_ts: "",
@@ -216,16 +211,19 @@ await agent.runAndWait(
 ### Add type safety
 ```typescript
 // BEFORE: untyped event
-onTrigger: async (event, agent: TerseAgent) => {
+onTrigger: async (event) => {
+    const agent = TerseAgent.create({ prompt: "...", skills: [...] })
     await agent.runAndWait(`Handle: ${event.formatForAgentRunner()}`)
 }
 
-// AFTER: typed event with type guard
-import { GithubPRTrigger, isGithubPRTrigger } from "terse-sdk"
+// AFTER: annotate with the precise trigger type that matches your trigger factory.
+// `Triggers.github.onPROpened(...)` returns a typed trigger, so `event` infers
+// as `GithubPROpenedTrigger` — annotating just makes it explicit.
+import { GithubPROpenedTrigger } from "terse-sdk"
 
-onTrigger: async (event: GithubPRTrigger, agent: TerseAgent) => {
-    if (!isGithubPRTrigger(event)) return
+onTrigger: async (event: GithubPROpenedTrigger) => {
     const { title, url } = event.pullRequest
+    const agent = TerseAgent.create({ prompt: "...", skills: [...] })
     await agent.runAndWait(
         `Review PR "${title}" at ${url}. Context: ${event.formatForAgentRunner()}`
     )
