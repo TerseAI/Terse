@@ -28,6 +28,7 @@ export interface SdkDependencyImageBuildContext {
     archive: SdkProjectArchive
     cliVersion: string
     templateDir: string
+    cliCachePath: string
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     writeFile: (path: string, content: string) => Promise<void>
     escapeShellArg: (value: string) => string
@@ -48,6 +49,7 @@ export interface SdkRuntimeExecutorContext {
     agentId: string
     jobName: string
     projectDir: string
+    cliCachePath: string
     usesPrebuiltImage: boolean
     cliVersion: string
     ensureSandboxCommand: (label: string, command: string) => Promise<void>

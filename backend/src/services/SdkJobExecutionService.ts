@@ -258,7 +258,17 @@ export class SdkJobExecutionService {
             })
             throw error
         }
-        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), true, cliVersion)
+        const executorContext = this.createRuntimeExecutorContext(
+            sb,
+            sandboxEnv,
+            runId,
+            agentId,
+            jobName,
+            sandboxService.getProjectPath(sb),
+            sandboxService.getCliCachePath(sb),
+            true,
+            cliVersion
+        )
         const result = await executor.execute(executorContext)
         return result
     }
@@ -270,6 +280,7 @@ export class SdkJobExecutionService {
         agentId: string,
         jobName: string,
         projectDir: string,
+        cliCachePath: string,
         usesPrebuiltImage: boolean,
         cliVersion: string
     ): SdkRuntimeExecutorContext {
@@ -280,6 +291,7 @@ export class SdkJobExecutionService {
             agentId,
             jobName,
             projectDir,
+            cliCachePath,
             usesPrebuiltImage,
             cliVersion,
             ensureSandboxCommand: async (label, command) => {

@@ -30,6 +30,10 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return `/opt/terse-sdk-cache/${runtime}/project`
     }
 
+    getCliCachePath(_sandbox: ModalSandbox): string {
+        return `/opt/terse-sdk-cache/cli`
+    }
+
     getScratchPath(_sandbox: ModalSandbox, filename: string): string {
         // Each Modal sandbox has its own isolated filesystem, so /tmp is per-sandbox.
         return `/tmp/${filename}`

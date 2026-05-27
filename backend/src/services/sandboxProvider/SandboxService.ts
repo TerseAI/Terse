@@ -14,6 +14,7 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
 
     getProjectPath(sandbox: S): string
     getDependencyCachePath(sandbox: S, runtime: string): string
+    getCliCachePath(sandbox: S): string
     getScratchPath(sandbox: S, filename: string): string
 }
 

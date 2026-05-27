@@ -81,6 +81,10 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         return path.join(sandbox.workingDir, "cache", runtime, "project")
     }
 
+    getCliCachePath(sandbox: LocalSandbox): string {
+        return path.join(sandbox.workingDir, "cache", "cli")
+    }
+
     getScratchPath(sandbox: LocalSandbox, filename: string): string {
         return path.join(sandbox.workingDir, "scratch", filename)
     }
