@@ -23,7 +23,7 @@ my-project/
 - TypeScript jobs are typically registered with `createJob()` in `src/terse.jobs.ts`.
 - The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 - `src/terse.generated.ts` is the source of truth for available triggers, skills, resources, and deterministic wrappers.
-- `terse login` stores CLI authentication in a user-level config file. Runtime code still reads `TERSE_API_KEY` from the environment where your app runs.
+- `terse auth login` stores CLI authentication in a user-level config file. Runtime code still reads `TERSE_API_KEY` from the environment where your app runs.
 
 ## CreateJobParameters
 
@@ -41,87 +41,108 @@ type CreateJobParameters = {
 
 | Goal | TypeScript | Description |
 |------|------------|-------------|
-| Run to completion | `agent.runAndWait(prompt, event?)` | Use for AI-driven decisions such as summarize, analyze, or triage. |
-| Stream output | `agent.run(prompt, event?)` | Returns streamed agent events. |
-| Direct tool call by name | `agent.executeTool(toolName, params?)` | Bypass the model and call a deterministic tool directly. |
-| Generated tool wrappers | `agent.tools.<integration>.<method>(params)` | Type-safe direct tool calls generated from connected integrations. |
+| Run to completion | `agent.runAndWait(prompt, outputSchema?)` | Use for AI-driven decisions such as summarize, analyze, or triage. Pass a Zod schema for structured output; the returned value is typed and validated. |
+| Stream output | `agent.run(prompt, outputSchema?)` | Async iterable of streamed agent events. Same prompt + optional Zod schema. |
+| Generated tool wrappers | `agent.tools.<integration>.<method>(params)` | Type-safe direct tool calls generated from connected integrations. Only present for integrations included in the agent's `skills`. |
+
+Include event context by interpolating `event.formatForAgentRunner()` into the prompt string — there is no separate `event` parameter.
 
 ### When to Use What
 
 | Approach | Use When |
 |----------|----------|
 | `agent.runAndWait(prompt)` | The agent needs to decide what to do — summarize, analyze, choose actions |
-| `agent.tools.*` / `agent.executeTool()` | You know exactly what tool call to make — send a specific message, create a specific issue |
-| Combination | Do a deterministic action first (send message), then let the agent decide (reply in thread with analysis) |
+| `toolbox.<integration>.<method>(params)` | You know the exact deterministic call to make and don't need an agent at all |
+| `agent.tools.<integration>.<method>(params)` | You already have an agent (with the integration in `skills`) and want a typed deterministic call alongside `run()` / `runAndWait()` |
+| Combination | Deterministic setup first (e.g. send Slack message via `toolbox`), then `runAndWait` for the part that needs reasoning |
 
 ## Triggers
 
-Triggers define what events fire a job. They come from `src/terse.generated.ts`.
+Triggers define what events fire a job. They're all hung off the `Triggers` const that `terse generate` produces in `src/terse.generated.ts`.
 
-The examples below show the broader TypeScript trigger surface.
+```typescript
+import { Triggers, Repos, SlackChannel, LinearTeam } from "./terse.generated"
+```
 
 ### GitHub
 ```typescript
-GitHub.onPROpened({ repo: Repos.MyOrg.MyRepo })
-GitHub.onPRMerged({ repo: Repos.MyOrg.MyRepo })
-GitHub.onPush({ repo: Repos.MyOrg.MyRepo })
-GitHub.onIssueOpened({ repo: Repos.MyOrg.MyRepo })
+Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })
+Triggers.github.onPRMerged({ repo: Repos.MyOrg.MyRepo })
+Triggers.github.onPRClosed({ repo: Repos.MyOrg.MyRepo })
+Triggers.github.onPRSynchronized({ repo: Repos.MyOrg.MyRepo })
+Triggers.github.onPR({ repo: Repos.MyOrg.MyRepo })           // any PR event
+Triggers.github.onPush({ repo: Repos.MyOrg.MyRepo })
 ```
 
 ### Slack
 ```typescript
-Slack.onMessage({ channel: SlackChannel.General })
+Triggers.slack.onMessage({ channel: SlackChannel.General })
+Triggers.slack.onAppMention({ channel: SlackChannel.General })
+Triggers.slack.onReactionAdded({ channel: SlackChannel.General })
+Triggers.slack.onDm()
 ```
 
 ### Linear
 ```typescript
-Linear.onIssueCreated({ team: LinearTeam.Engineering })
-Linear.onIssueUpdated({ team: LinearTeam.Engineering })
+Triggers.linear.onIssueCreated({ team: LinearTeam.Engineering })
+Triggers.linear.onIssueUpdated({ team: LinearTeam.Engineering })
+Triggers.linear.onComment({ team: LinearTeam.Engineering })
 ```
 
 ### Gmail
 ```typescript
-Gmail.onNewEmail()
+Triggers.gmail.onEmail()
 ```
 
 ### WorkOS
 ```typescript
-WorkOS.onUserCreated()
-WorkOS.onMembershipCreated()
-WorkOS.onInvitationAccepted()
-WorkOS.onOrganizationCreated()
+Triggers.workOS.onUserCreated()
+Triggers.workOS.onMembershipCreated()
+Triggers.workOS.onInvitationAccepted()
+Triggers.workOS.onOrganizationCreated()
 ```
 
 ### Cron / Schedule
 ```typescript
-Schedule.every("0 9 * * 1")    // every Monday at 9 AM
-Schedule.every("*/30 * * * *") // every 30 minutes
+Triggers.schedule.cron({ expression: "0 9 * * 1" })    // every Monday at 9 AM
+Triggers.schedule.cron({ expression: "*/30 * * * *" }) // every 30 minutes
 ```
 
-## Skills (Model Access)
+### Webhook
+```typescript
+Triggers.webhook.onRequest<{ payload: string }>()
+```
 
-Skills control what the model can use during `run()` and `runAndWait()`. They do not fully describe what your code can call deterministically through generated wrappers.
+## Skills (Model Access + Typed Wrappers)
 
-The examples below show the broader TypeScript skill surface.
+Skills are exposed via the `Skills` const generated into `src/terse.generated.ts`. They serve two purposes at once:
+
+1. Scope the integration tools the **model** can pick during `run()` / `runAndWait()`.
+2. Gate which integrations appear on the **agent's** `agent.tools.<integration>` wrappers.
+
+`toolbox.<integration>.<method>` is always available regardless of `skills` — use it for deterministic calls when you don't have or need an agent.
 
 ```typescript
+import { Skills, Repos, SlackChannel, LinearTeam, NotionDatabase,
+    PosthogProject, DatadogIndex, LaunchDarklyProject, AttioObject } from "./terse.generated"
+
 skills: [
-    GitHub.skill({ repos: [Repos.MyOrg.MyRepo] }),
-    Slack.skill({ channel: SlackChannel.General }),
-    Linear.skill({ team: LinearTeam.Engineering }),
-    Notion.skill({ database: NotionDB.Tasks }),
-    Gmail.skill(),
-    PostHog.skill({ project: PostHogProject.Main }),
-    Datadog.skill({ index: DatadogIndex.Main }),
-    LaunchDarkly.skill({ project: LDProject.Default }),
-    Attio.skill(),
-    Snowflake.skill(),
-    Terse.skill(),  // web search
+    Skills.github({ repos: [Repos.MyOrg.MyRepo] }),
+    Skills.slack({ channel: SlackChannel.General }),
+    Skills.linear({ team: LinearTeam.Engineering }),
+    Skills.notion({ databases: [NotionDatabase.Tasks] }),
+    Skills.gmail(),
+    Skills.gmailDraft(),                                                 // create-draft-only variant
+    Skills.posthog({ project: PosthogProject.Main }),
+    Skills.datadog({ indexes: [DatadogIndex.Main] }),
+    Skills.launchDarkly({ project: LaunchDarklyProject.Default, environmentKeys: ["production"] }),
+    Skills.workOS(),
+    Skills.attio({ object: AttioObject.Deal }),
+    Skills.snowflake(),
+    Skills.web(),                                                        // built-in web search / extract / research
+    Skills.imageEdit(),                                                  // built-in image edit / generate
 ]
 ```
-
-Use `skills` to scope model-visible integrations.
-Use `agent.tools.*` and `agent.executeTool()` for deterministic calls from code.
 
 ## Event Types
 
@@ -169,13 +190,14 @@ event.membership.userId / event.membership.organizationId / event.membership.rol
 event.invitation.email / event.invitation.organizationId / event.invitation.state
 ```
 
-### Type Guards
-```typescript
-import { isGithubPRTrigger, isGithubPushTrigger, isWorkOSUserTrigger } from "terse-sdk"
+### Narrowing the event type
 
-if (isGithubPRTrigger(event)) {
-    // event is typed as GithubPRTrigger
-}
+`createJob`'s `onTrigger` already infers `event` from the `triggers` array, so you usually don't need to annotate. When you do, use the precise trigger type that matches your factory (e.g. `GithubPROpenedTrigger` for `Triggers.github.onPROpened`, `LinearIssueCreatedTrigger` for `Triggers.linear.onIssueCreated`). There are no runtime type guards in `terse-sdk` — narrow via the annotation.
+
+```typescript
+import type { GithubPROpenedTrigger } from "terse-sdk"
+
+onTrigger: async (event: GithubPROpenedTrigger) => { /* event.pullRequest, etc. */ }
 ```
 
 ## Terse CLI
@@ -186,7 +208,7 @@ The authoritative reference for every command and flag lives at https://docs.use
 |---------|-------------|
 | `terse init [name]` | Scaffold a new project. Use `--non-interactive` (or `-y`) for non-interactive setup when authentication is already available. |
 | `terse attach` | Add Terse to an existing project. Use `--non-interactive` (or `-y`) for non-interactive attach flows. |
-| `terse login` | Authenticate and store the CLI API key in user config. |
+| `terse auth login` / `terse auth logout` / `terse auth status` | Manage CLI credentials. The active organization can be switched with `terse auth org switch`. |
 | `terse generate` | Regenerate `src/terse.generated.ts` from connected integrations. |
 | `terse integrate` | Interactive integration manager. |
 | `terse integrate list|describe|connect|wait|disconnect` | Machine-friendly integration inspection and connection flows. Use `--json` for agent/CI tooling. |

@@ -46,9 +46,12 @@ Only use triggers and resources that actually exist in `src/terse.generated.ts`.
 
 ### 3. Pick skills and connect missing integrations
 
-**Skills are only for agentic steps.** Add skill configs only for integrations the model needs during `run()` or `runAndWait()`. If every action is deterministic via `toolbox` or `agent.tools`, you may need few or no skills.
+**Skills shape what the agent can do during `run()` / `runAndWait()`.** They serve two purposes: they scope the tools the model can pick, and they gate which integrations show up on `agent.tools.*`. `toolbox.*` is unscoped and works without any skills at all.
 
-Do not add skills for integrations you only call deterministically. `toolbox` and `agent.tools.*` are direct code paths — not model-selected tools.
+Rules of thumb:
+- If a step is fully deterministic and you don't need an agent, call `toolbox.<integration>.<method>` directly. No skill required.
+- If you want a typed direct call from inside an `onTrigger` that *also* runs the model, add the integration to `skills` and use `agent.tools.<integration>.<method>`. Without the skill, `agent.tools.<integration>` won't be defined.
+- If the model needs to choose actions on that integration during `run()` / `runAndWait()`, the integration must be in `skills`.
 
 If a required integration is missing from `src/terse.generated.ts`:
 
@@ -71,7 +74,7 @@ Filters prevent unnecessary agent runs and save cost.
 
 Use the appropriate event type from `terse-sdk`. Plan the handler as a pipeline: filters and deterministic steps first, agent last (if at all).
 
-**Deterministic steps** — map each known action to `toolbox` or `agent.tools`:
+**Deterministic steps** — map each known action to `toolbox` (no agent) or `agent.tools.*` (when you already have an agent with that integration in `skills`):
 
 ```typescript
 import { toolbox, SlackChannel } from "./terse.generated"
@@ -123,10 +126,11 @@ Verify:
 - Imports reference actual exports from `terse-sdk` and `./terse.generated`
 - The job lives in `src/terse.jobs.ts` unless the repo intentionally uses a custom or legacy entry file
 - The job `name` is unique and descriptive
-- Predictable actions use `toolbox` or `agent.tools`, not `runAndWait` prompts
-- `skills` only lists integrations used in agentic steps
+- Predictable actions use `toolbox` or `agent.tools.*`, not `runAndWait` prompts
+- Every integration referenced via `agent.tools.<name>` is also in the agent's `skills` array (the wrappers are gated by skills)
+- `skills` lists integrations the model needs during `run()`/`runAndWait()` *or* that the code calls via `agent.tools.*`
 - The event type in `onTrigger` matches the trigger type
-- Triggers, skills, resources, and tool calls exist in `src/terse.generated.ts`
+- Triggers (`Triggers.<integration>.…`), skills (`Skills.<integration>(…)`), resource constants, and tool calls all exist in `src/terse.generated.ts`
 - Agent prompts include full event context via `event.formatForAgentRunner()`
 - Verification uses `terse test list/show/run` when the agent is not in an interactive terminal
 
@@ -144,16 +148,16 @@ Example prompt:
 ## Example
 
 ```typescript
-import { createJob, TerseAgent, type GithubPRTrigger } from "terse-sdk"
-import { GitHub, Slack, Repos, SlackChannel, toolbox } from "./terse.generated"
+import { createJob, TerseAgent, type GithubPROpenedTrigger } from "terse-sdk"
+import { Triggers, Skills, Repos, SlackChannel, toolbox } from "./terse.generated"
 
 createJob({
     name: "Summarize PR and notify Slack",
-    triggers: [GitHub.onPROpened({ repo: Repos.MyOrg.MyRepo })],
-    filter: async (event: GithubPRTrigger) => {
+    triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
+    filter: async (event: GithubPROpenedTrigger) => {
         return !event.sender.login.includes("[bot]")
     },
-    onTrigger: async (event: GithubPRTrigger) => {
+    onTrigger: async (event: GithubPROpenedTrigger) => {
         // Deterministic: fixed channel, fixed opener — no agent needed
         const message = await toolbox.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
@@ -165,7 +169,7 @@ createJob({
         // Agentic: only the summary needs judgment
         const agent = TerseAgent.create({
             prompt: "You summarize pull requests concisely.",
-            skills: [GitHub.skill({ repos: [Repos.MyOrg.MyRepo] })],
+            skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
         })
 
         await agent.runAndWait(
