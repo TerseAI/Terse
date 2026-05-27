@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { cancel, intro, isCancel, log, outro, spinner, text } from "@clack/prompts"
 import chalk from "chalk"
-import { spawn } from "node:child_process"
+import { execSync, spawn } from "node:child_process"
 import { exec } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { existsSync } from "node:fs"
@@ -47,7 +47,49 @@ async function main(): Promise<void> {
     await runStep("Starting Terse services", "docker compose up -d", resolved)
     await waitForBackend(backendUrl)
 
-    outro(chalk.green(`Done. Terse is running at ${chalk.bold(frontendUrl)}`))
+    await installTerseCli()
+    await pointTerseCliAtLocal({ frontendUrl, backendUrl })
+
+    printNextSteps({ frontendUrl })
+    outro(chalk.green(`Setup complete. Terse is running at ${chalk.bold(frontendUrl)}.`))
+}
+
+function printNextSteps(args: { frontendUrl: string }): void {
+    log.message(
+        [
+            chalk.bold("Next steps:"),
+            `  1. Open ${chalk.cyan(args.frontendUrl)} ${chalk.dim("to bootstrap your single admin user.")}`,
+            `  2. ${chalk.cyan("terse init my-job")}    ${chalk.dim("# scaffold your first job (CLI is installed and pointed at your local backend).")}`,
+            "",
+            chalk.dim("Run `terse target` any time to see which backend the CLI is pointing at.")
+        ].join("\n")
+    )
+}
+
+async function installTerseCli(): Promise<void> {
+    if (commandExists("terse")) {
+        log.info("terse CLI already installed, skipping global install")
+        return
+    }
+    await runStep("Installing terse CLI globally (npm i -g terse-cli)", "npm install -g terse-cli", process.cwd())
+}
+
+async function pointTerseCliAtLocal(urls: { frontendUrl: string; backendUrl: string }): Promise<void> {
+    if (!commandExists("terse")) {
+        log.warn("terse CLI not on PATH, skipping `terse target use`. Run it manually once installed.")
+        return
+    }
+    const cmd = `terse target use --backend-url ${shellEscape(urls.backendUrl)} --frontend-url ${shellEscape(urls.frontendUrl)} --yes`
+    await runStep(`Pointing terse CLI at ${urls.backendUrl}`, cmd, process.cwd())
+}
+
+function commandExists(name: string): boolean {
+    try {
+        execSync(`command -v ${name}`, { stdio: "pipe" })
+        return true
+    } catch {
+        return false
+    }
 }
 
 async function cloneIfMissing(targetDir: string): Promise<void> {
