@@ -58,10 +58,7 @@ async function cloneIfMissing(targetDir: string): Promise<void> {
     const s = spinner()
     s.start(`Cloning Terse (${INSTALL_BRANCH}) → ${targetDir}`)
     try {
-        execSync(
-            `git clone --depth=1 --branch ${shellEscape(INSTALL_BRANCH)} ${REPO_URL} ${shellEscape(targetDir)}`,
-            { stdio: "pipe" }
-        )
+        execSync(`git clone --depth=1 --branch ${shellEscape(INSTALL_BRANCH)} ${REPO_URL} ${shellEscape(targetDir)}`, { stdio: "pipe" })
         s.stop(`Cloned into ${targetDir}`)
     } catch (err) {
         s.stop("Clone failed")
@@ -69,10 +66,7 @@ async function cloneIfMissing(targetDir: string): Promise<void> {
     }
 }
 
-async function writeEnv(
-    targetDir: string,
-    config: { frontendUrl: string; backendUrl: string; postgresPort: number }
-): Promise<void> {
+async function writeEnv(targetDir: string, config: { frontendUrl: string; backendUrl: string; postgresPort: number }): Promise<void> {
     const localDbPath = path.join(targetDir, "backend/prisma/local/local.db")
     const lines = [
         `DATABASE_URL=postgres://postgres:postgres@localhost:${config.postgresPort}/terse`,
@@ -93,12 +87,7 @@ async function writeComposeEnv(targetDir: string, postgresPort: number): Promise
 
 async function writeFrontendEnv(targetDir: string, config: { backendUrl: string }): Promise<void> {
     const socketUrl = toWebSocketUrl(config.backendUrl)
-    const lines = [
-        `VITE_API_BASE_URL=${config.backendUrl}`,
-        `VITE_BACKEND_REDIRECT_URL=${config.backendUrl}`,
-        `VITE_SOCKET_URL=${socketUrl}`,
-        ""
-    ]
+    const lines = [`VITE_API_BASE_URL=${config.backendUrl}`, `VITE_BACKEND_REDIRECT_URL=${config.backendUrl}`, `VITE_SOCKET_URL=${socketUrl}`, ""]
     await fs.writeFile(path.join(targetDir, "frontend/.env"), lines.join("\n"))
 }
 
@@ -162,10 +151,7 @@ async function verifyHostCanReachPostgres(port: number): Promise<void> {
         await new Promise(resolve => setTimeout(resolve, 500))
     }
     s.stop(`Host cannot reach localhost:${port} ✗`)
-    throw new Error(
-        `Postgres container is up but the host cannot reach localhost:${port}. ` +
-        `Another process may be holding the port, or Docker's port mapping failed.`
-    )
+    throw new Error(`Postgres container is up but the host cannot reach localhost:${port}. ` + `Another process may be holding the port, or Docker's port mapping failed.`)
 }
 
 function tryConnect(host: string, port: number): Promise<boolean> {
