@@ -1,13 +1,12 @@
 #!/usr/bin/env node
+import { cancel, intro, isCancel, log, outro, spinner, text } from "@clack/prompts"
+import chalk from "chalk"
 import { execSync } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { existsSync } from "node:fs"
 import fs from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-
-import { cancel, intro, isCancel, log, outro, spinner, text } from "@clack/prompts"
-import chalk from "chalk"
 
 const REPO_URL = "https://github.com/TerseAI/Terse.git"
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
