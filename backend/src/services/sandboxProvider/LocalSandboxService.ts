@@ -6,6 +6,8 @@ import os from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
 
+import logger from "../../common/logger"
+
 import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, WriteStream } from "./SandboxService"
 import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, unregisterSandbox } from "./localSandboxLifecycle"
 
@@ -45,20 +47,25 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
     }
 
     async getOrCreateApp(name: string): Promise<SandboxApp> {
+        logger.info("#LocalSandbox app ready", { app: name })
         return { appId: FAKE_APP_ID, name }
     }
 
     getImageFromRegistry(_registry: string): SandboxImage {
+        logger.info("#LocalSandbox image registry marker (fresh starting point)")
         return { imageId: REGISTRY_IMAGE_MARKER }
     }
 
     async getImageFromId(imageId: string): Promise<SandboxImage> {
+        logger.info("#LocalSandbox image fromId", { imageId })
         return { imageId }
     }
 
     async deleteImage(imageId: string): Promise<void> {
         if (imageId === REGISTRY_IMAGE_MARKER) return
+        const t0 = Date.now()
         await fs.rm(path.join(IMAGES_DIR, imageId), { recursive: true, force: true })
+        logger.info("#LocalSandbox image deleted", { imageId, durationMs: Date.now() - t0 })
     }
 
     getProjectPath(sandbox: LocalSandbox): string {
@@ -70,6 +77,8 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
     }
 
     async getOrCreateSandbox(_app: SandboxApp, image: SandboxImage, uniqueName: string): Promise<LocalSandbox> {
+        const t0 = Date.now()
+        logger.info("#LocalSandbox getOrCreate begin", { uniqueName, imageId: image.imageId })
         const workingDir = path.join(SANDBOXES_DIR, uniqueName)
         await fs.rm(workingDir, { recursive: true, force: true })
         await fs.mkdir(workingDir, { recursive: true })
@@ -78,7 +87,7 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
             const imagePath = path.join(IMAGES_DIR, image.imageId)
             if (!existsSync(imagePath)) {
                 throw new Error(
-                    `[LocalSandbox] Image ${image.imageId} not found at ${imagePath}. ` +
+                    `#LocalSandbox image ${image.imageId} not found at ${imagePath}. ` +
                         `This usually means the sdk_dependency_images / sdk_source_images tables contain stale image IDs from a previous provider (e.g. Modal). ` +
                         `Clear those tables and redeploy.`
                 )
@@ -86,6 +95,7 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
             await fs.cp(imagePath, workingDir, { recursive: true })
         }
 
+        logger.info("#LocalSandbox created", { uniqueName, workingDir, durationMs: Date.now() - t0 })
         return new LocalSandbox(uniqueName, workingDir)
     }
 }
@@ -125,6 +135,7 @@ export class LocalSandbox implements Sandbox {
     }
 
     async terminate(): Promise<void> {
+        logger.info("#LocalSandbox terminate", { sandboxId: this.sandboxId, childCount: this.children.size })
         for (const child of this.children) {
             child.kill("SIGTERM")
         }
@@ -134,10 +145,12 @@ export class LocalSandbox implements Sandbox {
     }
 
     async snapshotFilesystem(): Promise<{ imageId: string }> {
+        const t0 = Date.now()
         const imageId = `local-${randomUUID()}`
         const imagePath = path.join(IMAGES_DIR, imageId)
         await fs.mkdir(IMAGES_DIR, { recursive: true })
         await fs.cp(this.workingDir, imagePath, { recursive: true })
+        logger.info("#LocalSandbox snapshot", { sandboxId: this.sandboxId, imageId, durationMs: Date.now() - t0 })
         return { imageId }
     }
 }

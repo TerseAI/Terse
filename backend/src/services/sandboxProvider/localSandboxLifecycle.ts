@@ -92,7 +92,7 @@ export async function sweepOrphanedSandboxProcesses(sandboxesDir: string): Promi
     }
 
     if (killed > 0) {
-        logger.info("[LocalSandbox] swept orphan child processes from previous run", { killed })
+        logger.info("#LocalSandbox swept orphan child processes from previous run", { killed })
     }
 }
 
@@ -101,7 +101,7 @@ function installShutdownHooks(): void {
     shutdownHooksInstalled = true
 
     const terminateAllAndExit = async (signal: string, exitCode: number) => {
-        logger.info("[LocalSandbox] shutdown signal received, terminating live sandboxes", { signal, count: liveSandboxes.size })
+        logger.info("#LocalSandbox shutdown signal received, terminating live sandboxes", { signal, count: liveSandboxes.size })
         const all = Array.from(liveSandboxes)
         await Promise.all(all.map(sb => sb.terminate().catch(() => {})))
         process.exit(exitCode)
