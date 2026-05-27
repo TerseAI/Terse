@@ -79,30 +79,15 @@ Did you have something else in mind? Reach out on Slack and let us know.
 
 ## Technical Guide
 
-### Repository layout
-
-Terse is a pnpm monorepo. The workspaces you'll touch most often:
-
-| Path | What it is |
-| --- | --- |
-| `backend/` | Node/Express + Prisma server. Hosts the API, socket.io, run executor, and cron callbacks. |
-| `frontend/` | React + Vite app. The Terse dashboard. |
-| `terse-types/` | Shared types, enums, and helpers consumed by every other package. |
-| `packages/terse-sdk/` | The TypeScript SDK developers use to author workflows. |
-| `packages/terse-cli/` | The `terse` CLI (`terse init`, `terse generate`, `terse deploy`). |
-| `packages/terse-claude-plugin/` | Claude Code skill that wraps the SDK. |
-| `docs/` | Mintlify documentation site. |
-
 ### Prerequisites
 
-- **Node.js 20+** (the backend and Vite both target modern Node).
+- **Node.js 22+** (the backend and Vite both target modern Node).
 - **pnpm 9+** — install with `npm install -g pnpm` or `corepack enable`.
 - **PostgreSQL 14+** running locally, with a database named `terse` reachable at `postgres://postgres@localhost/terse`. Pick whichever install path matches your machine:
 
     - **macOS (Homebrew)** — `brew install postgresql@16 && brew services start postgresql@16 && createuser -s postgres && createdb -O postgres terse`. The `createuser -s postgres` step is load-bearing: Homebrew's `initdb` makes your OS user the bootstrap superuser, not `postgres`, so without it the default `DATABASE_URL` in `.env.example` fails with `role "postgres" does not exist`.
     - **macOS (GUI)** — [Postgres.app](https://postgresapp.com) ships with a `postgres` superuser already configured. Install it, click Start, then `createdb terse`.
     - **Linux (Debian/Ubuntu)** — `sudo apt install postgresql-16 && sudo -u postgres createdb terse`.
-    - **Windows** — use the [official installer](https://www.postgresql.org/download/windows/), which prompts for a `postgres` password during install, then run `createdb -U postgres terse` from the bundled `psql` shell.
 
     Adjust `DATABASE_URL` in `backend/.env` if your setup differs.
 
@@ -183,15 +168,7 @@ Terse is a pnpm monorepo. The workspaces you'll touch most often:
 - **Frontend lint.** `pnpm --filter frontend run lint`
 - **Edit the Prisma schema.** Update `backend/prisma/schema.prisma`, then re-run `pnpm --filter backend run db:generate && pnpm --filter backend run db:push`.
 
-### Troubleshooting
 
-- **Redirected to a WorkOS login page instead of landing on the dashboard.** At least one `WORKOS_*` variable in `backend/.env` is set. Clear all of them and restart the backend; the local-auth path activates when every WorkOS var is blank.
-- **Backend exits with `ECONNREFUSED` on port 5432.** Postgres isn't running. See the install commands in Prerequisites. On macOS, `brew services restart postgresql@16` usually does it.
-- **`role "postgres" does not exist`.** You skipped `createuser -s postgres` during the Homebrew install (or installed Postgres a different way). Either run `createuser -s postgres && createdb -O postgres terse`, or change `DATABASE_URL` in `backend/.env` to `postgres://$(whoami)@localhost/terse`.
-- **`Error: Environment variable not found: LOCAL_DB_URL`** when running `db:push:local`. Add `LOCAL_DB_URL=file:./prisma/local/local.db` to `backend/.env`. Prisma reads it from there, and it isn't in `.env.example` yet.
-- **`no such table: local_identities`** on first frontend load. You skipped `pnpm --filter backend run db:push:local` in step 3. Run it, then restart the backend.
-- **Port 3001 or 5173 already in use.** Find the offender with `lsof -ti:3001` / `lsof -ti:5173` and kill it, or change `BACKEND_URL` (and matching `VITE_BACKEND_REDIRECT_URL` / `VITE_SOCKET_URL` in `frontend/.env`) / Vite's port.
-- **Prisma engine errors on Apple Silicon or other unusual platforms.** Re-run `pnpm --filter backend run db:generate`. This re-downloads the Prisma engine binary for your architecture.
 
 ### Submitting a PR
 
