@@ -20,7 +20,6 @@ import {
 } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
-const ACTIVE_RUN_STATUSES = [PrismaRunHistoryStatus.in_progress, PrismaRunHistoryStatus.awaiting_approval]
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
 const DEFAULT_CLEANUP_BATCH_SIZE = 50
