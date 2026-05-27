@@ -2,6 +2,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 
+import logger from "../../../common/logger"
 import { jwt as jwtConfig, settings } from "../../../settings"
 
 export interface OAuthStatePayload {
@@ -122,10 +123,32 @@ export function verifyOAuthState(req: Request, res: Response, state: string): OA
 
     const jwtNonce = typeof payload.nonce === "string" ? payload.nonce : undefined
     if (!cookieNonce || !jwtNonce || cookieNonce.length !== jwtNonce.length) {
+        logNonceMismatch(req, payload, cookieNonce, jwtNonce, "presence_or_length")
         throw new Error("OAuth state nonce mismatch — possible CSRF or stale flow")
     }
     if (!crypto.timingSafeEqual(Buffer.from(cookieNonce), Buffer.from(jwtNonce))) {
+        logNonceMismatch(req, payload, cookieNonce, jwtNonce, "value")
         throw new Error("OAuth state nonce mismatch — possible CSRF or stale flow")
     }
     return payload
+}
+
+function logNonceMismatch(req: Request, payload: OAuthStatePayload, cookieNonce: string | undefined, jwtNonce: string | undefined, branch: "presence_or_length" | "value") {
+    logger.warn("[oauth] nonce mismatch", {
+        branch,
+        cookiePresent: !!cookieNonce,
+        jwtPresent: !!jwtNonce,
+        lengthsEqual: !!cookieNonce && !!jwtNonce && cookieNonce.length === jwtNonce.length,
+        sameValue: !!cookieNonce && !!jwtNonce && cookieNonce === jwtNonce,
+        jwtUserId: payload.userId,
+        jwtOrganizationId: payload.organizationId,
+        jwtIat: payload.iat,
+        sessionUserId: req.session?.user?.id,
+        setupAction: req.query.setup_action,
+        installationId: req.query.installation_id,
+        host: req.get("host"),
+        referer: req.get("referer"),
+        userAgent: req.get("user-agent"),
+        xfProto: req.get("x-forwarded-proto")
+    })
 }
