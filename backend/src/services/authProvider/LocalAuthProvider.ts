@@ -52,6 +52,7 @@ export class LocalAuthProvider implements AuthProvider {
     }
 
     async login(_req: Request, res: Response): Promise<void> {
+        logger.info("#LocalAuth login (issuing session cookie)")
         ensureCookie(res)
         res.redirect(settings.urls.frontend)
     }
@@ -67,6 +68,7 @@ export class LocalAuthProvider implements AuthProvider {
     }
 
     async logout(_req: Request, res: Response): Promise<void> {
+        logger.info("#LocalAuth logout (clearing session cookie)")
         res.clearCookie(SESSION_COOKIE_NAME, cookieOptions)
         res.redirect(settings.urls.frontend)
     }
@@ -77,7 +79,7 @@ export class LocalAuthProvider implements AuthProvider {
     }
 
     async callback(req: Request, _res: Response): Promise<void> {
-        logger.debug("[LocalAuthProvider.callback] no-op", { path: req.path })
+        logger.debug("#LocalAuth callback no-op", { path: req.path })
     }
 
     async authenticateViaCookie(_sealedSessionData: string | undefined, _req: Request, res: Response): Promise<CookieAuthOutcome> {
@@ -93,6 +95,8 @@ export class LocalAuthProvider implements AuthProvider {
 }
 
 // ─────────────── helpers ───────────────
+
+let singletonLogged = false
 
 async function ensureLocalUser(): Promise<{ user: UserSession; profile: UserProfile }> {
     const db = localDb()
@@ -115,6 +119,11 @@ async function ensureLocalUser(): Promise<{ user: UserSession; profile: UserProf
         create: { identity_id: identity.id, organization_id: org.id, roles: "admin" },
         update: {}
     })
+
+    if (!singletonLogged) {
+        singletonLogged = true
+        logger.info("#LocalAuth singleton ready", { identityId: identity.id, email: identity.email, orgId: org.id })
+    }
 
     const profile = identityToProfile(identity)
     const user: UserSession = {
