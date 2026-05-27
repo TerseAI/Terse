@@ -2,7 +2,7 @@
 # and generates the Prisma clients backend needs at runtime. Run command and env
 # are the responsibility of docker-compose.
 # openssl is required by Prisma engines on alpine (musl libc).
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9 --activate
