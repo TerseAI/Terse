@@ -89,4 +89,4 @@ Back them up with `docker run --rm -v terse_postgres:/data -v $PWD:/backup alpin
 
 ## Contributing
 
-Terse is open source. The contribution guide lives in the repo at [CONTRIBUTING.md](https://github.com/TerseAI/Terse/blob/main/CONTRIBUTING.md). PRs welcome for bug fixes, integrations, and docs improvements.
+Terse code is available on [Github](https://github.com/TerseAI/Terse). The contribution guide lives in the repo at [CONTRIBUTING.md](https://github.com/TerseAI/Terse/blob/main/CONTRIBUTING.md). PRs welcome for bug fixes, integrations, and docs improvements.
