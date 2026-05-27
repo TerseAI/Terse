@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+.pnpm-store
+.deepsec
+.ruff_cache
+**/.DS_Store
+backend/prisma/local/local.db
+backend/prisma/local/local.db-journal
+backend/src/generated

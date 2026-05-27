@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { cancel, intro, isCancel, log, outro, spinner, text } from "@clack/prompts"
 import chalk from "chalk"
-import { execSync } from "node:child_process"
+import { execSync, spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { existsSync } from "node:fs"
 import fs from "node:fs/promises"
@@ -25,29 +25,25 @@ async function main(): Promise<void> {
 
     await fs.copyFile(path.join(TEMPLATES_DIR, "docker-compose.yml"), path.join(resolved, "docker-compose.yml"))
 
-    const frontendUrl = await prompt("Frontend URL", "http://localhost:5173")
-    const backendUrl = await prompt("Backend URL", "http://localhost:3001")
+    const frontendUrl = await prompt("Frontend URL (as seen from your browser)", "http://localhost:5173")
+    const backendUrl = await prompt("Backend URL (as seen from your browser)", "http://localhost:3001")
 
     const postgresPort = await findFreePort(5432)
     if (postgresPort !== 5432) {
-        log.warn(`Port 5432 is taken on this machine, using ${postgresPort} for the Terse Postgres container instead.`)
+        log.warn(`Port 5432 is taken on this machine, exposing the Terse Postgres container on ${postgresPort} instead.`)
     }
 
     await writeComposeEnv(resolved, postgresPort)
-    await writeEnv(resolved, { frontendUrl, backendUrl, postgresPort })
-    log.success(`Wrote backend/.env (Postgres on localhost:${postgresPort}) with generated JWT + Fernet secrets`)
+    await writeBackendEnv(resolved, { frontendUrl, backendUrl, postgresPort })
+    log.success("Wrote backend/.env with generated JWT + Fernet secrets")
     await writeFrontendEnv(resolved, { backendUrl })
     log.success(`Wrote frontend/.env pointing at ${backendUrl}`)
 
-    await runStep("Installing dependencies", "pnpm install", resolved)
-    await runStep("Starting Postgres container", "docker compose up -d --wait postgres", resolved)
-    await waitForPostgres(resolved)
-    await verifyHostCanReachPostgres(postgresPort)
-    await runStep("Generating Prisma clients", "pnpm --filter backend run db:generate", resolved)
-    await runStep("Migrating main database", "pnpm --filter backend exec prisma migrate deploy", resolved)
-    await runStep("Migrating local SQLite", "pnpm --filter backend exec prisma migrate deploy --schema=./prisma/local/schema.prisma", resolved)
+    await runStepStreaming("Building Terse Docker image (first run takes a few minutes)", "docker compose build", resolved)
+    await runStep("Starting Terse services", "docker compose up -d", resolved)
+    await waitForBackend(backendUrl)
 
-    outro(chalk.green(`Done. Next: ${chalk.bold(`cd ${targetDir} && pnpm dev`)}`))
+    outro(chalk.green(`Done. Terse is running at ${chalk.bold(frontendUrl)}`))
 }
 
 async function cloneIfMissing(targetDir: string): Promise<void> {
@@ -66,7 +62,10 @@ async function cloneIfMissing(targetDir: string): Promise<void> {
     }
 }
 
-async function writeEnv(targetDir: string, config: { frontendUrl: string; backendUrl: string; postgresPort: number }): Promise<void> {
+async function writeBackendEnv(targetDir: string, config: { frontendUrl: string; backendUrl: string; postgresPort: number }): Promise<void> {
+    // DATABASE_URL and LOCAL_DB_URL are overridden by docker-compose for the
+    // in-container case. The values below are only used if a developer runs
+    // backend commands directly on the host.
     const localDbPath = path.join(targetDir, "backend/prisma/local/local.db")
     const lines = [
         `DATABASE_URL=postgres://postgres:postgres@localhost:${config.postgresPort}/terse`,
@@ -121,6 +120,22 @@ async function runStep(label: string, command: string, cwd: string): Promise<voi
     }
 }
 
+async function runStepStreaming(label: string, command: string, cwd: string): Promise<void> {
+    log.info(label)
+    await new Promise<void>((resolve, reject) => {
+        const child = spawn(command, { cwd, stdio: "inherit", shell: true })
+        child.on("exit", code => {
+            if (code === 0) {
+                log.success(`${label} ✓`)
+                resolve()
+            } else {
+                reject(new Error(`${label} failed with exit code ${code}`))
+            }
+        })
+        child.on("error", reject)
+    })
+}
+
 function shellEscape(value: string): string {
     return `'${value.replace(/'/g, "'\\''")}'`
 }
@@ -139,21 +154,6 @@ async function isPortFree(port: number): Promise<boolean> {
     return !v4Busy && !v6Busy
 }
 
-async function verifyHostCanReachPostgres(port: number): Promise<void> {
-    const s = spinner()
-    s.start(`Verifying host can reach Postgres on localhost:${port}`)
-    const deadline = Date.now() + 15_000
-    while (Date.now() < deadline) {
-        if (await tryConnect("127.0.0.1", port)) {
-            s.stop(`Host can reach localhost:${port} ✓`)
-            return
-        }
-        await new Promise(resolve => setTimeout(resolve, 500))
-    }
-    s.stop(`Host cannot reach localhost:${port} ✗`)
-    throw new Error(`Postgres container is up but the host cannot reach localhost:${port}. ` + `Another process may be holding the port, or Docker's port mapping failed.`)
-}
-
 function tryConnect(host: string, port: number): Promise<boolean> {
     return new Promise(resolve => {
         const socket = net.connect({ host, port })
@@ -167,27 +167,24 @@ function tryConnect(host: string, port: number): Promise<boolean> {
     })
 }
 
-async function waitForPostgres(cwd: string): Promise<void> {
+async function waitForBackend(backendUrl: string): Promise<void> {
     const s = spinner()
-    s.start("Waiting for Postgres to accept connections")
-    const deadline = Date.now() + 60_000
-    let lastError: unknown
+    s.start(`Waiting for backend at ${backendUrl}`)
+    const deadline = Date.now() + 120_000
     while (Date.now() < deadline) {
         try {
-            execSync(`docker compose exec -T postgres psql -U postgres -d terse -c "SELECT 1" -v ON_ERROR_STOP=1`, {
-                cwd,
-                stdio: "pipe"
-            })
-            s.stop("Postgres is ready ✓")
-            return
-        } catch (err) {
-            lastError = err
-            await new Promise(resolve => setTimeout(resolve, 1000))
+            const response = await fetch(backendUrl, { signal: AbortSignal.timeout(2000) })
+            if (response.status < 500) {
+                s.stop(`Backend is responding ✓`)
+                return
+            }
+        } catch {
+            // not ready yet
         }
+        await new Promise(resolve => setTimeout(resolve, 1000))
     }
-    s.stop("Postgres did not become ready ✗")
-    const message = lastError instanceof Error ? lastError.message : String(lastError)
-    throw new Error(`Timed out waiting for Postgres after 60s.\n${message}`)
+    s.stop(`Backend did not become ready in 120s ✗`)
+    throw new Error(`Backend at ${backendUrl} never started responding. Check logs with: docker compose logs backend`)
 }
 
 main().catch(err => {
