@@ -30,6 +30,11 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return `/opt/terse-sdk-cache/${runtime}/project`
     }
 
+    getScratchPath(_sandbox: ModalSandbox, filename: string): string {
+        // Each Modal sandbox has its own isolated filesystem, so /tmp is per-sandbox.
+        return `/tmp/${filename}`
+    }
+
     async getOrCreateApp(name: string): Promise<SandboxApp> {
         const t0 = Date.now()
         try {
@@ -54,6 +59,16 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             return image
         } catch (error) {
             logger.error("Modal image: fromId failed", { imageId, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
+            throw error
+        }
+    }
+
+    async imageExists(imageId: string): Promise<boolean> {
+        try {
+            await this.modal.images.fromId(imageId)
+            return true
+        } catch (error) {
+            if (error instanceof NotFoundError) return false
             throw error
         }
     }

@@ -2,7 +2,6 @@ import { ChildProcess, spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { existsSync } from "node:fs"
 import fs, { FileHandle } from "node:fs/promises"
-import os from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
 
@@ -11,7 +10,7 @@ import logger from "../../common/logger"
 import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, WriteStream } from "./SandboxService"
 import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, unregisterSandbox } from "./localSandboxLifecycle"
 
-const SANDBOX_ROOT = path.join(os.tmpdir(), "terse-sandbox")
+const SANDBOX_ROOT = "/data/sandbox"
 const IMAGES_DIR = path.join(SANDBOX_ROOT, "images")
 const SANDBOXES_DIR = path.join(SANDBOX_ROOT, "sandboxes")
 const FAKE_APP_ID = "local-app"
@@ -23,9 +22,10 @@ const REGISTRY_IMAGE_MARKER = "__registry__"
  * disk; each `exec` is a real subprocess via `child_process.spawn` with that
  * directory as its CWD.
  *
- * Layout under `os.tmpdir()/terse-sandbox/`:
+ * Layout under `/data/sandbox/` (same persistent volume as the SQLite DB):
  *   images/<imageId>/        — snapshotted filesystem states (deploy artifacts)
  *   sandboxes/<sandboxId>/   — active working directories
+ *     scratch/                 — per-sandbox area for intermediate artifacts (zips, etc)
  *
  * Lifecycle mirrors Modal exactly so SdkSandboxImageService + SdkJobExecutionService
  * work unchanged: `terse deploy` → build dir → install deps → snapshot → image.
@@ -61,6 +61,11 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         return { imageId }
     }
 
+    async imageExists(imageId: string): Promise<boolean> {
+        if (imageId === REGISTRY_IMAGE_MARKER) return true
+        return existsSync(path.join(IMAGES_DIR, imageId))
+    }
+
     async deleteImage(imageId: string): Promise<void> {
         if (imageId === REGISTRY_IMAGE_MARKER) return
         const t0 = Date.now()
@@ -76,6 +81,10 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         return path.join(sandbox.workingDir, "cache", runtime, "project")
     }
 
+    getScratchPath(sandbox: LocalSandbox, filename: string): string {
+        return path.join(sandbox.workingDir, "scratch", filename)
+    }
+
     async getOrCreateSandbox(_app: SandboxApp, image: SandboxImage, uniqueName: string): Promise<LocalSandbox> {
         const t0 = Date.now()
         logger.info("#LocalSandbox getOrCreate begin", { uniqueName, imageId: image.imageId })
@@ -86,11 +95,9 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         if (image.imageId !== REGISTRY_IMAGE_MARKER) {
             const imagePath = path.join(IMAGES_DIR, image.imageId)
             if (!existsSync(imagePath)) {
-                throw new Error(
-                    `#LocalSandbox image ${image.imageId} not found at ${imagePath}. ` +
-                        `This usually means the sdk_dependency_images / sdk_source_images tables contain stale image IDs from a previous provider (e.g. Modal). ` +
-                        `Clear those tables and redeploy.`
-                )
+                const err = new Error(`#LocalSandbox image ${image.imageId} not found at ${imagePath}.`) as Error & { code?: string }
+                err.code = "SANDBOX_IMAGE_MISSING"
+                throw err
             }
             await fs.cp(imagePath, workingDir, { recursive: true })
         }

@@ -35,7 +35,6 @@ services:
       - "${BACKEND_PORT:-3001}:3001"
     volumes:
       - terse_sqlite:/data
-      - terse_sandbox_images:/tmp/terse-sandbox/images
     command: >
       sh -c "pnpm exec prisma migrate deploy &&
              pnpm exec prisma migrate deploy --schema=./prisma/local/schema.prisma &&
@@ -58,4 +57,3 @@ services:
 volumes:
   terse_postgres:
   terse_sqlite:
-  terse_sandbox_images:

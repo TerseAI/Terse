@@ -10,14 +10,7 @@ import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import {
-    SDK_SOURCE_IMAGE_CODE_ZIP_PATH,
-    type SandboxCommandResult,
-    type SdkDependencyImageBuildContext,
-    type SdkProjectArchive,
-    type SdkProjectRuntime,
-    SdkRuntimeExecutor
-} from "./sdkRuntimeExecutors/types"
+import { type SandboxCommandResult, type SdkDependencyImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
@@ -201,12 +194,13 @@ export class SdkSandboxImageService {
     private async ensureDependencyImage(params: { archive: SdkProjectArchive; dependencyHash: string; executor: SdkRuntimeExecutor; cliVersion: string }) {
         const { archive, dependencyHash, executor, cliVersion } = params
         const prisma = db()
+        const sandboxService = getSandboxProvider()
 
         const existing = await prisma.sdk_dependency_images.findUnique({
             where: { dependency_hash: dependencyHash }
         })
 
-        if (existing) {
+        if (existing && (await sandboxService.imageExists(existing.image_id))) {
             logger.info("SDK image cache: reuse dependency layer", {
                 dependencyHash: dependencyHash,
                 imageId: existing.image_id
@@ -215,6 +209,14 @@ export class SdkSandboxImageService {
                 where: { id: existing.id },
                 data: { last_used_at: new Date() }
             })
+        }
+
+        if (existing) {
+            logger.warn("SDK image cache: dependency image missing, rebuilding", {
+                dependencyHash: dependencyHash,
+                imageId: existing.image_id
+            })
+            await prisma.sdk_dependency_images.delete({ where: { id: existing.id } }).catch(() => {})
         }
 
         const buildStarted = performance.now()
@@ -266,6 +268,7 @@ export class SdkSandboxImageService {
     }) {
         const { dependencyImageId, dependencySandboxImageId, executor, organizationId, sourceHash, sourceLayerKey, zipBuffer } = params
         const prisma = db()
+        const sandboxService = getSandboxProvider()
 
         const existing = await prisma.sdk_source_images.findFirst({
             where: {
@@ -275,7 +278,7 @@ export class SdkSandboxImageService {
             }
         })
 
-        if (existing) {
+        if (existing && (await sandboxService.imageExists(existing.image_id))) {
             logger.info("SDK image cache: reuse source layer", {
                 sourceLayerKey: sourceLayerKey,
                 organizationId: organizationId,
@@ -285,6 +288,15 @@ export class SdkSandboxImageService {
                 where: { id: existing.id },
                 data: { last_used_at: new Date() }
             })
+        }
+
+        if (existing) {
+            logger.warn("SDK image cache: source image missing, rebuilding", {
+                sourceLayerKey,
+                organizationId,
+                imageId: existing.image_id
+            })
+            await prisma.sdk_source_images.delete({ where: { id: existing.id } }).catch(() => {})
         }
 
         const buildStarted = performance.now()
@@ -380,11 +392,12 @@ export class SdkSandboxImageService {
         const sb = await sandboxService.getOrCreateSandbox(app, dependencyImage, sourceImageBuildSandboxUniqueName(sourceLayerKey), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
 
         const projectDir = sandboxService.getProjectPath(sb)
-        await this.writeBinaryToSandbox(sb, SDK_SOURCE_IMAGE_CODE_ZIP_PATH, zipBuffer)
+        const sourceZipPath = sandboxService.getScratchPath(sb, "source-image-code.zip")
+        await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
         await this.ensureSandboxCommand(
             sb,
             "extract SDK source",
-            `mkdir -p ${shellQuote(projectDir)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(SDK_SOURCE_IMAGE_CODE_ZIP_PATH)} -d ${shellQuote(projectDir)}`,
+            `mkdir -p ${shellQuote(projectDir)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
             executor.runtime
         )
         await executor.prepareSourceImage({
