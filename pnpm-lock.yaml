@@ -501,6 +501,22 @@ importers:
         specifier: ^5.0.0
         version: 5.8.3
 
+  packages/create-terse:
+    dependencies:
+      '@clack/prompts':
+        specifier: ^1.0.0
+        version: 1.2.0
+      chalk:
+        specifier: ^5.0.0
+        version: 5.6.2
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.15
+      typescript:
+        specifier: ^5.0.0
+        version: 5.8.3
+
   packages/terse-cli:
     dependencies:
       '@clack/prompts':

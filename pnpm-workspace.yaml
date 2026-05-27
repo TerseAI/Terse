@@ -1,6 +1,7 @@
 packages:
   - packages/terse-sdk
   - packages/terse-cli
+  - packages/create-terse
   - packages/ci-test-fixture
   - frontend
   - backend
