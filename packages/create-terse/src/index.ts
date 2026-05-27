@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 import { cancel, intro, isCancel, log, outro, spinner, text } from "@clack/prompts"
 import chalk from "chalk"
-import { execSync, spawn } from "node:child_process"
+import { spawn } from "node:child_process"
+import { exec } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { existsSync } from "node:fs"
 import fs from "node:fs/promises"
 import net from "node:net"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import { promisify } from "node:util"
+
+const execAsync = promisify(exec)
 
 const REPO_URL = "https://github.com/TerseAI/Terse.git"
 const DEFAULT_INSTALL_BRANCH = "main"
@@ -54,7 +58,7 @@ async function cloneIfMissing(targetDir: string): Promise<void> {
     const s = spinner()
     s.start(`Cloning Terse (${INSTALL_BRANCH}) → ${targetDir}`)
     try {
-        execSync(`git clone --depth=1 --branch ${shellEscape(INSTALL_BRANCH)} ${REPO_URL} ${shellEscape(targetDir)}`, { stdio: "pipe" })
+        await execAsync(`git clone --depth=1 --branch ${shellEscape(INSTALL_BRANCH)} ${REPO_URL} ${shellEscape(targetDir)}`)
         s.stop(`Cloned into ${targetDir}`)
     } catch (err) {
         s.stop("Clone failed")
@@ -109,13 +113,13 @@ async function runStep(label: string, command: string, cwd: string): Promise<voi
     const s = spinner()
     s.start(label)
     try {
-        execSync(command, { cwd, stdio: "pipe" })
+        await execAsync(command, { cwd })
         s.stop(`${label} ✓`)
     } catch (err) {
         s.stop(`${label} ✗`)
         const message = err instanceof Error ? err.message : String(err)
-        const stdout = (err as { stdout?: Buffer }).stdout?.toString() ?? ""
-        const stderr = (err as { stderr?: Buffer }).stderr?.toString() ?? ""
+        const stdout = (err as { stdout?: string }).stdout ?? ""
+        const stderr = (err as { stderr?: string }).stderr ?? ""
         throw new Error([message, stdout, stderr].filter(Boolean).join("\n"))
     }
 }
