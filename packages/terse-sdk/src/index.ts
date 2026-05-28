@@ -116,42 +116,42 @@ export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOpti
 
 // Re-export SDK-specific types
 export { createSDKTrigger, registerEventTransform } from "./types.js"
-export type { ToolboxEntry, SDKTrigger, TypedTrigger, TypedSkill, InferEvent, InferEvents, InferToolApproval, InferToolApprovals, InferStructuredOutput } from "./types.js"
+export type { InferEvent, InferEvents, InferStructuredOutput, InferToolApproval, InferToolApprovals, SDKTrigger, ToolboxEntry, TypedSkill, TypedTrigger } from "./types.js"
 
 // Re-export shared types for consumer convenience
 export {
-    ConfigType,
-    ConfigInstance,
-    GmailConfig,
-    SlackConfig,
-    SlackOutputConfig,
-    GmailOutputConfig,
-    GmailDraftOutputConfig,
-    NotionConfig,
-    LinearInputConfig,
-    LinearOutputConfig,
-    GitHubConfig,
-    PosthogConfig,
-    DatadogConfig,
-    TimeTriggerConfig,
-    LaunchDarklyConfig,
-    WebConfig,
-    ImageEditConfig,
-    WorkOSInputConfig,
-    WorkOSOutputConfig,
+    AttioEventType,
     AttioInputConfig,
     AttioOutputConfig,
-    SnowflakeOutputConfig,
-    WebhookInputConfig,
-    WebMonitorConfig,
-    HeyReachInputConfig,
-    SlackEventType,
+    ConfigInstance,
+    ConfigType,
+    DatadogConfig,
+    GitHubConfig,
     GitHubEventType,
-    LinearEventType,
+    GmailConfig,
+    GmailDraftOutputConfig,
     GmailEventType,
-    WorkOSEventType,
+    GmailOutputConfig,
     HeyReachEventType,
-    AttioEventType,
+    HeyReachInputConfig,
+    ImageEditConfig,
+    LaunchDarklyConfig,
+    LinearEventType,
+    LinearInputConfig,
+    LinearOutputConfig,
+    NotionConfig,
+    PosthogConfig,
+    SlackConfig,
+    SlackEventType,
+    SlackOutputConfig,
+    SnowflakeOutputConfig,
+    TimeTriggerConfig,
+    WebConfig,
+    WebMonitorConfig,
+    WebhookInputConfig,
+    WorkOSEventType,
+    WorkOSInputConfig,
+    WorkOSOutputConfig,
     debugTrigger,
     formatTriggerForAgent
 } from "terse-types"
@@ -236,10 +236,10 @@ export type WorkOSUserDeletedTrigger = SDKTrigger<_RawWorkOSUserDeletedTrigger>
 export type WorkOSUserUpdatedTrigger = SDKTrigger<_RawWorkOSUserUpdatedTrigger>
 export type WorkOSUserTrigger = SDKTrigger<_RawWorkOSUserTrigger>
 
+export { FrequencyUnit, IntegrationType } from "terse-types"
 export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
-export { IntegrationType, FrequencyUnit } from "terse-types"
 
-export { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger, RunHistoryDecision, RunHistoryRecord } from "terse-types"
+export { RunHistoryAction, RunHistoryDecision, RunHistoryRecord, RunHistoryStatus, RunHistoryTrigger } from "terse-types"
 
 // SDK types
 
@@ -480,12 +480,12 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
 
     async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema: OutputSchema): Promise<z.infer<OutputSchema>>
     async runAndWait(userMessage: string): Promise<string>
-    async runAndWait(userMessage: string, outputSchema?: z.ZodType): Promise<unknown> {
+    async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema?: OutputSchema): Promise<string | z.infer<OutputSchema>> {
         for await (const chunk of this.run(userMessage, outputSchema)) {
             if (chunk.type === EventType.FINAL_OUTPUT) {
                 const raw = (chunk as FinalOutputResult).finalOutput
                 if (!outputSchema) return raw
-                return outputSchema.parse(JSON.parse(raw))
+                return outputSchema.parse(JSON.parse(raw)) as z.infer<OutputSchema>
             }
         }
 
@@ -559,6 +559,36 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             }
             yield mapStreamEventToResult(parsed)
         }
+    }
+}
+
+type GenerateTextParams<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> = {
+    prompt: string
+    skills?: TSkills
+    toolApprovals?: InferToolApprovals<TSkills>[]
+}
+
+type GenerateTextStructuredOutput<OutputSchema extends z.ZodType> = GenerateTextParams & {
+    outputSchema: OutputSchema
+}
+
+export async function generateText<OutputSchema extends z.ZodType>(params: GenerateTextStructuredOutput<OutputSchema>): Promise<z.infer<OutputSchema>>
+export async function generateText(params: GenerateTextParams): Promise<string>
+export async function generateText<OutputSchema extends z.ZodType>(params: GenerateTextParams | GenerateTextStructuredOutput<OutputSchema>): Promise<string | z.infer<OutputSchema>> {
+    if ("outputSchema" in params) {
+        const agent = TerseAgent.create({
+            prompt: "",
+            skills: params.skills ? [...params.skills] : [],
+            toolApprovals: params.toolApprovals
+        })
+        return await agent.runAndWait(params.prompt, params.outputSchema)
+    } else {
+        const agent = TerseAgent.create({
+            prompt: "",
+            skills: params.skills ? [...params.skills] : [],
+            toolApprovals: params.toolApprovals
+        })
+        return await agent.runAndWait(params.prompt)
     }
 }
 
