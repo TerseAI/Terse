@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # ─── Configuration ────────────────────────────────────────────────────────────
-PACKAGE_NAMES=("terse-types" "terse-sdk" "terse-cli")
-PACKAGE_DIRS=("terse-types" "packages/terse-sdk" "packages/terse-cli")
+PACKAGE_NAMES=("terse-types" "terse-sdk" "terse-cli" "create-terse")
+PACKAGE_DIRS=("terse-types" "packages/terse-sdk" "packages/terse-cli" "packages/create-terse")
 REQUIRED_BRANCH="main"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -151,7 +151,7 @@ fi
 echo ""
 echo "=== Building packages ==="
 cd "$ROOT_DIR"
-pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli run build
+pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli --filter create-terse run build
 
 # ─── Publish ──────────────────────────────────────────────────────────────────
 echo ""
