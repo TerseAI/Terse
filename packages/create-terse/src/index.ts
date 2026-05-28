@@ -77,8 +77,7 @@ async function main(): Promise<void> {
 }
 
 async function openInBrowser(url: string): Promise<void> {
-    const opener =
-        process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open"
+    const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open"
     try {
         await execAsync(`${opener} ${shellEscape(url)}`)
     } catch {
@@ -125,10 +124,7 @@ function commandExists(name: string): boolean {
     }
 }
 
-async function writeEnv(
-    targetDir: string,
-    config: { frontendUrl: string; backendUrl: string; frontendPort: number; backendPort: number; postgresPort: number }
-): Promise<void> {
+async function writeEnv(targetDir: string, config: { frontendUrl: string; backendUrl: string; frontendPort: number; backendPort: number; postgresPort: number }): Promise<void> {
     const socketUrl = toWebSocketUrl(config.backendUrl)
     const lines = [
         "# Terse self-host config. Edit values then `docker compose up -d` to apply.",
