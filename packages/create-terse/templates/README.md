@@ -40,6 +40,17 @@ Everything user-tunable lives in `.env`:
 
 After any edit, run `docker compose up -d` to apply.
 
+## Connecting integrations
+
+All integration config lives in this same `.env`. There's no second config file and no per-integration secrets store. After editing, `docker compose up -d` restarts the affected containers and the integration appears in the dashboard.
+
+- **API-key integrations** — Datadog, Snowflake, HeyReach, LaunchDarkly, PostHog. No env vars needed; paste the API key in the dashboard at connect time.
+- **OAuth integrations** — Gmail, GitHub, Slack, Linear, Notion, Attio. Gated by env vars. Every required `<PROVIDER>_CLIENT_ID` / `_CLIENT_SECRET` / `_REDIRECT_URI` (names vary slightly per provider) must be set, otherwise the integration is hidden.
+
+Callback URLs (`_REDIRECT_URI`, `_OAUTH_CALLBACK_URL`, etc.) must be reachable from the user's browser. For a default local install that's `http://localhost:3001/<provider>/callback`. If the OAuth provider rejects `localhost`, expose the backend via a tunnel (ngrok, Cloudflare Tunnel) and point the callback URL at the public hostname.
+
+The full env-var list per integration is in [docs.useterse.ai/self-hosting-control-plane](https://docs.useterse.ai/self-hosting-control-plane#integrations).
+
 ## The `terse` CLI
 
 The installer also globally installs `terse-cli` (`npm i -g terse-cli`) and points it at this instance. From any directory:

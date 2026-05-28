@@ -72,7 +72,8 @@ export const settings = {
         socketFrontend: optionalEnv("SOCKET_FRONTEND_URL"),
         frontend: requireEnv("FRONTEND_URL"),
         backend: requireEnv("BACKEND_URL"),
-        backendProxy: optionalEnv("BACKEND_PROXY_URL")
+        backendProxy: optionalEnv("BACKEND_PROXY_URL"),
+        internalBackend: optionalEnv("INTERNAL_BACKEND_URL", "http://localhost:3001")
     },
 
     // Environment

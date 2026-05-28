@@ -22,6 +22,24 @@ You'll be prompted for a target directory (default `./terse`) and the frontend a
 
 Prerequisites: Docker with Compose v2, and Node 20+ for `npx`. No repo clone, no `pnpm`, no manual Prisma steps.
 
+### Non-interactive mode
+
+For CI, scripts, or AI agents (Claude Code, etc.) that can't answer prompts, pass `-y` to accept all defaults. The script also auto-enables this mode whenever stdin or stdout is not a TTY, so it won't hang in a non-interactive shell.
+
+```bash
+npx create-terse -y                                                              # all defaults
+npx create-terse -y --target ./my-terse                                          # override target dir
+npx create-terse -y --backend-url http://localhost:3001 \
+                    --frontend-url http://localhost:5173                          # override URLs
+```
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `-y`, `--non-interactive` | off | Skip prompts and accept defaults. Auto-on when no TTY. |
+| `--target <dir>` | `./terse` | Install directory. |
+| `--frontend-url <url>` | `http://localhost:5173` | Frontend URL written to `.env`. |
+| `--backend-url <url>` | `http://localhost:3001` | Backend URL written to `.env`. |
+
 <Warning>
     The CLI target is exported into your shell rc. Run `source ~/.zshrc` or open a new terminal before your next `terse` command, otherwise the CLI still points at Terse Cloud. Confirm with `terse target`.
 </Warning>
@@ -55,6 +73,26 @@ Anything user-tunable lives in `.env`. Edit and run `docker compose up -d` to ap
 | `WORKOS_*`, `MODAL_*`, `RESEND_API_KEY`, integration OAuth secrets | Opt in to anything that's off by default. |
 
 Anything else (container-internal URLs, port mappings, volume names) lives in `docker-compose.yml`. The `README.md` in your install directory is the daily-ops cheat sheet for logs, upgrades, and backups.
+
+## Integrations
+
+There is one config file, `.env`. Adding integration credentials there and running `docker compose up -d` enables the integration on the next restart. No per-integration config file, no second admin panel.
+
+API-key integrations (Datadog, Snowflake, HeyReach, LaunchDarkly, PostHog) need no env vars. Connect them from the dashboard, paste the API key, done.
+
+OAuth integrations are gated by env vars. Every required var below must be set and non-empty, otherwise the integration is hidden from the dashboard's connect list:
+
+| Integration | Required | Optional |
+|---|---|---|
+| Gmail | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REDIRECT_URI`, `GMAIL_FRONTEND_REDIRECT`, `GMAIL_PUBSUB_TOPIC` | `GMAIL_PUBSUB_AUDIENCE`, `GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL` |
+| GitHub | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_APP_CALLBACK_URL`, `GITHUB_APP_NAME` | `GITHUB_LOGIN_CALLBACK_URL`, `GITHUB_LOGIN_REDIRECT` |
+| Slack | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_OAUTH_CALLBACK_URL` | `SLACK_SIGNING_SECRET` |
+| Linear | `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET_ID`, `LINEAR_OAUTH_CALLBACK_URL`, `LINEAR_WEBHOOK_SIGNING_SECRET` | — |
+| Notion | `NOTION_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_SECRET`, `NOTION_OAUTH_REDIRECT_URI` | — |
+| Attio | `ATTIO_CLIENT_ID`, `ATTIO_CLIENT_SECRET`, `ATTIO_REDIRECT_URI` | — |
+| Web monitors (Parallel) | `PARALLEL_API_KEY`, `PARALLEL_WEBHOOK_SECRET` | — |
+
+Callback URLs must be reachable from the browser. For a default local install: `http://localhost:3001/<provider>/callback` on the backend side, `http://localhost:5173/` (or your `FRONTEND_URL`) on the frontend side. If the OAuth provider rejects `localhost` (Google does for several Gmail scopes, Slack does for distributed apps), expose the backend through a tunnel (ngrok, Cloudflare Tunnel) and point the callback URLs at the public hostname.
 
 ## Where to go next
 

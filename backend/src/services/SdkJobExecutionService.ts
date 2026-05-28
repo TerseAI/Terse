@@ -77,12 +77,14 @@ export class SdkJobExecutionService {
             const secretService = SecretService.getInstance()
             const projectSecretValues = await secretService.getSecrets({ type: "project", secret: { projectId: agent.project.id } })
 
+            const sandboxBackendUrl = getSandboxProvider().supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
+
             const sandboxEnv = {
                 // Make sure to keep this first as the sandbox env,
                 // so that the following env variables take precedence.
                 ...projectSecretValues,
                 TERSE_API_KEY: sandboxApiKey,
-                TERSE_BACKEND_URL: settings.urls.backend,
+                TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
