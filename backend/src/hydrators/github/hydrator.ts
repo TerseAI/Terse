@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest"
-import { IntegrationType } from "terse-types"
+import { GitHubEventType, IntegrationType } from "terse-types"
 import { GithubTrigger } from "terse-types"
 
 import logger from "../../common/logger"
@@ -99,6 +99,54 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
             const [owner, name] = repo.full_name.split("/")
             if (!owner || !name) {
                 return null
+            }
+
+            const commentMatch = identifier.match(/^(\d+)\/comment\/(\d+)$/)
+            if ((type === "pr" || type === "issue") && commentMatch) {
+                const issueNumber = parseInt(commentMatch[1], 10)
+                const commentId = parseInt(commentMatch[2], 10)
+                const { data: comment } = await octokit.issues.getComment({ owner, repo: name, comment_id: commentId })
+                const isPullRequest = type === "pr"
+                const target = isPullRequest
+                    ? (await octokit.pulls.get({ owner, repo: name, pull_number: issueNumber })).data
+                    : (await octokit.issues.get({ owner, repo: name, issue_number: issueNumber })).data
+                const targetUserLogin = target.user?.login ?? ""
+                const targetUserEmail = target.user?.email ?? undefined
+                const commentUserLogin = comment.user?.login ?? ""
+                const commentUserEmail = comment.user?.email ?? undefined
+                const eventData: GithubTrigger = {
+                    integrationType: IntegrationType.GITHUB,
+                    username: commentUserLogin,
+                    installationId,
+                    repositoryName: repo.full_name,
+                    eventType: GitHubEventType.ISSUE_COMMENT_CREATED,
+                    issue: {
+                        id: target.id,
+                        number: issueNumber,
+                        title: target.title ?? "",
+                        body: target.body ?? undefined,
+                        state: target.state === "closed" ? "closed" : "open",
+                        url: target.html_url,
+                        author: { login: targetUserLogin, email: targetUserEmail },
+                        isPullRequest
+                    },
+                    comment: {
+                        id: comment.id,
+                        body: comment.body ?? "",
+                        author: { login: commentUserLogin, email: commentUserEmail },
+                        url: comment.html_url,
+                        createdAt: comment.created_at,
+                        updatedAt: comment.updated_at
+                    },
+                    repository: {
+                        id: repo.id,
+                        name: repo.name,
+                        owner: repo.owner?.login ?? owner,
+                        defaultBranch: repo.default_branch ?? "main"
+                    },
+                    sender: { login: commentUserLogin, email: commentUserEmail }
+                }
+                return new GithubTriggerRuntime(eventData, [])
             }
 
             if (type === "pr") {
