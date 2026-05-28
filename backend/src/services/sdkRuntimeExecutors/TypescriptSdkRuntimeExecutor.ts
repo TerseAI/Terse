@@ -11,9 +11,11 @@ import type {
 } from "./types"
 import { SandboxStage, runSandboxExecStage, runSandboxStage } from "./types"
 
+const DEFAULT_PNPM_VERSION = "10.34.1"
+
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
-    readonly sandboxImage = "node:22-slim"
+    readonly sandboxImage = "node:22.22.3-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732"
 
     matchesArchive(entries: Set<string>): boolean {
         return entries.has("package.json")
@@ -55,6 +57,12 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         }
 
         await context.ensureSandboxCommand("install terse cli", `npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
+
+        if (this.detectPackageManager(context.archive) === "pnpm") {
+            const pnpmVersion = this.detectPnpmVersion(context.archive)
+            await context.ensureSandboxCommand("install pnpm", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund >/dev/null`)
+        }
+
         await context.ensureSandboxCommand("install cached TypeScript dependencies", this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg))
     }
 
@@ -107,13 +115,35 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return "npm"
     }
 
+    private detectPnpmVersion(archive: SdkProjectArchive): string {
+        const packageJson = archive.readText("package.json")
+        if (!packageJson) {
+            return DEFAULT_PNPM_VERSION
+        }
+
+        try {
+            const parsed = JSON.parse(packageJson) as { packageManager?: string }
+            const pinned = parsed.packageManager
+            if (pinned?.startsWith("pnpm@")) {
+                const version = pinned.slice("pnpm@".length).split("+")[0].trim()
+                if (version) {
+                    return version
+                }
+            }
+        } catch {
+            // Ignore malformed package.json here; the install step will surface it.
+        }
+
+        return DEFAULT_PNPM_VERSION
+    }
+
     private buildDependencyInstallCommand(archive: SdkProjectArchive, templateDir: string, escapeShellArg: (value: string) => string): string {
         const escapedTemplateDir = escapeShellArg(templateDir)
         const packageManager = this.detectPackageManager(archive)
 
         if (packageManager === "pnpm") {
             const frozen = archive.has("pnpm-lock.yaml") ? "--frozen-lockfile" : "--no-frozen-lockfile"
-            return `corepack enable >/dev/null && cd ${escapedTemplateDir} && pnpm install --prod ${frozen}`
+            return `cd ${escapedTemplateDir} && pnpm install --prod ${frozen}`
         }
 
         if (archive.has("package-lock.json") || archive.has("npm-shrinkwrap.json")) {
