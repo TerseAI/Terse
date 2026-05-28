@@ -100,17 +100,17 @@ export async function listAndPromptIntegrations(options: IntegrateOptions = {}):
         )
         if (addMore) await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
     } else {
-        console.log(chalk.dim("No integrated tools yet."))
+        log.warn(`${chalk.yellow.bold("No integrations connected.")} Jobs that depend on GitHub, Slack, Linear, etc. won't run until you connect one.`)
         const shouldConnect = abortIfCancelled(
             await confirm({
-                message: "Connect one now?",
-                initialValue: false
+                message: "Connect an integration now?",
+                initialValue: true
             })
         )
         if (shouldConnect) {
             await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
         } else {
-            console.log(chalk.dim("You can run `terse integrate` anytime to connect one."))
+            log.info(`Skipped. Run ${chalk.cyan("terse integrate")} anytime to connect one.`)
         }
     }
 }
