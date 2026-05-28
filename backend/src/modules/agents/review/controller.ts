@@ -52,7 +52,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
         return
     }
 
-    const featureFlagService = FeatureFlagService.getInstance()
     const periodEnd = new Date()
     const periodStart = new Date(periodEnd.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -77,7 +76,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
             try {
                 const userCacheKey = `${automation.user_id}:${automation.organization_id}`
                 if (!userCache.has(userCacheKey)) {
-                    resolveUserInOrg
                     userCache.set(userCacheKey, await resolveUserInOrg(automation.user_id, automation.organization_id))
                 }
                 const user = userCache.get(userCacheKey)

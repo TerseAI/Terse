@@ -114,7 +114,7 @@ async function writeEnv(targetDir: string, config: { frontendUrl: string; backen
         "NODE_ENV=development",
         "",
         "# ── Image (uncomment to pin to a specific tag) ────────────────",
-        "# TERSE_IMAGE=us-central1-docker.pkg.dev/terse-prod/public/terse:latest",
+        "# TERSE_IMAGE=us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse",
         ""
     ]
     await fs.writeFile(path.join(targetDir, ".env"), lines.join("\n"))

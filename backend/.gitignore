@@ -10,4 +10,7 @@ node_modules
 /prisma/local/local.db
 /prisma/local/local.db-journal
 
+src/generated/local-auth-prisma
+src/generated/local-auth-prisma/*
+
 dist
