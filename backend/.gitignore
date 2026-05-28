@@ -13,4 +13,4 @@ node_modules
 src/generated/local-auth-prisma
 src/generated/local-auth-prisma/*
 
-dist1
+dist
