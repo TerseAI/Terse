@@ -777,7 +777,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (rowCount !== undefined) return `Query plan retrieved (${rowCount} step${rowCount !== 1 ? "s" : ""})`
             return "Query plan retrieved"
         }
-    },
+    }
 }
 
 /**
