@@ -214,7 +214,12 @@ function formatGithubTrigger(event: GithubTrigger): string {
         const c = event.comment
         const target = event.issue
         const kind = target.isPullRequest ? "Pull Request" : "Issue"
-        const targetLines = [`${kind} #${target.number}: ${target.title}`, `State: ${target.state}`, `Author: ${target.author.login}${target.author.email ? ` (${target.author.email})` : ""}`, `View: ${target.url}`]
+        const targetLines = [
+            `${kind} #${target.number}: ${target.title}`,
+            `State: ${target.state}`,
+            `Author: ${target.author.login}${target.author.email ? ` (${target.author.email})` : ""}`,
+            `View: ${target.url}`
+        ]
         if (target.body) {
             targetLines.push(`\nDescription:\n${indentMultiline(target.body)}`)
         }

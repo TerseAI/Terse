@@ -111,9 +111,9 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
                     ? (await octokit.pulls.get({ owner, repo: name, pull_number: issueNumber })).data
                     : (await octokit.issues.get({ owner, repo: name, issue_number: issueNumber })).data
                 const targetUserLogin = target.user?.login ?? ""
-                const targetUserEmail = (target.user as { email?: string } | null)?.email ?? undefined
+                const targetUserEmail = target.user?.email ?? undefined
                 const commentUserLogin = comment.user?.login ?? ""
-                const commentUserEmail = (comment.user as { email?: string } | null)?.email ?? undefined
+                const commentUserEmail = comment.user?.email ?? undefined
                 const eventData: GithubTrigger = {
                     integrationType: IntegrationType.GITHUB,
                     username: commentUserLogin,
