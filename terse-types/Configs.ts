@@ -293,7 +293,8 @@ export const GitHubEventType = {
     PR_OPENED: "pull_request.opened",
     PR_MERGED: "pull_request.merged",
     PR_CLOSED: "pull_request.closed",
-    PR_SYNCHRONIZE: "pull_request.synchronize"
+    PR_SYNCHRONIZE: "pull_request.synchronize",
+    ISSUE_COMMENT_CREATED: "issue_comment.created"
 } as const
 export const gitHubEventTypeSchema = z.enum(GitHubEventType)
 export type GitHubEventType = z.infer<typeof gitHubEventTypeSchema>
