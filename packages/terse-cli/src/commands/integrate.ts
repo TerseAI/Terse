@@ -1,4 +1,4 @@
-import { cancel, confirm, group, intro, isCancel, log, outro, password, select, text } from "@clack/prompts"
+import { cancel, confirm, intro, isCancel, log, outro, password, select, text } from "@clack/prompts"
 import { input } from "@inquirer/prompts"
 import chalk from "chalk"
 import type { CliIntegrationDisplayState, FormIntegrationSetup, IntegrationWithStatus } from "terse-types"
@@ -39,7 +39,8 @@ export async function integrate(options: IntegrateOptions = {}): Promise<void> {
     let continueLoop = true
     while (continueLoop) {
         const result = await connectOneIntegration(apiKey)
-        didChangeAnyIntegration = didChangeAnyIntegration || result.status !== "unchanged"
+        didChangeAnyIntegration = didChangeAnyIntegration || (result.status !== "unchanged" && result.status !== "skipped")
+        if (result.status === "skipped") break
         continueLoop = abortIfCancelled(
             await confirm({
                 message: "Connect another integration?",
@@ -98,7 +99,17 @@ export async function listAndPromptIntegrations(options: IntegrateOptions = {}):
         if (addMore) await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
     } else {
         console.log(chalk.dim("No integrated tools yet."))
-        await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
+        const shouldConnect = abortIfCancelled(
+            await confirm({
+                message: "Connect one now?",
+                initialValue: false
+            })
+        )
+        if (shouldConnect) {
+            await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
+        } else {
+            console.log(chalk.dim("You can run `terse integrate` anytime to connect one."))
+        }
     }
 }
 
@@ -112,6 +123,9 @@ async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeR
         }
 
         const selection = await promptForIntegrationSelection(integrations)
+        if (selection.action === "skip") {
+            return { status: "skipped" }
+        }
         if (selection.action === "back") {
             continue
         }
