@@ -25,6 +25,8 @@ import { generate } from "./generate.js"
 
 const INTERNAL_INTEGRATION_TYPES = new Set<string>([IntegrationType.TERSE, IntegrationType.CRON_JOB, IntegrationType.WEBMONITOR])
 
+const SKIP_VALUE = "skip" as const
+
 export async function integrate(options: IntegrateOptions = {}): Promise<void> {
     const showLifecycle = options.showLifecycle ?? true
     const runGenerateAfterChange = options.runGenerateAfterChange ?? true
@@ -39,7 +41,8 @@ export async function integrate(options: IntegrateOptions = {}): Promise<void> {
     let continueLoop = true
     while (continueLoop) {
         const result = await connectOneIntegration(apiKey)
-        didChangeAnyIntegration = didChangeAnyIntegration || result.status !== "unchanged"
+        didChangeAnyIntegration = didChangeAnyIntegration || (result.status !== "unchanged" && result.status !== "skipped")
+        if (result.status === "skipped") break
         continueLoop = abortIfCancelled(
             await confirm({
                 message: "Connect another integration?",
@@ -97,8 +100,18 @@ export async function listAndPromptIntegrations(options: IntegrateOptions = {}):
         )
         if (addMore) await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
     } else {
-        console.log(chalk.dim("No integrated tools yet."))
-        await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
+        log.warn(`${chalk.yellow.bold("No integrations connected.")} Jobs that depend on GitHub, Slack, Linear, etc. won't run until you connect one.`)
+        const shouldConnect = abortIfCancelled(
+            await confirm({
+                message: "Connect an integration now?",
+                initialValue: true
+            })
+        )
+        if (shouldConnect) {
+            await integrate({ showLifecycle: false, runGenerateAfterChange: options.runGenerateAfterChange, apiKey })
+        } else {
+            log.info(`Skipped. Run ${chalk.cyan("terse integrate")} anytime to connect one.`)
+        }
     }
 }
 
@@ -112,6 +125,9 @@ async function connectOneIntegration(apiKey: string): Promise<IntegrationChangeR
         }
 
         const selection = await promptForIntegrationSelection(integrations)
+        if (selection.action === "skip") {
+            return { status: "skipped" }
+        }
         if (selection.action === "back") {
             continue
         }
@@ -164,15 +180,21 @@ async function promptForIntegrationSelection(integrations: UserFacingIntegration
     return group(
         {
             integrationType: () =>
-                select({
+                select<IntegrationType | typeof SKIP_VALUE>({
                     message: "Choose an integration",
-                    options: integrations.map(integration => ({
-                        value: integration.integrationType,
-                        label: formatIntegrationPickerLabel(integration, longestName)
-                    }))
+                    options: [
+                        ...integrations.map(integration => ({
+                            value: integration.integrationType,
+                            label: formatIntegrationPickerLabel(integration, longestName)
+                        })),
+                        { value: SKIP_VALUE, label: chalk.dim("Skip — don't connect anything") }
+                    ]
                 }),
             action: ({ results }) => {
-                const selectedType = results.integrationType as IntegrationType
+                const selectedType = results.integrationType as IntegrationType | typeof SKIP_VALUE
+                if (selectedType === SKIP_VALUE) {
+                    return Promise.resolve(SKIP_VALUE)
+                }
                 const selectedIntegration = integrations.find(integration => integration.integrationType === selectedType)
                 if (!selectedIntegration) {
                     throw new Error(`Integration '${selectedType}' is no longer available`)
@@ -672,7 +694,7 @@ export async function integrateWait(opts: IntegrateWaitOpts): Promise<void> {
 // Types
 
 type IntegrationChangeResult = {
-    status: "added" | "modified" | "unchanged"
+    status: "added" | "modified" | "skipped" | "unchanged"
     integrationType?: IntegrationType
 }
 
@@ -686,10 +708,7 @@ type IntegrateOptions = {
 
 type IntegrationAction = "back" | "connect" | "disconnect" | "keep" | "refresh_permissions"
 
-type GroupedIntegrationSelection = {
-    action: IntegrationAction
-    integrationType: IntegrationType
-}
+type GroupedIntegrationSelection = { action: IntegrationAction; integrationType: IntegrationType } | { action: typeof SKIP_VALUE; integrationType: typeof SKIP_VALUE }
 
 type UserFacingIntegration = IntegrationWithStatus
 
