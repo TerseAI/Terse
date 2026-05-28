@@ -46,7 +46,7 @@ To register an existing codebase as a project without scaffolding, run `terse at
 
 ## Where the project runs
 
-Terse splits into a **control plane** (orchestrator, triggers, dashboard, history) and a **data plane** (the runtime that executes your `onTrigger` code). Each can run on Terse Cloud or in your own infrastructure. A project's `terse.config.json` controls only the data plane choice; the control plane choice is set by `TERSE_BACKEND_URL` at the CLI/SDK level.
+Terse splits into a **control plane** (orchestrator, triggers, dashboard, history) and a **data plane** (the runtime that executes your `onTrigger` code). Each can run on Terse Cloud or in your own infrastructure. A project's `terse.config.json` controls only the data plane choice; the control plane choice is set with [`terse target`](/reference/cli#terse-target) or `TERSE_BACKEND_URL` at the CLI/SDK level.
 
 By default, `terse deploy` zips your code and the Terse Cloud data plane runs it serverlessly. No infrastructure to manage.
 

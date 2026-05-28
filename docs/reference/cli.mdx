@@ -191,8 +191,8 @@ What happens:
 
 Data plane targets:
 
-- Managed (Terse Cloud data plane): the CLI zips the current project directory, uploads it, and the control plane runs the workflow on Terse Cloud sandboxes
-- Self-hosted data plane: the CLI reads `remoteServerUrl` from `terse.config.json` and configures the control plane to call your own server instead of uploading source. On the first deploy with a self-hosted data plane, the CLI prints a new `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` — save these into your data plane environment, they will not be shown again.
+- **Managed** (default): the CLI zips the current project directory and uploads it. On Terse Cloud the control plane runs each workflow in an isolated Modal sandbox. On a [self-hosted control plane](/self-hosting-control-plane) the same zip upload runs workflows as subprocesses inside the backend container unless you opt into Modal there.
+- **Hybrid data plane** (`selfHosted: true` in `terse.config.json`): the CLI reads `remoteServerUrl` and configures the control plane to POST signed trigger payloads to your server instead of uploading source. On the first deploy, the CLI prints a project-scoped `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` — save these into your data plane environment; they will not be shown again.
 
 ## Build with workspace context
 
@@ -588,6 +588,43 @@ Removes the tab-completion entries written by `terse completion install`.
 terse completion uninstall
 ```
 
+## Environment
+
+### `terse target`
+
+Shows or changes which Terse backend and frontend the CLI (and any child processes that inherit your shell env) talk to. `npx create-terse` runs `terse target use` for you; use this command any time you switch between Terse Cloud and a local or custom instance.
+
+```bash
+terse target                                              # show current URLs
+terse target use local                                    # http://localhost:3001 + local frontend
+terse target use production                               # api.useterse.ai (Terse Cloud)
+terse target use --backend-url http://my-host:3001 \
+                --frontend-url http://my-host:5173      # custom URLs
+terse target clear                                        # remove the managed block from your shell rc
+```
+
+`terse target use` writes a marked block to `~/.zshrc` or `~/.bashrc` with `export TERSE_BACKEND_URL=…` and `export TERSE_FRONTEND_URL=…` (the `local` preset uses `http://localhost:3001` for the backend and the frontend URL from your install).
+
+Open a new shell or `source` your rc file after `use` or `clear`. Until then, the current terminal keeps whatever URLs were already exported.
+
+Subcommands:
+
+| Command | Description |
+| --- | --- |
+| `terse target` / `terse target status` | Print the active backend and frontend URLs and whether a shell-rc block exists |
+| `terse target use [preset]` | Set URLs. Presets: `local`, `production` (aliases: `prod`). Or pass a bare URL as the preset to set the backend only. |
+| `terse target clear` | Remove the terse-managed block from your shell rc |
+
+Options for `terse target use`:
+
+| Flag | Description |
+| --- | --- |
+| `--backend-url <url>` | Backend URL (`TERSE_BACKEND_URL`) |
+| `--frontend-url <url>` | Frontend URL (`TERSE_FRONTEND_URL`) |
+| `-y, --yes` | Skip the confirmation prompt before editing your shell rc |
+
+`TERSE_BACKEND_URL` defaults to `https://api.useterse.ai` when unset. `TERSE_FRONTEND_URL` defaults to the production app URL and controls where `terse dashboard` opens.
+
 ## API key resolution
 
 Commands that call the Terse API resolve credentials in this order:
@@ -601,4 +638,4 @@ After `terse init` or `terse auth login`, you usually don't need a project `.env
 
 For a **self-hosted data plane**, your own server needs `TERSE_API_KEY` in its environment so it can authenticate with the control plane at runtime. `terse attach` prints the per-organization key, and `terse deploy` prints a project-scoped key and `TERSE_SIGNING_SECRET` the first time you deploy against a self-hosted data plane — copy these into your data plane secret store. `terse secrets` is for your own application secrets (database URLs, third-party API keys); it intentionally refuses any name that starts with `TERSE_`.
 
-To point the CLI at a **self-hosted control plane**, set `TERSE_BACKEND_URL` (default `https://api.useterse.ai`) in your shell before running any `terse` command.
+To point the CLI at a **self-hosted control plane**, use [`terse target`](#terse-target) (preferred) or set `TERSE_BACKEND_URL` and `TERSE_FRONTEND_URL` in your shell before running any `terse` command.

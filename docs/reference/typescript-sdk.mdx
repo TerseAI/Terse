@@ -18,8 +18,21 @@ Import these from `terse-sdk`:
 - `createJob`, `CreateJobParameters`: register a workflow (call at module top level or from imported modules)
 - `Terse`, `TERSE_JOB_WEBHOOK_TRIGGER_PATH`: client and mount path for `handleTrigger` when you self-host the data plane webhook endpoint
 - `TerseAgent`, `EventType`: create the agent with `TerseAgent.create()` inside `onTrigger`; `EventType` enumerates values on streamed results
-- `runWithJobContext`, `getJobContext`, `TerseJobContext`: wrap a handler with `runWithJobContext` to preserve run attribution. Outside of it, set `TERSE_BACKEND_URL` if needed (default `https://api.useterse.ai`) and optionally `TERSE_RUN_ID`
+- `runWithJobContext`, `getJobContext`, `TerseJobContext`: wrap a handler with `runWithJobContext` to preserve run attribution. During a platform or CLI run, `getJobContext().apiBaseUrl` is set automatically; outside of that context the SDK falls back to `TERSE_BACKEND_URL`
 - `formatTriggerForAgent`, `debugTrigger`: helpers for plain trigger payloads
+
+## Environment variables
+
+Runtime calls (`TerseAgent`, `Terse.handleTrigger`, generated tool wrappers) read these from `process.env`:
+
+| Variable | Required when | Description |
+| --- | --- | --- |
+| `TERSE_API_KEY` | Agent runs, tool calls, `handleTrigger` | Bearer token for SDK routes. User tokens from the app or `terse auth login` for local/CLI/hybrid data-plane servers. Project-scoped tokens are injected automatically inside managed sandboxes. |
+| `TERSE_BACKEND_URL` | Self-hosted control plane, custom API host | API base URL. Defaults to `https://api.useterse.ai`. Set this (or use [`terse target`](/reference/cli#terse-target)) when the CLI/SDK should talk to `npx create-terse` or another self-hosted instance. |
+| `TERSE_SIGNING_SECRET` | Hybrid data plane (`Terse.handleTrigger`) | HMAC key for verifying signed trigger POSTs from the control plane. Not used for managed (zip-upload) workflows. |
+| `TERSE_RUN_ID` | Optional | Run id sent as `X-Terse-Run-Id` when job context is not already set (for example in one-off scripts). |
+
+During an active run, `runWithJobContext` also sets `sessionId`, `runId`, and `apiBaseUrl` in async context. `TerseAgent` and `Terse.handleTrigger` pick those up for session streams and approval routing without extra configuration.
 
 ## Re-exported types
 
@@ -73,7 +86,7 @@ Duplicate `name` values throw an error when the second job registers. At most **
 | `filter`    | `(event) => boolean \| Promise<boolean>` | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
 | `onTrigger` | `(event) => Promise<void>`               | The workflow handler. Called once per trigger event.                                              |
 
-To point the SDK at a self-hosted control plane, set `TERSE_BACKEND_URL` (it defaults to `https://api.useterse.ai`). To route execution to a self-hosted data plane, set `remoteServerUrl` in `terse.config.json` instead.
+To point the SDK at a self-hosted control plane, set `TERSE_BACKEND_URL` (defaults to `https://api.useterse.ai`) or run [`terse target use local`](/reference/cli#terse-target). To route execution to a hybrid data plane you operate, set `remoteServerUrl` in `terse.config.json` and mount `Terse.handleTrigger` on your server — see [Self-hosting the data plane](/self-hosting).
 
 Pass `skills`, `toolApprovals`, and the agent `prompt` to `TerseAgent.create()` inside `onTrigger`, not on `createJob`.
 
