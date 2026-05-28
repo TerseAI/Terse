@@ -1,4 +1,4 @@
-import { cancel, confirm, intro, isCancel, log, outro, password, select, text } from "@clack/prompts"
+import { cancel, confirm, group, intro, isCancel, log, outro, password, select, text } from "@clack/prompts"
 import { input } from "@inquirer/prompts"
 import chalk from "chalk"
 import type { CliIntegrationDisplayState, FormIntegrationSetup, IntegrationWithStatus } from "terse-types"
@@ -24,6 +24,8 @@ import { openUrlInBrowser } from "../openBrowser.js"
 import { generate } from "./generate.js"
 
 const INTERNAL_INTEGRATION_TYPES = new Set<string>([IntegrationType.TERSE, IntegrationType.CRON_JOB, IntegrationType.WEBMONITOR])
+
+const SKIP_VALUE = "skip" as const
 
 export async function integrate(options: IntegrateOptions = {}): Promise<void> {
     const showLifecycle = options.showLifecycle ?? true
@@ -178,15 +180,21 @@ async function promptForIntegrationSelection(integrations: UserFacingIntegration
     return group(
         {
             integrationType: () =>
-                select({
+                select<IntegrationType | typeof SKIP_VALUE>({
                     message: "Choose an integration",
-                    options: integrations.map(integration => ({
-                        value: integration.integrationType,
-                        label: formatIntegrationPickerLabel(integration, longestName)
-                    }))
+                    options: [
+                        ...integrations.map(integration => ({
+                            value: integration.integrationType,
+                            label: formatIntegrationPickerLabel(integration, longestName)
+                        })),
+                        { value: SKIP_VALUE, label: chalk.dim("Skip — don't connect anything") }
+                    ]
                 }),
             action: ({ results }) => {
-                const selectedType = results.integrationType as IntegrationType
+                const selectedType = results.integrationType as IntegrationType | typeof SKIP_VALUE
+                if (selectedType === SKIP_VALUE) {
+                    return Promise.resolve(SKIP_VALUE)
+                }
                 const selectedIntegration = integrations.find(integration => integration.integrationType === selectedType)
                 if (!selectedIntegration) {
                     throw new Error(`Integration '${selectedType}' is no longer available`)
@@ -686,7 +694,7 @@ export async function integrateWait(opts: IntegrateWaitOpts): Promise<void> {
 // Types
 
 type IntegrationChangeResult = {
-    status: "added" | "modified" | "unchanged"
+    status: "added" | "modified" | "skipped" | "unchanged"
     integrationType?: IntegrationType
 }
 
@@ -700,10 +708,7 @@ type IntegrateOptions = {
 
 type IntegrationAction = "back" | "connect" | "disconnect" | "keep" | "refresh_permissions"
 
-type GroupedIntegrationSelection = {
-    action: IntegrationAction
-    integrationType: IntegrationType
-}
+type GroupedIntegrationSelection = { action: IntegrationAction; integrationType: IntegrationType } | { action: typeof SKIP_VALUE; integrationType: typeof SKIP_VALUE }
 
 type UserFacingIntegration = IntegrationWithStatus
 
