@@ -70,8 +70,9 @@ Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })
 Triggers.github.onPRMerged({ repo: Repos.MyOrg.MyRepo })
 Triggers.github.onPRClosed({ repo: Repos.MyOrg.MyRepo })
 Triggers.github.onPRSynchronized({ repo: Repos.MyOrg.MyRepo })
-Triggers.github.onPR({ repo: Repos.MyOrg.MyRepo })           // any PR event
+Triggers.github.onPR({ repo: Repos.MyOrg.MyRepo })             // any PR event
 Triggers.github.onPush({ repo: Repos.MyOrg.MyRepo })
+Triggers.github.onIssueComment({ repo: Repos.MyOrg.MyRepo })   // comment on issue or PR
 ```
 
 ### Slack
@@ -176,6 +177,24 @@ event.branch                // branch that was pushed to
 event.sender                // { login, email? }
 event.repository            // { id, name, owner, defaultBranch }
 event.commits               // [{ sha, message, fileDiffs: [{ filename, diff }] }]
+```
+
+### GithubIssueCommentCreatedTrigger
+```typescript
+event.issue.number          // issue or PR number
+event.issue.title           // issue or PR title
+event.issue.body            // issue or PR body (optional)
+event.issue.state           // "open" | "closed"
+event.issue.url             // issue or PR URL
+event.issue.author          // { login, email? }
+event.issue.isPullRequest   // true if the comment is on a PR, false for an issue
+event.comment.id            // comment id
+event.comment.body          // comment body
+event.comment.author        // { login, email? }
+event.comment.url           // comment URL
+event.comment.createdAt     // ISO timestamp
+event.sender                // { login, email? } (who posted the comment)
+event.repository            // { id, name, owner, defaultBranch }
 ```
 
 ### WorkOS Events

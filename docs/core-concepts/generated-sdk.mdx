@@ -95,7 +95,9 @@ export const Triggers = {
         /** Trigger when a pull request is opened */
         onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> { /* … */ },
         /** Trigger when a pull request is merged */
-        onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> { /* … */ }
+        onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> { /* … */ },
+        /** Trigger when a comment is created on an issue or pull request */
+        onIssueComment(opts: { repo: Repos }): TypedTrigger<GithubIssueCommentCreatedTrigger> { /* … */ }
     },
     attio: {
         /** Trigger when a record is created. Pass `object` to scope to a specific Attio object. */

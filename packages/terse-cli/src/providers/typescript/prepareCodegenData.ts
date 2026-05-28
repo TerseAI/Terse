@@ -353,6 +353,7 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
         "GithubPRSynchronizedTrigger",
         "GithubPRTrigger",
         "GithubPushTrigger",
+        "GithubIssueCommentCreatedTrigger",
         "GithubTrigger"
     ]
     const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
