@@ -9,7 +9,6 @@ import type {
     SdkRuntimeExecutorContext,
     SdkSourceImageBuildContext
 } from "./types"
-import { SandboxStage, runSandboxExecStage, runSandboxStage } from "./types"
 
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
@@ -71,23 +70,19 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
         const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
+        const runCmd = `cd ${context.projectDir} && ${cliBin} run ${context.escapeShellArg(context.jobName)} --no-verbose`
 
         if (context.usesPrebuiltImage) {
-            return runSandboxExecStage(context, () =>
-                context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && ${cliBin} run ${context.escapeShellArg(context.jobName)} --no-verbose`)
-            )
+            return context.runSandboxCommandStreaming("terse run", runCmd)
         }
 
-        await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, () => context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`))
-
-        await runSandboxStage(context, SandboxStage.INSTALLING_CLI, () =>
-            context.ensureSandboxCommand(
-                "npm install terse-cli",
-                `mkdir -p ${context.escapeShellArg(context.cliCachePath)} && npm install -g --prefix ${context.escapeShellArg(context.cliCachePath)} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`
-            )
+        await context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`)
+        await context.ensureSandboxCommand(
+            "npm install terse-cli",
+            `mkdir -p ${context.escapeShellArg(context.cliCachePath)} && npm install -g --prefix ${context.escapeShellArg(context.cliCachePath)} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`
         )
 
-        return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && ${cliBin} run ${context.escapeShellArg(context.jobName)} --no-verbose`))
+        return context.runSandboxCommandStreaming("terse run", runCmd)
     }
 
     private detectPackageManager(archive: SdkProjectArchive): "npm" | "pnpm" {

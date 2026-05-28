@@ -13,6 +13,7 @@ import { readApiKeyOrBail } from "../../api.js"
 import { CliError } from "../../cliError.js"
 import { BACKEND_URL } from "../../config.js"
 import { ensureDotenvLoaded } from "../../dotenv.js"
+import { isCliRunCommandEnabled } from "../../env.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
@@ -191,6 +192,8 @@ class TypeScriptProvider implements LanguageProvider {
                 return
             }
             if (event.type !== "tool_approval_requested") return
+
+            if (isCliRunCommandEnabled()) return
 
             // If a TerseAgent in this process defined its own onApprovalRequired,
             // it will handle and submit the decision on its own SSE stream.

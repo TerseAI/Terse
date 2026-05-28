@@ -778,14 +778,6 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return "Query plan retrieved"
         }
     },
-    // ===================
-    // Sandbox Lifecycle
-    // ===================
-    "Running agent": {
-        preparing: "Running agent",
-        executing: () => "Running agent",
-        complete: (_params, result) => `Agent finished${result ? ` (${result})` : ""}`
-    }
 }
 
 /**

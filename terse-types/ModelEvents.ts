@@ -122,22 +122,6 @@ export const toolCallCompleteSchema = modelEventBaseSchema.extend({
 })
 export type ToolCallComplete = z.infer<typeof toolCallCompleteSchema>
 
-export enum SandboxStage {
-    BOOTING = "booting",
-    INSTALLING_DEPENDENCIES = "installing_dependencies",
-    INSTALLING_CLI = "installing_cli",
-    RUNNING = "running"
-}
-
-export const sandboxStageSchema = z.enum(SandboxStage)
-
-export const SANDBOX_STAGE_LABELS: Record<SandboxStage, string> = {
-    [SandboxStage.BOOTING]: "Booting sandbox",
-    [SandboxStage.INSTALLING_DEPENDENCIES]: "Installing dependencies",
-    [SandboxStage.INSTALLING_CLI]: "Installing CLI",
-    [SandboxStage.RUNNING]: "Running agent"
-}
-
 export const userMessageSchema = modelEventBaseSchema.extend({
     type: z.literal("UserMessage"),
     message: z.string(),

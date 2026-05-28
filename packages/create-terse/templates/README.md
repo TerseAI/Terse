@@ -28,7 +28,7 @@ README.md            # you are here
 - **backend** — Terse API, port from `BACKEND_URL` in `.env`. SQLite for local secrets lives in the `terse_sqlite` volume.
 - **frontend** — Vite dev server, port from `FRONTEND_URL` in `.env`.
 
-Both backend and frontend run from the same prebuilt image: `us-central1-docker.pkg.dev/terse-prod/public/terse:latest`. To pin to a specific tag, uncomment `TERSE_IMAGE=` at the bottom of `.env`.
+Both backend and frontend run from the same prebuilt image: `us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest`. To pin to a specific tag, uncomment `TERSE_IMAGE=` at the bottom of `.env`.
 
 ## Configuration
 

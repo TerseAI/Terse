@@ -6,10 +6,10 @@ icon: "cloud-upload"
 
 Terse splits into two planes. You can pick where each one runs independently.
 
-| Plane             | What it does                                                                                              | Where it can run                       |
-| ----------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Plane             | What it does                                                                                                | Where it can run                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | **Control plane** | The orchestrator. Ingests triggers, stores config, schedules runs, holds run history, serves the dashboard. | Terse Cloud (default) or self-hosted   |
-| **Data plane**    | The runtime that executes your `onTrigger` code, agent runs, and tool calls.                              | Terse Cloud sandboxes or self-hosted   |
+| **Data plane**    | The runtime that executes your `onTrigger` code, agent runs, and tool calls.                                | Terse Cloud sandboxes or self-hosted   |
 
 ## The three deployments
 
@@ -33,15 +33,17 @@ Most users land on one of these:
 
 ## Managed
 
-The default when you scaffold a project with `terse init`. `terse deploy` zips your code, uploads it, and Terse Cloud handles everything from there.
+The default when you scaffold a project with `terse init`. `terse deploy` zips your code, uploads it, registers every job's triggers on the control plane, and from then on each run lands on an isolated [Modal](https://modal.com) sandbox in the Terse Cloud data plane, provisioned per execution.
 
-**What happens when you deploy.** `terse deploy` packages your project and registers every job's triggers on the Terse Cloud control plane. Each run lands on an isolated [Modal](https://modal.com) sandbox in the Terse Cloud data plane, provisioned per execution.
+### Security
 
-**Security.** Each execution runs in its own isolated Modal sandbox with a **project-scoped**, short-lived API token that is removed when the run finishes (and may also carry an expiration time). Your code and credentials are never shared across runs or organizations.
+Each execution runs in its own Modal sandbox with a project-scoped, short-lived API token that is removed when the run finishes. Code and credentials are never shared across runs or organizations.
 
-**Secrets.** Secrets are **project-scoped** and **write-only**. When you add a secret with `terse secrets add OPENAI_API_KEY`, or upload a whole `.env` file with `terse secrets import .env`, Terse encrypts the value and injects it into that project's sandbox as an environment variable at run time. Other projects in your org cannot see it, and once stored the value cannot be read back out by anyone, including the CLI and any AI coding agent you point at the project. That's deliberate: a leaked API key or a compromised laptop never exposes the rest of your secrets. See [Projects](/core-concepts/projects) for how project scope works across deploys, jobs, and integrations.
+### Secrets
 
-The tradeoff: `terse test` cannot pull your hosted secrets onto your machine for local runs. Keep a local `.env` file (gitignored) in your project directory with the same variable names, and the CLI loads it automatically when you run `terse test`. The deploy step excludes `.env` from the upload, so the data plane sandbox uses whatever you stored with `terse secrets`.
+Secrets are project-scoped and write-only. `terse secrets add OPENAI_API_KEY` (or `terse secrets import .env` for a whole file) encrypts the value and injects it into that project's sandbox as an environment variable at run time. Other projects in your org can't see it, and once stored the value can't be read back out by anyone — including the CLI and any AI coding agent you point at the project. A leaked API key or a compromised laptop never exposes the rest of your secrets. See [Projects](/core-concepts/projects) for how project scope works across deploys, jobs, and integrations.
+
+The tradeoff: `terse test` can't pull hosted secrets onto your machine for local runs. Keep a gitignored `.env` in your project directory with the same variable names — the CLI loads it automatically for `terse test`, and the deploy step excludes it from the upload, so the sandbox always uses what you stored with `terse secrets`.
 
 ```bash
 echo "OPENAI_API_KEY=sk-..." >> .env   # values for local `terse test`
@@ -49,9 +51,11 @@ terse secrets import .env              # mirror them into the hosted vault
 terse deploy
 ```
 
-After deploy, rotate or remove values with `terse secrets add <NAME>` to overwrite, or `terse secrets remove <NAME>` to delete. Run `terse secrets list` to see which names are set on the server; the values themselves stay sealed.
+After deploy, `terse secrets add <NAME>` overwrites a value, `terse secrets remove <NAME>` deletes it, and `terse secrets list` shows which names are set on the server. The values themselves stay sealed.
 
-**What gets uploaded.** The CLI respects standard ignore patterns. The following are always excluded:
+### What gets uploaded
+
+The CLI respects standard ignore patterns. The following are always excluded:
 
 <Tabs>
     <Tab title="TypeScript">`node_modules`, `.git`, `dist`, `.next`, `.turbo`, `.env`, `.DS_Store`</Tab>
@@ -61,12 +65,8 @@ Everything else in your project directory is included in the deploy.
 
 ## Hybrid: self-host the data plane
 
-Keep Terse Cloud as the control plane but run your `onTrigger` handlers in your own infrastructure. Useful when jobs need access to private data, VPC-only services, or credentials managed in your environment.
-
-See [Self-hosting the data plane](/self-hosting) for the full setup.
+Keep Terse Cloud as the control plane but run your `onTrigger` handlers in your own infrastructure. Useful when jobs need access to private data, VPC-only services, or credentials managed in your environment. See [Self-hosting the data plane](/self-hosting) for the setup.
 
 ## Self-hosted: both planes
 
-Run the control plane and data plane entirely inside your network. Triggers, dashboard, run history, and execution all live in your environment.
-
-See [Self-hosting the control plane](/self-hosting-control-plane) for the `npx create-terse` bootstrap and operational guidance.
+Run the control plane and data plane entirely inside your network. Triggers, dashboard, run history, and execution all live in your environment. See [Self-hosting the control plane](/self-hosting-control-plane) for the `npx create-terse` bootstrap and operational guidance.

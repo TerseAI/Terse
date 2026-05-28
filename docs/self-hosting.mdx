@@ -4,13 +4,12 @@ description: "Run your workflow handlers in your own infrastructure while Terse 
 icon: "server"
 ---
 
-This page covers the **Hybrid** deployment: Terse Cloud runs the control plane, you run the data plane. Your `createJob()` registry and every `onTrigger` closure execute inside a Node process you operate, behind your network, with your environment variables and secrets.
+In the Hybrid deployment, Terse Cloud runs the control plane and you run the data plane. Your `createJob()` registry and every `onTrigger` closure execute inside a Node process you operate, behind your network, with your environment variables and secrets.
 
 If you want to run the control plane in your network as well, see [Self-hosting the control plane](/self-hosting-control-plane). For an overview of all three deployment options, see [Hosting overview](/hosting).
 
 <Note>
-    Self-hosting the data plane is about **where workflow handlers execute**. It is not about running your own event processor. Trigger ingestion, webhook URLs, scheduling, integration auth, signing, retries, and
-    run history stay on the Terse Cloud control plane.
+    Self-hosting the data plane is about where handlers execute, not about running your own event processor. Trigger ingestion, webhook URLs, scheduling, integration auth, signing, retries, and run history all stay on the Terse Cloud control plane.
 </Note>
 
 ## When the Hybrid deployment is the right choice
@@ -122,18 +121,18 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
     between parsing and the call, or verification will fail.
 </Note>
 
-## Data plane vs. control plane in this deployment
+## Who runs what
 
-| Your data plane                                          | Terse Cloud control plane                              |
-| -------------------------------------------------------- | ------------------------------------------------------ |
-| The Node process that loads `src/terse.jobs.ts`          | Trigger ingestion from integrations (Attio, Slack, …)  |
-| Every `createJob()` registration                         | Webhook URLs, signing, and delivery                    |
-| Every `onTrigger` handler closure                        | Cron and interval scheduling                           |
-| Every `agent.tools.*` call your handler makes            | Integration auth and tool definitions                  |
-| Private clients, DB drivers, or internal SDKs you import | Run history, action traces, and approvals              |
-| The HTTP endpoint that receives signed payloads          | The dashboard                                          |
+| Your data plane                                       | Terse Cloud control plane                              |
+| ----------------------------------------------------- | ------------------------------------------------------ |
+| The Node process that loads `src/terse.jobs.ts`       | Trigger ingestion from integrations (Attio, Slack, …)  |
+| Every `createJob()` registration                      | Webhook URLs, signing, and delivery                    |
+| Every `onTrigger` handler closure                     | Cron and interval scheduling                           |
+| Every `agent.tools.*` call your handler makes         | Integration auth and tool definitions                  |
+| Internal clients, DB drivers, or SDKs you import      | Run history, action traces, and approvals              |
+| The HTTP endpoint that receives signed payloads       | The dashboard                                          |
 
-When a trigger fires, the control plane signs the event and POSTs it to your data plane. Your server verifies the signature with `handleTrigger`, looks up the registered workflow by name, and runs your `onTrigger` closure in your process. Tool calls, agent runs, and approvals continue to flow back to the control plane so Activity, Notifications, and history all keep working.
+When a trigger fires, the control plane signs the event and POSTs it to your data plane. Your server verifies the signature with `handleTrigger`, looks up the registered workflow by name, and runs your `onTrigger` closure in your process. Tool calls, agent runs, and approvals flow back to the control plane so Activity, Notifications, and history all keep working.
 
 ## What stays the same
 
