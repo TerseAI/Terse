@@ -11,7 +11,7 @@ import type {
 } from "./types"
 import { SandboxStage, runSandboxExecStage, runSandboxStage } from "./types"
 
-const DEFAULT_PNPM_VERSION = "11.4.0"
+const DEFAULT_PNPM_VERSION = "10.34.1"
 
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
