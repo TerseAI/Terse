@@ -40,6 +40,7 @@ import type {
     AttioTrigger as _RawAttioTrigger,
     AttioWorkspaceMemberCreatedTrigger as _RawAttioWorkspaceMemberCreatedTrigger,
     CronTrigger as _RawCronTrigger,
+    GithubIssueCommentCreatedTrigger as _RawGithubIssueCommentCreatedTrigger,
     GithubPRClosedTrigger as _RawGithubPRClosedTrigger,
     GithubPRMergedTrigger as _RawGithubPRMergedTrigger,
     GithubPROpenedTrigger as _RawGithubPROpenedTrigger,
@@ -190,6 +191,7 @@ export type GithubPRClosedTrigger = SDKTrigger<_RawGithubPRClosedTrigger>
 export type GithubPROpenedTrigger = SDKTrigger<_RawGithubPROpenedTrigger>
 export type GithubPRMergedTrigger = SDKTrigger<_RawGithubPRMergedTrigger>
 export type GithubPRSynchronizedTrigger = SDKTrigger<_RawGithubPRSynchronizedTrigger>
+export type GithubIssueCommentCreatedTrigger = SDKTrigger<_RawGithubIssueCommentCreatedTrigger>
 export type GithubPRTrigger = SDKTrigger<_RawGithubPRTrigger>
 export type GithubPushTrigger = SDKTrigger<_RawGithubPushTrigger>
 export type GithubTrigger = SDKTrigger<_RawGithubTrigger>
