@@ -3,6 +3,7 @@ import crypto from "crypto"
 import express, { Express, Request, Response } from "express"
 import { JWTPayload, jwtVerify } from "jose"
 import { ApiRoutes, UserProfile, UserSession } from "terse-types"
+import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
@@ -193,7 +194,7 @@ export class WorkOSAuthProvider extends SettingsDependant implements AuthProvide
             }
 
             setSessionCookie(res, authenticateResponse.sealedSession)
-            res.redirect(settings.urls.frontend)
+            res.redirect(`${settings.urls.frontend}${FrontendRoutes.HOME}`)
             return
         } catch (error) {
             logger.error("[/callback] WorkOS callback error", {
