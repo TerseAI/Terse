@@ -89,6 +89,11 @@ export class SdkImprovementService {
             return { title: "No source code available", summary: "Could not find source code to review.", improvements: [] }
         }
 
+        const improvementApiKey = settings.anthropic.improvementApiKey
+        if (!improvementApiKey) {
+            throw new Error("ANTHROPIC_IMPROVEMENT_API_KEY is required to run SDK improvement reviews")
+        }
+
         const prompt = buildClaudeCodePrompt(automationId, context)
 
         const pluginFiles = loadPluginFiles()
@@ -108,7 +113,7 @@ export class SdkImprovementService {
                 jsonSchema: IMPROVEMENTS_SCHEMA,
                 timeoutMs: SANDBOX_TIMEOUT_MS,
                 env: {
-                    ANTHROPIC_API_KEY: settings.anthropic.improvementApiKey
+                    ANTHROPIC_API_KEY: improvementApiKey
                 },
                 egressCidrAllowlist: ANTHROPIC_INBOUND_CIDRS,
                 plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined

@@ -3,14 +3,20 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { createProviderRegistry } from "ai"
 import { ModelReference, SUPPORTED_PROVIDERS, SupportedProvider } from "terse-types"
 
+import { settings } from "../../settings"
+
 const DEFAULT_MODEL_REF = "openai:gpt-5.2"
 
 function getDefaultModelRef(): string {
     return DEFAULT_MODEL_REF
 }
 
-function listSupportedProviders(): readonly SupportedProvider[] {
-    return SUPPORTED_PROVIDERS
+export function getConfiguredModelReference(): string {
+    const modelRef = settings.aisdk.default
+    if (!modelRef?.trim()) {
+        throw new Error("Default model not set. Set MODEL_DEFAULT (e.g. anthropic:claude-opus-4-7).")
+    }
+    return modelRef
 }
 
 export function parseModelReference(input: string): ModelReference {

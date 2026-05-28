@@ -5,7 +5,7 @@ import { UserProfile, UserSession } from "terse-types/types"
 import { promisify } from "util"
 
 import logger from "../../common/logger"
-import { localAuthDb } from "../../loaders/prisma"
+import { localDb } from "../../loaders/prisma"
 import { settings } from "../../settings"
 
 import AuthProvider, { CookieAuthOutcome } from "./AuthProvider"
@@ -39,7 +39,7 @@ export class LocalAuthProvider implements AuthProvider {
 
     async getUser(userId: string): Promise<UserProfile | null> {
         await ensureLocalUser()
-        const identity = await localAuthDb().local_identities.findUnique({ where: { id: userId } })
+        const identity = await localDb().local_identities.findUnique({ where: { id: userId } })
         if (!identity) return null
         return identityToProfile(identity)
     }
@@ -52,6 +52,7 @@ export class LocalAuthProvider implements AuthProvider {
     }
 
     async login(_req: Request, res: Response): Promise<void> {
+        logger.info("#LocalAuth login (issuing session cookie)")
         ensureCookie(res)
         res.redirect(settings.urls.frontend)
     }
@@ -67,6 +68,7 @@ export class LocalAuthProvider implements AuthProvider {
     }
 
     async logout(_req: Request, res: Response): Promise<void> {
+        logger.info("#LocalAuth logout (clearing session cookie)")
         res.clearCookie(SESSION_COOKIE_NAME, cookieOptions)
         res.redirect(settings.urls.frontend)
     }
@@ -77,7 +79,7 @@ export class LocalAuthProvider implements AuthProvider {
     }
 
     async callback(req: Request, _res: Response): Promise<void> {
-        logger.debug("[LocalAuthProvider.callback] no-op", { path: req.path })
+        logger.debug("#LocalAuth callback no-op", { path: req.path })
     }
 
     async authenticateViaCookie(_sealedSessionData: string | undefined, _req: Request, res: Response): Promise<CookieAuthOutcome> {
@@ -94,8 +96,10 @@ export class LocalAuthProvider implements AuthProvider {
 
 // ─────────────── helpers ───────────────
 
+let singletonLogged = false
+
 async function ensureLocalUser(): Promise<{ user: UserSession; profile: UserProfile }> {
-    const db = localAuthDb()
+    const db = localDb()
     const username = await readSystemUsername()
 
     // Atomic singleton bootstrap. Fixed IDs make upsert idempotent across
@@ -115,6 +119,11 @@ async function ensureLocalUser(): Promise<{ user: UserSession; profile: UserProf
         create: { identity_id: identity.id, organization_id: org.id, roles: "admin" },
         update: {}
     })
+
+    if (!singletonLogged) {
+        singletonLogged = true
+        logger.info("#LocalAuth singleton ready", { identityId: identity.id, email: identity.email, orgId: org.id })
+    }
 
     const profile = identityToProfile(identity)
     const user: UserSession = {

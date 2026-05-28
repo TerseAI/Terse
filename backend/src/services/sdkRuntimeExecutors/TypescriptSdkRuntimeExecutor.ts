@@ -9,7 +9,6 @@ import type {
     SdkRuntimeExecutorContext,
     SdkSourceImageBuildContext
 } from "./types"
-import { SandboxStage, runSandboxExecStage, runSandboxStage } from "./types"
 
 const DEFAULT_PNPM_VERSION = "10.34.1"
 
@@ -25,7 +24,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         const packageManager = this.detectPackageManager(archive)
         const relevantFiles = ["package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc"]
         const hashPayload = {
-            version: 2,
+            version: 3,
             runtime: this.runtime,
             baseImage: this.sandboxImage,
             packageManager,
@@ -40,12 +39,13 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
     async buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void> {
         const templateDir = context.escapeShellArg(context.templateDir)
+        const cliCachePath = context.escapeShellArg(context.cliCachePath)
         const packageJson = context.archive.readText("package.json")
         if (!packageJson) {
             throw new Error("package.json is required to build the TypeScript sandbox image")
         }
 
-        await context.ensureSandboxCommand("prepare TypeScript image filesystem", `mkdir -p ${templateDir}`)
+        await context.ensureSandboxCommand("prepare TypeScript image filesystem", `mkdir -p ${templateDir} ${cliCachePath}`)
 
         await context.writeFile(`${context.templateDir}/package.json`, packageJson)
 
@@ -56,41 +56,37 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             }
         }
 
-        await context.ensureSandboxCommand("install terse cli", `npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
+        await context.ensureSandboxCommand("install terse cli", `npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
 
         if (this.detectPackageManager(context.archive) === "pnpm") {
             const pnpmVersion = this.detectPnpmVersion(context.archive)
             await context.ensureSandboxCommand("install pnpm", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund >/dev/null`)
         }
-
         await context.ensureSandboxCommand("install cached TypeScript dependencies", this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg))
     }
 
     async prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void> {
         await context.ensureSandboxCommand(
             "copy cached node_modules",
-            `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && cp -R ${context.escapeShellArg(`${this.getTemplateDir()}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
+            `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && cp -R ${context.escapeShellArg(`${context.templateDir}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
         )
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
+        const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
+        const runCmd = `cd ${context.projectDir} && ${cliBin} run ${context.escapeShellArg(context.jobName)} --no-verbose`
+
         if (context.usesPrebuiltImage) {
-            return runSandboxExecStage(context, () =>
-                context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --no-verbose`)
-            )
+            return context.runSandboxCommandStreaming("terse run", runCmd)
         }
 
-        await runSandboxStage(context, SandboxStage.INSTALLING_DEPENDENCIES, () => context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`))
-
-        await runSandboxStage(context, SandboxStage.INSTALLING_CLI, () =>
-            context.ensureSandboxCommand("npm install terse-cli", `cd ${context.projectDir} && npm install -g ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`)
+        await context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`)
+        await context.ensureSandboxCommand(
+            "npm install terse-cli",
+            `mkdir -p ${context.escapeShellArg(context.cliCachePath)} && npm install -g --prefix ${context.escapeShellArg(context.cliCachePath)} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`
         )
 
-        return runSandboxExecStage(context, () => context.runSandboxCommandStreaming("terse run", `cd ${context.projectDir} && npx terse run ${context.escapeShellArg(context.jobName)} --no-verbose`))
-    }
-
-    private getTemplateDir(): string {
-        return "/opt/terse-sdk-cache/typescript/project"
+        return context.runSandboxCommandStreaming("terse run", runCmd)
     }
 
     private detectPackageManager(archive: SdkProjectArchive): "npm" | "pnpm" {

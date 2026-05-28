@@ -12,11 +12,11 @@ import { settings } from "../settings"
 
 const config: LoggerConfig = {
     isDevelopment: settings.nodeEnv === "development",
-    usePostHog: !(settings.nodeEnv === "development") || settings.posthog.enableInDevelopment,
+    usePostHog: !!settings.posthog.apiKey && (!(settings.nodeEnv === "development") || settings.posthog.enableInDevelopment),
     posthog: {
         url: "https://us.i.posthog.com/i/v1/logs",
         apiKey: settings.posthog.apiKey,
-        serviceName: settings.posthog.serviceName || "terse-backend"
+        serviceName: settings.posthog.serviceName
     },
     batchProcessor: {
         maxQueueSize: 2048,
@@ -24,9 +24,9 @@ const config: LoggerConfig = {
         exportTimeoutMillis: 30000
     },
     service: {
-        name: settings.posthog.serviceName || "terse-backend",
+        name: settings.posthog.serviceName,
         version: process.env.npm_package_version || "1.0.0",
-        environment: settings.nodeEnv || "development"
+        environment: settings.nodeEnv
     }
 }
 
@@ -317,7 +317,7 @@ interface LoggerConfig {
     usePostHog: boolean
     posthog: {
         url: string
-        apiKey: string
+        apiKey: string | undefined
         serviceName: string
     }
     batchProcessor: {

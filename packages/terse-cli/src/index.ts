@@ -23,6 +23,7 @@ import { listen } from "./commands/listen.js"
 import { replay } from "./commands/replay.js"
 import { run } from "./commands/run.js"
 import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./commands/secrets.js"
+import { targetClear, targetStatus, targetUse } from "./commands/target.js"
 import { test, testList, testRun, testShow } from "./commands/test.js"
 import { isCliRunCommandEnabled } from "./env.js"
 import { isPromptCancellationError } from "./promptErrors.js"
@@ -465,6 +466,53 @@ authOrgCommand
     .description("Switch the active organization. Pass an org id to skip the picker.")
     .action(async (orgId: string | undefined) => {
         await authOrgSwitch(orgId)
+    })
+
+program.commandsGroup("Environment:")
+const targetCommand = program
+    .command("target")
+    .description("Show or change which Terse backend the CLI is pointing at (cloud, local, or custom)")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse target                                              # show current backend / frontend URLs
+  $ terse target use local                                    # point at http://localhost:{3001,5173}
+  $ terse target use production                               # point back at api.useterse.ai
+  $ terse target use --backend-url http://my-host:3001 --frontend-url http://my-host:5173
+  $ terse target clear                                        # remove the managed block from your shell rc
+
+URLs are written to your shell rc (~/.zshrc or ~/.bashrc) as TERSE_BACKEND_URL / TERSE_FRONTEND_URL.
+After running \`use\` or \`clear\`, open a new shell or \`source\` your rc file to pick up the change.
+`
+    )
+    .action(() => {
+        targetStatus()
+    })
+
+targetCommand
+    .command("status")
+    .description("Print the current backend / frontend URLs (from TERSE_BACKEND_URL / TERSE_FRONTEND_URL)")
+    .action(() => {
+        targetStatus()
+    })
+
+targetCommand
+    .command("use [preset]")
+    .description("Point the CLI at `local`, `production`, or explicit URLs (writes exports to your shell rc)")
+    .option("--backend-url <url>", "Backend URL to use (TERSE_BACKEND_URL)")
+    .option("--frontend-url <url>", "Frontend URL to use (TERSE_FRONTEND_URL)")
+    .option("-y, --yes", "Skip the confirmation prompt before editing your shell rc")
+    .action(async (preset: string | undefined, opts: { backendUrl?: string; frontendUrl?: string; yes?: boolean }) => {
+        await targetUse(preset, opts)
+    })
+
+targetCommand
+    .command("clear")
+    .description("Remove the terse-managed exports from your shell rc")
+    .option("-y, --yes", "Skip the confirmation prompt")
+    .action(async (opts: { yes?: boolean }) => {
+        await targetClear(opts)
     })
 
 program.commandsGroup("Getting help:")

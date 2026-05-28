@@ -5,6 +5,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { UserSession } from "terse-types/types"
 
+import { FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
@@ -14,6 +15,7 @@ import { sendWeeklyReviewEmail } from "../../../modules/notifications/channels/e
 import { getUserNotificationSettings } from "../../../modules/notifications/settings/repository"
 import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
 import { SdkImprovementService } from "../../../services/SdkImprovementService"
+import { getSandboxProvider } from "../../../services/sandboxProvider"
 import { settings } from "../../../settings"
 import { resolveUserInOrg } from "../../../utility/identity"
 
@@ -41,6 +43,15 @@ type EmailGroup = {
 export async function reviewAllAgents(req: Request, res: Response) {
     logger.info("[ReviewAgents] Weekly review job triggered")
 
+    // Weekly reviews depend on ClaudeCodeSandboxService, which runs the Claude Code CLI
+    // inside a container (specific image, `coder` user, fixed paths). LocalSandboxService
+    // is a plain child_process.spawn on the host and can't host that — cloud-only for now.
+    if (!getSandboxProvider().supportsContainerizedRunners) {
+        logger.info("[ReviewAgents] Skipping: current sandbox provider does not support containerized runners")
+        res.status(200).json({ skipped: true, reason: "sandbox_provider_no_containers" })
+        return
+    }
+
     const periodEnd = new Date()
     const periodStart = new Date(periodEnd.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -65,7 +76,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
             try {
                 const userCacheKey = `${automation.user_id}:${automation.organization_id}`
                 if (!userCache.has(userCacheKey)) {
-                    resolveUserInOrg
                     userCache.set(userCacheKey, await resolveUserInOrg(automation.user_id, automation.organization_id))
                 }
                 const user = userCache.get(userCacheKey)

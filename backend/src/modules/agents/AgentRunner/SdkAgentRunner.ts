@@ -21,7 +21,7 @@ import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../../service
 import { settings } from "../../../settings"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { resolveLanguageModel } from "../modelRegistry"
+import { getConfiguredModelReference, resolveLanguageModel } from "../modelRegistry"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage } from "../userMessage"
@@ -289,8 +289,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
             session: this.getToolContext(),
             outputs: this.outputs
         }
-        const defaultModel = settings.aisdk.default
-        const resolved = resolveLanguageModel(defaultModel)
+        const resolved = resolveLanguageModel(getConfiguredModelReference())
 
         return {
             name: "Terse SDK Agent",

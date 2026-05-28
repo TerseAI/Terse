@@ -9,9 +9,8 @@ import { BillingError, CompletedEventUsage, ModelReference } from "terse-types"
 import logger from "../../../common/logger"
 import { Session as AppSession } from "../../../express"
 import type { BillingService } from "../../../services/BillingService"
-import { settings } from "../../../settings"
 import { billingHook, billingInputGuardrail } from "../billingHook"
-import { parseModelReference } from "../modelRegistry"
+import { getConfiguredModelReference, parseModelReference } from "../modelRegistry"
 import { transformAgentStreamToModelEvents } from "../streaming"
 import { isFailedToolExecutionStatus } from "../toolExecution"
 
@@ -251,18 +250,13 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
     }
 
     private getModel(): ModelReference {
-        const defaultModel = settings.aisdk.default
-        if (!defaultModel) {
-            throw new Error("Default model not set")
-        }
-        const resolved = parseModelReference(defaultModel)
-        return resolved
+        return parseModelReference(getConfiguredModelReference())
     }
 
     private recordLLMUsage = async (settings: RunExecutionSettings<TSession, TAgent>, event: RunStreamEvent): Promise<void> => {
         if (event.type !== "raw_model_stream_event") return
 
-        const data = (event as any).data
+        const data = event.data
         const completedEvent = data.type === "response_done" ? data : null
         if (!completedEvent) return
 

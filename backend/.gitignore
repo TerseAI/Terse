@@ -3,11 +3,14 @@ node_modules
 .env
 
 /src/generated/prisma
-/src/generated/local-auth-prisma
+/src/generated/local-prisma
 
-# Local-auth SQLite database (created by `prisma migrate dev` in local mode).
-# Prisma resolves `file:./local-auth.db` relative to the schema file's directory.
-/prisma/local-auth/local-auth.db
-/prisma/local-auth/local-auth.db-journal
+# Local SQLite database (created by `prisma migrate dev` in self-host mode).
+# Prisma resolves `file:./local.db` relative to the schema file's directory.
+/prisma/local/local.db
+/prisma/local/local.db-journal
+
+src/generated/local-auth-prisma
+src/generated/local-auth-prisma/*
 
 dist

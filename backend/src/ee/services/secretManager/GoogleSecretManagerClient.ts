@@ -1,8 +1,9 @@
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager"
 import Bottleneck from "bottleneck"
 
-import logger from "../common/logger"
-import { gcp } from "../settings"
+import logger from "../../../common/logger"
+import { SecretManagerClient } from "../../../services/secretManager/SecretManagerClient"
+import { SettingsDependant } from "../../../settings"
 
 const GRPC_NOT_FOUND = 5
 const GRPC_ALREADY_EXISTS = 6
@@ -47,48 +48,18 @@ type SecretVersionCleanupReport = {
     }>
 }
 
-export class SecretManagerClient {
-    private static instance: SecretManagerClient
-    private client: SecretManagerServiceClient
-    private projectId: string
+export class GoogleSecretManagerClient extends SettingsDependant implements SecretManagerClient {
+    readonly settingsKey = "gcp"
 
-    public static getInstance(): SecretManagerClient {
-        if (!SecretManagerClient.instance) {
-            SecretManagerClient.instance = new SecretManagerClient()
-        }
-        return SecretManagerClient.instance
-    }
+    private readonly client: SecretManagerServiceClient
+    private readonly projectId: string
 
-    private constructor() {
-        try {
-            const serviceAccountBase64 = gcp.serviceAccountBase64
-
-            if (!serviceAccountBase64) {
-                throw new Error("GCP_SERVICE_ACCOUNT_BASE64 environment variable is required to initialize Secret Manager client")
-            }
-
-            const projectId = gcp.projectId
-            if (!projectId) {
-                throw new Error("GCP_PROJECT_ID environment variable is required to initialize Secret Manager client")
-            }
-
-            const location = gcp.region || "us-central1"
-
-            // Decode the base64 service account
-            const serviceAccountJson = Buffer.from(serviceAccountBase64, "base64").toString("utf-8")
-            const credentials = JSON.parse(serviceAccountJson)
-
-            // Initialize the Cloud Secret Manager client with credentials
-            this.client = new SecretManagerServiceClient({
-                credentials: credentials
-            })
-            this.projectId = projectId
-
-            logger.info("Secret Manager client initialized", { projectId, location })
-        } catch (error) {
-            logger.error("Failed to initialize Secret Manager client", { error })
-            throw new Error(`Failed to initialize Secret Manager client: ${error instanceof Error ? error.message : "Unknown error"}`)
-        }
+    constructor() {
+        super()
+        const credentials = JSON.parse(Buffer.from(this.config.serviceAccountBase64, "base64").toString("utf-8"))
+        this.client = new SecretManagerServiceClient({ credentials })
+        this.projectId = this.config.projectId
+        logger.info("Secret Manager client initialized", { projectId: this.projectId, location: this.config.region })
     }
 
     private getParentPath(): string {

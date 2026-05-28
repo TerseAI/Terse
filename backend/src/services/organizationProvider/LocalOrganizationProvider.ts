@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { Membership, Organization, Role, organizationUpdateRequestSchema } from "terse-types/types"
 
 import logger from "../../common/logger"
-import { localAuthDb } from "../../loaders/prisma"
+import { localDb } from "../../loaders/prisma"
 
 import OrganizationProvider from "./OrganizationProvider"
 
@@ -15,13 +15,13 @@ export class SingleOrgModeError extends Error {
 
 export class LocalOrganizationProvider implements OrganizationProvider {
     async getOrganization(organizationId: string): Promise<Organization | null> {
-        const org = await localAuthDb().local_organizations.findUnique({ where: { id: organizationId } })
+        const org = await localDb().local_organizations.findUnique({ where: { id: organizationId } })
         if (!org) return null
         return { id: org.id, name: org.name }
     }
 
     async getMembership(externalUserId: string, organizationId: string): Promise<Membership | null> {
-        const membership = await localAuthDb().local_memberships.findUnique({
+        const membership = await localDb().local_memberships.findUnique({
             where: { identity_id_organization_id: { identity_id: externalUserId, organization_id: organizationId } },
             include: { organization: true }
         })
@@ -34,7 +34,7 @@ export class LocalOrganizationProvider implements OrganizationProvider {
     }
 
     async getMemberships(externalUserId: string): Promise<Membership[]> {
-        const memberships = await localAuthDb().local_memberships.findMany({
+        const memberships = await localDb().local_memberships.findMany({
             where: { identity_id: externalUserId },
             include: { organization: true }
         })
@@ -86,7 +86,7 @@ export class LocalOrganizationProvider implements OrganizationProvider {
         }
         try {
             const { name } = organizationUpdateRequestSchema.parse(req.body)
-            const updated = await localAuthDb().local_organizations.update({
+            const updated = await localDb().local_organizations.update({
                 where: { id: user.organizationId },
                 data: { name: name.trim() }
             })

@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: terse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-terse}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - terse_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest}
+    pull_policy: always
+    container_name: terse-backend
+    restart: unless-stopped
+    working_dir: /workspace/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-terse}
+      LOCAL_DB_URL: file:/data/local.db
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    volumes:
+      - terse_sqlite:/data
+    command: >
+      sh -c "pnpm exec prisma migrate deploy &&
+             pnpm exec prisma migrate deploy --schema=./prisma/local/schema.prisma &&
+             pnpm run dev:server"
+
+  frontend:
+    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest}
+    pull_policy: always
+    container_name: terse-frontend
+    restart: unless-stopped
+    working_dir: /workspace/frontend
+    depends_on:
+      - backend
+    env_file:
+      - ./.env
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    command: pnpm exec vite --host 0.0.0.0 --port 5173
+
+volumes:
+  terse_postgres:
+  terse_sqlite:

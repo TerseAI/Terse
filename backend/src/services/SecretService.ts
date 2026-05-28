@@ -1,12 +1,14 @@
 import { z } from "zod"
 
 import logger from "../common/logger"
-import { SecretManagerClient } from "../common/secretManagerClient"
 import { INTEGRATION_REGISTRY, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
+
+import { getSecretManagerClient } from "./secretManager"
+import { SecretManagerClient } from "./secretManager/SecretManagerClient"
 
 export class SecretService {
     private static instance: SecretService
-    private constructor(private readonly secretManagerClient: SecretManagerClient = SecretManagerClient.getInstance()) {}
+    private constructor(private readonly secretManagerClient: SecretManagerClient = getSecretManagerClient()) {}
 
     public static getInstance(): SecretService {
         if (!SecretService.instance) {

@@ -2,13 +2,7 @@ import { File, Storage } from "@google-cloud/storage"
 import crypto from "crypto"
 
 import logger from "../common/logger"
-import { gcp, gcs } from "../settings"
-
-// Check if GCS is configured
-if (!gcp.serviceAccountBase64 || !gcp.projectId || !gcs.imageBucket) {
-    logger.warn("GCS not configured - file storage disabled. Set GCP_SERVICE_ACCOUNT_BASE64, GCP_PROJECT_ID, and GCS_IMAGE_BUCKET to enable.")
-    throw new Error("GCS not configured - file storage disabled. Set GCP_SERVICE_ACCOUNT_BASE64, GCP_PROJECT_ID, and GCS_IMAGE_BUCKET to enable.")
-}
+import { gcs, settings } from "../settings"
 
 interface BucketConfig {
     bucket: string
@@ -120,17 +114,16 @@ function getStorageClient(): Storage | null {
         return storageClient
     }
 
-    if (!gcp.serviceAccountBase64 || !gcp.projectId || !gcs.imageBucket) {
+    if (!settings.gcp || !gcs.imageBucket) {
         throw new Error("GCS not configured - file storage disabled. Set GCP_SERVICE_ACCOUNT_BASE64, GCP_PROJECT_ID, and GCS_IMAGE_BUCKET to enable.")
     }
 
     try {
-        // Decode service account credentials from base64
-        const serviceAccountJson = Buffer.from(gcp.serviceAccountBase64, "base64").toString("utf-8")
+        const serviceAccountJson = Buffer.from(settings.gcp.serviceAccountBase64, "base64").toString("utf-8")
         const credentials = JSON.parse(serviceAccountJson)
 
         storageClient = new Storage({
-            projectId: gcp.projectId,
+            projectId: settings.gcp.projectId,
             credentials
         })
         logger.info("GCS storage client initialized", { bucket: gcs.imageBucket, prefix: gcs.imagePrefix })

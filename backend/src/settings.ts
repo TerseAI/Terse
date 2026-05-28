@@ -46,23 +46,25 @@ export const settings = {
         webhookSecret: requireSecretMinLength("WORKOS_WEBHOOK_SECRET")
     })),
 
-    // Local auth — SQLite-backed identities. Used by LocalAuthProvider when WorkOS isn't configured.
-    // Note: Prisma CLI also needs LOCAL_AUTH_DB_URL set in .env for migration commands (it can't
+    // Local SQLite — holds everything cloud delegates to external services (auth, secrets, ...).
+    // Used by Local* providers when the cloud equivalent isn't configured.
+    // Note: Prisma CLI also needs LOCAL_DB_URL set in .env for migration commands (it can't
     // read this TS default). The runtime default below is a defensive fallback only.
-    localAuth: {
-        dbUrl: optionalEnv("LOCAL_AUTH_DB_URL", "file:./prisma/local-auth/local-auth.db")!
+    local: {
+        dbUrl: optionalEnv("LOCAL_DB_URL", "file:./prisma/local/local.db"),
+        secretsEncryptionKey: optionalEnv("LOCAL_SECRETS_ENCRYPTION_KEY")
     },
 
     openai: {
-        apiKey: requireEnv("OPENAI_API_KEY")
+        apiKey: optionalEnv("OPENAI_API_KEY")
     },
 
     tavily: {
-        apiKey: requireEnv("TAVILY_API_KEY")
+        apiKey: optionalEnv("TAVILY_API_KEY")
     },
 
     gemini: {
-        apiKey: requireEnv("GEMINI_API_KEY")
+        apiKey: optionalEnv("GEMINI_API_KEY")
     },
 
     // Application URLs
@@ -70,14 +72,15 @@ export const settings = {
         socketFrontend: optionalEnv("SOCKET_FRONTEND_URL"),
         frontend: requireEnv("FRONTEND_URL"),
         backend: requireEnv("BACKEND_URL"),
-        backendProxy: optionalEnv("BACKEND_PROXY_URL")
+        backendProxy: optionalEnv("BACKEND_PROXY_URL"),
+        internalBackend: optionalEnv("INTERNAL_BACKEND_URL", "http://localhost:3001")
     },
 
     // Environment
     nodeEnv: optionalEnv("NODE_ENV", "development") as "development" | "production" | "test",
 
     health: {
-        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")!
+        checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")
     },
 
     // Gmail OAuth — opt-in
@@ -133,12 +136,12 @@ export const settings = {
         redirectUri: requireEnv("ATTIO_REDIRECT_URI")
     })),
 
-    // Google Cloud Platform (GCP)
-    gcp: {
-        serviceAccountBase64: optionalEnv("GCP_SERVICE_ACCOUNT_BASE64"),
-        projectId: optionalEnv("GCP_PROJECT_ID"),
+    // Google Cloud Platform — opt-in. Powers GoogleSecretManagerClient, Cloud Scheduler, GCS uploads.
+    gcp: optionalIntegrationSettings(["GCP_SERVICE_ACCOUNT_BASE64", "GCP_PROJECT_ID"], () => ({
+        serviceAccountBase64: requireEnv("GCP_SERVICE_ACCOUNT_BASE64"),
+        projectId: requireEnv("GCP_PROJECT_ID"),
         region: optionalEnv("GCP_REGION", "us-central1")
-    },
+    })),
 
     // Google Cloud Storage
     gcs: {
@@ -153,29 +156,29 @@ export const settings = {
 
     // Posthog Logs
     posthog: {
-        apiKey: requireEnv("POSTHOG_API_KEY"),
+        apiKey: optionalEnv("POSTHOG_API_KEY"),
         serviceName: optionalEnv("POSTHOG_SERVICE_NAME", "terse-backend"),
         enableInDevelopment: optionalEnv("POSTHOG_ENABLE_IN_DEV", "false") === "true",
         host: optionalEnv("POSTHOG_HOST", "https://us.i.posthog.com")
     },
 
     anthropic: {
-        apiKey: requireEnv("ANTHROPIC_API_KEY"),
-        improvementApiKey: requireEnv("ANTHROPIC_IMPROVEMENT_API_KEY"),
-        improvementWorkspaceId: requireEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
+        apiKey: optionalEnv("ANTHROPIC_API_KEY"),
+        improvementApiKey: optionalEnv("ANTHROPIC_IMPROVEMENT_API_KEY"),
+        improvementWorkspaceId: optionalEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
     },
 
-    // Modal (sandbox execution for SDK jobs)
-    modal: {
+    // Modal — opt-in. Used by ModalSandboxService; absent falls through to LocalSandboxService.
+    modal: optionalIntegrationSettings(["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"], () => ({
         tokenId: requireEnv("MODAL_TOKEN_ID"),
         tokenSecret: requireEnv("MODAL_TOKEN_SECRET")
-    },
+    })),
 
-    // Resend SMTP (for email notifications)
-    resend: {
+    // Resend — opt-in. Used by ResendEmailProvider; absent falls through to NoOpEmailProvider.
+    resend: optionalIntegrationSettings(["RESEND_API_KEY"], () => ({
         apiKey: requireEnv("RESEND_API_KEY"),
         fromEmail: optionalEnv("RESEND_FROM_EMAIL", "notifications@updates.useterse.ai")
-    },
+    })),
 
     // Optional configuration
     optional: {
@@ -208,7 +211,7 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 // Export individual always-on settings for convenience. Opt-in integration blocks
 // (gmail, githubApp, notion, slack, linear, attio, cloudScheduler, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
-export const { jwt, gemini, urls, gcp, gcs, optional } = settings
+export const { jwt, gemini, urls, gcs, optional } = settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively
@@ -232,6 +235,8 @@ function requireSecretMinLength(name: string, minLen = 16): string {
     return value
 }
 
+function optionalEnv(name: string): string | undefined
+function optionalEnv(name: string, defaultValue: string): string
 function optionalEnv(name: string, defaultValue?: string): string | undefined {
     const value = process.env[name]
     if (value && value.trim() !== "") {

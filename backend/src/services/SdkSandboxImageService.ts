@@ -6,21 +6,13 @@ import logger from "../common/logger"
 import { shellQuote } from "../common/shellEscape"
 import { db } from "../loaders/prisma"
 
-import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
+import { getSandboxProvider } from "./sandboxProvider"
+import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import {
-    SDK_SOURCE_IMAGE_CODE_ZIP_PATH,
-    SDK_SOURCE_IMAGE_PROJECT_DIR,
-    type SandboxCommandResult,
-    type SdkDependencyImageBuildContext,
-    type SdkProjectArchive,
-    type SdkProjectRuntime,
-    SdkRuntimeExecutor
-} from "./sdkRuntimeExecutors/types"
+import { type SandboxCommandResult, type SdkDependencyImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
-const ACTIVE_RUN_STATUSES = [PrismaRunHistoryStatus.in_progress, PrismaRunHistoryStatus.awaiting_approval]
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
 const DEFAULT_CLEANUP_BATCH_SIZE = 50
@@ -202,12 +194,13 @@ export class SdkSandboxImageService {
     private async ensureDependencyImage(params: { archive: SdkProjectArchive; dependencyHash: string; executor: SdkRuntimeExecutor; cliVersion: string }) {
         const { archive, dependencyHash, executor, cliVersion } = params
         const prisma = db()
+        const sandboxService = getSandboxProvider()
 
         const existing = await prisma.sdk_dependency_images.findUnique({
             where: { dependency_hash: dependencyHash }
         })
 
-        if (existing) {
+        if (existing && (await sandboxService.imageExists(existing.image_id))) {
             logger.info("SDK image cache: reuse dependency layer", {
                 dependencyHash: dependencyHash,
                 imageId: existing.image_id
@@ -216,6 +209,14 @@ export class SdkSandboxImageService {
                 where: { id: existing.id },
                 data: { last_used_at: new Date() }
             })
+        }
+
+        if (existing) {
+            logger.warn("SDK image cache: dependency image missing, rebuilding", {
+                dependencyHash: dependencyHash,
+                imageId: existing.image_id
+            })
+            await prisma.sdk_dependency_images.delete({ where: { id: existing.id } }).catch(() => {})
         }
 
         const buildStarted = performance.now()
@@ -267,6 +268,7 @@ export class SdkSandboxImageService {
     }) {
         const { dependencyImageId, dependencySandboxImageId, executor, organizationId, sourceHash, sourceLayerKey, zipBuffer } = params
         const prisma = db()
+        const sandboxService = getSandboxProvider()
 
         const existing = await prisma.sdk_source_images.findFirst({
             where: {
@@ -276,7 +278,7 @@ export class SdkSandboxImageService {
             }
         })
 
-        if (existing) {
+        if (existing && (await sandboxService.imageExists(existing.image_id))) {
             logger.info("SDK image cache: reuse source layer", {
                 sourceLayerKey: sourceLayerKey,
                 organizationId: organizationId,
@@ -286,6 +288,15 @@ export class SdkSandboxImageService {
                 where: { id: existing.id },
                 data: { last_used_at: new Date() }
             })
+        }
+
+        if (existing) {
+            logger.warn("SDK image cache: source image missing, rebuilding", {
+                sourceLayerKey,
+                organizationId,
+                imageId: existing.image_id
+            })
+            await prisma.sdk_source_images.delete({ where: { id: existing.id } }).catch(() => {})
         }
 
         const buildStarted = performance.now()
@@ -341,7 +352,7 @@ export class SdkSandboxImageService {
     }
 
     private async buildDependencyImage(archive: SdkProjectArchive, executor: SdkRuntimeExecutor, dependencyHash: string, cliVersion: string): Promise<string> {
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
 
         const baseImage = sandboxService.getImageFromRegistry(executor.sandboxImage)
@@ -352,7 +363,8 @@ export class SdkSandboxImageService {
             sb,
             archive,
             cliVersion,
-            templateDir: this.getDependencyTemplateDir(executor.runtime),
+            templateDir: sandboxService.getDependencyCachePath(sb, executor.runtime),
+            cliCachePath: sandboxService.getCliCachePath(sb),
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, executor.runtime)
             },
@@ -375,23 +387,24 @@ export class SdkSandboxImageService {
         zipBuffer: Buffer
     }): Promise<string> {
         const { dependencySandboxImageId, executor, sourceLayerKey, zipBuffer } = params
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
         const dependencyImage = await sandboxService.getImageFromId(dependencySandboxImageId)
         const sb = await sandboxService.getOrCreateSandbox(app, dependencyImage, sourceImageBuildSandboxUniqueName(sourceLayerKey), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
 
-        await this.writeBinaryToSandbox(sb, SDK_SOURCE_IMAGE_CODE_ZIP_PATH, zipBuffer)
+        const projectDir = sandboxService.getProjectPath(sb)
+        const sourceZipPath = sandboxService.getScratchPath(sb, "source-image-code.zip")
+        await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
         await this.ensureSandboxCommand(
             sb,
             "extract SDK source",
-            `mkdir -p ${shellQuote(SDK_SOURCE_IMAGE_PROJECT_DIR)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(
-                SDK_SOURCE_IMAGE_CODE_ZIP_PATH
-            )} -d ${shellQuote(SDK_SOURCE_IMAGE_PROJECT_DIR)}`,
+            `mkdir -p ${shellQuote(projectDir)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
             executor.runtime
         )
         await executor.prepareSourceImage({
             sb,
-            projectDir: SDK_SOURCE_IMAGE_PROJECT_DIR,
+            projectDir,
+            templateDir: sandboxService.getDependencyCachePath(sb, executor.runtime),
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, executor.runtime)
             },
@@ -404,7 +417,7 @@ export class SdkSandboxImageService {
     }
 
     private async prewarmRuntimeSandbox(modalSourceImageId: string, sourceLayerKey: string): Promise<void> {
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
         const image = await sandboxService.getImageFromId(modalSourceImageId)
         const uniqueName = runtimeSandboxUniqueName(sourceLayerKey)
@@ -429,12 +442,8 @@ export class SdkSandboxImageService {
     }
 
     private async deleteImage(imageId: string): Promise<void> {
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = getSandboxProvider()
         await sandboxService.deleteImage(imageId)
-    }
-
-    private getDependencyTemplateDir(runtime: SdkProjectRuntime): string {
-        return `/opt/terse-sdk-cache/${runtime}/project`
     }
 
     private async writeFileToSandbox(sb: Sandbox, path: string, content: string): Promise<void> {

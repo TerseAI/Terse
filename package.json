@@ -7,7 +7,7 @@
         "dev:setup": "pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli run build",
         "format": "pnpm -r run format && pnpm --dir terse-probot-app run format",
         "format:check": "pnpm -r run format:check && pnpm --dir terse-probot-app run format:check",
-        "install-global": "pnpm -r --filter terse-sdk --filter terse-cli run install-global",
+        "install-global": "pnpm -r --filter terse-sdk --filter terse-cli --filter create-terse run install-global",
         "publish:npm": "bash scripts/publish.sh"
     },
     "devDependencies": {

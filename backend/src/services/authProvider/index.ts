@@ -1,4 +1,4 @@
-import logger from "../../common/logger"
+import { logProviderBanner } from "../../common/providerBanner"
 import { WorkOSAuthProvider } from "../../ee/services/authProvider/WorkOSAuthProvider"
 import { settings } from "../../settings"
 
@@ -7,10 +7,10 @@ import { LocalAuthProvider } from "./LocalAuthProvider"
 
 const authProvider: AuthProvider = (() => {
     if (settings.workos) {
-        logger.info("Using auth provider: workos")
+        logProviderBanner("remote", "AUTH PROVIDER: WORKOS", "SSO + multi-org")
         return new WorkOSAuthProvider()
     }
-    logger.info("Using auth provider: local")
+    logProviderBanner("local", "AUTH PROVIDER: LOCAL", "single-user, no login screen")
     return new LocalAuthProvider()
 })()
 

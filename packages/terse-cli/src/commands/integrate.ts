@@ -369,9 +369,9 @@ function buildFieldPromptMessage(field: FormFieldDefinition): string {
 }
 
 async function handleOAuthIntegration(apiKey: string, integrationType: IntegrationType, configFields: ConfigurationFieldDefinition[]): Promise<boolean> {
-    let options: Record<string, string> | undefined
+    let options: Record<string, unknown> | undefined
     if (configFields.length > 0) {
-        options = {}
+        const raw: Record<string, string> = {}
         for (const field of configFields) {
             const value = abortIfCancelled(
                 await select({
@@ -379,8 +379,9 @@ async function handleOAuthIntegration(apiKey: string, integrationType: Integrati
                     options: field.options.map(option => ({ value: option.value, label: option.label }))
                 })
             )
-            options[field.name] = value
+            raw[field.name] = value
         }
+        options = coerceAndValidateForSchema(raw, InstallationOptionsSchemas[integrationType], { integrationType })
     }
 
     const s = createSpinner()

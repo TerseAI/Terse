@@ -1,11 +1,9 @@
-import { ModelEvent, SANDBOX_STAGE_LABELS, SandboxStage, ToolCallExecutionStatus } from "terse-types/ModelEvents"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { UserSession } from "terse-types/types"
 
 import logger from "../common/logger"
 import { getActiveDeployForProject } from "../common/projectHelper"
 import { shellQuote } from "../common/shellEscape"
-import { extractErrorMessage } from "../common/strings"
 import { db } from "../loaders/prisma"
 import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../loaders/socket"
 import { StreamEventEmitter } from "../modules/agents/AgentRunner/StreamProcessor"
@@ -18,9 +16,11 @@ import { AgentWithRelations } from "../types/prisma"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { SecretService } from "./SecretService"
-import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS, Sandbox, SandboxService } from "./sandboxProvider/ModalSandboxService"
+import { getSandboxProvider } from "./sandboxProvider"
+import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
+import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import { SDK_SOURCE_IMAGE_PROJECT_DIR, type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
+import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 interface SdkJobExecutionParams {
@@ -48,43 +48,10 @@ export class SdkJobExecutionService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
-    private elapsedMs(startMs: number): number {
-        return Math.round(performance.now() - startMs)
-    }
-
-    private emitSandboxStatus(stage: SandboxStage, status: "started" | "completed" | "failed", opts?: { duration_ms?: number; detail?: string }): void {
-        if (!this.emitter) return
-        const now = Date.now()
-        const stepId = `sandbox-${stage}`
-        const label = SANDBOX_STAGE_LABELS[stage]
-
-        if (status === "started") {
-            this.emitter.emit({ type: "ToolCall", id: stepId, response_id: stepId, summary: label, parameters: "", integration: "sandbox", timestamp: now }, now)
-            return
-        }
-
-        const durationStr = opts?.duration_ms !== undefined ? `${(opts.duration_ms / 1000).toFixed(1)}s` : undefined
-        const result = status === "completed" ? durationStr : `Failed: ${opts?.detail ?? "Unknown error"}${durationStr ? ` (${durationStr})` : ""}`
-
-        const event: ModelEvent = {
-            type: "ToolCallComplete",
-            id: stepId,
-            response_id: stepId,
-            tool_name: label,
-            status: status === "completed" ? ToolCallExecutionStatus.COMPLETED : ToolCallExecutionStatus.FAILED,
-            changed_items: [],
-            integration: "sandbox",
-            result,
-            timestamp: now,
-            ...(status === "failed" && opts?.detail ? { errorContext: { error: opts.detail } } : {})
-        }
-        this.emitter.emit(event, now)
-    }
-
     private emitSandboxNaturalStop(): void {
         if (!this.emitter) return
         const now = Date.now()
-        const responseId = `sandbox-${SandboxStage.RUNNING}`
+        const responseId = "sandbox-run"
         this.emitter.emit({ type: "NaturalStop", id: `${responseId}-stop`, response_id: responseId, timestamp: now }, now)
     }
 
@@ -110,12 +77,14 @@ export class SdkJobExecutionService {
             const secretService = SecretService.getInstance()
             const projectSecretValues = await secretService.getSecrets({ type: "project", secret: { projectId: agent.project.id } })
 
+            const sandboxBackendUrl = getSandboxProvider().supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
+
             const sandboxEnv = {
                 // Make sure to keep this first as the sandbox env,
                 // so that the following env variables take precedence.
                 ...projectSecretValues,
                 TERSE_API_KEY: sandboxApiKey,
-                TERSE_BACKEND_URL: settings.urls.backend,
+                TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
@@ -125,7 +94,7 @@ export class SdkJobExecutionService {
             const result = await this.executeWithSourceImage({
                 executor,
                 jobName,
-                sandboxService: new ModalSandboxService(),
+                sandboxService: getSandboxProvider(),
                 runId,
                 agentId: agent.id,
                 sandboxEnv,
@@ -242,21 +211,8 @@ export class SdkJobExecutionService {
     }): Promise<SandboxCommandResult> {
         const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion } = params
 
-        this.emitSandboxStatus(SandboxStage.BOOTING, "started")
-        const bootStart = performance.now()
-
-        let sb: Sandbox
-        try {
-            sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
-            this.emitSandboxStatus(SandboxStage.BOOTING, "completed", { duration_ms: this.elapsedMs(bootStart) })
-        } catch (error) {
-            this.emitSandboxStatus(SandboxStage.BOOTING, "failed", {
-                duration_ms: this.elapsedMs(bootStart),
-                detail: extractErrorMessage(error)
-            })
-            throw error
-        }
-        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, SDK_SOURCE_IMAGE_PROJECT_DIR, true, cliVersion)
+        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
+        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
     }
@@ -268,6 +224,7 @@ export class SdkJobExecutionService {
         agentId: string,
         jobName: string,
         projectDir: string,
+        cliCachePath: string,
         usesPrebuiltImage: boolean,
         cliVersion: string
     ): SdkRuntimeExecutorContext {
@@ -278,6 +235,7 @@ export class SdkJobExecutionService {
             agentId,
             jobName,
             projectDir,
+            cliCachePath,
             usesPrebuiltImage,
             cliVersion,
             ensureSandboxCommand: async (label, command) => {
@@ -289,8 +247,7 @@ export class SdkJobExecutionService {
             runSandboxCommandStreaming: async (label, command) => {
                 return this.runSandboxCommandStreaming(sb, label, command, sandboxEnv, runId, agentId)
             },
-            escapeShellArg: shellQuote,
-            emitSandboxStatus: (stage, status, opts) => this.emitSandboxStatus(stage, status, opts)
+            escapeShellArg: shellQuote
         }
     }
 

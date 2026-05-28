@@ -93,33 +93,49 @@ Terse has two planes you can place independently. Most users pick one of the nam
 
 `npx create-terse` clones the repo, mints secrets, brings up Postgres in Docker, runs migrations, starts the app, and writes the env so `terse-cli` already points at your self-hosted control plane.
 
-## Example
+## What a workflow looks like
 
-What `terse init` scaffolds in `src/terse.jobs.ts`:
+A Terse workflow is a single TypeScript file. The job below watches a repo for new pull requests, posts a deterministic Slack message announcing the PR, then threads a Block Kit summary under it:
 
 ```ts
-import { createJob, TerseAgent } from "terse-sdk"
-import { z } from "zod"
-
-import { Triggers } from "./terse.generated"
+import { GithubPRTrigger, TerseAgent, createJob } from "terse-sdk"
+import { Repos, Skills, SlackChannel, Triggers } from "../terse.generated"
+// ^^ Generated based on your workspace
 
 createJob({
-    name: "Tell a programming joke example job",
-    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
-    onTrigger: async (event) => {
+    name: "Summarize PR and send slack message",
+    triggers: [Triggers.github.onPROpened({ repo: Repos.TerseAI.Terse })],
+    onTrigger: async (event: GithubPRTrigger) => {
+        // Create durable Agents
+        const prompt = "Summarize the incoming PR and send to slack. Format the summary in Block Kit; include screenshots or diagrams from the PR as image blocks."
         const agent = TerseAgent.create({
-            prompt: "You are a helpful assistant that tells programming jokes.",
-            skills: []
+            prompt,
+            skills: [
+                // Fine tune what agents have access to. Impossible to modify anything outside of this scope
+                Skills.github({ repos: [Repos.TerseAI.Terse] }),
+                Skills.slack({ channel: SlackChannel.AllTerseInc })
+            ]
         })
 
-        const response = await agent.runAndWait("Tell me a programming joke.", z.object({
-            joke: z.string()
-        }))
+        // deterministically call a tool
+        const message = await agent.tools.slack.sendMessage({
+            channelId: SlackChannel.AllTerseInc.channelId,
+            message: "New PR from " + event.sender.login + "!"
+        })
 
-        console.log(response.joke)
+        // Outputs are strongly typed
+        const parentId = message.message_ts
+
+        // Trigger the Agent with Github + Slack tools auto added
+        await agent.runAndWait(`
+        Summarize this PR ${event.formatForAgentRunner()}.
+        Keep it short. Reply in a thread to the Slack message (thread parent ts: ${parentId}).
+        `)
     }
 })
 ```
+
+The skills passed to `TerseAgent.create` are the only surface the agent can reach: it can post in one Slack channel and read this one repo, nothing else. The deterministic `agent.tools.slack.sendMessage` call returns a typed result you can thread on directly, and `agent.runAndWait` picks up the GitHub and Slack tools without further wiring.
 
 ## Integrations
 

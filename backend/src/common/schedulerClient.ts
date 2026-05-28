@@ -3,7 +3,7 @@ import type { protos } from "@google-cloud/scheduler"
 
 import logger from "../common/logger"
 import { CronJobIntegrationManager } from "../integrations/cronJob/integration"
-import { gcp } from "../settings"
+import { settings } from "../settings"
 
 type Job = protos.google.cloud.scheduler.v1.IJob
 type CreateJobRequest = protos.google.cloud.scheduler.v1.ICreateJobRequest
@@ -37,32 +37,18 @@ export class SchedulerClient {
 
     constructor() {
         try {
-            const serviceAccountBase64 = gcp.serviceAccountBase64
-
-            if (!serviceAccountBase64) {
-                throw new Error("GCP_SERVICE_ACCOUNT_BASE64 environment variable is required to initialize Scheduler client")
+            if (!settings.gcp) {
+                throw new Error("GCP_SERVICE_ACCOUNT_BASE64 and GCP_PROJECT_ID are required to initialize Scheduler client")
             }
 
-            const projectId = gcp.projectId
-            if (!projectId) {
-                throw new Error("GCP_PROJECT_ID environment variable is required to initialize Scheduler client")
-            }
-
-            const location = gcp.region || "us-central1"
-
-            // Decode the base64 service account
-            const serviceAccountJson = Buffer.from(serviceAccountBase64, "base64").toString("utf-8")
+            const serviceAccountJson = Buffer.from(settings.gcp.serviceAccountBase64, "base64").toString("utf-8")
             const credentials = JSON.parse(serviceAccountJson)
 
-            // Initialize the Cloud Scheduler client with credentials
-            this.client = new CloudSchedulerClient({
-                credentials: credentials
-            })
+            this.client = new CloudSchedulerClient({ credentials })
+            this.projectId = settings.gcp.projectId
+            this.location = settings.gcp.region
 
-            this.projectId = projectId
-            this.location = location
-
-            logger.info("Scheduler client initialized", { projectId, location })
+            logger.info("Scheduler client initialized", { projectId: this.projectId, location: this.location })
         } catch (error) {
             logger.error("Failed to initialize Scheduler client", { error })
             throw new Error(`Failed to initialize Scheduler client: ${error instanceof Error ? error.message : "Unknown error"}`)

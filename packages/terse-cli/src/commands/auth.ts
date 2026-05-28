@@ -145,7 +145,6 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     const s = createSpinner()
 
     const mode = await fetchAuthMode()
-
     let accessToken: string
     if (mode === "workos") {
         s.start("Requesting login code")

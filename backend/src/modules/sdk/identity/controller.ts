@@ -42,6 +42,7 @@ function handleVerifyError(error: any, res: Response, route: string): Response |
 
 export function authMode(_req: Request, res: Response) {
     const response: AuthModeResponse = { mode: settings.workos ? "workos" : "local" }
+    console.log("WTF authMode response", response)
     res.json(response)
 }
 

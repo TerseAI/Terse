@@ -1,15 +1,16 @@
-// Local-auth SQLite schema. Used only when AUTH_PROVIDER=local (settings.workos absent).
-// Kept physically separate from the main Postgres schema — auth data has no FK
-// relationship with the main domain after the users-table drop.
+// Local SQLite schema for self-host. Holds everything that cloud delegates to
+// external services (auth → WorkOS, secrets → Google Secret Manager, etc.).
+// Kept physically separate from the main Postgres schema — no FK relationship
+// is needed across the boundary, by design.
 
 generator client {
     provider = "prisma-client-js"
-    output   = "../../src/generated/local-auth-prisma"
+    output   = "../../src/generated/local-prisma"
 }
 
 datasource db {
     provider = "sqlite"
-    url      = env("LOCAL_AUTH_DB_URL")
+    url      = env("LOCAL_DB_URL")
 }
 
 model local_identities {
@@ -50,4 +51,14 @@ model local_memberships {
     @@unique([identity_id, organization_id])
     @@index([identity_id])
     @@index([organization_id])
+}
+
+/// Opaque blob store for secrets. blob_id encodes its referent (e.g.
+/// `github-rec_abc`, `project-prj_xyz`). Data is JSON, validated by
+/// SecretService against per-integration zod schemas.
+model secret_blobs {
+    blob_id    String   @id
+    data       String
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
 }
