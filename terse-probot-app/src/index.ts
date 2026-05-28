@@ -100,6 +100,13 @@ export default (app: Probot) => {
         await handleUnifiedPullRequestEvent(context, eventType)
     })
 
+    app.on("issue_comment.created", async context => {
+        const { payload } = context
+        const isPullRequest = Boolean(payload.issue.pull_request)
+        console.log(`🔔 ${isPullRequest ? "PR" : "Issue"} comment created on #${payload.issue.number}`)
+        await handleIssueCommentEvent(context, isPullRequest)
+    })
+
     async function handleUnifiedPullRequestEvent(context: any, eventType: string) {
         const { payload } = context
         const github = context.octokit
@@ -179,6 +186,52 @@ export default (app: Probot) => {
             })
         } catch (error) {
             console.error("Error handling unified pull request event:", safeErrorFields(error))
+        }
+    }
+
+    async function handleIssueCommentEvent(context: any, isPullRequest: boolean) {
+        const { payload } = context
+        const installationId = payload.installation?.id || 0
+
+        try {
+            await VectraInterface.githubUnifiedEvent(payload.sender?.login, installationId, payload.repository.name, "issue_comment.created", {
+                issue: {
+                    id: payload.issue.id,
+                    number: payload.issue.number,
+                    title: payload.issue.title,
+                    body: payload.issue.body,
+                    state: payload.issue.state,
+                    url: payload.issue.html_url,
+                    author: {
+                        login: payload.issue.user.login,
+                        email: payload.issue.user.email
+                    },
+                    isPullRequest
+                },
+                comment: {
+                    id: payload.comment.id,
+                    body: payload.comment.body,
+                    author: {
+                        login: payload.comment.user.login,
+                        email: payload.comment.user.email
+                    },
+                    url: payload.comment.html_url,
+                    createdAt: payload.comment.created_at,
+                    updatedAt: payload.comment.updated_at
+                },
+                repository: {
+                    id: Number(payload.repository.id),
+                    name: payload.repository.name,
+                    owner: payload.repository.owner.login,
+                    defaultBranch: payload.repository.default_branch
+                },
+                sender: {
+                    login: payload.sender?.login,
+                    email: payload.sender?.email
+                }
+            })
+        } catch (error) {
+            console.error("Error handling issue_comment event:", safeErrorFields(error))
         }
     }
 

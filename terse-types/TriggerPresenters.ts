@@ -175,7 +175,8 @@ function formatGithubTrigger(event: GithubTrigger): string {
         "pull_request.opened": "Pull Request Opened",
         "pull_request.synchronize": "Pull Request Updated (new commits added)",
         "pull_request.closed": "Pull Request Closed",
-        "pull_request.merged": "Pull Request Merged"
+        "pull_request.merged": "Pull Request Merged",
+        "issue_comment.created": "Issue Comment Created"
     }
     const eventDescription = eventTypeDescriptions[event.eventType] || event.eventType
 
@@ -187,10 +188,11 @@ function formatGithubTrigger(event: GithubTrigger): string {
     ].join("\n")
 
     const senderInfo = [`Actor: ${event.sender.login}`, ...(event.sender.email ? [`Email: ${event.sender.email}`] : [])].join("\n")
-    const branchInfo = event.branch ? `Branch: ${event.branch}` : null
+    const branch = event.eventType === "issue_comment.created" ? undefined : event.branch
+    const branchInfo = branch ? `Branch: ${branch}` : null
 
     let prInfo = ""
-    if (event.pullRequest) {
+    if (event.eventType !== "issue_comment.created" && event.pullRequest) {
         const pr = event.pullRequest
         const author = pr.author ?? pr.user
         const prLines = [
@@ -207,12 +209,33 @@ function formatGithubTrigger(event: GithubTrigger): string {
         prInfo = prLines.join("\n")
     }
 
-    let commitsInfo = ""
-    if (event.commits.length > 0) {
-        const commitLines: string[] = []
-        commitLines.push(`Commits (${event.commits.length}):`)
+    let commentInfo = ""
+    if (event.eventType === "issue_comment.created") {
+        const c = event.comment
+        const target = event.issue
+        const kind = target.isPullRequest ? "Pull Request" : "Issue"
+        const targetLines = [
+            `${kind} #${target.number}: ${target.title}`,
+            `State: ${target.state}`,
+            `Author: ${target.author.login}${target.author.email ? ` (${target.author.email})` : ""}`,
+            `View: ${target.url}`
+        ]
+        if (target.body) {
+            targetLines.push(`\nDescription:\n${indentMultiline(target.body)}`)
+        }
+        prInfo = targetLines.join("\n")
 
-        event.commits.forEach((commit, index) => {
+        const commentLines = [`Comment #${c.id} by ${c.author.login}${c.author.email ? ` (${c.author.email})` : ""}`, `Posted: ${c.createdAt}`, `URL: ${c.url}`, `\nBody:\n${indentMultiline(c.body)}`]
+        commentInfo = commentLines.join("\n")
+    }
+
+    let commitsInfo = ""
+    const commits = event.eventType === "issue_comment.created" ? [] : event.commits
+    if (commits.length > 0) {
+        const commitLines: string[] = []
+        commitLines.push(`Commits (${commits.length}):`)
+
+        commits.forEach((commit, index) => {
             const shortSha = commit.sha.substring(0, 7)
             const commitUrl = `https://github.com/${event.repository.owner}/${event.repository.name}/commit/${commit.sha}`
             commitLines.push(`\n${index + 1}. Commit ${shortSha}: ${commit.message || (commit as { name?: string }).name || ""}`)
@@ -228,12 +251,15 @@ function formatGithubTrigger(event: GithubTrigger): string {
         commitsInfo = commitLines.join("\n")
     }
 
+    const targetSectionLabel = event.eventType === "issue_comment.created" ? (event.issue.isPullRequest ? "Pull Request Information" : "Issue Information") : "Pull Request Information"
+
     return [
         `Incoming GitHub Event: ${eventDescription}`,
         `\nRepository Information:\n${indentMultiline(repoInfo)}`,
         `\nActor Information:\n${indentMultiline(senderInfo)}`,
         ...(branchInfo ? [`\nBranch Information:\n${indentMultiline(branchInfo)}`] : []),
-        ...(prInfo ? [`\nPull Request Information:\n${indentMultiline(prInfo)}`] : []),
+        ...(prInfo ? [`\n${targetSectionLabel}:\n${indentMultiline(prInfo)}`] : []),
+        ...(commentInfo ? [`\nComment Information:\n${indentMultiline(commentInfo)}`] : []),
         ...(commitsInfo ? [`\n${commitsInfo}`] : [])
     ].join("\n\n")
 }
@@ -302,6 +328,14 @@ function truncateForDisplay(value: string, maxLength: number): string {
 }
 
 function formatGithubDisplay(event: GithubTrigger): TriggerDisplay {
+    if (event.eventType === "issue_comment.created") {
+        const kind = event.issue.isPullRequest ? "PR" : "Issue"
+        return {
+            title: `Comment on #${event.issue.number} ${truncateForDisplay(event.issue.title, 80)}`,
+            subtitle: `${event.repository.owner}/${event.repository.name} · ${kind} comment by ${event.sender.login}`
+        }
+    }
+
     if (event.pullRequest) {
         return {
             title: `#${event.pullRequest.number} ${truncateForDisplay(event.pullRequest.title, 80)}`,

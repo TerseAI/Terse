@@ -184,6 +184,33 @@ export const GithubPRMergedTriggerSchema = GithubPRTriggerBaseSchema.extend({
 })
 export type GithubPRMergedTrigger = z.infer<typeof GithubPRMergedTriggerSchema>
 
+export const issueCommentTargetSchema = z.object({
+    id: z.number(),
+    number: z.number(),
+    title: z.string(),
+    body: z.string().optional(),
+    state: z.enum(["open", "closed"]),
+    url: z.string(),
+    author: pullRequestUserSchema,
+    isPullRequest: z.boolean()
+})
+
+export const issueCommentSchema = z.object({
+    id: z.number(),
+    body: z.string(),
+    author: pullRequestUserSchema,
+    url: z.string(),
+    createdAt: z.string(),
+    updatedAt: z.string()
+})
+
+export const GithubIssueCommentCreatedTriggerSchema = GithubTriggerBaseSchema.extend({
+    eventType: z.literal(GitHubEventType.ISSUE_COMMENT_CREATED),
+    issue: issueCommentTargetSchema,
+    comment: issueCommentSchema
+})
+export type GithubIssueCommentCreatedTrigger = z.infer<typeof GithubIssueCommentCreatedTriggerSchema>
+
 export const GithubPRTriggerSchema = z.discriminatedUnion("eventType", [GithubPROpenedTriggerSchema, GithubPRSynchronizedTriggerSchema, GithubPRClosedTriggerSchema, GithubPRMergedTriggerSchema])
 export type GithubPRTrigger = z.infer<typeof GithubPRTriggerSchema>
 
@@ -192,7 +219,8 @@ export const GithubTriggerSchema = z.discriminatedUnion("eventType", [
     GithubPROpenedTriggerSchema,
     GithubPRSynchronizedTriggerSchema,
     GithubPRClosedTriggerSchema,
-    GithubPRMergedTriggerSchema
+    GithubPRMergedTriggerSchema,
+    GithubIssueCommentCreatedTriggerSchema
 ])
 export type GithubTrigger = z.infer<typeof GithubTriggerSchema>
 

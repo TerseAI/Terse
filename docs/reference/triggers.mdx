@@ -20,6 +20,7 @@ In TypeScript, `terse generate` writes a single `Triggers` object in `src/terse.
 | `Triggers.github.onPRClosed()`       | `GithubPRClosedTrigger`       | A pull request is closed             |
 | `Triggers.github.onPRSynchronized()` | `GithubPRSynchronizedTrigger` | New commits are pushed to a PR       |
 | `Triggers.github.onPR()`             | `GithubPRTrigger`             | Any pull request event               |
+| `Triggers.github.onIssueComment()`   | `GithubIssueCommentCreatedTrigger` | A comment is created on an issue or pull request |
 | `Triggers.github.trigger()`          | `GithubTrigger`               | Any GitHub event you select with `eventTypes` |
 
 Config: Scoped to specific repositories via `repo` parameter.
@@ -47,6 +48,11 @@ PR events add:
 Push events add:
 
 - `branch` - the branch that was pushed to
+
+Issue comment events add:
+
+- `issue` - `{ id, number, title, body?, state, url, author, isPullRequest }` (the issue or PR the comment is on)
+- `comment` - `{ id, body, author, url, createdAt, updatedAt }`
 
 </Expandable>
 

@@ -34,6 +34,26 @@ const pullRequestIngressSchema = z.object({
     user: pullRequestUserIngressSchema
 })
 
+const issueCommentTargetIngressSchema = z.object({
+    id: z.number(),
+    number: z.number(),
+    title: z.string(),
+    body: z.string().nullable(),
+    state: z.enum(["open", "closed"]),
+    url: z.string(),
+    author: pullRequestUserIngressSchema,
+    isPullRequest: z.boolean()
+})
+
+const issueCommentIngressSchema = z.object({
+    id: z.number(),
+    body: z.string(),
+    author: pullRequestUserIngressSchema,
+    url: z.string(),
+    createdAt: z.string(),
+    updatedAt: z.string()
+})
+
 const repositoryIngressSchema = z.object({
     id: z.number(),
     name: z.string(),
@@ -67,7 +87,13 @@ const githubPullRequestUnifiedEventIngressSchema = githubUnifiedEventIngressBase
     pullRequest: pullRequestIngressSchema
 })
 
-const githubUnifiedEventIngressSchema = z.discriminatedUnion("eventType", [githubPushUnifiedEventIngressSchema, githubPullRequestUnifiedEventIngressSchema])
+const githubIssueCommentCreatedIngressSchema = githubUnifiedEventIngressBaseSchema.extend({
+    eventType: z.literal("issue_comment.created"),
+    issue: issueCommentTargetIngressSchema,
+    comment: issueCommentIngressSchema
+})
+
+const githubUnifiedEventIngressSchema = z.discriminatedUnion("eventType", [githubPushUnifiedEventIngressSchema, githubPullRequestUnifiedEventIngressSchema, githubIssueCommentCreatedIngressSchema])
 
 function toOptionalString(value: string | null | undefined): string | undefined {
     return value ?? undefined
@@ -76,24 +102,51 @@ function toOptionalString(value: string | null | undefined): string | undefined 
 export function parseGithubUnifiedEventPayload(payload: unknown): GithubTrigger {
     const rawEvent = githubUnifiedEventIngressSchema.parse(payload)
 
-    return GithubTriggerSchema.parse({
+    const baseFields = {
         ...rawEvent,
         integrationType: IntegrationType.GITHUB,
         sender: {
             ...rawEvent.sender,
             email: toOptionalString(rawEvent.sender.email)
-        },
-        pullRequest:
-            rawEvent.eventType === "push"
-                ? undefined
-                : {
-                      ...rawEvent.pullRequest,
-                      id: String(rawEvent.pullRequest.id),
-                      body: toOptionalString(rawEvent.pullRequest.body),
-                      user: {
-                          ...rawEvent.pullRequest.user,
-                          email: toOptionalString(rawEvent.pullRequest.user.email)
-                      }
+        }
+    }
+
+    if (rawEvent.eventType === "issue_comment.created") {
+        return GithubTriggerSchema.parse({
+            ...baseFields,
+            issue: {
+                ...rawEvent.issue,
+                body: toOptionalString(rawEvent.issue.body),
+                author: {
+                    ...rawEvent.issue.author,
+                    email: toOptionalString(rawEvent.issue.author.email)
+                }
+            },
+            comment: {
+                ...rawEvent.comment,
+                author: {
+                    ...rawEvent.comment.author,
+                    email: toOptionalString(rawEvent.comment.author.email)
+                }
+            }
+        })
+    }
+
+    const pullRequest =
+        rawEvent.eventType === "push"
+            ? undefined
+            : {
+                  ...rawEvent.pullRequest,
+                  id: String(rawEvent.pullRequest.id),
+                  body: toOptionalString(rawEvent.pullRequest.body),
+                  user: {
+                      ...rawEvent.pullRequest.user,
+                      email: toOptionalString(rawEvent.pullRequest.user.email)
                   }
+              }
+
+    return GithubTriggerSchema.parse({
+        ...baseFields,
+        pullRequest
     })
 }
