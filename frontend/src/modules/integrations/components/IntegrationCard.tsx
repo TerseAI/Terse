@@ -17,7 +17,7 @@ import SnowflakeIntegrationCard from "./SnowflakeIntegrationCard"
 import WorkOSIntegrationCard from "./WorkOSIntegrationCard"
 
 function IntegrationCard({ integration, isActive = true, stateToken, compact = false }: { integration: IntegrationType; isActive?: boolean; stateToken?: string; compact?: boolean }) {
-    const cardClassName = "w-full"
+    const cardClassName = compact ? "w-full max-w-sm" : "w-full"
 
     switch (integration) {
         case IntegrationType.NOTION:
