@@ -4,12 +4,12 @@ description: "Runs agentic loops, returns structured outputs, and enforces a str
 icon: "bot"
 ---
 
-`TerseAgent` is the runtime your handler uses to reason and act. It provides the agentic loop, tool-calling, and streaming model. On top of that, it adds the things workflows actually need: typed deterministic tool wrappers, structured outputs validated with `zod`, and a strict allowlist that prevents the model from touching anything you didn't explicitly grant.
+`TerseAgent` is the runtime that reasons and acts on your behalf: an agentic loop with tool-calling, structured outputs validated with `zod`, and a strict allowlist that prevents the model from touching anything you didn't explicitly grant.
 
-You create one inside `onTrigger` with `TerseAgent.create()` and then either call tools deterministically, hand off to the model with `run()` / `runAndWait()`, or both.
+Most of the time you don't construct it yourself. **[`generateText`](/reference/typescript-sdk#generatetext) is the shorthand you reach for in almost every job** — give it a prompt and the `skills` the model may use, and it runs the agentic loop to completion and returns the result. The model can call any tool granted via `skills` while it works.
 
 ```ts
-import { TerseAgent, createJob } from "terse-sdk"
+import { generateText, createJob } from "terse-sdk"
 
 import { AttioObject, Skills, SlackChannel, Triggers } from "./terse.generated"
 
@@ -17,34 +17,37 @@ createJob({
     name: "score-new-deal",
     triggers: [Triggers.attio.onRecordCreated({ object: AttioObject.Deal })],
     onTrigger: async event => {
-        const agent = TerseAgent.create({
-            prompt: "You score new deals for ICP fit and notify the deal desk.",
+        const summary = await generateText({
+            prompt: `Score this account for ICP fit and explain why. ${event.formatForAgentRunner()}`,
             skills: [Skills.attio({ object: AttioObject.Deal }), Skills.web(), Skills.slack({ channel: SlackChannel.DealDesk })]
         })
-
-        const summary = await agent.runAndWait("Score this account and explain why.")
     }
 })
 ```
 
+`generateText` is a thin wrapper over `TerseAgent`. You only construct the agent directly — `TerseAgent.create()` — for the two things `generateText` doesn't expose: streaming partial output with `run()`, or reusing one agent instance across several calls. The rest of this page describes that underlying agent and the allowlist that governs both paths. For fixed, deterministic actions, skip the agent entirely and call [`toolbox.*`](/core-concepts/deterministic-tool-calls).
+
 ## Agentic loop
 
-`run()` and `runAndWait()` execute a full agentic loop: the model picks a tool, the SDK executes it, the result is fed back, and the loop continues until the model produces a final answer. Every step is recorded in [Activity](/core-concepts/activity-and-observability) so you can replay the conversation later.
+Every run executes a full agentic loop: the model picks a tool, the SDK executes it, the result is fed back, and the loop continues until the model produces a final answer. Every step is recorded in [Activity](/core-concepts/activity-and-observability) so you can replay the conversation later.
 
-| Method                        | Returns                  | Use when                                               |
-| ----------------------------- | ------------------------ | ------------------------------------------------------ |
-| `run(message)`                | Async iterable of events | You want to stream progress (text deltas, tool calls)  |
-| `runAndWait(message)`         | Final string             | You want the final text once the loop completes        |
-| `runAndWait(message, schema)` | Validated typed object   | You want structured, schema-validated JSON (see below) |
+| Call                                  | Returns                  | Use when                                               |
+| ------------------------------------- | ------------------------ | ------------------------------------------------------ |
+| `generateText({ prompt })`            | Final string             | The default — you want the final text once the loop completes |
+| `generateText({ prompt, outputSchema })` | Validated typed object | You want structured, schema-validated JSON (see below) |
+| `agent.run(message)`                  | Async iterable of events | You want to stream progress (text deltas, tool calls)  |
+| `agent.runAndWait(message, schema?)`  | String or typed object   | You're already holding a `TerseAgent` instance and want to reuse it |
 
-The model only sees the tools you grant through the agent's `skills`. Everything else is invisible to it: your environment variables, your other integrations, and your other workflows.
+The model only sees the tools you grant through `skills`. Everything else is invisible to it: your environment variables, your other integrations, and your other workflows.
 
 ## Structured outputs
 
-Pass a `zod` schema as the second argument to `runAndWait` and the SDK forwards it to the model, parses the final JSON, and validates it before returning. The result is fully typed.
+Pass an `outputSchema` (a `zod` schema) to `generateText` and the SDK forwards it to the model, parses the final JSON, and validates it before returning. The result is fully typed. (On a `TerseAgent`, the same schema goes as the second argument to `runAndWait`.)
 
 ```ts
+import { generateText } from "terse-sdk"
 import { z } from "zod"
+import { toolbox } from "./terse.generated"
 
 const ScoreSchema = z.object({
     score: z.number().min(0).max(100),
@@ -52,11 +55,15 @@ const ScoreSchema = z.object({
     nextAction: z.enum(["accept", "review", "reject"])
 })
 
-const scored = await agent.runAndWait("Score this account and explain why.", ScoreSchema)
+const scored = await generateText({
+    prompt: `Score this account and explain why. ${event.formatForAgentRunner()}`,
+    skills: [Skills.attio({ object: AttioObject.Deal })],
+    outputSchema: ScoreSchema
+})
 
 // scored is typed as: { score: number; rationale: string; nextAction: "accept" | "review" | "reject" }
 if (scored.nextAction === "accept") {
-    await agent.tools.attio.upsertRecord({
+    await toolbox.attio.upsertRecord({
         object: AttioObject.Deal,
         matchingAttribute: "record_id",
         records: [{ record_id: event.record.id, fit_score: scored.score, scoring_notes: scored.rationale }]
@@ -76,11 +83,11 @@ The most important property of `TerseAgent` is what it _won't_ do. The Terse run
 - `Skills.github({ repos: [...] })` restricts code access to specific repositories.
 - Tools listed in `toolApprovals` are paused for [human approval](/core-concepts/human-in-the-loop) before execution.
 
-Tool calls outside this allowlist are rejected before any external API is touched. The same allowlist also gates `agent.tools.*`: only integrations in `skills` show up on the agent's typed tool object. For unfiltered deterministic access from code, use the `toolbox` export from `./terse.generated`.
+Tool calls outside this allowlist are rejected before any external API is touched. `skills` and `toolApprovals` work the same whether you pass them to `generateText` or `TerseAgent.create()`. For unfiltered deterministic access from code, use the `toolbox` export from `./terse.generated`.
 
 ```ts
-const agent = TerseAgent.create({
-    prompt: "You enrich and route inbound deals.",
+const scored = await generateText({
+    prompt: `Enrich and route this inbound deal. ${event.formatForAgentRunner()}`,
     skills: [
         Skills.attio({ object: AttioObject.Deal }), // Deal object only
         Skills.web(),

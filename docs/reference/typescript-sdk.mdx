@@ -16,8 +16,9 @@ After `terse generate`, integration triggers and skills are grouped under top-le
 Import these from `terse-sdk`:
 
 - `createJob`, `CreateJobParameters`: register a workflow (call at module top level or from imported modules)
+- `generateText`: the shorthand for agentic runs — one prompt in, final output out, with the model free to call any tool granted via `skills`. Use this for almost everything; see [`generateText`](#generatetext) below
 - `Terse`, `TERSE_JOB_WEBHOOK_TRIGGER_PATH`: client and mount path for `handleTrigger` when you self-host the data plane webhook endpoint
-- `TerseAgent`, `EventType`: create the agent with `TerseAgent.create()` inside `onTrigger`; `EventType` enumerates values on streamed results
+- `TerseAgent`, `EventType`: the lower-level agent that `generateText` wraps. Reach for `TerseAgent.create()` directly only when you need to stream with `run()` or reuse one agent instance across calls; `EventType` enumerates values on streamed results
 - `runWithJobContext`, `getJobContext`, `TerseJobContext`: wrap a handler with `runWithJobContext` to preserve run attribution. Outside of it, set `TERSE_BACKEND_URL` if needed (default `https://api.useterse.ai`) and optionally `TERSE_RUN_ID`
 - `formatTriggerForAgent`, `debugTrigger`: helpers for plain trigger payloads
 
@@ -95,6 +96,43 @@ createJob({
 })
 ```
 
+## `generateText`
+
+`generateText` is the shorthand for running the model. Give it a prompt and the `skills` the model is allowed to use; it runs a full agentic loop to completion and returns the final output. The model can call any tool granted via `skills` while it works. This is the call you reach for in almost every job.
+
+```ts
+import { generateText } from "terse-sdk"
+
+import { AttioObject, Skills } from "./terse.generated"
+
+const summary = await generateText({
+    prompt: `Score this account and explain why. ${event.formatForAgentRunner()}`,
+    skills: [Skills.attio({ object: AttioObject.Deal }), Skills.web()]
+})
+```
+
+Pass an `outputSchema` (a `zod` schema) to get a typed, validated object back instead of a string. `generateText` is overloaded on it: with a schema the return type is `z.infer<typeof schema>`, without one it is `string`.
+
+```ts
+import { z } from "zod"
+
+const scored = await generateText({
+    prompt: `Score this account and explain why. ${event.formatForAgentRunner()}`,
+    skills: [Skills.attio({ object: AttioObject.Deal })],
+    outputSchema: z.object({ score: z.number().min(0).max(100), rationale: z.string() })
+})
+// scored is typed as: { score: number; rationale: string }
+```
+
+| Field           | Type                | Description                                                                                |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------ |
+| `prompt`        | `string`            | The instruction for the model. Include event context via `event.formatForAgentRunner()`.  |
+| `skills`        | skill array         | Optional. Scopes which integration tools the model may call during the run.                |
+| `toolApprovals` | `string[]`          | Optional. Tool names that pause for [human approval](/core-concepts/human-in-the-loop).    |
+| `outputSchema`  | `zod` schema        | Optional. Returns a typed, validated object instead of a string.                           |
+
+For deterministic calls (a fixed Slack message, a known field update), use [`toolbox.*`](#toolbox-generated) instead — no agent needed. Between `generateText` for reasoning and `toolbox` for fixed actions, you rarely touch `TerseAgent` directly.
+
 ## `Terse`
 
 Use a `Terse` instance for `handleTrigger`, which verifies signed webhook payloads from the Terse backend and runs the matching registered workflow. You do not need `new Terse()` only to call `createJob()`.
@@ -108,6 +146,8 @@ const terse = new Terse()
 ```
 
 ## `TerseAgent`
+
+`TerseAgent` is the lower-level primitive that [`generateText`](#generatetext) wraps. Reach for it directly only when you need something `generateText` doesn't expose: streaming partial output with `run()`, or reusing one agent instance across several calls. Otherwise prefer `generateText`.
 
 Create the agent inside `onTrigger` with `TerseAgent.create()`. Job context (session, run, API base URL) is picked up automatically from async context when the handler runs on the platform or via the CLI. The same context applies to `TerseAgent.executeTool` and to generated `toolbox` calls.
 
@@ -200,7 +240,7 @@ Use `agent.tools.*` for guaranteed side effects when you already pass `skills` t
 
 ## Structured output
 
-Use `runAndWait(message, schema)` when you need typed, validated JSON. Use `runAndWait(message)` when you need free-form text.
+Pass `outputSchema` to `generateText` (or `runAndWait(message, schema)` on a `TerseAgent`) when you need typed, validated JSON. Omit it when you need free-form text.
 
 ## Filtering events
 

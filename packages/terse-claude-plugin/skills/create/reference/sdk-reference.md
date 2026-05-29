@@ -41,20 +41,49 @@ type CreateJobParameters = {
 
 | Goal | TypeScript | Description |
 |------|------------|-------------|
+| One-shot run (shorthand) | `generateText({ prompt, skills?, toolApprovals?, outputSchema? })` | Top-level shorthand for the common case: one prompt → output, with the model free to call any tool granted via `skills`. Returns a string, or a typed validated object when `outputSchema` is set. See below. |
 | Run to completion | `agent.runAndWait(prompt, outputSchema?)` | Use for AI-driven decisions such as summarize, analyze, or triage. Pass a Zod schema for structured output; the returned value is typed and validated. |
 | Stream output | `agent.run(prompt, outputSchema?)` | Async iterable of streamed agent events. Same prompt + optional Zod schema. |
 | Generated tool wrappers | `agent.tools.<integration>.<method>(params)` | Type-safe direct tool calls generated from connected integrations. Only present for integrations included in the agent's `skills`. |
+
+### `generateText` — shorthand for one-shot runs
+
+`generateText` is a top-level function (overloaded on `outputSchema`) for the common case: a single prompt that runs to completion and returns the result. The model still runs a full agentic loop and can call any tool granted via `skills` — `generateText` just saves you the `TerseAgent.create()` + `runAndWait()` boilerplate when you don't need the agent instance itself.
+
+```typescript
+import { generateText } from "terse-sdk"
+import { z } from "zod"
+import { Skills, AttioObject } from "./terse.generated"
+
+// Free-form text — the model can read/write Attio (Deal) while it works
+const summary = await generateText({
+    prompt: `Score this account and explain why. ${event.formatForAgentRunner()}`,
+    skills: [Skills.attio({ object: AttioObject.Deal })],
+})
+
+// Structured output: pass outputSchema, get a typed, validated result
+const scored = await generateText({
+    prompt: `Score this account and explain why. ${event.formatForAgentRunner()}`,
+    skills: [Skills.attio({ object: AttioObject.Deal })],
+    outputSchema: z.object({ score: z.number(), rationale: z.string() }),
+})
+```
+
+`skills` and `toolApprovals` behave exactly as on `TerseAgent.create()`. Use `generateText` for agentic work and `toolbox` for deterministic calls — that covers almost every job. Drop down to `TerseAgent.create()` only for the advanced cases it doesn't expose: streaming partial output with `run()`, or reusing one agent instance across several calls.
 
 Include event context by interpolating `event.formatForAgentRunner()` into the prompt string — there is no separate `event` parameter.
 
 ### When to Use What
 
+There are two primitives you reach for in almost every job:
+
 | Approach | Use When |
 |----------|----------|
-| `agent.runAndWait(prompt)` | The agent needs to decide what to do — summarize, analyze, choose actions |
-| `toolbox.<integration>.<method>(params)` | You know the exact deterministic call to make and don't need an agent at all |
-| `agent.tools.<integration>.<method>(params)` | You already have an agent (with the integration in `skills`) and want a typed deterministic call alongside `run()` / `runAndWait()` |
-| Combination | Deterministic setup first (e.g. send Slack message via `toolbox`), then `runAndWait` for the part that needs reasoning |
+| `generateText({ prompt, skills? })` | **Default for anything agentic.** The model decides what to do — summarize, analyze, choose and call tools (scoped by `skills`) — and you get the final output back. |
+| `toolbox.<integration>.<method>(params)` | **Default for anything deterministic.** You know the exact call to make. `toolbox` is unfiltered, needs no agent and no `skills`. |
+| Combination | Deterministic setup first (e.g. send a Slack message via `toolbox`), then `generateText` for the part that needs reasoning. |
+
+You only need `TerseAgent.create()` directly for the advanced cases `generateText` doesn't cover: streaming partial output with `run()`, or reusing one agent instance across several calls. Prefer `generateText` + `toolbox` otherwise.
 
 ## Triggers
 

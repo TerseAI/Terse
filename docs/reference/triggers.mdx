@@ -283,7 +283,7 @@ You can add multiple `Triggers.webMonitor.onEvent(...)` triggers to the same wor
 
 <CodeGroup>
 ```ts TypeScript
-import { createJob, TerseAgent } from "terse-sdk"
+import { createJob, generateText } from "terse-sdk"
 import * as z from "zod"
 import { Skills, SlackChannel, Triggers } from "./terse.generated"
 
@@ -306,15 +306,12 @@ createJob({
         const sentiment = event.payload.sentiment
         const sources = event.sourceUrls.join(", ")
 
-        const agent = TerseAgent.create({
+        await generateText({
             prompt:
-                "You are alerted when the web monitor finds new material. Read the event (query, payload, and structured fields), decide what matters, and post a concise summary to Slack.",
+                "You are alerted when the web monitor finds new material. Read the event below (query, payload, and structured fields), decide what matters, and post a concise summary to Slack.\n\n" +
+                `${event.formatForAgentRunner()}\n\nSummary: ${summary}\nSentiment: ${sentiment}\nSources: ${sources}`,
             skills: [Skills.slack({ channel: SlackChannel.AllTerseInc })]
         })
-
-        await agent.runAndWait(
-            `${event.formatForAgentRunner()}\n\nSummary: ${summary}\nSentiment: ${sentiment}\nSources: ${sources}`
-        )
     }
 })
 ```

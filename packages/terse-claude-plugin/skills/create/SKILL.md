@@ -35,7 +35,7 @@ If the repo only has `src/index.ts`, treat that as a legacy fallback instead of 
 If no runtime entry exists yet, create one:
 
 ```typescript
-import { createJob, TerseAgent } from "terse-sdk"
+import { createJob, generateText } from "terse-sdk"
 ```
 
 ### 2. Pick triggers
@@ -46,12 +46,11 @@ Only use triggers and resources that actually exist in `src/terse.generated.ts`.
 
 ### 3. Pick skills and connect missing integrations
 
-**Skills shape what the agent can do during `run()` / `runAndWait()`.** They serve two purposes: they scope the tools the model can pick, and they gate which integrations show up on `agent.tools.*`. `toolbox.*` is unscoped and works without any skills at all.
+**Skills shape what the model can do during a `generateText` run.** They scope the tools the model is allowed to pick. `toolbox.*` is unscoped and works without any skills at all.
 
 Rules of thumb:
-- If a step is fully deterministic and you don't need an agent, call `toolbox.<integration>.<method>` directly. No skill required.
-- If you want a typed direct call from inside an `onTrigger` that *also* runs the model, add the integration to `skills` and use `agent.tools.<integration>.<method>`. Without the skill, `agent.tools.<integration>` won't be defined.
-- If the model needs to choose actions on that integration during `run()` / `runAndWait()`, the integration must be in `skills`.
+- If a step is fully deterministic, call `toolbox.<integration>.<method>` directly. No skill required.
+- If the model needs to choose actions on an integration during a `generateText` run, that integration must be in `skills`.
 
 If a required integration is missing from `src/terse.generated.ts`:
 
@@ -88,16 +87,31 @@ await toolbox.slack.sendMessage({
 })
 ```
 
-**Agentic steps** — use `TerseAgent` only where judgment is required. Include full event context via `event.formatForAgentRunner()`. Write clear, specific prompts; avoid vague instructions like "handle this event."
+**Agentic steps** — use `generateText` wherever judgment is required. The model runs a full agentic loop and can call any tool granted via `skills`. Include full event context via `event.formatForAgentRunner()`. Write clear, specific prompts; avoid vague instructions like "handle this event."
+
+```typescript
+import { generateText } from "terse-sdk"
+import { Skills, Repos } from "./terse.generated"
+
+const summary = await generateText({
+    prompt: `Summarize this PR. Context: ${event.formatForAgentRunner()}`,
+    skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
+})
+```
+
+Pass an `outputSchema` (a Zod schema) to get a typed, validated object back instead of a string. Reach for `TerseAgent.create()` directly only for streaming with `run()` or reusing one agent instance across several calls.
 
 **Combined pattern** — deterministic setup, then a narrow agent task:
 
 ```typescript
 const message = await toolbox.slack.sendMessage({ ... })
-await agent.runAndWait(
-    `Summarize this PR and reply in thread (thread_ts: ${message.message_ts}). ` +
-    `Context: ${event.formatForAgentRunner()}`
-)
+const summary = await generateText({
+    prompt:
+        `Summarize this PR and write a thread reply (thread_ts: ${message.message_ts}). ` +
+        `Context: ${event.formatForAgentRunner()}`,
+    skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
+})
+await toolbox.slack.sendMessage({ channelId: ..., message: summary, thread_ts: message.message_ts, blocks: "" })
 ```
 
 If the user's request is fully deterministic (e.g. "post X to Slack when Y happens"), do not create an agent at all.
@@ -126,9 +140,9 @@ Verify:
 - Imports reference actual exports from `terse-sdk` and `./terse.generated`
 - The job lives in `src/terse.jobs.ts` unless the repo intentionally uses a custom or legacy entry file
 - The job `name` is unique and descriptive
-- Predictable actions use `toolbox` or `agent.tools.*`, not `runAndWait` prompts
-- Every integration referenced via `agent.tools.<name>` is also in the agent's `skills` array (the wrappers are gated by skills)
-- `skills` lists integrations the model needs during `run()`/`runAndWait()` *or* that the code calls via `agent.tools.*`
+- Predictable actions use `toolbox`, not `generateText` prompts
+- Agentic steps use `generateText`; `TerseAgent.create()` appears only when streaming or agent reuse is actually needed
+- `skills` lists the integrations the model needs during the `generateText` run
 - The event type in `onTrigger` matches the trigger type
 - Triggers (`Triggers.<integration>.…`), skills (`Skills.<integration>(…)`), resource constants, and tool calls all exist in `src/terse.generated.ts`
 - Agent prompts include full event context via `event.formatForAgentRunner()`
@@ -148,7 +162,7 @@ Example prompt:
 ## Example
 
 ```typescript
-import { createJob, TerseAgent, type GithubPROpenedTrigger } from "terse-sdk"
+import { createJob, generateText, type GithubPROpenedTrigger } from "terse-sdk"
 import { Triggers, Skills, Repos, SlackChannel, toolbox } from "./terse.generated"
 
 createJob({
@@ -158,7 +172,7 @@ createJob({
         return !event.sender.login.includes("[bot]")
     },
     onTrigger: async (event: GithubPROpenedTrigger) => {
-        // Deterministic: fixed channel, fixed opener — no agent needed
+        // Deterministic: fixed channel, fixed opener — use toolbox, no agent needed
         const message = await toolbox.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
@@ -167,17 +181,21 @@ createJob({
         })
 
         // Agentic: only the summary needs judgment
-        const agent = TerseAgent.create({
-            prompt: "You summarize pull requests concisely.",
+        const summary = await generateText({
+            prompt:
+                `Summarize the changes in this PR. ` +
+                `Focus on what changed, why it matters, and what reviewers should look at first. ` +
+                `Keep it concise. Context: ${event.formatForAgentRunner()}`,
             skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
         })
 
-        await agent.runAndWait(
-            `Summarize the changes in this PR and post as a thread reply ` +
-            `(thread_ts: ${message.message_ts}). ` +
-            `Focus on what changed, why it matters, and what reviewers should look at first. ` +
-            `Keep it concise. Context: ${event.formatForAgentRunner()}`
-        )
+        // Deterministic: post the result back in thread
+        await toolbox.slack.sendMessage({
+            channelId: SlackChannel.Engineering.channelId,
+            message: summary,
+            thread_ts: message.message_ts,
+            blocks: "",
+        })
     },
 })
 ```

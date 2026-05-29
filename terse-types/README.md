@@ -9,7 +9,7 @@ Internal shared types for the [Terse](https://useterse.ai) platform.
 If you landed here while building a workflow, you almost certainly want one of these instead:
 
 - **[`terse-cli`](https://www.npmjs.com/package/terse-cli)** to scaffold, test, and deploy workflows
-- **[`terse-sdk`](https://www.npmjs.com/package/terse-sdk)** to write workflow code (`createJob`, `TerseAgent`, trigger types)
+- **[`terse-sdk`](https://www.npmjs.com/package/terse-sdk)** to write workflow code (`createJob`, `generateText`, trigger types)
 - **[docs.useterse.ai](https://docs.useterse.ai)** for guides and reference
 
 If a doc, post, or LLM pointed you at `terse-types` directly, that was probably a mistake on our end. [Let us know](mailto:support@useterse.ai) so we can fix it. The types you actually need are re-exported from `terse-sdk`.
