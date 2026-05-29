@@ -25,7 +25,7 @@
         "install-global": "npm run build && npm link"
     },
     "peerDependencies": {
-        "zod": "^4.0.0"
+        "zod": "^4.2.0"
     },
     "devDependencies": {
         "@types/node": "^22.0.0",
