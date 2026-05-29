@@ -1,7 +1,7 @@
 ---
 title: "Generated SDK"
 description: "Anatomy of src/terse.generated.ts. What terse generate writes, how your workflows import it, and why it's the single biggest ergonomic win for both humans and coding agents."
-icon: "file-code-2"
+icon: "file-code"
 ---
 
 [Context as Code](/context-as-code) is the idea. The generated SDK is the artifact.
@@ -59,11 +59,7 @@ export class Repos {
     } as const
 }
 
-export class AttioObject<
-    TSlug extends string = string,
-    TRecordValues extends Record<string, unknown> = Record<string, unknown>,
-    TInputValues extends Record<string, unknown> = TRecordValues
-> {
+export class AttioObject<TSlug extends string = string, TRecordValues extends Record<string, unknown> = Record<string, unknown>, TInputValues extends Record<string, unknown> = TRecordValues> {
     constructor(
         public readonly apiSlug: TSlug,
         public readonly name: string,
@@ -74,8 +70,12 @@ export class AttioObject<
     declare readonly __recordValues: TRecordValues
     declare readonly __inputValues: TInputValues
 
-    static Deal = new AttioObject<"deals", { name?: string; stage?: string; amount?: number }, { name?: string; stage?: string; amount?: number }>("deals", "deal", "obj_f1e3c0b2…", [/* attributes */])
-    static Company = new AttioObject<"companies", { name?: string; domains?: string[] }, { name?: string; domains?: string[] }>("companies", "company", "obj_8d22a17c…", [/* attributes */])
+    static Deal = new AttioObject<"deals", { name?: string; stage?: string; amount?: number }, { name?: string; stage?: string; amount?: number }>("deals", "deal", "obj_f1e3c0b2…", [
+        /* attributes */
+    ])
+    static Company = new AttioObject<"companies", { name?: string; domains?: string[] }, { name?: string; domains?: string[] }>("companies", "company", "obj_8d22a17c…", [
+        /* attributes */
+    ])
 }
 ```
 
@@ -87,47 +87,57 @@ Triggers and skills are exposed under two umbrella namespaces, with each integra
 export const Triggers = {
     slack: {
         /** Trigger on any message in a channel */
-        onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> { /* … */ },
+        onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
+            /* … */
+        },
         /** Trigger when the Slack app is directly mentioned */
-        onAppMention(opts: { channel: SlackChannel }): TypedTrigger<SlackAppMentionTrigger> { /* … */ }
+        onAppMention(opts: { channel: SlackChannel }): TypedTrigger<SlackAppMentionTrigger> {
+            /* … */
+        }
     },
     github: {
         /** Trigger when a pull request is opened */
-        onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> { /* … */ },
+        onPROpened(opts: { repo: Repos }): TypedTrigger<GithubPROpenedTrigger> {
+            /* … */
+        },
         /** Trigger when a pull request is merged */
-        onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> { /* … */ },
+        onPRMerged(opts: { repo: Repos }): TypedTrigger<GithubPRMergedTrigger> {
+            /* … */
+        },
         /** Trigger when a comment is created on an issue or pull request */
-        onIssueComment(opts: { repo: Repos }): TypedTrigger<GithubIssueCommentCreatedTrigger> { /* … */ }
+        onIssueComment(opts: { repo: Repos }): TypedTrigger<GithubIssueCommentCreatedTrigger> {
+            /* … */
+        }
     },
     attio: {
         /** Trigger when a record is created. Pass `object` to scope to a specific Attio object. */
-        onRecordCreated<T extends GeneratedAttioObject>(opts?: { object: T }): TypedTrigger<AttioRecordCreatedTrigger> { /* … */ }
+        onRecordCreated<T extends GeneratedAttioObject>(opts?: { object: T }): TypedTrigger<AttioRecordCreatedTrigger> {
+            /* … */
+        }
     },
     schedule: {
         /** Run on a cron schedule */
-        cron(opts: { expression: string }): TypedTrigger<CronTrigger> { /* … */ }
+        cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
+            /* … */
+        }
     }
 }
 
 export const Skills = {
     /** Slack — send messages and manage threads in a specific channel */
-    slack(opts: { channel: SlackChannel }): TypedSkill<
-        "slack_list_channels" | "slack_list_users" | "slack_read_conversation" | "slack_send_message"
-    > { /* … */ },
+    slack(opts: { channel: SlackChannel }): TypedSkill<"slack_list_channels" | "slack_list_users" | "slack_read_conversation" | "slack_send_message"> {
+        /* … */
+    },
     /** GitHub — read code and pull requests from the given repositories */
-    github(opts: { repos: Repos[] }): TypedSkill<
-        | "grepGitHubCode"
-        | "listGitHubCommits"
-        | "listGitHubDirectory"
-        | "listGitHubPullRequests"
-        | "readGitHubFile"
-        | "searchGitHubCode"
-        | "summarizeGitHubPullRequestDiff"
-    > { /* … */ },
+    github(opts: {
+        repos: Repos[]
+    }): TypedSkill<"grepGitHubCode" | "listGitHubCommits" | "listGitHubDirectory" | "listGitHubPullRequests" | "readGitHubFile" | "searchGitHubCode" | "summarizeGitHubPullRequestDiff"> {
+        /* … */
+    },
     /** Attio — query and upsert records on a CRM object */
-    attio(opts: { object: AttioObject<any> }): TypedSkill<
-        "attio_list_objects" | "attio_query_records" | "attio_upsert_record"
-    > { /* … */ }
+    attio(opts: { object: AttioObject<any> }): TypedSkill<"attio_list_objects" | "attio_query_records" | "attio_upsert_record"> {
+        /* … */
+    }
 }
 ```
 
@@ -176,7 +186,7 @@ import { Repos, Skills, SlackChannel, Triggers } from "./terse.generated"
 createJob({
     name: "pr-summary-to-slack",
     triggers: [Triggers.github.onPROpened({ repo: Repos.TerseAI.Terse })],
-    onTrigger: async (event) => {
+    onTrigger: async event => {
         const agent = TerseAgent.create({
             prompt: "You summarize PRs and post concise thread replies in Slack.",
             skills: [Skills.github({ repos: [Repos.TerseAI.Terse] }), Skills.slack({ channel: SlackChannel.Engineering })]
