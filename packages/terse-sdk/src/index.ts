@@ -576,7 +576,7 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
 export async function generateText(params: GenerateTextParams): Promise<string>
 export async function generateText<OutputSchema extends z.ZodType>(params: GenerateTextParams | GenerateTextStructuredOutput<OutputSchema>): Promise<string | z.infer<OutputSchema>> {
     const agent = TerseAgent.create({
-        prompt: "",
+        prompt: " ",
         skills: params.skills ? [...params.skills] : [],
         toolApprovals: params.toolApprovals
     })
