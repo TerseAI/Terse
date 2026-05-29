@@ -33,7 +33,7 @@ At build time, the cost is worse. A coding agent writing this job has no idea wh
 Compile the workspace once, then write against the compiled file. Resource IDs land as typed constants. Each integration exposes a namespace of trigger builders and a `skill()` constructor. Tool wrappers attach to `agent.tools.*` with full parameter and return types.
 
 ```ts
-import { TerseAgent, createJob } from "terse-sdk"
+import { generateText, createJob } from "terse-sdk"
 
 import { Attio, AttioList, Slack, SlackChannel } from "./terse.generated"
 
@@ -41,11 +41,10 @@ createJob({
     name: "new-deal-enrichment",
     triggers: [Attio.onRecordCreated({ list: AttioList.Pipeline.NewDeals })],
     onTrigger: async event => {
-        const agent = TerseAgent.create({
-            prompt: "You enrich new deals and alert the deal desk.",
+        await generateText({
+            prompt: `Enrich this new deal and alert the deal desk. ${event.formatForAgentRunner()}`,
             skills: [Attio.skill({ lists: [AttioList.Pipeline.NewDeals] }), Slack.skill({ channel: SlackChannel.DealDesk })]
         })
-        /* your logic */
     }
 })
 ```

@@ -98,27 +98,16 @@ Terse has two planes you can place independently. Most users pick one of the nam
 A Terse workflow is a single TypeScript file. The job below watches a repo for new pull requests, posts a deterministic Slack message announcing the PR, then threads a Block Kit summary under it:
 
 ```ts
-import { GithubPRTrigger, TerseAgent, createJob } from "terse-sdk"
-import { Repos, Skills, SlackChannel, Triggers } from "../terse.generated"
+import { GithubPRTrigger, generateText, createJob } from "terse-sdk"
+import { Repos, Skills, SlackChannel, Triggers, toolbox } from "../terse.generated"
 // ^^ Generated based on your workspace
 
 createJob({
     name: "Summarize PR and send slack message",
     triggers: [Triggers.github.onPROpened({ repo: Repos.TerseAI.Terse })],
     onTrigger: async (event: GithubPRTrigger) => {
-        // Create durable Agents
-        const prompt = "Summarize the incoming PR and send to slack. Format the summary in Block Kit; include screenshots or diagrams from the PR as image blocks."
-        const agent = TerseAgent.create({
-            prompt,
-            skills: [
-                // Fine tune what agents have access to. Impossible to modify anything outside of this scope
-                Skills.github({ repos: [Repos.TerseAI.Terse] }),
-                Skills.slack({ channel: SlackChannel.AllTerseInc })
-            ]
-        })
-
-        // deterministically call a tool
-        const message = await agent.tools.slack.sendMessage({
+        // Deterministic call — fixed channel, fixed message. No agent needed.
+        const message = await toolbox.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,
             message: "New PR from " + event.sender.login + "!"
         })
@@ -126,16 +115,24 @@ createJob({
         // Outputs are strongly typed
         const parentId = message.message_ts
 
-        // Trigger the Agent with Github + Slack tools auto added
-        await agent.runAndWait(`
-        Summarize this PR ${event.formatForAgentRunner()}.
-        Keep it short. Reply in a thread to the Slack message (thread parent ts: ${parentId}).
-        `)
+        // Agentic: one prompt in, the model uses the GitHub + Slack tools granted via skills
+        await generateText({
+            prompt: `
+            Summarize this PR ${event.formatForAgentRunner()}.
+            Keep it short. Format the summary in Block Kit; include screenshots or diagrams from the PR as image blocks.
+            Reply in a thread to the Slack message (thread parent ts: ${parentId}).
+            `,
+            skills: [
+                // Fine tune what the agent has access to. Impossible to touch anything outside this scope
+                Skills.github({ repos: [Repos.TerseAI.Terse] }),
+                Skills.slack({ channel: SlackChannel.AllTerseInc })
+            ]
+        })
     }
 })
 ```
 
-The skills passed to `TerseAgent.create` are the only surface the agent can reach: it can post in one Slack channel and read this one repo, nothing else. The deterministic `agent.tools.slack.sendMessage` call returns a typed result you can thread on directly, and `agent.runAndWait` picks up the GitHub and Slack tools without further wiring.
+The skills passed to `generateText` are the only surface the model can reach: it can post in one Slack channel and read this one repo, nothing else. The deterministic `toolbox.slack.sendMessage` call returns a typed result you can thread on directly, and `generateText` picks up the GitHub and Slack tools without further wiring.
 
 ## Integrations
 

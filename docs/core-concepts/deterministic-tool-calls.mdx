@@ -13,7 +13,7 @@ Deterministic tool calls let you call integration tools directly from your workf
 |                    | Deterministic                                         | Agentic                                                 |
 | ------------------ | ----------------------------------------------------- | ------------------------------------------------------- |
 | **How it works**   | Your code calls a specific tool with exact parameters | The model chooses which tools to call based on a prompt |
-| **API surface**    | `toolbox.*` or `agent.tools.*`                        | `run()` or `runAndWait()`                               |
+| **API surface**    | `toolbox.*`                                           | `generateText({ prompt, skills })`                      |
 | **When to use**    | You know the tool, parameters, and order in advance   | You need the model to reason, summarize, or decide      |
 | **Predictability** | Always runs the same way                              | Output varies across runs                               |
 | **Token cost**     | Zero LLM tokens                                       | Tokens consumed per run                                 |
@@ -65,29 +65,27 @@ await toolbox.slack.sendMessage({
 The real power is combining both in a single workflow. Use deterministic calls for predictable operations and hand off to the model when you need reasoning.
 
 ```ts
+import { generateText } from "terse-sdk"
 import { z } from "zod"
+import { toolbox } from "./terse.generated"
 
 createJob({
     name: "deal-enrichment-and-scoring",
     triggers: [Triggers.attio.onRecordCreated({ object: AttioObject.Deal })],
     onTrigger: async (event) => {
-        const agent = TerseAgent.create({
-            prompt: "You score new deals for ICP fit and notify the deal desk.",
-            skills: [Skills.attio({ object: AttioObject.Deal }), Skills.web(), Skills.slack({ channel: SlackChannel.DealDesk })]
-        })
-
         // 1. Agentic: let the model research the company and reason about fit
-        const parsed = await agent.runAndWait(
-            [
+        const parsed = await generateText({
+            prompt: [
                 "Research this company and score it for ICP fit (1-100).",
                 `Company: ${event.record.values.company_name}`,
                 `Domain: ${event.record.values.company_domain}`
             ].join("\n"),
-            z.object({ score: z.number(), rationale: z.string() })
-        )
+            skills: [Skills.attio({ object: AttioObject.Deal }), Skills.web()],
+            outputSchema: z.object({ score: z.number(), rationale: z.string() })
+        })
 
         // 2. Deterministic: write the result back to the CRM
-        await agent.tools.attio.upsertRecord({
+        await toolbox.attio.upsertRecord({
             object: AttioObject.Deal,
             matchingAttribute: "record_id",
             records: [{
@@ -98,7 +96,7 @@ createJob({
         })
 
         // 3. Deterministic: notify the team
-        await agent.tools.slack.sendMessage({
+        await toolbox.slack.sendMessage({
             channelId: SlackChannel.DealDesk.channelId,
             message: `Scored ${event.record.values.company_name}: ${parsed.score}/100 - ${parsed.rationale}`
         })

@@ -32,7 +32,7 @@ This is the key distinction:
 |                   | Skills (model access)                                | Deterministic tools (code access)               |
 | ----------------- | ---------------------------------------------------- | ----------------------------------------------- |
 | **Who decides**   | The model chooses which tools to call                | Your code calls tools directly                  |
-| **Controlled by** | `skills` array on `TerseAgent.create()`              | `agent.tools.*` (filtered by `skills`) or `toolbox.*` (unfiltered) |
+| **Controlled by** | `skills` array on `generateText` (or `TerseAgent.create()`) | `toolbox.*` (unfiltered)                  |
 | **Scope**         | Only integrations declared as skills                 | `toolbox.*` covers any connected integration    |
 | **Token cost**    | Tokens consumed per call                             | Zero LLM tokens                                 |
 
@@ -41,7 +41,7 @@ This is the key distinction:
 This means you can be precise about the model's reach for a given job, while still calling any connected integration from your handler code through `toolbox`:
 
 ```ts
-import { TerseAgent, createJob } from "terse-sdk"
+import { generateText, createJob } from "terse-sdk"
 
 import { AttioObject, Skills, SlackChannel, Triggers, toolbox } from "./terse.generated"
 
@@ -49,13 +49,11 @@ createJob({
     name: "weekly-digest",
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
     onTrigger: async (event) => {
-        const agent = TerseAgent.create({
-            prompt: "You summarize weekly pipeline activity for revenue leaders.",
+        // Agentic: model can only use Attio (the declared skill)
+        const summary = await generateText({
+            prompt: "Summarize this week's pipeline activity.",
             skills: [Skills.attio({ object: AttioObject.Deal })]
         })
-
-        // Agentic: model can only use Attio (the declared skill)
-        const summary = await agent.runAndWait("Summarize this week's pipeline activity.")
 
         // Deterministic: toolbox is unfiltered, so Slack works even though it isn't a skill
         await toolbox.slack.sendMessage({

@@ -19,24 +19,22 @@ icon: "scale"
 A multi-step Zapier flow becomes a single TypeScript file:
 
 ```ts
-import { AttioRecordCreatedTrigger, createJob, TerseAgent } from "terse-sdk"
+import { AttioRecordCreatedTrigger, createJob, generateText } from "terse-sdk"
 
-import { AttioObject, Skills, Triggers } from "./terse.generated"
+import { AttioObject, Skills, Triggers, toolbox } from "./terse.generated"
 
 createJob({
     name: "new-deal-enrichment",
     triggers: [Triggers.attio.onRecordCreated({ object: AttioObject.Companies })],
     onTrigger: async (event: AttioRecordCreatedTrigger) => {
-        const agent = TerseAgent.create({
-            prompt: "You enrich new companies and recommend a next step.",
+        // Agentic: research and recommend a next step
+        const summary = await generateText({
+            prompt: `Research ${event.record.values.name} and recommend a next step.`,
             skills: [Skills.attio({ object: AttioObject.Companies }), Skills.web()]
         })
 
-        const summary = await agent.runAndWait(
-            `Research ${event.record.values.name} and recommend a next step. Then upsert fit_score and research_summary on record ${event.record.id}.`
-        )
-
-        await agent.tools.attio.upsertRecord({
+        // Deterministic: write the result back
+        await toolbox.attio.upsertRecord({
             object: AttioObject.Companies,
             recordId: event.record.id,
             fields: { research_summary: summary }
