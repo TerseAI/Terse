@@ -17,7 +17,7 @@ import SnowflakeIntegrationCard from "./SnowflakeIntegrationCard"
 import WorkOSIntegrationCard from "./WorkOSIntegrationCard"
 
 function IntegrationCard({ integration, isActive = true, stateToken, compact = false }: { integration: IntegrationType; isActive?: boolean; stateToken?: string; compact?: boolean }) {
-    const cardClassName = "min-w-sm max-w-sm"
+    const cardClassName = "w-full"
 
     switch (integration) {
         case IntegrationType.NOTION:
@@ -58,7 +58,7 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
 
 export function IntegrationCardSkeleton() {
     return (
-        <Card className="min-w-sm max-w-sm">
+        <Card className="w-full">
             {/* Header: matches IntegrationCardHeader with lg icon + title + badge */}
             <CardHeader>
                 <CardTitle>
