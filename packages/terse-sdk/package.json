@@ -24,6 +24,9 @@
         "format:check": "pnpm exec prettier --config ../../.prettierrc --check \"src/**/*.ts\"",
         "install-global": "npm run build && npm link"
     },
+    "peerDependencies": {
+        "zod": "^4.0.0"
+    },
     "devDependencies": {
         "@types/node": "^22.0.0",
         "typescript": "^5.0.0",
