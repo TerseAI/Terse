@@ -575,21 +575,15 @@ type GenerateTextStructuredOutput<OutputSchema extends z.ZodType> = GenerateText
 export async function generateText<OutputSchema extends z.ZodType>(params: GenerateTextStructuredOutput<OutputSchema>): Promise<z.infer<OutputSchema>>
 export async function generateText(params: GenerateTextParams): Promise<string>
 export async function generateText<OutputSchema extends z.ZodType>(params: GenerateTextParams | GenerateTextStructuredOutput<OutputSchema>): Promise<string | z.infer<OutputSchema>> {
+    const agent = TerseAgent.create({
+        prompt: "",
+        skills: params.skills ? [...params.skills] : [],
+        toolApprovals: params.toolApprovals
+    })
     if ("outputSchema" in params) {
-        const agent = TerseAgent.create({
-            prompt: "",
-            skills: params.skills ? [...params.skills] : [],
-            toolApprovals: params.toolApprovals
-        })
         return await agent.runAndWait(params.prompt, params.outputSchema)
-    } else {
-        const agent = TerseAgent.create({
-            prompt: "",
-            skills: params.skills ? [...params.skills] : [],
-            toolApprovals: params.toolApprovals
-        })
-        return await agent.runAndWait(params.prompt)
     }
+    return await agent.runAndWait(params.prompt)
 }
 
 export enum EventType {
