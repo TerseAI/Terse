@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { AlertTriangle, ArrowRight, Check, Copy, Terminal } from "lucide-react"
@@ -129,6 +129,7 @@ const CLAUDE_PROMPT = "/create Summarize related PRs and DM the assignee in Slac
 
 function EmptyState() {
     const [copied, setCopied] = useState<"install" | "prompt" | null>(null)
+    const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const { setOpen } = useSidebar()
 
     useEffect(() => {
@@ -136,10 +137,17 @@ function EmptyState() {
         return () => setOpen(true)
     }, [])
 
+    useEffect(() => {
+        return () => {
+            if (copyResetRef.current) clearTimeout(copyResetRef.current)
+        }
+    }, [])
+
     const handleCopy = (which: "install" | "prompt", text: string) => {
         void navigator.clipboard.writeText(text)
         setCopied(which)
-        setTimeout(() => setCopied(null), 2000)
+        if (copyResetRef.current) clearTimeout(copyResetRef.current)
+        copyResetRef.current = setTimeout(() => setCopied(null), 2000)
     }
 
     return (
@@ -179,8 +187,7 @@ function EmptyState() {
                         <div className="flex">
                             <span className="select-none text-success pr-3">&gt;</span>
                             <span className="min-w-0 flex-1 text-muted-foreground break-words">
-                                <span className="text-foreground">/create</span>{" "}
-                                {CLAUDE_PROMPT.slice("/create ".length)}
+                                <span className="text-foreground">/create</span> {CLAUDE_PROMPT.slice("/create ".length)}
                             </span>
                         </div>
                     </div>
