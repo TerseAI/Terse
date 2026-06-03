@@ -125,10 +125,13 @@ function ProjectGroup({ group }: { group: AgentGroupData }) {
 // ---------------------------------------------------------------------------
 
 const INSTALL_LINES = ["npm i -g terse-cli", "npx skills add TerseAI/Terse"]
-const CLAUDE_PROMPT = "/create Summarize related PRs and DM the assignee in Slack when a Linear issue lands in Triage."
+const INIT_PROMPT = "/init"
+const CREATE_PROMPT = "/create Summarize related PRs and DM the assignee in Slack when a Linear issue lands in Triage."
+
+type CopyTarget = "install" | "init" | "create"
 
 function EmptyState() {
-    const [copied, setCopied] = useState<"install" | "prompt" | null>(null)
+    const [copied, setCopied] = useState<CopyTarget | null>(null)
     const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const { setOpen } = useSidebar()
 
@@ -143,7 +146,7 @@ function EmptyState() {
         }
     }, [])
 
-    const handleCopy = (which: "install" | "prompt", text: string) => {
+    const handleCopy = (which: CopyTarget, text: string) => {
         void navigator.clipboard.writeText(text)
         setCopied(which)
         if (copyResetRef.current) clearTimeout(copyResetRef.current)
@@ -186,19 +189,36 @@ function EmptyState() {
                     <div className="rounded-md bg-muted/60 border border-border/60 px-4 py-3 pr-20 font-mono text-sm leading-relaxed text-foreground">
                         <div className="flex">
                             <span className="select-none text-success pr-3">&gt;</span>
+                            <span className="min-w-0 flex-1 text-foreground break-words">{INIT_PROMPT}</span>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => handleCopy("init", INIT_PROMPT)}
+                        aria-label="Copy init command"
+                        className="absolute top-2 right-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
+                    >
+                        {copied === "init" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied === "init" ? "Copied" : "Copy"}
+                    </button>
+                </div>
+                <div className="mt-2 group relative">
+                    <div className="rounded-md bg-muted/60 border border-border/60 px-4 py-3 pr-20 font-mono text-sm leading-relaxed text-foreground">
+                        <div className="flex">
+                            <span className="select-none text-success pr-3">&gt;</span>
                             <span className="min-w-0 flex-1 text-muted-foreground break-words">
-                                <span className="text-foreground">/create</span> {CLAUDE_PROMPT.slice("/create ".length)}
+                                <span className="text-foreground">/create</span> {CREATE_PROMPT.slice("/create ".length)}
                             </span>
                         </div>
                     </div>
                     <button
                         type="button"
-                        onClick={() => handleCopy("prompt", CLAUDE_PROMPT)}
-                        aria-label="Copy prompt"
+                        onClick={() => handleCopy("create", CREATE_PROMPT)}
+                        aria-label="Copy create command"
                         className="absolute top-2 right-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
                     >
-                        {copied === "prompt" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                        {copied === "prompt" ? "Copied" : "Copy"}
+                        {copied === "create" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied === "create" ? "Copied" : "Copy"}
                     </button>
                 </div>
 
