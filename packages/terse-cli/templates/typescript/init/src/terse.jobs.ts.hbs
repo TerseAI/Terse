@@ -6,8 +6,8 @@ import { z } from "zod"
 import { Triggers } from "./terse.generated"
 
 // `createJob` registers a job with Terse. Each job has a name, one or more
-// triggers, and an `onTrigger` handler. `terse deploy` ships every registered
-// job; `terse test` and `terse run` execute them locally.
+// triggers, and an `onTrigger` handler. `terse test` and `terse run` execute
+// them locally.
 createJob({
     name: "Tell a programming joke example job",
 
@@ -31,3 +31,6 @@ createJob({
         console.log(response.joke)
     }
 })
+
+// Ready to ship? Run `terse deploy` to push this job to Terse so its triggers
+// start firing in the cloud. Re-run it any time you change a job.

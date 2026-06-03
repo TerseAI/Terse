@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { AlertTriangle, ArrowRight, Check, Copy, Terminal } from "lucide-react"
@@ -124,10 +124,12 @@ function ProjectGroup({ group }: { group: AgentGroupData }) {
 // Empty state
 // ---------------------------------------------------------------------------
 
-const CLI_LINES = ["npm i -g terse-cli", "terse init my-job"]
+const INSTALL_LINES = ["npm i -g terse-cli", "npx skills add TerseAI/Terse"]
+const CLAUDE_PROMPT = "/create Summarize related PRs and DM the assignee in Slack when a Linear issue lands in Triage."
 
 function EmptyState() {
-    const [copied, setCopied] = useState(false)
+    const [copied, setCopied] = useState<"install" | "prompt" | null>(null)
+    const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const { setOpen } = useSidebar()
 
     useEffect(() => {
@@ -135,10 +137,17 @@ function EmptyState() {
         return () => setOpen(true)
     }, [])
 
-    const handleCopy = () => {
-        void navigator.clipboard.writeText(CLI_LINES.join("\n"))
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+    useEffect(() => {
+        return () => {
+            if (copyResetRef.current) clearTimeout(copyResetRef.current)
+        }
+    }, [])
+
+    const handleCopy = (which: "install" | "prompt", text: string) => {
+        void navigator.clipboard.writeText(text)
+        setCopied(which)
+        if (copyResetRef.current) clearTimeout(copyResetRef.current)
+        copyResetRef.current = setTimeout(() => setCopied(null), 2000)
     }
 
     return (
@@ -149,12 +158,12 @@ function EmptyState() {
                     <span className="font-mono text-sm tracking-tight text-foreground">terse</span>
                 </div>
 
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">Build your first job from your terminal.</h1>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">Terse jobs are built locally. Run the commands below to get started.</p>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">Build your first job with Claude Code.</h1>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">Install Terse and add the skill, then describe what you want in plain language.</p>
 
                 <div className="mt-6 group relative">
                     <pre className="rounded-md bg-muted/60 border border-border/60 px-4 py-3 font-mono text-sm text-foreground">
-                        {CLI_LINES.map(line => (
+                        {INSTALL_LINES.map(line => (
                             <div key={line} className="flex">
                                 <span className="select-none text-muted-foreground pr-3">$</span>
                                 <span>{line}</span>
@@ -163,16 +172,41 @@ function EmptyState() {
                     </pre>
                     <button
                         type="button"
-                        onClick={handleCopy}
+                        onClick={() => handleCopy("install", INSTALL_LINES.join("\n"))}
                         aria-label="Copy commands"
                         className="absolute top-2 right-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
                     >
-                        {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                        {copied ? "Copied" : "Copy"}
+                        {copied === "install" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied === "install" ? "Copied" : "Copy"}
                     </button>
                 </div>
 
-                <div className="mt-6 flex items-center gap-4 text-sm">
+                <p className="mt-6 text-xs font-medium uppercase tracking-wider text-muted-foreground">Then, in Claude Code</p>
+                <div className="mt-2 group relative">
+                    <div className="rounded-md bg-muted/60 border border-border/60 px-4 py-3 pr-20 font-mono text-sm leading-relaxed text-foreground">
+                        <div className="flex">
+                            <span className="select-none text-success pr-3">&gt;</span>
+                            <span className="min-w-0 flex-1 text-muted-foreground break-words">
+                                <span className="text-foreground">/create</span> {CLAUDE_PROMPT.slice("/create ".length)}
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => handleCopy("prompt", CLAUDE_PROMPT)}
+                        aria-label="Copy prompt"
+                        className="absolute top-2 right-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
+                    >
+                        {copied === "prompt" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied === "prompt" ? "Copied" : "Copy"}
+                    </button>
+                </div>
+
+                <div className="mt-8 flex flex-col gap-3 border-t border-border/60 pt-6 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <span>Prefer the CLI?</span>
+                        <code className="font-mono text-foreground">terse init my-job</code>
+                    </div>
                     <a href="https://docs.useterse.ai" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
                         <Terminal className="h-3.5 w-3.5" />
                         Read the docs
