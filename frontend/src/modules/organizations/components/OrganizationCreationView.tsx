@@ -10,7 +10,7 @@ export default function OrganizationCreationPage() {
     const navigate = useNavigate()
 
     if (!user || user.organizationId) {
-        navigate(FrontendRoutes.APP, { replace: true })
+        navigate(FrontendRoutes.HOME, { replace: true })
     }
 
     if (isLoading) {
