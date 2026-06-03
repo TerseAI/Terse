@@ -1202,8 +1202,7 @@ function extractChannelName(
         if (!channelName) {
             channelName = "Direct Message"
         }
-        logger.debug(`✓ Identified channel as DM: ${channelName}`, {
-            channelName,
+        logger.debug(`✓ Identified channel as DM`, {
             channelId: channel.id
         })
         return channelName
@@ -1237,8 +1236,7 @@ function extractUserName(userResult: { success: boolean; data?: { user?: SlackUs
     const user = userResult.data.user
     // Prefer real_name, fallback to display_name, then name, then id
     const userName = user.real_name || user.profile?.display_name || user.profile?.real_name || user.name || user.id
-    logger.debug(`✓ Fetched user name: ${userName}`, {
-        userName,
+    logger.debug(`✓ Fetched user name`, {
         userId: user.id
     })
     return userName
@@ -1647,9 +1645,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
 
         const client: WebClient = await initializeSlackWebClient(filteredWorkspaceUserIntegrations[0])
 
-        logger.debug(`📡 Fetching additional Slack data for channel ${messageEvent.channel}, user ${messageEvent.user}, message ${messageEvent.ts}`, {
-            channel: messageEvent.channel,
-            user: messageEvent.user,
+        logger.debug(`📡 Fetching additional Slack data for message ${messageEvent.ts}`, {
             messageTs: messageEvent.ts,
             teamId
         })
