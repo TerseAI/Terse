@@ -203,7 +203,7 @@ export class ClaudeCodeSandboxService {
 
             // Run Claude Code
             t = performance.now()
-            const claudeArgs = ["claude", "-p", "--output-format", "json", "--max-turns", String(maxTurns), "--dangerously-skip-permissions"]
+            const claudeArgs = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--max-turns", String(maxTurns), "--dangerously-skip-permissions"]
             if (plugin) {
                 claudeArgs.push("--plugin-dir", plugin.dir)
             }
@@ -211,7 +211,7 @@ export class ClaudeCodeSandboxService {
                 claudeArgs.push("--json-schema", JSON.stringify(jsonSchema))
             }
 
-            const claudeProc = await sb.exec(["su", "-p", "coder", "-c", `cd ${SDK_SOURCE_IMAGE_PROJECT_DIR} && exec ${shellQuoteArgs(claudeArgs)} < /tmp/prompt.txt > /tmp/claude-output.json`], {
+            const claudeProc = await sb.exec(["su", "coder", "-c", `cd ${SDK_SOURCE_IMAGE_PROJECT_DIR} && exec ${shellQuoteArgs(claudeArgs)} < /tmp/prompt.txt > /tmp/claude-stream.jsonl`], {
                 stdout: "pipe",
                 stderr: "pipe",
                 env: extraEnv
@@ -220,22 +220,38 @@ export class ClaudeCodeSandboxService {
             const stderr = await claudeProc.stderr.readText()
             const exitCode = await claudeProc.wait()
 
-            // Read Claude Code output from file (more reliable than stdout pipe)
-            let stdout = ""
-            const catProc = await sb.exec(["cat", "/tmp/claude-output.json"], { stdout: "pipe", stderr: "pipe" })
+            let transcript = ""
+            const catProc = await sb.exec(["cat", "/tmp/claude-stream.jsonl"], { stdout: "pipe", stderr: "pipe" })
             const catStdout = await catProc.stdout.readText()
             const catExit = await catProc.wait()
             if (catExit === 0) {
-                stdout = catStdout
+                transcript = catStdout
             }
+
+            const stdout = extractStreamResult(transcript)
+            const streamSummary = summarizeStream(transcript)
+            const killedByTimeout = exitCode === 137
 
             logger.info(`[ClaudeCodeSandbox:${label}] Claude Code finished`, {
                 duration: this.elapsed(t),
                 exitCode,
+                killedByTimeout,
                 stdoutLength: stdout.length,
+                transcriptLength: transcript.length,
+                events: streamSummary.events,
+                eventTypes: streamSummary.types,
+                lastEventType: streamSummary.lastEventType,
                 stderrLength: stderr.length,
                 stderrPreview: stderr.slice(0, 500)
             })
+
+            if (killedByTimeout) {
+                logger.warn(`[ClaudeCodeSandbox:${label}] Claude Code killed before producing a result (likely sandbox timeout)`, {
+                    timeoutMs,
+                    lastEventType: streamSummary.lastEventType,
+                    transcriptTail: transcript.slice(-1500)
+                })
+            }
 
             if (stderr) {
                 logger.warn(`[ClaudeCodeSandbox:${label}] Claude Code stderr`, { stderr: stderr.slice(0, 2000) })
@@ -268,4 +284,35 @@ export class ClaudeCodeSandboxService {
             await sandboxService.deleteImage(judgeImageId).catch(err => logger.warn(`[ClaudeCodeSandbox:${label}] Failed to delete Judge image`, { imageId: judgeImageId, error: err }))
         }
     }
+}
+
+function extractStreamResult(ndjson: string): string {
+    if (!ndjson) return ""
+    const lines = ndjson.split("\n").filter(line => line.trim())
+    for (let i = lines.length - 1; i >= 0; i--) {
+        try {
+            const event = JSON.parse(lines[i])
+            if (event?.type === "result") return lines[i]
+        } catch {
+            // partial/non-JSON line, keep scanning
+        }
+    }
+    return ""
+}
+
+function summarizeStream(ndjson: string): { events: number; types: Record<string, number>; lastEventType: string | null } {
+    const lines = ndjson ? ndjson.split("\n").filter(line => line.trim()) : []
+    const types: Record<string, number> = {}
+    let lastEventType: string | null = null
+    for (const line of lines) {
+        try {
+            const event = JSON.parse(line)
+            const type = typeof event?.type === "string" ? event.type : "unknown"
+            types[type] = (types[type] ?? 0) + 1
+            lastEventType = type
+        } catch {
+            // ignore partial trailing line
+        }
+    }
+    return { events: lines.length, types, lastEventType }
 }
