@@ -159,11 +159,7 @@ export class WorkOSAuthProvider extends SettingsDependant implements AuthProvide
             return
         }
 
-        if (!state || !expectedState || state.length !== expectedState.length || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(expectedState))) {
-            logger.warn("[/callback] OAuth state mismatch — possible CSRF or stale flow", { hasState: Boolean(state), hasExpectedState: Boolean(expectedState) })
-            res.status(400).send("Invalid OAuth state")
-            return
-        }
+        const stateValid = Boolean(state && expectedState && state.length === expectedState.length && crypto.timingSafeEqual(Buffer.from(state), Buffer.from(expectedState)))
 
         try {
             const authenticateResponse = await this.workos.userManagement.authenticateWithCode({
@@ -174,6 +170,13 @@ export class WorkOSAuthProvider extends SettingsDependant implements AuthProvide
                     cookiePassword: this.config.cookiePassword
                 }
             })
+
+            if (!stateValid && !authenticateResponse.impersonator) {
+                logger.warn("[/callback] OAuth state mismatch on non-impersonation flow — possible CSRF or stale flow", { hasState: Boolean(state), hasExpectedState: Boolean(expectedState) })
+                clearSessionCookies(res)
+                res.status(400).send("Invalid OAuth state")
+                return
+            }
 
             if (!authenticateResponse.sealedSession) {
                 logger.error("[/callback] No sealed session in authenticate response")
