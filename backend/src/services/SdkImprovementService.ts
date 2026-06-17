@@ -1,4 +1,5 @@
 import crypto from "node:crypto"
+import { resolve4 } from "node:dns/promises"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -79,26 +80,14 @@ const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
 // requests will fall back to IPv4 (160.79.104.0/23).
 const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23"]
 
-// The LiteLLM proxy runs on Render, fronted by Cloudflare, so egress is pinned to Cloudflare's IPv4 ranges.
-// This is defense-in-depth, not a tight per-host lock (Cloudflare IPs are shared); the per-job virtual key
-// is the real boundary. Source: https://www.cloudflare.com/ips-v4
-const CLOUDFLARE_IPV4_CIDRS = [
-    "173.245.48.0/20",
-    "103.21.244.0/22",
-    "103.22.200.0/22",
-    "103.31.4.0/22",
-    "141.101.64.0/18",
-    "108.162.192.0/18",
-    "190.93.240.0/20",
-    "188.114.96.0/20",
-    "197.234.240.0/22",
-    "198.41.128.0/17",
-    "162.158.0.0/15",
-    "104.16.0.0/13",
-    "104.24.0.0/14",
-    "172.64.0.0/13",
-    "131.0.72.0/22"
-]
+// Pin sandbox egress to the proxy's currently-resolved IPs. Render's addresses are dynamic (and are not
+// Cloudflare's), so we resolve the proxy host at job time rather than hardcoding a provider range.
+async function resolveEgressCidrs(baseUrl: string): Promise<string[]> {
+    const host = new URL(baseUrl).hostname
+    const ips = await resolve4(host)
+    if (ips.length === 0) throw new Error(`Could not resolve LiteLLM host ${host} for egress allowlist`)
+    return ips.map(ip => `${ip}/32`)
+}
 
 export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
@@ -140,7 +129,7 @@ export class SdkImprovementService {
                     ANTHROPIC_MODEL: LITELLM_MAIN_MODEL,
                     ANTHROPIC_DEFAULT_HAIKU_MODEL: LITELLM_SMALL_MODEL
                 }
-                egressCidrAllowlist = CLOUDFLARE_IPV4_CIDRS
+                egressCidrAllowlist = await resolveEgressCidrs(litellm.baseUrl)
             } else {
                 env = { ANTHROPIC_API_KEY: improvementApiKey! }
                 egressCidrAllowlist = ANTHROPIC_INBOUND_CIDRS
