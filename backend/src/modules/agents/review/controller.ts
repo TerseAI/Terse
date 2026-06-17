@@ -52,6 +52,9 @@ export async function reviewAllAgents(req: Request, res: Response) {
         return
     }
 
+    const dryRun = req.query.dryRun === "true"
+    if (dryRun) logger.info("[ReviewAgents] Dry-run: computing improvements without persisting or notifying")
+
     const periodEnd = new Date()
     const periodStart = new Date(periodEnd.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -124,38 +127,55 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 const evaluation = await sdkService.evaluate(automation.id, context)
                 const improvementRecords = evaluation.improvements
 
-                await db().$transaction(async tx => {
-                    const review = await tx.agent_reviews.create({
-                        data: {
-                            automation_id: automation.id,
-                            organization_id: automation.organization_id,
-                            title: evaluation.title,
-                            summary: evaluation.summary,
-                            runs_analyzed: automation.runCount,
-                            review_period_start: periodStart,
-                            review_period_end: periodEnd
-                        }
-                    })
-
-                    if (improvementRecords.length > 0) {
-                        await tx.agent_improvements.createMany({
-                            data: improvementRecords.map(improvement => ({
-                                review_id: review.id,
-                                automation_id: automation.id,
-                                title: improvement.title,
-                                description: improvement.description,
-                                target_area: improvement.targetArea,
-                                confidence: improvement.confidence,
-                                suggested_patch: improvement.suggestedPatch ?? null
-                            }))
-                        })
-                    }
+                logger.info("[ReviewAgents] Computed evaluation", {
+                    dryRun,
+                    automationId: automation.id,
+                    title: evaluation.title,
+                    summary: evaluation.summary,
+                    improvementCount: improvementRecords.length,
+                    improvements: improvementRecords.map(improvement => ({
+                        title: improvement.title,
+                        description: improvement.description,
+                        targetArea: improvement.targetArea,
+                        confidence: improvement.confidence,
+                        patchLength: improvement.suggestedPatch?.length ?? 0
+                    }))
                 })
 
-                reviewedAgents += 1
-                improvementsCreated += improvementRecords.length
+                if (!dryRun) {
+                    await db().$transaction(async tx => {
+                        const review = await tx.agent_reviews.create({
+                            data: {
+                                automation_id: automation.id,
+                                organization_id: automation.organization_id,
+                                title: evaluation.title,
+                                summary: evaluation.summary,
+                                runs_analyzed: automation.runCount,
+                                review_period_start: periodStart,
+                                review_period_end: periodEnd
+                            }
+                        })
 
-                if (improvementRecords.length > 0) {
+                        if (improvementRecords.length > 0) {
+                            await tx.agent_improvements.createMany({
+                                data: improvementRecords.map(improvement => ({
+                                    review_id: review.id,
+                                    automation_id: automation.id,
+                                    title: improvement.title,
+                                    description: improvement.description,
+                                    target_area: improvement.targetArea,
+                                    confidence: improvement.confidence,
+                                    suggested_patch: improvement.suggestedPatch ?? null
+                                }))
+                            })
+                        }
+                    })
+                }
+
+                reviewedAgents += 1
+                if (!dryRun) improvementsCreated += improvementRecords.length
+
+                if (!dryRun && improvementRecords.length > 0) {
                     const improvementsPath = buildRoute(FrontendRoutes.JOBS.IMPROVEMENTS, { id: automation.id })
                     const improvementsUrl = settings.urls.frontend ? `${settings.urls.frontend}${improvementsPath}` : improvementsPath
                     const group = emailGroups.get(automation.user.id)!
@@ -222,6 +242,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
 
         return res.status(200).json({
             success: true,
+            dryRun,
             summary: { scannedAgents: automations.length, reviewedAgents, skippedNoRuns, skippedTooManyImprovements, improvementsCreated, emailsSent, failures: failures.length },
             failures
         })

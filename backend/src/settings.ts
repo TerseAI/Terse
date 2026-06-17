@@ -168,6 +168,15 @@ export const settings = {
         improvementWorkspaceId: optionalEnv("ANTHROPIC_IMPROVEMENT_WORKSPACE_ID")
     },
 
+    // LiteLLM proxy — opt-in. When set, improvement reviews mint a per-job virtual key instead of handing out the platform key.
+    litellm: optionalIntegrationSettings(["LITELLM_BASE_URL", "LITELLM_MASTER_KEY"], () => ({
+        baseUrl: requireEnv("LITELLM_BASE_URL"),
+        masterKey: requireSecretMinLength("LITELLM_MASTER_KEY"),
+        perJobBudgetUsd: Number(optionalEnv("LITELLM_PER_JOB_BUDGET_USD", "5")),
+        keyTtl: optionalEnv("LITELLM_KEY_TTL", "20m"),
+        rpm: Number(optionalEnv("LITELLM_KEY_RPM", "60"))
+    })),
+
     // Modal — opt-in. Used by ModalSandboxService; absent falls through to LocalSandboxService.
     modal: optionalIntegrationSettings(["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"], () => ({
         tokenId: requireEnv("MODAL_TOKEN_ID"),
