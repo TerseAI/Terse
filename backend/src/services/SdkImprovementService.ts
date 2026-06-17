@@ -75,7 +75,7 @@ const IMPROVEMENTS_SCHEMA = {
     required: ["title", "summary", "improvements"]
 }
 
-const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
+const SANDBOX_TIMEOUT_MS = 30 * 60 * 1000
 // Modal sandbox CIDR allowlist accepts IPv4 only. Anthropic's IPv6 range (2607:6bc0::/48) is dropped;
 // requests will fall back to IPv4 (160.79.104.0/23).
 const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23"]
