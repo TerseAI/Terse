@@ -10,6 +10,7 @@ import { JudgeContext } from "../modules/agents/JudgeAgent/fetchJudgeContext"
 import { settings } from "../settings"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
+import { LITELLM_MAIN_MODEL, LITELLM_SMALL_MODEL, LiteLLMKeyService } from "./LiteLLMKeyService"
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDir = path.dirname(currentFilePath)
@@ -78,8 +79,30 @@ const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
 // requests will fall back to IPv4 (160.79.104.0/23).
 const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23"]
 
+// The LiteLLM proxy runs on Render, fronted by Cloudflare, so egress is pinned to Cloudflare's IPv4 ranges.
+// This is defense-in-depth, not a tight per-host lock (Cloudflare IPs are shared); the per-job virtual key
+// is the real boundary. Source: https://www.cloudflare.com/ips-v4
+const CLOUDFLARE_IPV4_CIDRS = [
+    "173.245.48.0/20",
+    "103.21.244.0/22",
+    "103.22.200.0/22",
+    "103.31.4.0/22",
+    "141.101.64.0/18",
+    "108.162.192.0/18",
+    "190.93.240.0/20",
+    "188.114.96.0/20",
+    "197.234.240.0/22",
+    "198.41.128.0/17",
+    "162.158.0.0/15",
+    "104.16.0.0/13",
+    "104.24.0.0/14",
+    "172.64.0.0/13",
+    "131.0.72.0/22"
+]
+
 export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
+    private litellmKeys = new LiteLLMKeyService()
 
     async evaluate(automationId: string, context: JudgeContext): Promise<JudgeAgentOutputType> {
         const { sourceImageId } = context
@@ -89,9 +112,10 @@ export class SdkImprovementService {
             return { title: "No source code available", summary: "Could not find source code to review.", improvements: [] }
         }
 
+        const litellm = settings.litellm
         const improvementApiKey = settings.anthropic.improvementApiKey
-        if (!improvementApiKey) {
-            throw new Error("ANTHROPIC_IMPROVEMENT_API_KEY is required to run SDK improvement reviews")
+        if (!litellm && !improvementApiKey) {
+            throw new Error("LITELLM_BASE_URL or ANTHROPIC_IMPROVEMENT_API_KEY is required to run SDK improvement reviews")
         }
 
         const prompt = buildClaudeCodePrompt(automationId, context)
@@ -104,7 +128,24 @@ export class SdkImprovementService {
 
         const jobId = `${automationId}-${crypto.randomBytes(8).toString("hex")}`
 
+        let virtualKey: string | undefined
         try {
+            let env: Record<string, string>
+            let egressCidrAllowlist: string[]
+            if (litellm) {
+                virtualKey = await this.litellmKeys.mintJobKey(jobId)
+                env = {
+                    ANTHROPIC_BASE_URL: litellm.baseUrl,
+                    ANTHROPIC_AUTH_TOKEN: virtualKey,
+                    ANTHROPIC_MODEL: LITELLM_MAIN_MODEL,
+                    ANTHROPIC_DEFAULT_HAIKU_MODEL: LITELLM_SMALL_MODEL
+                }
+                egressCidrAllowlist = CLOUDFLARE_IPV4_CIDRS
+            } else {
+                env = { ANTHROPIC_API_KEY: improvementApiKey! }
+                egressCidrAllowlist = ANTHROPIC_INBOUND_CIDRS
+            }
+
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
                 prompt,
@@ -112,10 +153,8 @@ export class SdkImprovementService {
                 gitInit: true,
                 jsonSchema: IMPROVEMENTS_SCHEMA,
                 timeoutMs: SANDBOX_TIMEOUT_MS,
-                env: {
-                    ANTHROPIC_API_KEY: improvementApiKey
-                },
-                egressCidrAllowlist: ANTHROPIC_INBOUND_CIDRS,
+                env,
+                egressCidrAllowlist,
                 plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined
             })
 
@@ -128,6 +167,8 @@ export class SdkImprovementService {
         } catch (error) {
             logger.error("[SdkImprovementService] Evaluation failed", { automationId, jobId, error })
             return { title: "Review failed", summary: "An error occurred during the review.", improvements: [] }
+        } finally {
+            if (virtualKey) await this.litellmKeys.deleteKey(virtualKey)
         }
     }
 }
