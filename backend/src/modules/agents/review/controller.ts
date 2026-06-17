@@ -173,7 +173,7 @@ export async function reviewAllAgents(req: Request, res: Response) {
                 }
 
                 reviewedAgents += 1
-                improvementsCreated += improvementRecords.length
+                if (!dryRun) improvementsCreated += improvementRecords.length
 
                 if (!dryRun && improvementRecords.length > 0) {
                     const improvementsPath = buildRoute(FrontendRoutes.JOBS.IMPROVEMENTS, { id: automation.id })
