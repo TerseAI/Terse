@@ -80,8 +80,8 @@ const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
 // requests will fall back to IPv4 (160.79.104.0/23).
 const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23"]
 
-// Pin sandbox egress to the proxy's currently-resolved IPs. Render's addresses are dynamic (and are not
-// Cloudflare's), so we resolve the proxy host at job time rather than hardcoding a provider range.
+// Pin sandbox egress to the proxy's currently-resolved IPs. The proxy host's addresses can change,
+// so we resolve them at job time rather than hardcoding a provider range.
 async function resolveEgressCidrs(baseUrl: string): Promise<string[]> {
     const host = new URL(baseUrl).hostname
     const ips = await resolve4(host)
