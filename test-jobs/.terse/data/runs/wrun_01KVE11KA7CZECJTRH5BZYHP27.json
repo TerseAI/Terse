@@ -1,0 +1,30 @@
+{
+  "runId": "wrun_01KVE11KA7CZECJTRH5BZYHP27",
+  "deploymentId": "dpl_local@5.0.0-beta.19",
+  "workflowName": "workflow//./src/__terse_workflow//terseJob_0",
+  "specVersion": 5,
+  "executionContext": {
+    "traceCarrier": {},
+    "workflowCoreVersion": "5.0.0-beta.19",
+    "features": {
+      "encryption": false
+    }
+  },
+  "input": {
+    "__type": "Uint8Array",
+    "data": "ZGV2bFtbMV0seyJpbnRlZ3JhdGlvblR5cGUiOjIsImV2ZW50VHlwZSI6MywiZm9ybWF0dGVkQ29udGVudCI6NCwiZGVidWdMb2ciOjUsImRpc3BsYXkiOjYsImRhdGEiOjl9LCJjcm9uX2pvYiIsImNyb24iLCJUaGlzIGlzIGEgbWFudWFsbHkgdHJpZ2dlcmVkIGV2ZW50IGZvciB0aGUgY2hhbm5lbCBpbnB1dCBzeXN0ZW0uXG5cblVzZXIgcHJvdmlkZWQgY29udGV4dCBmb3IgdGhpcyBtYW51YWwgdHJpZ2dlcjpcbk1hbnVhbCB0cmlnZ2VyIGZyb20gdGVyc2UgdGVzdCAoc2NoZWR1bGU6IDAgOSAqICogMSkiLCJNYW51YWwgVHJpZ2dlciIseyJ0aXRsZSI6Nywic3VidGl0bGUiOjh9LCJNYW51YWwgdHJpZ2dlciIsIk1hbnVhbCB0cmlnZ2VyIGZyb20gdGVyc2UgdGVzdCAoc2NoZWR1bGU6IDAgOSAqICogMSkiLHsiaW50ZWdyYXRpb25UeXBlIjoyLCJldmVudFR5cGUiOjMsImlucHV0SWQiOjEwLCJpc01hbnVhbFRyaWdnZXIiOjExLCJtYW51YWxDb250ZXh0Ijo4fSwic3lzdGVtIix0cnVlXQ=="
+  },
+  "createdAt": "2026-06-18T18:49:09.197Z",
+  "startedAt": "2026-06-18T18:49:09.197Z",
+  "status": "failed",
+  "error": {
+    "__type": "Uint8Array",
+    "data": "enN0ZCi1L/1gAQTtCwBWWEwjIG313Fr+STKaLYuemLj2z6UIiOQkxjXU+kpC80NMKEAIgK5DAEEAQgC3LWuOpyfG1aroAzOmemIQK1UVdUi7xSirlRGagz1t0JIJZjYKovdbopiNIfSfq5bE2biitkkkCzBp3u4FTUGhOnAUfvCsvtQzwXsacalT6mnVDPe98yc8BpwMuDhPGwQscS7mXxfp+qC8Iw6/83WcB/kD2MvZpYwxZh1stoid70sQdhZdORy1fW9ylR4RToaBc8Fo5KKYi4yNjHEOMFJCyEI8beZCMlLOnyD37xF57v3Tk3Kf73O2kVYudEXtliLR9xfiqQMLLcIZoaKBiikH4vzJ8cVXw7svRe9B1zjYkCwqAOGXK658LVvdcBro6OVHWdziFo1Koa5KVL0jAo1XWdZy77leURoAfcWBRu0EsAYxmGuiCDMFCYGX9Yc4DWgCFjCQ2iubFBhIuaEj5TjH1Noon2NEQx6usWp7VdkfSlijlksiSD/iYEaCg/JeBQU="
+  },
+  "errorCode": "USER_ERROR",
+  "completedAt": "2026-06-18T18:49:09.353Z",
+  "updatedAt": "2026-06-18T18:49:09.353Z",
+  "attributes": {
+    "sessionId": "f082966f-59fc-462e-927a-7f2bfefb4ca5"
+  }
+}

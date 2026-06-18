@@ -1,0 +1,25 @@
+{
+  "eventType": "run_created",
+  "runId": "wrun_01KVE11KA7CZECJTRH5BZYHP27",
+  "eventId": "evnt_01KVE11KAJEFP1VCCEQJVQSA3E",
+  "createdAt": "2026-06-18T18:49:09.197Z",
+  "specVersion": 5,
+  "eventData": {
+    "deploymentId": "dpl_local@5.0.0-beta.19",
+    "workflowName": "workflow//./src/__terse_workflow//terseJob_0",
+    "input": {
+      "__type": "Uint8Array",
+      "data": "ZGV2bFtbMV0seyJpbnRlZ3JhdGlvblR5cGUiOjIsImV2ZW50VHlwZSI6MywiZm9ybWF0dGVkQ29udGVudCI6NCwiZGVidWdMb2ciOjUsImRpc3BsYXkiOjYsImRhdGEiOjl9LCJjcm9uX2pvYiIsImNyb24iLCJUaGlzIGlzIGEgbWFudWFsbHkgdHJpZ2dlcmVkIGV2ZW50IGZvciB0aGUgY2hhbm5lbCBpbnB1dCBzeXN0ZW0uXG5cblVzZXIgcHJvdmlkZWQgY29udGV4dCBmb3IgdGhpcyBtYW51YWwgdHJpZ2dlcjpcbk1hbnVhbCB0cmlnZ2VyIGZyb20gdGVyc2UgdGVzdCAoc2NoZWR1bGU6IDAgOSAqICogMSkiLCJNYW51YWwgVHJpZ2dlciIseyJ0aXRsZSI6Nywic3VidGl0bGUiOjh9LCJNYW51YWwgdHJpZ2dlciIsIk1hbnVhbCB0cmlnZ2VyIGZyb20gdGVyc2UgdGVzdCAoc2NoZWR1bGU6IDAgOSAqICogMSkiLHsiaW50ZWdyYXRpb25UeXBlIjoyLCJldmVudFR5cGUiOjMsImlucHV0SWQiOjEwLCJpc01hbnVhbFRyaWdnZXIiOjExLCJtYW51YWxDb250ZXh0Ijo4fSwic3lzdGVtIix0cnVlXQ=="
+    },
+    "executionContext": {
+      "traceCarrier": {},
+      "workflowCoreVersion": "5.0.0-beta.19",
+      "features": {
+        "encryption": false
+      }
+    },
+    "attributes": {
+      "sessionId": "f082966f-59fc-462e-927a-7f2bfefb4ca5"
+    }
+  }
+}

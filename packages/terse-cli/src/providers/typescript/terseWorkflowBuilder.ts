@@ -2,17 +2,20 @@ import { BaseBuilder, createBaseBuilderConfig } from "@workflow/builders"
 import fs from "node:fs"
 import path from "node:path"
 
-// Modeled on @workflow/nest's NestLocalBuilder: scan only `src` and emit bundles
+// Modeled on @workflow/nest's NestLocalBuilder: scan `scanDir` and emit bundles
 // to an out dir OUTSIDE it. The builder globs inputs rooted at `dirs`, so output
 // kept outside `dirs` is never re-globbed as an input — which is what lets
 // re-tests overwrite the bundles cleanly. (StandaloneBuilder forces dirs: ['.'],
 // scanning the whole project, which is why its output collided with itself.)
+// `scanDir` (relative to workingDir) holds the macro-transformed sources, so the
+// builder discovers the `"use workflow"` functions the job macro injected into
+// each createJob's onTrigger.
 export class TerseWorkflowBuilder extends BaseBuilder {
     private readonly outDir: string
 
-    constructor(workingDir: string, outDir: string) {
+    constructor(workingDir: string, scanDir: string, outDir: string) {
         super({
-            ...createBaseBuilderConfig({ workingDir, dirs: ["src"], watch: false }),
+            ...createBaseBuilderConfig({ workingDir, dirs: [scanDir], watch: false }),
             buildTarget: "standalone",
             stepsBundlePath: path.join(outDir, "steps.cjs"),
             workflowsBundlePath: path.join(outDir, "workflows.cjs"),

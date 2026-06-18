@@ -242,7 +242,7 @@ class TypeScriptProvider implements LanguageProvider {
             if (isVerbose) {
                 console.log(chalk.cyan(`  Job "${job.name}" started`))
             }
-            const rt = await getDurableRuntime(process.cwd(), opts?.entryFile)
+            const rt = await getDurableRuntime(process.cwd())
             await rt.dispatchJob(job.name, { sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
         } catch (error) {
             throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {

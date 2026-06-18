@@ -91,7 +91,7 @@ import type {
 } from "terse-types"
 import { z } from "zod"
 
-import { claimAgentApprovalHandling, getJobContext, releaseAgentApprovalHandling, runWithJobContext } from "./context.js"
+import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
 import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
@@ -103,12 +103,12 @@ function resolveTerseBackendUrl(): string {
 }
 
 function resolveApiBaseUrl(): string {
-    return getJobContext()?.apiBaseUrl ?? resolveTerseBackendUrl()
+    return resolveTerseBackendUrl()
 }
 
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
 
-export { getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "./context.js"
+export { isAgentApprovalHandlingClaimed } from "./context.js"
 export type { TerseJobContext } from "./context.js"
 
 export { SessionStreamError, openListenStream, openSessionStream } from "./sessionStream.js"
@@ -333,11 +333,11 @@ export class Terse {
             throw new Error("TERSE_API_KEY is not set. " + "Add it to your .env file or export it before starting your server.")
         }
 
-        verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
+        await verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
 
         const challenge = webhookJobChallengeRequestSchema.safeParse(body)
         if (challenge.success) {
-            const signature = computeChallengeSignature(signingSecret, challenge.data.challenge)
+            const signature = await computeChallengeSignature(signingSecret, challenge.data.challenge)
             return { challenge: challenge.data.challenge, signature }
         }
 
@@ -365,21 +365,17 @@ export class Terse {
         const session = await openSessionStream(apiBaseUrl, apiKey)
 
         try {
-            const result = await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl }, async () => {
-                const inputEvent = createSDKTrigger(event)
+            const inputEvent = createSDKTrigger(event)
 
-                if (job.filter) {
-                    const shouldRun = await job.filter(inputEvent)
-                    if (!shouldRun) {
-                        return { status: "ok" as const, filtered: true }
-                    }
+            if (job.filter) {
+                const shouldRun = await job.filter(inputEvent)
+                if (!shouldRun) {
+                    return { status: "ok" as const, filtered: true }
                 }
-                await job.onTrigger(inputEvent)
+            }
+            await job.onTrigger(inputEvent)
 
-                return { status: "ok" as const }
-            })
-
-            return result
+            return { status: "ok" as const }
         } catch (error) {
             session.close()
             throw error
@@ -420,12 +416,14 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     static create<TSkills extends readonly TypedSkill<string>[]>(params: { prompt: string; skills: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills>
     static create(params: { prompt: string }): TerseAgent<readonly []>
     static create<TSkills extends readonly TypedSkill<string>[] = readonly []>(params: { prompt: string; skills?: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills> {
+        "use step"
         const skills = (params.skills ?? []) as TSkills
         const toolApprovals = (params.toolApprovals ?? []) as InferToolApprovals<TSkills>[]
         return new TerseAgent<TSkills>({ prompt: params.prompt, skills, toolApprovals })
     }
 
     async *run(userMessage: string, outputSchema?: z.ZodType): AsyncGenerator<TerseAgentResult> {
+        "use step"
         const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
             prompt: this.prompt,
             toolApprovals: this.toolApprovals,
@@ -443,7 +441,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         try {
             const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
                 method: "POST",
-                headers: TerseAgent.buildHeaders(),
+                headers: await TerseAgent.buildHeaders(),
                 body: JSON.stringify(requestBody)
             })
 
@@ -466,9 +464,10 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     async submitApprovalDecision(params: { runId: string; stepId: string; approved: boolean }): Promise<void> {
+        "use step"
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
             method: "POST",
-            headers: TerseAgent.buildHeaders(),
+            headers: await TerseAgent.buildHeaders(),
             body: JSON.stringify(params satisfies SdkApprovalDecisionRequestBody)
         })
 
@@ -493,9 +492,10 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     static async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
+        "use step"
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
-            headers: TerseAgent.buildHeaders(),
+            headers: await TerseAgent.buildHeaders(),
             body: JSON.stringify({ toolName, params })
         })
         const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
@@ -505,7 +505,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         return data.result as TOutput
     }
 
-    private static buildHeaders(): Record<string, string> {
+    private static async buildHeaders(): Promise<Record<string, string>> {
         const apiKey = process.env.TERSE_API_KEY
         if (!apiKey) {
             throw new Error("TERSE_API_KEY environment variable is not set.")
@@ -515,11 +515,31 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             "Content-Type": "application/json",
             Accept: "text/event-stream"
         }
-        const ctx = getJobContext()
-        if (ctx?.sessionId) headers["X-Terse-Session-Id"] = ctx.sessionId
-        const runIdHeader = ctx?.runId ?? process.env.TERSE_RUN_ID
+        const { sessionId, runId } = await TerseAgent.resolveRunIdentity()
+        if (sessionId) headers["X-Terse-Session-Id"] = sessionId
+        const runIdHeader = runId ?? process.env.TERSE_RUN_ID
         if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
         return headers
+    }
+
+    // Run/session identity comes from the run's seeded attributes, looked up by
+    // the workflow runtime's run id (which is NOT the Terse run id — that's a
+    // separate value seeded as an attribute at dispatch). Outside a durable run
+    // there is no identity to resolve; the run-id header falls back to env.
+    private static async resolveRunIdentity(): Promise<{ sessionId?: string; runId?: string }> {
+        try {
+            // Dynamic imports keep `workflow` / `workflow/runtime` (which transitively
+            // pull node:fs etc.) out of the barrel's static graph, so they never land
+            // in the workflow bundle. This only runs inside a step, where Node is allowed.
+            const { getWorkflowMetadata } = await import("workflow")
+            const { getWorld } = await import("workflow/runtime")
+            const workflowRunId = getWorkflowMetadata().workflowRunId
+            const world = await getWorld()
+            const { attributes } = await world.runs.get(workflowRunId)
+            return { sessionId: attributes?.sessionId, runId: attributes?.runId }
+        } catch {
+            return {}
+        }
     }
 
     private async *consumeSseStream(res: Response): AsyncGenerator<TerseAgentResult> {
