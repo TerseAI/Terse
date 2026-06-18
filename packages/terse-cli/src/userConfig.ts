@@ -19,7 +19,6 @@ type Schema = {
     apiKey?: string
     activeOrgId?: string
     tokensByOrg?: Record<string, OrgTokenEntry>
-    completionAsked?: boolean
 }
 
 let _store: Conf<Schema> | null = null
@@ -76,27 +75,12 @@ export function setActiveOrg(orgId: string): void {
     store().set("activeOrgId", orgId)
 }
 
-export function hasCompletionPromptBeenAsked(): boolean {
-    return Boolean(store().get("completionAsked"))
-}
-
-export function markCompletionPromptAsked(): void {
-    store().set("completionAsked", true)
-}
-
-// Returns true if any credentials were present before clearing. Preserves
-// `completionAsked` so logout doesn't re-trigger the tab-completion prompt.
-// Removes the underlying file when nothing remains so `ls` on the config dir
-// doesn't show a stale empty `{}`.
+// Returns true if any credentials were present before clearing. Removes the
+// underlying file so `ls` on the config dir doesn't show a stale empty `{}`.
 export function clearStoredApiKey(): boolean {
     const s = store()
     const hadAny = Boolean(s.get("apiKey")) || Object.keys(s.get("tokensByOrg") ?? {}).length > 0
-    const completionAsked = s.get("completionAsked")
     s.clear()
-    if (completionAsked) {
-        s.set("completionAsked", completionAsked)
-        return hadAny
-    }
     try {
         fs.rmSync(s.path)
     } catch {
