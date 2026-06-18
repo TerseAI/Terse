@@ -5,7 +5,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
-import { __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "terse-sdk"
+import { __resetRegisteredTerseInstances, fetchRegisteredJobs, isAgentApprovalHandlingClaimed } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
@@ -19,6 +19,7 @@ import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
 
+import { getDurableRuntime } from "./durableRuntime.js"
 import { prepareTemplateContext } from "./prepareCodegenData.js"
 import { renderGeneratedCode } from "./templateEngine.js"
 
@@ -172,8 +173,6 @@ class TypeScriptProvider implements LanguageProvider {
         const isVerbose = opts?.verbose ?? true
         const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
 
-        const serializedEventRuntime = createSDKTrigger(event)
-
         const apiKey = readApiKeyOrBail({
             title: "TERSE_API_KEY is not set.",
             detail: "Please set it in your environment variables."
@@ -239,28 +238,19 @@ class TypeScriptProvider implements LanguageProvider {
         })
         const closeSession = session.close
 
-        await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL }, async () => {
-            try {
-                if (job.filter) {
-                    const shouldRun = await job.filter(serializedEventRuntime)
-                    if (!shouldRun) {
-                        console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
-                        return
-                    }
-                }
-
-                if (isVerbose) {
-                    console.log(chalk.cyan(`  Job "${job.name}" started`))
-                }
-                await job.onTrigger(serializedEventRuntime)
-            } catch (error) {
-                throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {
-                    detail: formatErrorDetail(error)
-                })
-            } finally {
-                closeSession?.()
+        try {
+            if (isVerbose) {
+                console.log(chalk.cyan(`  Job "${job.name}" started`))
             }
-        })
+            const rt = await getDurableRuntime(process.cwd(), opts?.entryFile)
+            await rt.dispatchJob(job.name, { sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
+        } catch (error) {
+            throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {
+                detail: formatErrorDetail(error)
+            })
+        } finally {
+            closeSession?.()
+        }
     }
 }
 

@@ -18,7 +18,7 @@ type GlobalWithStore = typeof globalThis & {
 const globalScope = globalThis as GlobalWithStore
 const store: AsyncLocalStorage<TerseJobContext> = globalScope[STORE_KEY] ?? (globalScope[STORE_KEY] = new AsyncLocalStorage<TerseJobContext>())
 
-export function runWithJobContext<T>(ctx: TerseJobContext, fn: () => T | Promise<T>): T | Promise<T> {
+export async function runWithJobContext<T>(ctx: TerseJobContext, fn: () => Promise<T>): Promise<T> {
     return store.run(ctx, fn)
 }
 

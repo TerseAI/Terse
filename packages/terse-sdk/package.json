@@ -33,6 +33,7 @@
         "zod": "^4.3.6"
     },
     "dependencies": {
-        "terse-types": "workspace:*"
+        "terse-types": "workspace:*",
+        "workflow": "^4.3.1"
     }
 }
