@@ -287,6 +287,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                     requireApproval: true,
                     send: () => {},
                     isProductionRun: true,
+                    model: runRecord.sdk_model ?? undefined,
                     billing
                 })
 

@@ -341,6 +341,22 @@ export async function upsertSdkSkills(runId: string, organizationId: string, inc
 }
 
 /**
+ * Persists the per-run model reference on a run record so chat continuations
+ * reconstruct the runner with the same model instead of the server default.
+ */
+export async function setSdkModel(runId: string, organizationId: string, model: string): Promise<void> {
+    const prisma = db()
+    await prisma.$executeRaw`
+        UPDATE run_history_records rhr
+        SET sdk_model = ${model}
+        FROM automations a
+        WHERE rhr.id = ${runId}
+          AND a.id = rhr.automation_id
+          AND a.organization_id = ${organizationId}
+    `
+}
+
+/**
  * Reads and parses the SDK skills stored on a run record.
  * Returns an empty array if nothing is stored or parsing fails.
  */

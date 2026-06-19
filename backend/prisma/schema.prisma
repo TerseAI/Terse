@@ -811,6 +811,8 @@ model run_history_records {
   has_approval_request  Boolean                  @default(false)
   // SDK skill configs (SkillConfigData[]) persisted at run time so correction agents can reconstruct tools
   sdk_skills            Json?
+  // Per-run model reference persisted at run time so chat continuations keep the same model
+  sdk_model             String?
   created_at            DateTime                 @default(now())
   updated_at            DateTime                 @updatedAt
 
