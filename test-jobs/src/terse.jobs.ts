@@ -23,7 +23,7 @@ createJob({
         // (a Zod schema) forces a structured response: `response` is typed
         // `{ joke: string }`.
         const response = await generateText({
-            prompt: "Tell me a programming joke.",
+            prompt: "Tell me a joke about Game Of thrones",
             skills: [],
             outputSchema: z.object({ joke: z.string() })
         })
@@ -33,10 +33,7 @@ createJob({
             message: response.joke
         })
 
-        await jobStep({ message: "test error" }, async ({ message }) => {
-            console.log(message)
-            throw new Error("test error")
-        })
+        // throw new Error("test error")
 
         await toolbox.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,

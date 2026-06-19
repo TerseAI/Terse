@@ -56,29 +56,15 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             const run = await start({ workflowId }, [event], { attributes })
             return await run.returnValue
         },
-        resumeRun: async id => getRun(await resolveWorkflowRunId(world, id)).returnValue,
+        resumeRun: workflowRunId => getRun(workflowRunId).returnValue,
         close: () => world.close?.() ?? Promise.resolve()
     }
 }
 
 type DurableRuntime = {
     dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<unknown>
-    resumeRun: (runId: string) => Promise<unknown>
+    resumeRun: (workflowRunId: string) => Promise<unknown>
     close: () => Promise<void>
-}
-
-// The Terse run id is stamped onto the workflow run as attributes.runId at dispatch
-// and persisted in the journal, so we can recover the workflow runtime's own runId
-// (wrun_...) from it without a separate id map. wrun_ ids pass straight through.
-async function resolveWorkflowRunId(world: ReturnType<typeof createLocalWorld>, id: string): Promise<string> {
-    if (id.startsWith("wrun_")) return id
-    const pending = await world.runs.list({ status: "pending" })
-    const running = await world.runs.list({ status: "running" })
-    const match = [...pending.data, ...running.data].find(run => run.attributes?.runId === id)
-    if (!match) {
-        throw new Error(`No pending or running durable run is mapped to Terse run id "${id}". Pass a workflow run id (wrun_...) directly if you have it.`)
-    }
-    return match.runId
 }
 
 function findWorkflowId(manifest: any, fnName: string): string {

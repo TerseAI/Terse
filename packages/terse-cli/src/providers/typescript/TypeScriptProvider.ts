@@ -21,6 +21,7 @@ import { openSessionStream, promptForToolApproval, submitApprovalDecision } from
 
 import { getDurableRuntime } from "./durableRuntime.js"
 import { prepareTemplateContext } from "./prepareCodegenData.js"
+import { readRunStatus, resolveWorkflowRunId, rewindFailedRun } from "./rewindRun.js"
 import { renderGeneratedCode } from "./templateEngine.js"
 
 const execAsync = promisify(exec)
@@ -207,16 +208,23 @@ class TypeScriptProvider implements LanguageProvider {
             detail: "Please set it in your environment variables."
         })
 
+        const dataDir = path.join(process.cwd(), ".terse", "data")
+        const workflowRunId = resolveWorkflowRunId(dataDir, runId)
+        const status = readRunStatus(dataDir, workflowRunId)
+
         try {
             await this.withSession(apiKey, isVerbose, pauseUiAround, async () => {
-                if (isVerbose) {
-                    console.log(chalk.cyan(`  Resuming run ${runId}`))
+                // A terminally failed run must be rewound (its run_failed marker trimmed)
+                // before the runtime starts, so recovery re-enqueues it as a live run.
+                if (status === "failed") {
+                    const { rewoundStepId } = rewindFailedRun(dataDir, workflowRunId)
+                    if (isVerbose) console.log(chalk.yellow(`  Re-driving failed run ${workflowRunId}${rewoundStepId ? " from the failed step" : ""}; completed steps replay from the journal`))
+                } else if (isVerbose) {
+                    console.log(chalk.cyan(`  Resuming run ${workflowRunId}`))
                 }
                 const rt = await getDurableRuntime(process.cwd())
-                await rt.resumeRun(runId)
-                if (isVerbose) {
-                    console.log(chalk.green(`  Run ${runId} resumed to completion`))
-                }
+                await rt.resumeRun(workflowRunId)
+                if (isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
             })
         } catch (error) {
             if (error instanceof CliError) throw error

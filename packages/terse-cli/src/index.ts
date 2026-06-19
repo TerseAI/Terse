@@ -186,7 +186,7 @@ Examples:
   $ terse resume --run-id <terse-run-id>    # continue a paused or interrupted run
 
 Notes:
-  - Only pending/running runs are recoverable; failed runs are re-run via \`terse run\`.
+  - Pending/running runs resume where they left off; a failed run is re-driven (its failure trimmed, completed steps replayed) under your current code.
   - The run's journal must be present in .terse/data (e.g. restored from a snapshot).
 `
     )
