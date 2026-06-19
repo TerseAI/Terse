@@ -104,36 +104,6 @@ export function denyToolACL(message: string): ToolACLValidationResult {
     return { ok: false, message }
 }
 
-// Parses a URL or bare domain to its lowercase hostname (sans a leading "www."), using the WHATWG URL parser. Returns null when unparseable.
-function toHostname(value: string): string | null {
-    const trimmed = value.trim()
-    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
-    try {
-        return new URL(withScheme).hostname.toLowerCase().replace(/^www\./, "")
-    } catch {
-        return null
-    }
-}
-
-// True when `host` equals an allowed domain or is a subdomain of one.
-export function isHostAllowed(host: string, allowedDomains: readonly string[]): boolean {
-    const normalizedHost = toHostname(host)
-    if (!normalizedHost) return false
-    return allowedDomains.some(domain => {
-        const allowed = toHostname(domain)
-        return !!allowed && (normalizedHost === allowed || normalizedHost.endsWith(`.${allowed}`))
-    })
-}
-
-// Denies when any value is not a URL whose host falls within the allowed domains. Unparseable URLs are treated as offenders.
-export function requireHostsInAllowedDomains(values: readonly string[], allowedDomains: readonly string[], label: string): ToolACLValidationResult {
-    const offenders = values.filter(value => !isHostAllowed(value, allowedDomains))
-    if (offenders.length === 0) {
-        return { ok: true }
-    }
-    return denyToolACL(`${label} not in allowed domains (${offenders.join(", ")}). Allowed: ${allowedDomains.join(", ")}.`)
-}
-
 export function verifyIntegrationIdExists(integrationId: string, configs: ConfigData[]): ToolACLValidationResult {
     if (doesIntegrationIdExist(integrationId, configs)) return { ok: true }
     const known = listIntegrationIds(configs).join(", ") || "(none)"
