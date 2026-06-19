@@ -28,7 +28,7 @@ createJob({
             outputSchema: z.object({ joke: z.string() })
         })
 
-        toolbox.slack.sendMessage({
+        await toolbox.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,
             message: response.joke
         })

@@ -50,7 +50,8 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             process.env.TERSE_BACKEND_URL ??= ctx.apiBaseUrl
             const attributes: Record<string, string> = { sessionId: ctx.sessionId }
             if (ctx.runId) attributes.runId = ctx.runId
-            return start({ workflowId }, [event], { attributes })
+            const run = await start({ workflowId }, [event], { attributes })
+            return await run.returnValue
         },
         close: () => world.close?.() ?? Promise.resolve()
     }
