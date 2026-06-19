@@ -84,9 +84,9 @@ export const Skills = {
         return new SnowflakeOutputConfig("{{escape snowflake.id}}")
     },
 {{/if}}
-    /** Web — built-in web search, page extraction, and multi-source research */
-    web(): TypedSkill<"web_search" | "web_extract" | "web_research"> {
-        return new WebConfig()
+    /** Web — built-in web search, page extraction, and multi-source research. Pass `allowedDomains` to restrict search and page extraction to specific sites (and their subdomains). */
+    web(opts: { allowedDomains?: string[] } = {}): TypedSkill<"web_search" | "web_extract" | "web_research"> {
+        return new WebConfig(opts)
     },
     /** ImageEdit — edit and generate images */
     imageEdit(): TypedSkill<"image_edit"> {

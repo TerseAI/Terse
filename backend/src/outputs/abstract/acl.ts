@@ -104,6 +104,45 @@ export function denyToolACL(message: string): ToolACLValidationResult {
     return { ok: false, message }
 }
 
+// Normalizes an allowed-domain entry to a bare lowercase host (strips scheme, path, port, and a leading "www.").
+export function normalizeDomain(domain: string): string {
+    let host = domain.trim().toLowerCase()
+    host = host.replace(/^[a-z]+:\/\//, "")
+    host = host.split("/")[0].split("@").pop() ?? host
+    host = host.split(":")[0]
+    return host.replace(/^www\./, "")
+}
+
+// True when `host` equals an allowed domain or is a subdomain of one.
+export function isHostAllowed(host: string, allowedDomains: readonly string[]): boolean {
+    const normalizedHost = normalizeDomain(host)
+    return allowedDomains.some(domain => {
+        const allowed = normalizeDomain(domain)
+        return allowed.length > 0 && (normalizedHost === allowed || normalizedHost.endsWith(`.${allowed}`))
+    })
+}
+
+// Resolves the hostname of a URL string, returning null when it cannot be parsed.
+function hostFromUrl(value: string): string | null {
+    try {
+        return new URL(value).hostname
+    } catch {
+        return null
+    }
+}
+
+// Denies when any value is not a URL whose host falls within the allowed domains. Unparseable URLs are treated as offenders.
+export function requireHostsInAllowedDomains(values: readonly string[], allowedDomains: readonly string[], label: string): ToolACLValidationResult {
+    const offenders = values.filter(value => {
+        const host = hostFromUrl(value)
+        return host === null || !isHostAllowed(host, allowedDomains)
+    })
+    if (offenders.length === 0) {
+        return { ok: true }
+    }
+    return denyToolACL(`${label} not in allowed domains (${offenders.join(", ")}). Allowed: ${allowedDomains.join(", ")}.`)
+}
+
 export function verifyIntegrationIdExists(integrationId: string, configs: ConfigData[]): ToolACLValidationResult {
     if (doesIntegrationIdExist(integrationId, configs)) return { ok: true }
     const known = listIntegrationIds(configs).join(", ") || "(none)"

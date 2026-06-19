@@ -887,14 +887,18 @@ export class LaunchDarklyConfig extends BaseConfigInstance<IntegrationType.LAUNC
 export const WebConfigSchema = ConfigInstanceSchema.extend({
     integrationId: z.literal("system"),
     integrationType: z.literal(IntegrationType.TERSE),
-    configType: z.literal(ConfigType.WEB)
+    configType: z.literal(ConfigType.WEB),
+    allowedDomains: z.array(z.string()).nullable().default(null)
 })
 export type WebConfigData = z.infer<typeof WebConfigSchema>
 export type WebConfigInstance = WebConfigData & ConfigBehavior
 
 export class WebConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.WEB, "system"> implements WebConfigInstance {
-    constructor() {
+    allowedDomains: string[] | null
+
+    constructor(opts: { allowedDomains?: string[] | null } = {}) {
         super("system", IntegrationType.TERSE, ConfigType.WEB)
+        this.allowedDomains = opts.allowedDomains ?? null
     }
 
     isComplete(): boolean {
@@ -902,6 +906,9 @@ export class WebConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigT
     }
 
     formatForAgent(): string {
+        if (this.allowedDomains && this.allowedDomains.length > 0) {
+            return `Type: Web (search, extract, research)\nAllowed domains: ${this.allowedDomains.join(", ")}`
+        }
         return "Type: Web (search, extract, research)"
     }
 }
