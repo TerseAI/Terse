@@ -54,6 +54,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             isProductionRun,
             options: data.options,
             outputSchema: data.outputSchema,
+            model: data.model,
             billing: billingForRunner
         })
         send({ type: "run_started", runId })
@@ -218,6 +219,7 @@ function createSdkRunner(params: {
     isProductionRun: boolean
     options?: { maxTurns?: number; requireApproval?: boolean }
     outputSchema?: Record<string, unknown>
+    model?: string
     billing: BillingService
 }): SdkAgentRunner {
     return new SdkAgentRunner({
@@ -231,6 +233,7 @@ function createSdkRunner(params: {
         send: params.send,
         isProductionRun: params.isProductionRun,
         outputSchema: params.outputSchema,
+        model: params.model,
         billing: params.billing
     })
 }

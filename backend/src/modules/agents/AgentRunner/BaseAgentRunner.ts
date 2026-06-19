@@ -249,8 +249,12 @@ export abstract class BaseAgentRunner<TSession extends SessionWithTracking<AppSe
         return typed as InputGuardrail[]
     }
 
+    protected getModelRef(): string {
+        return getConfiguredModelReference()
+    }
+
     private getModel(): ModelReference {
-        return parseModelReference(getConfiguredModelReference())
+        return parseModelReference(this.getModelRef())
     }
 
     private recordLLMUsage = async (settings: RunExecutionSettings<TSession, TAgent>, event: RunStreamEvent): Promise<void> => {

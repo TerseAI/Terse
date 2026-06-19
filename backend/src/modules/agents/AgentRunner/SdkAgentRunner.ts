@@ -21,7 +21,7 @@ import { emitCacheInvalidationWithWildcard, getSocketIO } from "../../../service
 import { settings } from "../../../settings"
 import { createNeedsApprovalFunction, formatError } from "../../../tools/toolUtils"
 import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession"
-import { getConfiguredModelReference, resolveLanguageModel } from "../modelRegistry"
+import { getConfiguredModelReference, resolveLanguageModel, validateSupportedModel } from "../modelRegistry"
 import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage } from "../userMessage"
@@ -35,6 +35,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly sdkRunId: string
     private readonly user: UserSession
     private readonly prompt: string
+    private readonly modelRef: string
     private readonly outputs: Output<ConfigData>[]
     private readonly tools: Tool<SdkRunnerSession>[]
     private readonly maxTurns: number
@@ -52,6 +53,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.sdkRunId = params.runId
         this.user = params.user
         this.prompt = params.prompt
+        this.modelRef = params.model ? validateSupportedModel(params.model) : getConfiguredModelReference()
         const skillConfigs = params.skills
         this.outputs = this.buildOutputsFromConfigs(skillConfigs)
         this.tools = this.buildToolsFromOutputs()
@@ -284,12 +286,16 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         return this.agent
     }
 
+    protected getModelRef(): string {
+        return this.modelRef
+    }
+
     protected getAgentInitializationParams() {
         const deps: SystemPromptBuilderDependencies<SdkRunnerSession, ConfigData> = {
             session: this.getToolContext(),
             outputs: this.outputs
         }
-        const resolved = resolveLanguageModel(getConfiguredModelReference())
+        const resolved = resolveLanguageModel(this.getModelRef())
 
         return {
             name: "Terse SDK Agent",
@@ -399,6 +405,7 @@ type SdkAgentRunnerParams = {
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun?: boolean
     outputSchema?: Record<string, unknown>
+    model?: string
     billing: BillingService
 }
 

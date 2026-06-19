@@ -4,10 +4,11 @@ import type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
+    SupportedModelType,
     WebhookJobChallengeResponse,
     WebhookJobTriggerResponse
 } from "terse-types"
-import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, stripZodJsonSchemaMetadata, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
+import { ApiRoutes, IntegrationType, SUPPORTED_MODELS, sdkAgentRunRequestBodySchema, stripZodJsonSchemaMetadata, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
@@ -117,6 +118,10 @@ export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOpti
 // Re-export SDK-specific types
 export { createSDKTrigger, registerEventTransform } from "./types.js"
 export type { InferEvent, InferEvents, InferStructuredOutput, InferToolApproval, InferToolApprovals, SDKTrigger, ToolboxEntry, TypedSkill, TypedTrigger } from "./types.js"
+
+// Re-export the model allowlist so jobs get autocomplete on `model`
+export { SUPPORTED_MODELS }
+export type { SupportedModelType }
 
 // Re-export shared types for consumer convenience
 export {
@@ -399,6 +404,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     readonly prompt: string
     readonly skills: TSkills
     readonly toolApprovals: InferToolApprovals<TSkills>[]
+    readonly model?: SupportedModelType
 
     /**
      * Optional callback invoked when the agent requires tool approval.
@@ -408,21 +414,32 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
      */
     onApprovalRequired?: (info: ApprovalRequestInfo) => Promise<boolean>
 
-    private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[] }) {
+    private constructor(params: { prompt: string; skills: TSkills; toolApprovals: InferToolApprovals<TSkills>[]; model?: SupportedModelType }) {
         this.prompt = params.prompt
         this.skills = params.skills
         this.toolApprovals = params.toolApprovals
+        this.model = params.model
 
         const createTools = (globalThis as any).__terse_createTools as ((agent: TerseAgent) => unknown) | undefined
         ;(this as any).tools = createTools ? createTools(this) : {}
     }
 
-    static create<TSkills extends readonly TypedSkill<string>[]>(params: { prompt: string; skills: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills>
-    static create(params: { prompt: string }): TerseAgent<readonly []>
-    static create<TSkills extends readonly TypedSkill<string>[] = readonly []>(params: { prompt: string; skills?: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills> {
+    static create<TSkills extends readonly TypedSkill<string>[]>(params: {
+        prompt: string
+        skills: [...TSkills]
+        toolApprovals?: InferToolApprovals<TSkills>[]
+        model?: SupportedModelType
+    }): TerseAgent<TSkills>
+    static create(params: { prompt: string; model?: SupportedModelType }): TerseAgent<readonly []>
+    static create<TSkills extends readonly TypedSkill<string>[] = readonly []>(params: {
+        prompt: string
+        skills?: [...TSkills]
+        toolApprovals?: InferToolApprovals<TSkills>[]
+        model?: SupportedModelType
+    }): TerseAgent<TSkills> {
         const skills = (params.skills ?? []) as TSkills
         const toolApprovals = (params.toolApprovals ?? []) as InferToolApprovals<TSkills>[]
-        return new TerseAgent<TSkills>({ prompt: params.prompt, skills, toolApprovals })
+        return new TerseAgent<TSkills>({ prompt: params.prompt, skills, toolApprovals, model: params.model })
     }
 
     async *run(userMessage: string, outputSchema?: z.ZodType): AsyncGenerator<TerseAgentResult> {
@@ -431,6 +448,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             toolApprovals: this.toolApprovals,
             message: userMessage,
             skills: this.skills,
+            model: this.model,
             outputSchema: outputSchema ? (stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) as Record<string, unknown>) : undefined
         })
 
@@ -566,6 +584,7 @@ type GenerateTextParams<TSkills extends readonly TypedSkill<string>[] = readonly
     prompt: string
     skills?: TSkills
     toolApprovals?: InferToolApprovals<TSkills>[]
+    model?: SupportedModelType
 }
 
 type GenerateTextStructuredOutput<OutputSchema extends z.ZodType> = GenerateTextParams & {
@@ -578,7 +597,8 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
     const agent = TerseAgent.create({
         prompt: " ",
         skills: params.skills ? [...params.skills] : [],
-        toolApprovals: params.toolApprovals
+        toolApprovals: params.toolApprovals,
+        model: params.model
     })
     if ("outputSchema" in params) {
         return await agent.runAndWait(params.prompt, params.outputSchema)

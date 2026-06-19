@@ -25,6 +25,8 @@ createJob({
         const response = await generateText({
             prompt: "Tell me a programming joke.",
             skills: [],
+            // Optional: pick the model for this job. Omit to use the default.
+            model: "anthropic:claude-opus-4-8",
             outputSchema: z.object({ joke: z.string() })
         })
 

@@ -1,7 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createProviderRegistry } from "ai"
-import { ModelReference, SUPPORTED_PROVIDERS, SupportedProvider } from "terse-types"
+import { ModelReference, SUPPORTED_MODELS, SUPPORTED_PROVIDERS, SupportedProvider, isSupportedModel } from "terse-types"
 
 import { settings } from "../../settings"
 
@@ -35,6 +35,15 @@ export function parseModelReference(input: string): ModelReference {
     }
 
     return { providerId, modelId, value: `${providerId}:${modelId}` }
+}
+
+export function validateSupportedModel(input: string): string {
+    const { value } = parseModelReference(input)
+    if (!isSupportedModel(value)) {
+        const supported = SUPPORTED_MODELS.map(model => model.value).join(", ")
+        throw new Error(`Model "${value}" is not selectable. Supported models: ${supported}.`)
+    }
+    return value
 }
 
 export function resolveLanguageModel(modelRef: string = getDefaultModelRef()) {

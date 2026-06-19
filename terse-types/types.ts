@@ -2,6 +2,7 @@ import * as z from "zod"
 
 import { configDataSchema, configTypeEnum, skillConfigDataSchema, triggerConfigDataSchema } from "./Configs"
 import { integrationTypeEnum } from "./Integrations"
+import { supportedModelTypeSchema } from "./ModelRegistry"
 import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction } from "./RunHistoryTypes"
 import { SlackChannelType, slackChannelTypeSchema } from "./SlackTypes"
@@ -632,7 +633,8 @@ export const sdkAgentRunRequestBodySchema = z.object({
     skills: z.array(skillConfigDataSchema).optional(),
     options: sdkAgentRunOptionsPayloadSchema.optional(),
     toolApprovals: z.array(z.string()).optional(),
-    outputSchema: z.record(z.string(), z.unknown()).optional()
+    outputSchema: z.record(z.string(), z.unknown()).optional(),
+    model: supportedModelTypeSchema.optional()
 })
 export type SdkAgentRunRequestBody = z.infer<typeof sdkAgentRunRequestBodySchema>
 
