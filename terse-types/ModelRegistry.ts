@@ -47,7 +47,7 @@ export const SUPPORTED_MODEL_VALUES = SUPPORTED_MODELS.map(model => model.value)
 
 export type SupportedModelType = (typeof SUPPORTED_MODELS)[number]["value"]
 
-export const supportedModelValueSchema = z.enum(SUPPORTED_MODEL_VALUES)
+export const supportedModelTypeSchema = z.enum(SUPPORTED_MODEL_VALUES)
 
 export function isSupportedModel(value: string): value is SupportedModelType {
     return SUPPORTED_MODEL_VALUES.includes(value)
