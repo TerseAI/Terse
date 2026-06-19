@@ -629,6 +629,11 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
     return await agent.runAndWait(params.prompt)
 }
 
+export async function jobStep<I extends object, T>(input: I, fn: (input: I) => Promise<T>): Promise<T> {
+    "use step"
+    return await fn(input)
+}
+
 export enum EventType {
     TEXT = "text",
     FINAL_OUTPUT = "final_output",

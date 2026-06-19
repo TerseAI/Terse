@@ -172,12 +172,65 @@ class TypeScriptProvider implements LanguageProvider {
     ): Promise<void> {
         const isVerbose = opts?.verbose ?? true
         const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
-
         const apiKey = readApiKeyOrBail({
             title: "TERSE_API_KEY is not set.",
             detail: "Please set it in your environment variables."
         })
 
+        try {
+            await this.withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
+                if (isVerbose) {
+                    console.log(chalk.cyan(`  Job "${job.name}" started`))
+                }
+                const rt = await getDurableRuntime(process.cwd())
+                await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
+            })
+        } catch (error) {
+            if (error instanceof CliError) throw error
+            throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {
+                detail: formatErrorDetail(error)
+            })
+        }
+    }
+
+    async resumeRun(
+        runId: string,
+        opts?: {
+            verbose?: boolean
+            pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+        }
+    ): Promise<void> {
+        const isVerbose = opts?.verbose ?? true
+        const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
+        const apiKey = readApiKeyOrBail({
+            title: "TERSE_API_KEY is not set.",
+            detail: "Please set it in your environment variables."
+        })
+
+        try {
+            await this.withSession(apiKey, isVerbose, pauseUiAround, async () => {
+                if (isVerbose) {
+                    console.log(chalk.cyan(`  Resuming run ${runId}`))
+                }
+                const rt = await getDurableRuntime(process.cwd())
+                await rt.resumeRun(runId)
+                if (isVerbose) {
+                    console.log(chalk.green(`  Run ${runId} resumed to completion`))
+                }
+            })
+        } catch (error) {
+            if (error instanceof CliError) throw error
+            throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, {
+                detail: formatErrorDetail(error)
+            })
+        }
+    }
+
+    // Holds a session stream open (for tool-approval routing) for the duration of
+    // `action`. A durable run reads its session id from its seeded attributes, so a
+    // resumed run keeps its original session id; routing approvals across a resume
+    // is a follow-up.
+    private async withSession<T>(apiKey: string, isVerbose: boolean, pauseUiAround: <U>(fn: () => Promise<U>) => Promise<U>, action: (sessionId: string) => Promise<T>): Promise<T> {
         // Track the latest agent run id seen on the session stream so we can
         // pair an incoming tool_approval_requested with the right run. The
         // backend's approval gate keys decisions on (runId, stepId, orgId);
@@ -236,20 +289,11 @@ class TypeScriptProvider implements LanguageProvider {
             isPaused: () => sessionPaused,
             onEvent: handleSessionEvent
         })
-        const closeSession = session.close
 
         try {
-            if (isVerbose) {
-                console.log(chalk.cyan(`  Job "${job.name}" started`))
-            }
-            const rt = await getDurableRuntime(process.cwd())
-            await rt.dispatchJob(job.name, { sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
-        } catch (error) {
-            throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {
-                detail: formatErrorDetail(error)
-            })
+            return await action(session.sessionId)
         } finally {
-            closeSession?.()
+            session.close?.()
         }
     }
 }

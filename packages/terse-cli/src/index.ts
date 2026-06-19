@@ -21,6 +21,7 @@ import { init } from "./commands/init.js"
 import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateWait } from "./commands/integrate.js"
 import { listen } from "./commands/listen.js"
 import { replay } from "./commands/replay.js"
+import { resume } from "./commands/resume.js"
 import { run } from "./commands/run.js"
 import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./commands/secrets.js"
 import { targetClear, targetStatus, targetUse } from "./commands/target.js"
@@ -170,6 +171,27 @@ Notes:
     )
     .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean }) => {
         await listen(jobName, { verbose: opts?.verbose, entryFile: opts?.entryFile, provider: resolveProvider() })
+    })
+
+program
+    .command("resume")
+    .description("Resume an interrupted durable run from its journal in .terse/data")
+    .requiredOption("--run-id <id>", "Terse run id of the run to resume")
+    .option("-v, --verbose", "Show job stream output", true)
+    .option("--no-verbose", "Hide job stream output")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse resume --run-id <terse-run-id>    # continue a paused or interrupted run
+
+Notes:
+  - Only pending/running runs are recoverable; failed runs are re-run via \`terse run\`.
+  - The run's journal must be present in .terse/data (e.g. restored from a snapshot).
+`
+    )
+    .action(async (opts: { runId: string; verbose?: boolean }) => {
+        await resume(opts.runId, { verbose: opts.verbose })
     })
 
 program

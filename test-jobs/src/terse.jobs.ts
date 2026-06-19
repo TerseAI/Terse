@@ -1,4 +1,4 @@
-import { createJob, generateText } from "terse-sdk"
+import { createJob, generateText, jobStep } from "terse-sdk"
 import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
@@ -31,6 +31,16 @@ createJob({
         await toolbox.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,
             message: response.joke
+        })
+
+        await jobStep({ message: "test error" }, async ({ message }) => {
+            console.log(message)
+            throw new Error("test error")
+        })
+
+        await toolbox.slack.sendMessage({
+            channelId: SlackChannel.AllTerseInc.channelId,
+            message: "this job is done! we are DURABLE"
         })
 
         console.log(response.joke)
