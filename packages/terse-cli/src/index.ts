@@ -10,7 +10,7 @@ import { attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
 import { authOrgList, authOrgSwitch } from "./commands/authOrg.js"
 import { authStatus } from "./commands/authStatus.js"
-import { completionHandler, completionInstall, completionUninstall, maybePromptForCompletion } from "./commands/completion.js"
+import { completionHandler, completionInstall, completionUninstall } from "./commands/completion.js"
 import { openDashboard } from "./commands/dashboard.js"
 import { deploy } from "./commands/deploy.js"
 import { openDocs } from "./commands/docs.js"
@@ -43,9 +43,6 @@ function syncJsonErrorOutput(command: Command): void {
 program.name("terse").description("The Terse CLI — create and manage Terse projects").version(getCliVersion())
 program.hook("preAction", (_thisCommand, actionCommand) => {
     syncJsonErrorOutput(actionCommand)
-})
-program.hook("postAction", async (_thisCommand, actionCommand) => {
-    await maybePromptForCompletion(actionCommand)
 })
 
 program.commandsGroup("Getting started:")

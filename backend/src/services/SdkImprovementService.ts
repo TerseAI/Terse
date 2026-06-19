@@ -1,4 +1,5 @@
 import crypto from "node:crypto"
+import { resolve4 } from "node:dns/promises"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -10,6 +11,7 @@ import { JudgeContext } from "../modules/agents/JudgeAgent/fetchJudgeContext"
 import { settings } from "../settings"
 
 import { ClaudeCodeSandboxService } from "./ClaudeCodeSandboxService"
+import { LITELLM_MAIN_MODEL, LITELLM_SMALL_MODEL, LiteLLMKeyService } from "./LiteLLMKeyService"
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDir = path.dirname(currentFilePath)
@@ -73,13 +75,23 @@ const IMPROVEMENTS_SCHEMA = {
     required: ["title", "summary", "improvements"]
 }
 
-const SANDBOX_TIMEOUT_MS = 10 * 60 * 1000
+const SANDBOX_TIMEOUT_MS = 30 * 60 * 1000
 // Modal sandbox CIDR allowlist accepts IPv4 only. Anthropic's IPv6 range (2607:6bc0::/48) is dropped;
 // requests will fall back to IPv4 (160.79.104.0/23).
 const ANTHROPIC_INBOUND_CIDRS = ["160.79.104.0/23"]
 
+// Pin sandbox egress to the proxy's currently-resolved IPs. The proxy host's addresses can change,
+// so we resolve them at job time rather than hardcoding a provider range.
+async function resolveEgressCidrs(baseUrl: string): Promise<string[]> {
+    const host = new URL(baseUrl).hostname
+    const ips = await resolve4(host)
+    if (ips.length === 0) throw new Error(`Could not resolve LiteLLM host ${host} for egress allowlist`)
+    return ips.map(ip => `${ip}/32`)
+}
+
 export class SdkImprovementService {
     private sandbox = new ClaudeCodeSandboxService()
+    private litellmKeys = new LiteLLMKeyService()
 
     async evaluate(automationId: string, context: JudgeContext): Promise<JudgeAgentOutputType> {
         const { sourceImageId } = context
@@ -89,9 +101,10 @@ export class SdkImprovementService {
             return { title: "No source code available", summary: "Could not find source code to review.", improvements: [] }
         }
 
+        const litellm = settings.litellm
         const improvementApiKey = settings.anthropic.improvementApiKey
-        if (!improvementApiKey) {
-            throw new Error("ANTHROPIC_IMPROVEMENT_API_KEY is required to run SDK improvement reviews")
+        if (!litellm && !improvementApiKey) {
+            throw new Error("LITELLM_BASE_URL or ANTHROPIC_IMPROVEMENT_API_KEY is required to run SDK improvement reviews")
         }
 
         const prompt = buildClaudeCodePrompt(automationId, context)
@@ -104,7 +117,24 @@ export class SdkImprovementService {
 
         const jobId = `${automationId}-${crypto.randomBytes(8).toString("hex")}`
 
+        let virtualKey: string | undefined
         try {
+            let env: Record<string, string>
+            let egressCidrAllowlist: string[]
+            if (litellm) {
+                virtualKey = await this.litellmKeys.mintJobKey(jobId)
+                env = {
+                    ANTHROPIC_BASE_URL: litellm.baseUrl,
+                    ANTHROPIC_AUTH_TOKEN: virtualKey,
+                    ANTHROPIC_MODEL: LITELLM_MAIN_MODEL,
+                    ANTHROPIC_DEFAULT_HAIKU_MODEL: LITELLM_SMALL_MODEL
+                }
+                egressCidrAllowlist = await resolveEgressCidrs(litellm.baseUrl)
+            } else {
+                env = { ANTHROPIC_API_KEY: improvementApiKey! }
+                egressCidrAllowlist = ANTHROPIC_INBOUND_CIDRS
+            }
+
             const result = await this.sandbox.run({
                 label: `sdk-improvement-${automationId}`,
                 prompt,
@@ -112,10 +142,8 @@ export class SdkImprovementService {
                 gitInit: true,
                 jsonSchema: IMPROVEMENTS_SCHEMA,
                 timeoutMs: SANDBOX_TIMEOUT_MS,
-                env: {
-                    ANTHROPIC_API_KEY: improvementApiKey
-                },
-                egressCidrAllowlist: ANTHROPIC_INBOUND_CIDRS,
+                env,
+                egressCidrAllowlist,
                 plugin: hasPlugin ? { files: pluginFiles, dir: PLUGIN_SANDBOX_DIR } : undefined
             })
 
@@ -128,6 +156,8 @@ export class SdkImprovementService {
         } catch (error) {
             logger.error("[SdkImprovementService] Evaluation failed", { automationId, jobId, error })
             return { title: "Review failed", summary: "An error occurred during the review.", improvements: [] }
+        } finally {
+            if (virtualKey) await this.litellmKeys.deleteKey(virtualKey)
         }
     }
 }
