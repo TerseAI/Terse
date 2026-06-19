@@ -416,21 +416,13 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     static create<TSkills extends readonly TypedSkill<string>[]>(params: { prompt: string; skills: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills>
     static create(params: { prompt: string }): TerseAgent<readonly []>
     static create<TSkills extends readonly TypedSkill<string>[] = readonly []>(params: { prompt: string; skills?: [...TSkills]; toolApprovals?: InferToolApprovals<TSkills>[] }): TerseAgent<TSkills> {
-        "use step"
         const skills = (params.skills ?? []) as TSkills
         const toolApprovals = (params.toolApprovals ?? []) as InferToolApprovals<TSkills>[]
         return new TerseAgent<TSkills>({ prompt: params.prompt, skills, toolApprovals })
     }
 
     async *run(userMessage: string, outputSchema?: z.ZodType): AsyncGenerator<TerseAgentResult> {
-        "use step"
-        const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
-            prompt: this.prompt,
-            toolApprovals: this.toolApprovals,
-            message: userMessage,
-            skills: this.skills,
-            outputSchema: outputSchema ? (stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) as Record<string, unknown>) : undefined
-        })
+        const requestBody = this.buildRequestBody(userMessage, outputSchema)
 
         // Claim approval handling for this run if the caller wired up its own
         // callback, so the CLI's session-stream handler won't also prompt and
@@ -480,14 +472,45 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema: OutputSchema): Promise<z.infer<OutputSchema>>
     async runAndWait(userMessage: string): Promise<string>
     async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema?: OutputSchema): Promise<string | z.infer<OutputSchema>> {
-        for await (const chunk of this.run(userMessage, outputSchema)) {
-            if (chunk.type === EventType.FINAL_OUTPUT) {
-                const raw = (chunk as FinalOutputResult).finalOutput
-                if (!outputSchema) return raw
-                return outputSchema.parse(JSON.parse(raw)) as z.infer<OutputSchema>
-            }
-        }
+        const requestBody = this.buildRequestBody(userMessage, outputSchema)
+        const raw = await TerseAgent.fetchFinalOutput(requestBody)
+        if (!outputSchema) return raw
+        return outputSchema.parse(JSON.parse(raw))
+    }
 
+    private buildRequestBody(userMessage: string, outputSchema?: z.ZodType): SdkAgentRunRequestBody {
+        return sdkAgentRunRequestBodySchema.parse({
+            prompt: this.prompt,
+            toolApprovals: this.toolApprovals,
+            message: userMessage,
+            skills: this.skills,
+            outputSchema: outputSchema ? stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) : undefined
+        })
+    }
+
+    private static async fetchFinalOutput(requestBody: SdkAgentRunRequestBody): Promise<string> {
+        "use step"
+        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
+            method: "POST",
+            headers: await TerseAgent.buildHeaders(),
+            body: JSON.stringify(requestBody)
+        })
+        const contentType = res.headers.get("content-type") ?? ""
+        if (!contentType.includes("text/event-stream")) {
+            const data: SdkAgentRunResponseBody = await res.json()
+            const details = data.details?.length ? ` (${data.details.join("; ")})` : ""
+            if (!res.ok || !data.success) throw new Error(`${data.error ?? "Agent run failed"}${details}`)
+            throw new Error("Run completed without final output")
+        }
+        if (!res.body) throw new Error("Stream did not provide a response body.")
+        for await (const eventData of iterateSseDataLines(res.body)) {
+            const parsed = safeParseStreamEvent(eventData)
+            if (!parsed) continue
+            if (parsed.type === "error") throw new Error(parsed.message)
+            if (parsed.type === "done") break
+            const result = mapStreamEventToResult(parsed)
+            if (result instanceof FinalOutputResult) return result.finalOutput
+        }
         throw new Error("Run completed without final output")
     }
 

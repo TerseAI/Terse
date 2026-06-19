@@ -14,7 +14,6 @@ import { TerseWorkflowBuilder } from "./terseWorkflowBuilder.js"
 let runtimePromise: Promise<DurableRuntime> | null = null
 
 export function getDurableRuntime(cwd = process.cwd()): Promise<DurableRuntime> {
-    // memoize: first event in `listen` builds; subsequent events reuse
     return (runtimePromise ??= startDurableRuntime(cwd))
 }
 
@@ -29,7 +28,6 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     // the sources untouched.
     const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, "src", out).build())
 
-    // recoverActiveRuns: false so a re-test doesn't replay the previous run.
     const world = createLocalWorld({ dataDir: path.join(cwd, ".terse", "data"), recoverActiveRuns: false })
     await world.start?.()
     setWorld(world)
@@ -38,8 +36,6 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     world.registerHandler("__wkf_step_", require(path.join(out, "steps.cjs")).POST)
     world.registerHandler("__wkf_workflow_", require(path.join(out, "workflows.cjs")).POST)
 
-    // Each job's onTrigger became a "use workflow" named terseWf_<hex(name)>;
-    // resolve its workflowId from the manifest.
     const manifest = JSON.parse(fs.readFileSync(path.join(out, "manifest.json"), "utf8"))
     const workflowIdByJob = new Map([...workflowFnByJob].map(([name, fnName]) => [name, findWorkflowId(manifest, fnName)]))
 
@@ -48,13 +44,9 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             const workflowId = workflowIdByJob.get(jobName)
             if (!workflowId) throw new Error(`No durable workflow was built for job "${jobName}".`)
 
-            // filter is a non-durable pre-check; run it here (the registry is
-            // populated in this process by loadJobRegistry) before dispatching.
             const job = fetchRegisteredJobs().get(jobName)
             if (job?.filter && !(await job.filter(createSDKTrigger(event)))) return { status: "ok", filtered: true }
 
-            // apiBaseUrl is fixed per CLI process; expose via env for the SDK's
-            // synchronous resolveApiBaseUrl inside steps.
             process.env.TERSE_BACKEND_URL ??= ctx.apiBaseUrl
             const attributes: Record<string, string> = { sessionId: ctx.sessionId }
             if (ctx.runId) attributes.runId = ctx.runId

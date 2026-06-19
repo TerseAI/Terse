@@ -3,7 +3,7 @@ import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
 // Run `terse generate` to refresh after connecting new integrations.
-import { Triggers } from "./terse.generated"
+import { SlackChannel, Triggers, toolbox } from "./terse.generated"
 
 // `createJob` registers a job with Terse. Each job has a name, one or more
 // triggers, and an `onTrigger` handler. `terse test` and `terse run` execute
@@ -22,13 +22,18 @@ createJob({
         // narrow so it only touches what you intend. The optional `outputSchema`
         // (a Zod schema) forces a structured response: `response` is typed
         // `{ joke: string }`.
-        // const response = await generateText({
-        //     prompt: "Tell me a programming joke.",
-        //     skills: [],
-        //     outputSchema: z.object({ joke: z.string() })
-        // })
+        const response = await generateText({
+            prompt: "Tell me a programming joke.",
+            skills: [],
+            outputSchema: z.object({ joke: z.string() })
+        })
 
-        console.log("Hello, world!")
+        toolbox.slack.sendMessage({
+            channelId: SlackChannel.AllTerseInc.channelId,
+            message: response.joke
+        })
+
+        console.log(response.joke)
     }
 })
 
