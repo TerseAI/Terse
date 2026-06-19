@@ -15,17 +15,10 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
     const hoisted: string[] = []
     const edits: Array<{ start: number; end: number; text: string }> = []
 
-    const isProp = (p: TS.ObjectLiteralElementLike, key: string): p is TS.PropertyAssignment =>
-        ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === key
+    const isProp = (p: TS.ObjectLiteralElementLike, key: string): p is TS.PropertyAssignment => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === key
 
     const visit = (node: TS.Node): void => {
-        if (
-            ts.isCallExpression(node) &&
-            ts.isIdentifier(node.expression) &&
-            node.expression.text === "createJob" &&
-            node.arguments.length > 0 &&
-            ts.isObjectLiteralExpression(node.arguments[0])
-        ) {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "createJob" && node.arguments.length > 0 && ts.isObjectLiteralExpression(node.arguments[0])) {
             const obj = node.arguments[0]
             const nameProp = obj.properties.find(p => isProp(p, "name"))
             const onTrigger = obj.properties.find(p => isProp(p, "onTrigger"))
@@ -36,13 +29,7 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
                 const fnName = `terseWf_${Buffer.from(jobName).toString("hex")}`
                 const param = fn.parameters.length ? fn.parameters[0].name.getText(sf) : "event"
                 const body = ts.isBlock(fn.body) ? fn.body.getText(sf).slice(1, -1) : `\n  return ${fn.body.getText(sf)}\n`
-                hoisted.push(
-                    `async function ${fnName}(__rawEvent) {\n` +
-                        `  "use workflow"\n` +
-                        `  const ${param} = createSDKTrigger(__rawEvent)\n` +
-                        body +
-                        `}`
-                )
+                hoisted.push(`async function ${fnName}(__rawEvent) {\n` + `  "use workflow"\n` + `  const ${param} = createSDKTrigger(__rawEvent)\n` + body + `}`)
                 edits.push({ start: onTrigger!.getStart(sf), end: onTrigger!.getEnd(), text: `onTrigger: ${fnName}` })
                 jobs.push({ name: jobName, fnName })
             }

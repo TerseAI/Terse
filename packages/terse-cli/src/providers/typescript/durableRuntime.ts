@@ -58,7 +58,7 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
 }
 
 type DurableRuntime = {
-    dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<unknown> // tighten to the workflow Run type once you await completion
+    dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<unknown>
     close: () => Promise<void>
 }
 
