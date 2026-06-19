@@ -104,39 +104,30 @@ export function denyToolACL(message: string): ToolACLValidationResult {
     return { ok: false, message }
 }
 
-// Normalizes an allowed-domain entry to a bare lowercase host (strips scheme, path, port, and a leading "www.").
-export function normalizeDomain(domain: string): string {
-    let host = domain.trim().toLowerCase()
-    host = host.replace(/^[a-z]+:\/\//, "")
-    host = host.split("/")[0].split("@").pop() ?? host
-    host = host.split(":")[0]
-    return host.replace(/^www\./, "")
-}
-
-// True when `host` equals an allowed domain or is a subdomain of one.
-export function isHostAllowed(host: string, allowedDomains: readonly string[]): boolean {
-    const normalizedHost = normalizeDomain(host)
-    return allowedDomains.some(domain => {
-        const allowed = normalizeDomain(domain)
-        return allowed.length > 0 && (normalizedHost === allowed || normalizedHost.endsWith(`.${allowed}`))
-    })
-}
-
-// Resolves the hostname of a URL string, returning null when it cannot be parsed.
-function hostFromUrl(value: string): string | null {
+// Parses a URL or bare domain to its lowercase hostname (sans a leading "www."), using the WHATWG URL parser. Returns null when unparseable.
+function toHostname(value: string): string | null {
+    const trimmed = value.trim()
+    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
     try {
-        return new URL(value).hostname
+        return new URL(withScheme).hostname.toLowerCase().replace(/^www\./, "")
     } catch {
         return null
     }
 }
 
+// True when `host` equals an allowed domain or is a subdomain of one.
+export function isHostAllowed(host: string, allowedDomains: readonly string[]): boolean {
+    const normalizedHost = toHostname(host)
+    if (!normalizedHost) return false
+    return allowedDomains.some(domain => {
+        const allowed = toHostname(domain)
+        return !!allowed && (normalizedHost === allowed || normalizedHost.endsWith(`.${allowed}`))
+    })
+}
+
 // Denies when any value is not a URL whose host falls within the allowed domains. Unparseable URLs are treated as offenders.
 export function requireHostsInAllowedDomains(values: readonly string[], allowedDomains: readonly string[], label: string): ToolACLValidationResult {
-    const offenders = values.filter(value => {
-        const host = hostFromUrl(value)
-        return host === null || !isHostAllowed(host, allowedDomains)
-    })
+    const offenders = values.filter(value => !isHostAllowed(value, allowedDomains))
     if (offenders.length === 0) {
         return { ok: true }
     }
