@@ -1,11 +1,20 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Terse AI</title>
         <meta name="description" content="Build agents that help you ship faster." />
+        <script>
+            ;(function () {
+                var t = window.localStorage.getItem("vite-ui-theme") || "system"
+                var dark = t === "dark" || (t !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+                var el = document.documentElement
+                el.classList.toggle("dark", dark)
+                el.classList.toggle("light", !dark)
+            })()
+        </script>
         <link href="/src/styles/app.css" rel="stylesheet" />
     </head>
     <body>
