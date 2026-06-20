@@ -40,7 +40,17 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     await world.start?.()
 
     const manifest = JSON.parse(fs.readFileSync(path.join(out, "manifest.json"), "utf8"))
-    const workflowIdByJob = new Map([...workflowFnByJob].map(([name, fnName]) => [name, findWorkflowId(manifest, fnName)]))
+    const workflowIdByJob = new Map<string, string>()
+    const missing: Array<{ name: string; file: string }> = []
+    for (const [name, { fnName, file }] of workflowFnByJob) {
+        const workflowId = lookupWorkflowId(manifest, fnName)
+        if (workflowId) workflowIdByJob.set(name, workflowId)
+        else missing.push({ name, file })
+    }
+    if (missing.length > 0) {
+        const lines = missing.map(m => `  - "${m.name}" (${m.file})`).join("\n")
+        throw new Error(`The durable build produced no "use workflow" for ${missing.length} job(s):\n${lines}\n\nEach file was transformed but its workflow never reached the manifest, which almost always means the file failed to compile during the bundle. Check that each file builds on its own, then re-run.`)
+    }
 
     return {
         dispatchJob: async (jobName, ctx, event) => {
@@ -67,20 +77,20 @@ type DurableRuntime = {
     close: () => Promise<void>
 }
 
-function findWorkflowId(manifest: any, fnName: string): string {
+function lookupWorkflowId(manifest: any, fnName: string): string | undefined {
     for (const fileEntry of Object.values<any>(manifest.workflows ?? {})) {
         const fn = fileEntry[fnName]
         if (fn?.workflowId) return fn.workflowId
     }
-    throw new Error(`Workflow "${fnName}" not found in manifest — was the job macro applied before the build?`)
+    return undefined
 }
 
 // Transform every createJob source file in place, run `build`, then restore the
 // originals (always — via finally). Returns the job-name -> workflow-fn map.
-async function withMacroedSources(cwd: string, build: () => Promise<void>): Promise<Map<string, string>> {
+async function withMacroedSources(cwd: string, build: () => Promise<void>): Promise<Map<string, { fnName: string; file: string }>> {
     const ts = loadTypescript(cwd)
     const backups = new Map<string, string>()
-    const workflowFnByJob = new Map<string, string>()
+    const workflowFnByJob = new Map<string, { fnName: string; file: string }>()
 
     try {
         for (const file of findJobFiles(path.join(cwd, "src"))) {
@@ -89,7 +99,7 @@ async function withMacroedSources(cwd: string, build: () => Promise<void>): Prom
             if (jobs.length === 0) continue
             backups.set(file, original)
             fs.writeFileSync(file, code)
-            for (const job of jobs) workflowFnByJob.set(job.name, job.fnName)
+            for (const job of jobs) workflowFnByJob.set(job.name, { fnName: job.fnName, file: path.relative(cwd, file) })
         }
         await build()
     } finally {
