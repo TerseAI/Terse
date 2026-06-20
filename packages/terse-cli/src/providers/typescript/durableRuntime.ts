@@ -49,7 +49,9 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     }
     if (missing.length > 0) {
         const lines = missing.map(m => `  - "${m.name}" (${m.file})`).join("\n")
-        throw new Error(`The durable build produced no "use workflow" for ${missing.length} job(s):\n${lines}\n\nEach file was transformed but its workflow never reached the manifest, which almost always means the file failed to compile during the bundle. Check that each file builds on its own, then re-run.`)
+        throw new Error(
+            `The durable build produced no "use workflow" for ${missing.length} job(s):\n${lines}\n\nEach file was transformed but its workflow never reached the manifest, which almost always means the file failed to compile during the bundle. Check that each file builds on its own, then re-run.`
+        )
     }
 
     return {
