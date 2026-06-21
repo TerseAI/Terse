@@ -74,6 +74,14 @@ export class ModalVolumeStore implements AgentVolumeStore {
         return { exitCode, stdout, stderr }
     }
 
+    /** Persist pending writes to the backing Volume. For Volumes v2, `sync <mountpoint>` flushes and commits. */
+    private async commit(volumeName: string): Promise<void> {
+        const result = await this.exec(volumeName, `sync ${shellQuote(MODAL_VOLUME_MOUNT)}`)
+        if (result.exitCode !== 0) {
+            logger.warn("Modal volume store: sync failed; relying on background commit", { volumeName, stderr: result.stderr.trim() })
+        }
+    }
+
     async read(volumeName: string, relativePath: string): Promise<string> {
         const mountedPath = this.resolveMountedPath(relativePath)
         const result = await this.exec(volumeName, `cat ${shellQuote(mountedPath)}`)
@@ -98,6 +106,7 @@ export class ModalVolumeStore implements AgentVolumeStore {
         } finally {
             await file.close()
         }
+        await this.commit(volumeName)
     }
 
     async list(volumeName: string, relativePath: string): Promise<VolumeFileEntry[]> {
@@ -173,6 +182,7 @@ export class ModalVolumeStore implements AgentVolumeStore {
         if (result.exitCode !== 0) {
             throw new Error(result.stderr.trim() || `Failed to delete ${relativePath}`)
         }
+        await this.commit(volumeName)
     }
 
     async rename(volumeName: string, fromPath: string, toPath: string): Promise<void> {
@@ -191,6 +201,7 @@ export class ModalVolumeStore implements AgentVolumeStore {
         if (result.exitCode !== 0) {
             throw new Error(result.stderr.trim() || `Failed to rename ${fromPath}`)
         }
+        await this.commit(volumeName)
     }
 
     async mkdir(volumeName: string, relativePath: string): Promise<void> {
@@ -199,5 +210,6 @@ export class ModalVolumeStore implements AgentVolumeStore {
         if (result.exitCode !== 0) {
             throw new Error(result.stderr.trim() || `Failed to mkdir ${relativePath}`)
         }
+        await this.commit(volumeName)
     }
 }

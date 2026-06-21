@@ -1,4 +1,5 @@
 import type { Session } from "../../express"
+import { findAutomationInOrg } from "../../modules/improvements/repository"
 import type { SessionWithTracking } from "../../modules/agents/AgentRunner/BaseAgentRunner"
 
 const SDK_AGENT_RUN_ID = "sdk-agent-run"
@@ -8,7 +9,18 @@ export type AgentStorageContext = {
     organizationId: string
 }
 
-export function resolveAgentStorageContext(context: SessionWithTracking<Session> | undefined): AgentStorageContext {
+export async function resolveAgentStorageContext(context: SessionWithTracking<Session> | undefined): Promise<AgentStorageContext> {
+    const resolved = resolveContextClaim(context)
+
+    const automation = await findAutomationInOrg(resolved.agentId, resolved.organizationId)
+    if (!automation) {
+        throw new Error("Agent storage context is unavailable: agent does not belong to this organization.")
+    }
+
+    return resolved
+}
+
+function resolveContextClaim(context: SessionWithTracking<Session> | undefined): AgentStorageContext {
     if (!context) {
         throw new Error("No run context provided")
     }

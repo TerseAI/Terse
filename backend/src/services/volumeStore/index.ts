@@ -26,9 +26,9 @@ export function resetAgentVolumeStoreForTests(): void {
 }
 
 /** Remove persistent files + memory volumes for an agent. Failures are logged but not thrown. */
-export async function deleteAgentVolumes(agentId: string): Promise<void> {
+export async function deleteAgentVolumes(organizationId: string, agentId: string): Promise<void> {
     const sandboxService = getSandboxProvider()
-    const volumeNames = [agentFilesVolumeName(agentId), agentMemoryVolumeName(agentId)]
+    const volumeNames = [agentFilesVolumeName(organizationId, agentId), agentMemoryVolumeName(organizationId, agentId)]
 
     for (const volumeName of volumeNames) {
         try {
@@ -48,8 +48,8 @@ export async function deleteAgentVolumes(agentId: string): Promise<void> {
     }
 }
 
-export async function deleteAgentVolumesForAgents(agentIds: string[]): Promise<void> {
-    await Promise.all(agentIds.map(agentId => deleteAgentVolumes(agentId)))
+export async function deleteAgentVolumesForAgents(agents: Array<{ organizationId: string; agentId: string }>): Promise<void> {
+    await Promise.all(agents.map(({ organizationId, agentId }) => deleteAgentVolumes(organizationId, agentId)))
 }
 
 export type { AgentVolumeStore, VolumeFileEntry, VolumeStat } from "./types"

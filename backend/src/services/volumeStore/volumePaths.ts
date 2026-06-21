@@ -1,20 +1,24 @@
 import crypto from "node:crypto"
 import path from "node:path"
 
-export const AGENT_FILES_VOLUME_PREFIX = "sdk-agent-"
-export const AGENT_MEMORY_VOLUME_PREFIX = "sdk-agent-mem-"
-
 export const AGENT_FILES_MOUNT_PATH = "/mnt/agent-volume"
 export const AGENT_MEMORY_MOUNT_PATH = "/mnt/agent-memory"
 
 export const MEMORY_ROOT = "/memories"
 
-export function agentFilesVolumeName(agentId: string): string {
-    return `${AGENT_FILES_VOLUME_PREFIX}${agentId}`
+// Org is folded into the volume name as a fixed-length hash so volumes are namespaced per
+// organization while staying within Modal's object-name length limit (org ids + cuids would
+// otherwise overflow). The agentId stays readable for ops/debugging.
+function orgSegment(organizationId: string): string {
+    return crypto.createHash("sha256").update(organizationId).digest("hex").slice(0, 12)
 }
 
-export function agentMemoryVolumeName(agentId: string): string {
-    return `${AGENT_MEMORY_VOLUME_PREFIX}${agentId}`
+export function agentFilesVolumeName(organizationId: string, agentId: string): string {
+    return `sdk-${orgSegment(organizationId)}-agent-${agentId}`
+}
+
+export function agentMemoryVolumeName(organizationId: string, agentId: string): string {
+    return `sdk-${orgSegment(organizationId)}-agent-mem-${agentId}`
 }
 
 export function volumeUtilitySandboxName(volumeName: string): string {

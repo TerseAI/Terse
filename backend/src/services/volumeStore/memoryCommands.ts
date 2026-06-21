@@ -100,9 +100,9 @@ function snippetWithLineNumbers(content: string, centerLine: number, radius = 4)
         .join("\n")
 }
 
-export async function executeMemoryCommand(agentId: string, input: MemoryCommandInput): Promise<{ success: true; message: string }> {
+export async function executeMemoryCommand(organizationId: string, agentId: string, input: MemoryCommandInput): Promise<{ success: true; message: string }> {
     const store = getAgentVolumeStore()
-    const volumeName = agentMemoryVolumeName(agentId)
+    const volumeName = agentMemoryVolumeName(organizationId, agentId)
 
     switch (input.command) {
         case "view": {

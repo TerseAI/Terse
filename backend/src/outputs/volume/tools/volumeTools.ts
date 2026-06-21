@@ -12,9 +12,9 @@ export const volumeListFilesTool = defineSessionTool({
     name: "volume_list_files",
     description: "List files and directories in this agent's persistent shared volume. Paths are relative to the volume root.",
     execute: async ({ path }, runContext) => {
-        const storage = resolveAgentStorageContext(runContext?.context)
+        const storage = await resolveAgentStorageContext(runContext?.context)
         const store = getAgentVolumeStore()
-        const entries = await store.list(agentFilesVolumeName(storage.agentId), path ?? "")
+        const entries = await store.list(agentFilesVolumeName(storage.organizationId, storage.agentId), path ?? "")
 
         if (entries.length === 0) {
             return {
@@ -41,9 +41,9 @@ export const volumeReadFileTool = defineSessionTool({
     name: "volume_read_file",
     description: "Read a file from this agent's persistent shared volume.",
     execute: async ({ path }, runContext) => {
-        const storage = resolveAgentStorageContext(runContext?.context)
+        const storage = await resolveAgentStorageContext(runContext?.context)
         const store = getAgentVolumeStore()
-        const content = await store.read(agentFilesVolumeName(storage.agentId), path)
+        const content = await store.read(agentFilesVolumeName(storage.organizationId, storage.agentId), path)
         return {
             success: true,
             path,
@@ -56,9 +56,9 @@ export const volumeWriteFileTool = defineSessionTool({
     name: "volume_write_file",
     description: "Write or overwrite a file in this agent's persistent shared volume.",
     execute: async ({ path, content }, runContext) => {
-        const storage = resolveAgentStorageContext(runContext?.context)
+        const storage = await resolveAgentStorageContext(runContext?.context)
         const store = getAgentVolumeStore()
-        await store.write(agentFilesVolumeName(storage.agentId), path, content)
+        await store.write(agentFilesVolumeName(storage.organizationId, storage.agentId), path, content)
         return {
             success: true,
             message: `Wrote file ${path}`,
@@ -71,9 +71,9 @@ export const volumeDeleteFileTool = defineSessionTool({
     name: "volume_delete_file",
     description: "Delete a file or directory from this agent's persistent shared volume.",
     execute: async ({ path }, runContext) => {
-        const storage = resolveAgentStorageContext(runContext?.context)
+        const storage = await resolveAgentStorageContext(runContext?.context)
         const store = getAgentVolumeStore()
-        await store.deletePath(agentFilesVolumeName(storage.agentId), path)
+        await store.deletePath(agentFilesVolumeName(storage.organizationId, storage.agentId), path)
         return {
             success: true,
             message: `Deleted ${path}`,

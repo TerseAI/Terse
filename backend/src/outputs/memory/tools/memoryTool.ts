@@ -7,8 +7,8 @@ export const memoryTool = defineSessionTool({
     description:
         "Store and retrieve persistent memory files for this agent. Commands: view, create, str_replace, insert, delete, rename. All paths are under /memories.",
     execute: async (input, runContext) => {
-        const storage = resolveAgentStorageContext(runContext?.context)
-        const result = await executeMemoryCommand(storage.agentId, {
+        const storage = await resolveAgentStorageContext(runContext?.context)
+        const result = await executeMemoryCommand(storage.organizationId, storage.agentId, {
             command: input.command,
             path: input.path ?? undefined,
             view_range: input.view_range ?? undefined,

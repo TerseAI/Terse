@@ -153,7 +153,9 @@ export {
     WorkOSInputConfig,
     WorkOSOutputConfig,
     debugTrigger,
-    formatTriggerForAgent
+    formatTriggerForAgent,
+    MemoryConfig,
+    VolumeConfig
 } from "terse-types"
 
 export type Trigger = SDKTrigger<_RawTrigger>

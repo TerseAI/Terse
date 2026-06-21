@@ -276,7 +276,7 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
 
     await prisma.automations.deleteMany({ where: { id: { in: staleIds }, organization_id: organizationId } })
 
-    await deleteAgentVolumesForAgents(staleIds)
+    await deleteAgentVolumesForAgents(staleIds.map(agentId => ({ organizationId, agentId })))
 
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")

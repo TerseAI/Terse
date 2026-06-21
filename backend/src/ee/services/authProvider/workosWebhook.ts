@@ -150,12 +150,10 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
  */
 async function cleanupIdentity(workosUserId: string): Promise<void> {
     const prisma = db()
-    const automationIds = (
-        await prisma.automations.findMany({
-            where: { user_id: workosUserId },
-            select: { id: true }
-        })
-    ).map(a => a.id)
+    const automations = await prisma.automations.findMany({
+        where: { user_id: workosUserId },
+        select: { id: true, organization_id: true }
+    })
 
     try {
         await prisma.$transaction([
@@ -181,5 +179,5 @@ async function cleanupIdentity(workosUserId: string): Promise<void> {
         throw error
     }
 
-    await deleteAgentVolumesForAgents(automationIds)
+    await deleteAgentVolumesForAgents(automations.map(a => ({ organizationId: a.organization_id, agentId: a.id })))
 }

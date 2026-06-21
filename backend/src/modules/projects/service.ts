@@ -86,7 +86,7 @@ export async function deleteProjectForOrganization(projectId: string, organizati
 
     const secretService = SecretService.getInstance()
     await deleteProject(projectId)
-    await deleteAgentVolumesForAgents(automationIds)
+    await deleteAgentVolumesForAgents(automationIds.map(agentId => ({ organizationId, agentId })))
     try {
         await secretService.deleteSecrets({ type: "project", secret: { projectId } })
     } catch (error) {
