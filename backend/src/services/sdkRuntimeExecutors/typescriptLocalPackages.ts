@@ -22,23 +22,51 @@ export async function writeLocalTarballs(context: SdkDependencyImageBuildContext
     return paths
 }
 
-// Pins terse-sdk/terse-types in the user project to the local tarballs via overrides, so the
-// project's transitive SDK resolves local. pnpm reads `pnpm.overrides`; npm reads `overrides`.
+// Points the user project's terse-sdk/terse-types at the local tarballs. With the dev flags on, the
+// versions in the project's package.json are ignored in favor of the local build. A direct dependency
+// is rewritten in place; transitive-only packages (e.g. terse-types via terse-sdk) are pinned through
+// overrides instead, since npm rejects an override that collides with a direct dependency (EOVERRIDE).
 export function withTerseOverrides(packageJsonText: string, tarballs: Map<string, string>, packageManager: PackageManager): string {
-    const pkg = JSON.parse(packageJsonText) as Record<string, unknown> & { pnpm?: { overrides?: Record<string, string> }; overrides?: Record<string, string> }
+    type DepRecord = Record<string, string>
+    const pkg = JSON.parse(packageJsonText) as {
+        dependencies?: DepRecord
+        devDependencies?: DepRecord
+        optionalDependencies?: DepRecord
+        overrides?: DepRecord
+        pnpm?: { overrides?: DepRecord }
+        [key: string]: unknown
+    }
 
-    const overrides: Record<string, string> = {}
-    for (const name of ["terse-sdk", "terse-types"]) {
+    const targets = ["terse-sdk", "terse-types"] as const
+    const depSections = ["dependencies", "devDependencies", "optionalDependencies"] as const
+
+    const directlyPinned = new Set<string>()
+    for (const section of depSections) {
+        const deps = pkg[section]
+        if (!deps) continue
+        for (const name of targets) {
+            const tarballPath = tarballs.get(name)
+            if (tarballPath && name in deps) {
+                deps[name] = `file:${tarballPath}`
+                directlyPinned.add(name)
+            }
+        }
+    }
+
+    const overrides: DepRecord = {}
+    for (const name of targets) {
         const tarballPath = tarballs.get(name)
-        if (tarballPath) {
+        if (tarballPath && !directlyPinned.has(name)) {
             overrides[name] = `file:${tarballPath}`
         }
     }
 
-    if (packageManager === "pnpm") {
-        pkg.pnpm = { ...pkg.pnpm, overrides: { ...pkg.pnpm?.overrides, ...overrides } }
-    } else {
-        pkg.overrides = { ...pkg.overrides, ...overrides }
+    if (Object.keys(overrides).length > 0) {
+        if (packageManager === "pnpm") {
+            pkg.pnpm = { ...pkg.pnpm, overrides: { ...pkg.pnpm?.overrides, ...overrides } }
+        } else {
+            pkg.overrides = { ...pkg.overrides, ...overrides }
+        }
     }
     return JSON.stringify(pkg, null, 2)
 }
