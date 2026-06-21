@@ -4,11 +4,17 @@ import type { SerializedEvent } from "terse-types"
 
 import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
+import { getLocalHoistMarker } from "../cliVersion.js"
 import { loadJob } from "../loadJob.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
 export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string, verbose?: boolean): Promise<void> {
+    const hoistMarker = getLocalHoistMarker()
+    if (hoistMarker) {
+        console.log(`[terse] running locally-hoisted packages: ${hoistMarker}`)
+    }
+
     if (eventFile && !eventJson) {
         try {
             eventJson = fs.readFileSync(eventFile, "utf-8")
