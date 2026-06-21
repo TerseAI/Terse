@@ -6,6 +6,7 @@ import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
 import { getRealtimeSocket } from "../../../loaders/socket"
 import { emitBillingCachesInvalidated } from "../../../services/CacheInvalidationService"
+import { deleteAgentVolumesForAgents } from "../../../services/volumeStore"
 
 /**
  * Handle incoming WorkOS webhooks.
@@ -149,6 +150,13 @@ async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
  */
 async function cleanupIdentity(workosUserId: string): Promise<void> {
     const prisma = db()
+    const automationIds = (
+        await prisma.automations.findMany({
+            where: { user_id: workosUserId },
+            select: { id: true }
+        })
+    ).map(a => a.id)
+
     try {
         await prisma.$transaction([
             prisma.api_tokens.deleteMany({ where: { user_id: workosUserId } }),
@@ -172,4 +180,6 @@ async function cleanupIdentity(workosUserId: string): Promise<void> {
         logger.error("cleanupIdentity failed", { workosUserId, error })
         throw error
     }
+
+    await deleteAgentVolumesForAgents(automationIds)
 }

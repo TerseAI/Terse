@@ -44,6 +44,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
     private readonly isProductionRun: boolean
     private readonly streamEventEmitter: StreamEventEmitter
     private readonly outputType: JsonSchemaDefinition | undefined
+    private readonly storage?: { agentId: string; organizationId: string }
     private pendingApprovalState: PendingApprovalState | null = null
     private readonly failedToolCalls: Array<{ tool: string; status: ToolCallExecutionStatus; error?: string }> = []
 
@@ -59,6 +60,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
         this.toolApprovals = params.toolApprovals
         this.send = params.send
         this.isProductionRun = !!params.isProductionRun
+        this.storage = params.storage
         // Todo: think about modifying users zod schema so it's compatible with strict mode. Avoids landmine where optional() crashes unless they add nullable.
         this.outputType = params.outputSchema
             ? {
@@ -307,7 +309,8 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
                 toolApprovals: this.toolApprovals
             },
             runId: this.sdkRunId,
-            agentId: SDK_AGENT_ID
+            agentId: SDK_AGENT_ID,
+            storage: this.storage
         }
     }
 
@@ -400,6 +403,10 @@ type SdkAgentRunnerParams = {
     isProductionRun?: boolean
     outputSchema?: Record<string, unknown>
     billing: BillingService
+    storage?: {
+        agentId: string
+        organizationId: string
+    }
 }
 
 type SdkAgentRunnerResult = {

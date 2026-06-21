@@ -22,6 +22,10 @@ export type SessionWithTracking<T extends AppSession> = T & {
     }
     runId: string
     agentId: string
+    storage?: {
+        agentId: string
+        organizationId: string
+    }
 }
 
 /**

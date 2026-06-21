@@ -1,8 +1,10 @@
-export interface SandboxService<I extends SandboxImage = SandboxImage, S extends Sandbox = Sandbox> {
+export interface SandboxService<I extends SandboxImage = SandboxImage, S extends Sandbox = Sandbox, V extends SandboxVolume = SandboxVolume> {
     // True when the provider runs jobs in isolated containers (Modal/Docker/etc). False for in-memory.
     readonly supportsContainerizedRunners: boolean
 
     getOrCreateApp(name: string): Promise<SandboxApp>
+    getOrCreateVolume(name: string): Promise<V>
+    deleteVolume(volumeId: string): Promise<void>
 
     getImageFromRegistry(registry: string): I
     getImageFromId(imageId: string): Promise<I>
@@ -25,6 +27,10 @@ export interface SandboxApp {
 
 export interface SandboxImage {
     imageId: string
+}
+
+export interface SandboxVolume {
+    volumeId: string
 }
 
 export interface Sandbox {
@@ -72,13 +78,15 @@ type SandboxExecParams = {
     pty?: boolean
 }
 
-type SandboxCreateParams = {
+export type SandboxCreateParams = {
     timeoutMs?: number
     idleTimeoutMs?: number
     blockNetwork?: boolean
     cidrAllowlist?: string[]
     proxy?: SandboxProxy
     secrets?: Secret[]
+    /** Mount paths mapped to persistent sandbox volumes. */
+    volumes?: Record<string, SandboxVolume>
 }
 
 interface SandboxProxy {

@@ -1,9 +1,9 @@
-import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams } from "modal"
+import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, Volume as ModalVolume, NotFoundError, SandboxCreateParams } from "modal"
 
 import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
 
-import { Sandbox, SandboxApp, SandboxImage, SandboxService } from "./SandboxService"
+import { Sandbox, SandboxApp, SandboxCreateParams as TerseSandboxCreateParams, SandboxImage, SandboxService } from "./SandboxService"
 
 export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     idleTimeoutMs: 5 * 60 * 1000,
@@ -13,7 +13,7 @@ export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
 const CREATE_MAX_ATTEMPTS = 6
 const CREATE_RETRY_BASE_DELAY_MS = 150
 
-export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, ModalSandbox> {
+export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, ModalSandbox, ModalVolume> {
     readonly settingsKey = "modal"
     readonly supportsContainerizedRunners = true
 
@@ -47,6 +47,29 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             return app
         } catch (error) {
             logger.error("Modal app: fromName failed", { app: name, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
+            throw error
+        }
+    }
+
+    async getOrCreateVolume(name: string): Promise<ModalVolume> {
+        const t0 = Date.now()
+        try {
+            const volume = await this.modal.volumes.fromName(name, { createIfMissing: true })
+            logger.info("Modal volume: ready", { volume: name, durationMs: Date.now() - t0 })
+            return volume
+        } catch (error) {
+            logger.error("Modal volume: fromName failed", { volume: name, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
+            throw error
+        }
+    }
+
+    async deleteVolume(volumeId: string): Promise<void> {
+        const t0 = Date.now()
+        try {
+            await this.modal.volumes.delete(volumeId)
+            logger.info("Modal volume: deleted", { volumeId, durationMs: Date.now() - t0 })
+        } catch (error) {
+            logger.error("Modal volume: delete failed", { volumeId, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
             throw error
         }
     }
@@ -88,7 +111,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         }
     }
 
-    async getOrCreateSandbox(app: SandboxApp, image: ModalImage, uniqueName: string, params?: SandboxCreateParams): Promise<ModalSandbox> {
+    async getOrCreateSandbox(app: SandboxApp, image: ModalImage, uniqueName: string, params?: TerseSandboxCreateParams): Promise<ModalSandbox> {
         if (!app.name) {
             throw new Error("App name is required")
         }
@@ -100,10 +123,8 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             app: app.name,
             name,
             imageId: image.imageId,
-            timeoutMs: params?.timeoutMs,
-            idleTimeoutMs: params?.idleTimeoutMs
+            params: params
         })
-
         const existing = await this.lookupLiveSandbox(app.name, name, opStart)
         if (existing) {
             return existing
@@ -183,7 +204,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         }
     }
 
-    private async createSandboxWithRetries(app: SandboxApp, image: SandboxImage, name: string, params: SandboxCreateParams | undefined, opStart: number): Promise<ModalSandbox> {
+    private async createSandboxWithRetries(app: SandboxApp, image: SandboxImage, name: string, params: TerseSandboxCreateParams | undefined, opStart: number): Promise<ModalSandbox> {
         const imageRef = image as ModalImage
 
         for (let attempt = 0; attempt < CREATE_MAX_ATTEMPTS; attempt++) {
@@ -211,7 +232,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         throw new Error(`Modal sandbox: exhausted create attempts for ${name}`)
     }
 
-    private async createSandboxOnce(app: SandboxApp, image: SandboxImage, name: string, params: SandboxCreateParams | undefined, attempt: number, opStart: number): Promise<ModalSandbox> {
+    private async createSandboxOnce(app: SandboxApp, image: SandboxImage, name: string, params: TerseSandboxCreateParams | undefined, attempt: number, opStart: number): Promise<ModalSandbox> {
         const appRef = app as ModalApp
         const imageRef = image as ModalImage
         const createStart = Date.now()
@@ -222,10 +243,22 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             imageId: imageRef.imageId,
             timeoutMs: params?.timeoutMs,
             idleTimeoutMs: params?.idleTimeoutMs,
+            volumeMounts: params?.volumes ? Object.keys(params.volumes) : [],
             attempt
         })
 
-        const sandbox = await this.modal.sandboxes.create(appRef, imageRef, params)
+        const modalParams: SandboxCreateParams = {
+            timeoutMs: params?.timeoutMs,
+            idleTimeoutMs: params?.idleTimeoutMs,
+            blockNetwork: params?.blockNetwork,
+            cidrAllowlist: params?.cidrAllowlist,
+            secrets: params?.secrets,
+            volumes: params?.volumes
+                ? Object.fromEntries(Object.entries(params.volumes).map(([mountPath, volume]) => [mountPath, volume as ModalVolume]))
+                : undefined
+        }
+
+        const sandbox = await this.modal.sandboxes.create(appRef, imageRef, modalParams)
 
         logger.info("Modal sandbox: created new", {
             app: app.name,

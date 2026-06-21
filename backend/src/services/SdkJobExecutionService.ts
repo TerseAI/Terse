@@ -22,6 +22,12 @@ import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import {
+    AGENT_FILES_MOUNT_PATH,
+    AGENT_MEMORY_MOUNT_PATH,
+    agentFilesVolumeName,
+    agentMemoryVolumeName
+} from "./volumeStore"
 
 interface SdkJobExecutionParams {
     runId: string
@@ -88,6 +94,8 @@ export class SdkJobExecutionService {
                 TERSE_RUN_ID: runId,
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
+                TERSE_AGENT_VOLUME_MOUNT: getSandboxProvider().supportsContainerizedRunners ? AGENT_FILES_MOUNT_PATH : `./mnt/agent-volume`,
+                TERSE_AGENT_MEMORY_MOUNT: getSandboxProvider().supportsContainerizedRunners ? AGENT_MEMORY_MOUNT_PATH : `./mnt/agent-memory`,
                 NO_UPDATE_NOTIFIER: "1"
             }
 
@@ -211,7 +219,7 @@ export class SdkJobExecutionService {
     }): Promise<SandboxCommandResult> {
         const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion } = params
 
-        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
+        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, agentId)
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
@@ -251,7 +259,7 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string): Promise<Sandbox> {
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, agentId: string): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
@@ -260,7 +268,17 @@ export class SdkJobExecutionService {
         const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
         const image = await sandboxService.getImageFromId(source.imageId)
         const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey)
-        return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+
+        const filesVolume = await sandboxService.getOrCreateVolume(agentFilesVolumeName(agentId))
+        const memoryVolume = await sandboxService.getOrCreateVolume(agentMemoryVolumeName(agentId))
+        const sandboxOptions = {
+            volumes: {
+                [AGENT_FILES_MOUNT_PATH]: filesVolume,
+                [AGENT_MEMORY_MOUNT_PATH]: memoryVolume
+            },
+            ...SANDBOX_DEFAULT_OPTIONS
+        }
+        return sandboxService.getOrCreateSandbox(app, image, uniqueName, sandboxOptions)
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

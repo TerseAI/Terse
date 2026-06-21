@@ -17,6 +17,7 @@ import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "../../../modules/agents/controller"
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
+import { deleteAgentVolumesForAgents } from "../../../services/volumeStore"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
@@ -274,6 +275,8 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
     }
 
     await prisma.automations.deleteMany({ where: { id: { in: staleIds }, organization_id: organizationId } })
+
+    await deleteAgentVolumesForAgents(staleIds)
 
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")

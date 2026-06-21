@@ -9,10 +9,12 @@ import {
     ImageEditConfig,
     LaunchDarklyConfig,
     LinearOutputConfig,
+    MemoryConfig,
     NotionConfig,
     PosthogConfig,
     SlackOutputConfig,
     SnowflakeOutputConfig,
+    VolumeConfig,
     WebConfig,
     WorkOSOutputConfig
 } from "terse-types"
@@ -34,6 +36,8 @@ import { SlackOutput } from "../slack/SlackOutput"
 import { SnowflakeSkillOutput } from "../snowflake/SnowflakeSkillOutput"
 import { ImageEditOutput } from "../terse/ImageEditOutput"
 import { WebOutput } from "../terse/WebOutput"
+import { MemoryOutput } from "../memory/MemoryOutput"
+import { VolumeOutput } from "../volume/VolumeOutput"
 import { WorkOSOutput } from "../workos/WorkOSOutput"
 
 import { Output } from "./Output"
@@ -63,6 +67,8 @@ export class OutputFactory {
         ]
         if (settings.tavily.apiKey) entries.push([OutputConfigType.WEB, () => new WebOutput()])
         if (settings.gemini.apiKey) entries.push([OutputConfigType.IMAGE_EDIT, () => new ImageEditOutput()])
+        entries.push([OutputConfigType.VOLUME, () => new VolumeOutput()])
+        entries.push([OutputConfigType.MEMORY, () => new MemoryOutput()])
         return new Map(entries)
     })()
 
@@ -118,6 +124,12 @@ export class OutputFactory {
                 break
             case OutputConfigType.IMAGE_EDIT:
                 ;(output as Output<ImageEditConfig>).configs = configs as ImageEditConfig[]
+                break
+            case OutputConfigType.VOLUME:
+                ;(output as Output<VolumeConfig>).configs = configs as VolumeConfig[]
+                break
+            case OutputConfigType.MEMORY:
+                ;(output as Output<MemoryConfig>).configs = configs as MemoryConfig[]
                 break
             case OutputConfigType.SNOWFLAKE:
                 ;(output as Output<SnowflakeOutputConfig>).configs = configs as SnowflakeOutputConfig[]

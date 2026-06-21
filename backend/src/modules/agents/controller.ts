@@ -16,6 +16,7 @@ import { getMonitor } from "../../integrations/webMonitor/integration"
 import { db } from "../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../loaders/socket"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
+import { deleteAgentVolumes } from "../../services/volumeStore"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../../types/prisma"
 import { getUserNotificationSettings } from "../notifications/settings/repository"
@@ -558,6 +559,7 @@ export async function deleteAgent(req: Request, res: Response) {
         // but don't throw — orphan external webhooks will fire and find
         // no matching automation, which is already handled downstream.
         await tearDownAgentTriggers(existingAgent)
+        await deleteAgentVolumes(agentId)
 
         // Invalidate recent agents cache
         emitCacheInvalidationWithKey(organizationId, "recentAgents")

@@ -17,6 +17,7 @@ import {
     LinearEventType,
     LinearInputConfig,
     LinearOutputConfig,
+    MemoryConfig,
     NotionConfig,
     PosthogConfig,
     SlackConfig,
@@ -24,6 +25,7 @@ import {
     SlackOutputConfig,
     SnowflakeOutputConfig,
     TimeTriggerConfig,
+    VolumeConfig,
     WebConfig,
     WebMonitorConfig,
     WebhookInputConfig,
@@ -311,6 +313,10 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
             return new WebConfig()
         case OutputConfigType.IMAGE_EDIT:
             return new ImageEditConfig()
+        case OutputConfigType.VOLUME:
+            return new VolumeConfig()
+        case OutputConfigType.MEMORY:
+            return new MemoryConfig()
     }
 
     // Determine which config is present and create the appropriate ConfigData
@@ -439,6 +445,10 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("WEB is an output type, not an input type")
         case ConfigType.IMAGE_EDIT:
             throw new Error("IMAGE_EDIT is an output type, not an input type")
+        case ConfigType.VOLUME:
+            throw new Error("VOLUME is an output type, not an input type")
+        case ConfigType.MEMORY:
+            throw new Error("MEMORY is an output type, not an input type")
         case ConfigType.WORKOS_OUTPUT:
             throw new Error("WORKOS_OUTPUT is an output type, not an input type")
         case ConfigType.ATTIO_OUTPUT:
@@ -509,6 +519,10 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.WEB
         case ConfigType.IMAGE_EDIT:
             return OutputConfigType.IMAGE_EDIT
+        case ConfigType.VOLUME:
+            return OutputConfigType.VOLUME
+        case ConfigType.MEMORY:
+            return OutputConfigType.MEMORY
         case ConfigType.ATTIO_OUTPUT:
             return OutputConfigType.ATTIO
         case ConfigType.WORKOS_OUTPUT:

@@ -1115,6 +1115,8 @@ function prepareSystemSection(): SectionContext<SystemSectionContext> {
             "TimeTriggerConfig",
             "WebConfig",
             "ImageEditConfig",
+            "VolumeConfig",
+            "MemoryConfig",
             "TypedSkill",
             "WebhookInputConfig",
             "WebhookTrigger",

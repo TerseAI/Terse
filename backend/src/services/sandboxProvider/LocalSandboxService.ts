@@ -7,8 +7,9 @@ import { Readable } from "node:stream"
 
 import logger from "../../common/logger"
 
-import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, WriteStream } from "./SandboxService"
+import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxCreateParams, SandboxFile, SandboxImage, SandboxService, SandboxVolume, WriteStream } from "./SandboxService"
 import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, unregisterSandbox } from "./localSandboxLifecycle"
+import { LOCAL_VOLUMES_DIR } from "../volumeStore/LocalVolumeStore"
 
 const SANDBOX_ROOT = "/data/sandbox"
 const IMAGES_DIR = path.join(SANDBOX_ROOT, "images")
@@ -36,7 +37,7 @@ const REGISTRY_IMAGE_MARKER = "__registry__"
  * container/filesystem isolation. Self-host is single-tenant by design (see
  * SELF_HOSTING.md).
  */
-export class LocalSandboxService implements SandboxService<SandboxImage, LocalSandbox> {
+export class LocalSandboxService implements SandboxService<SandboxImage, LocalSandbox, LocalSandboxVolume> {
     readonly supportsContainerizedRunners = false
 
     constructor() {
@@ -49,6 +50,19 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
     async getOrCreateApp(name: string): Promise<SandboxApp> {
         logger.info("#LocalSandbox app ready", { app: name })
         return { appId: FAKE_APP_ID, name }
+    }
+
+    async getOrCreateVolume(name: string): Promise<LocalSandboxVolume> {
+        const volumePath = path.join(LOCAL_VOLUMES_DIR, name)
+        await fs.mkdir(volumePath, { recursive: true })
+        logger.info("#LocalSandbox volume ready", { volume: name, volumePath })
+        return { volumeId: name, name, rootPath: volumePath }
+    }
+
+    async deleteVolume(volumeId: string): Promise<void> {
+        const volumePath = path.join(LOCAL_VOLUMES_DIR, volumeId)
+        await fs.rm(volumePath, { recursive: true, force: true })
+        logger.info("#LocalSandbox volume deleted", { volumeId, volumePath })
     }
 
     getImageFromRegistry(_registry: string): SandboxImage {
@@ -89,7 +103,7 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         return path.join(sandbox.workingDir, "scratch", filename)
     }
 
-    async getOrCreateSandbox(_app: SandboxApp, image: SandboxImage, uniqueName: string): Promise<LocalSandbox> {
+    async getOrCreateSandbox(_app: SandboxApp, image: SandboxImage, uniqueName: string, params?: SandboxCreateParams): Promise<LocalSandbox> {
         const t0 = Date.now()
         logger.info("#LocalSandbox getOrCreate begin", { uniqueName, imageId: image.imageId })
         const workingDir = path.join(SANDBOXES_DIR, uniqueName)
@@ -106,12 +120,28 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
             await fs.cp(imagePath, workingDir, { recursive: true })
         }
 
+        if (params?.volumes) {
+            for (const [mountPath, volumeRef] of Object.entries(params.volumes)) {
+                const localVolume = volumeRef as LocalSandboxVolume
+                const relativeMount = mountPath.replace(/^\/+/, "")
+                const mountPoint = path.join(workingDir, relativeMount)
+                await fs.mkdir(path.dirname(mountPoint), { recursive: true })
+                await fs.rm(mountPoint, { recursive: true, force: true })
+                await fs.symlink(localVolume.rootPath, mountPoint)
+            }
+        }
+
         logger.info("#LocalSandbox created", { uniqueName, workingDir, durationMs: Date.now() - t0 })
         return new LocalSandbox(uniqueName, workingDir)
     }
 }
 
 // ─────────────── helpers (bottom) ───────────────
+
+export interface LocalSandboxVolume extends SandboxVolume {
+    name: string
+    rootPath: string
+}
 
 export class LocalSandbox implements Sandbox {
     private readonly children = new Set<ChildProcess>()
