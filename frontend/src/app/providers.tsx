@@ -6,7 +6,7 @@ import { AuthProvider } from "@/modules/auth/context/AuthProvider"
 
 export function Providers({ children }: { children: ReactNode }) {
     return (
-        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
             <Toaster position="top-center" richColors={true} />
             <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>

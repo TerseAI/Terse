@@ -183,6 +183,11 @@ export const settings = {
         tokenSecret: requireEnv("MODAL_TOKEN_SECRET")
     })),
 
+    // Dev-only: hoist locally-built terse-types/terse-sdk/terse-cli into sandboxes instead of
+    // installing from npm. Requires a monorepo checkout on the same machine as the backend.
+    // MUST never be set in production — it is the sole gate for the local-package code path.
+    devLocalPackages: optionalBoolEnv("TERSE_DEV_LOCAL_PACKAGES") ? { monorepoRoot: requireEnv("TERSE_LOCAL_PACKAGES_ROOT") } : undefined,
+
     // Resend — opt-in. Used by ResendEmailProvider; absent falls through to NoOpEmailProvider.
     resend: optionalIntegrationSettings(["RESEND_API_KEY"], () => ({
         apiKey: requireEnv("RESEND_API_KEY"),

@@ -1,3 +1,4 @@
+import type { LocalPackagesBundle } from "../../utility/localPackages"
 import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export type SdkProjectRuntime = "typescript"
@@ -24,8 +25,11 @@ export interface SdkDependencyImageBuildContext {
     cliVersion: string
     templateDir: string
     cliCachePath: string
+    // Dev-only: locally-packed terse-types/terse-sdk/terse-cli to install instead of npm registry versions.
+    localPackages?: LocalPackagesBundle
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     writeFile: (path: string, content: string) => Promise<void>
+    writeBinaryFile: (path: string, content: Buffer) => Promise<void>
     escapeShellArg: (value: string) => string
 }
 
@@ -57,7 +61,7 @@ export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
     sandboxImage: string
     matchesArchive(entries: Set<string>): boolean
-    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string): SdkDependencyImageDefinition
+    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string, localPackages?: LocalPackagesBundle): SdkDependencyImageDefinition
     buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void>
     prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void>
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
