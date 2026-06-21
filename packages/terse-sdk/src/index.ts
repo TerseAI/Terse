@@ -98,9 +98,6 @@ import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type 
 
 declare const process: { env: Record<string, string | undefined> }
 
-// TEMP CANARY (local-package hoist test) — remove before merge.
-console.log("[LOCAL-HOIST canary] terse-sdk module loaded")
-
 function resolveTerseBackendUrl(): string {
     return process.env.TERSE_BACKEND_URL || "https://api.useterse.ai"
 }
@@ -257,8 +254,6 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
 }
 
 export function createJob<TTriggers extends readonly TypedTrigger[]>(params: CreateJobParameters<TTriggers>) {
-    // TEMP CANARY (local-package hoist test) — remove before merge.
-    console.log(`[LOCAL-HOIST canary] terse-sdk createJob("${params.name}")`)
     const currentJobs = fetchRegisteredJobs()
     if (currentJobs.has(params.name)) {
         throw new Error(`Job "${params.name}" is registered twice on this Terse instance.`)

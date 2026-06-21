@@ -2,7 +2,6 @@ import crypto from "crypto"
 
 import type { LocalPackagesBundle } from "../../utility/localPackages"
 
-import { buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeLocalTarballs } from "./typescriptLocalPackages"
 import type {
     SandboxCommandResult,
     SdkDependencyImageBuildContext,
@@ -12,6 +11,7 @@ import type {
     SdkRuntimeExecutorContext,
     SdkSourceImageBuildContext
 } from "./types"
+import { buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeLocalTarballs } from "./typescriptLocalPackages"
 
 const DEFAULT_PNPM_VERSION = "10.34.1"
 
