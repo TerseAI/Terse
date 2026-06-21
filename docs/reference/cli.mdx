@@ -449,6 +449,34 @@ Common errors:
 
 Press Ctrl-C to stop listening.
 
+### `terse run [job-name]`
+
+Executes a deployed workflow inside a Terse Cloud sandbox (or a Modal-backed self-hosted sandbox). The platform sets `TERSE_CLI_ENABLE_RUN` in the sandbox environment, which registers this command; a normal local CLI install does not expose it.
+
+The platform passes the trigger event from the run record. You can also supply one explicitly when debugging:
+
+```bash
+terse run my-workflow --event-file fixture.json
+```
+
+Options:
+
+| Flag                  | Description                                                 |
+| --------------------- | ----------------------------------------------------------- |
+| `--event <json>`      | Inline serialized trigger event JSON                        |
+| `--event-file <path>` | Path to a JSON file containing the serialized trigger event |
+| `-v, --verbose`       | Show agent stream output during the run (default: enabled)  |
+| `--no-verbose`        | Hide agent stream output                                    |
+| `--entry-file <path>` | Override the default workflow entry file                    |
+
+When a sandbox dependency image was built with locally hoisted Terse packages (a dev-only backend setting for monorepo contributors), the first line of run output is:
+
+```
+[terse] running locally-hoisted packages: terse-types@0.0.49, terse-sdk@0.1.54, terse-cli@0.1.65 (abc123def456)
+```
+
+That line confirms the run used workspace builds of `terse-types`, `terse-sdk`, and `terse-cli` instead of the npm registry versions. It appears in the Activity run log. Production sandboxes never emit it.
+
 ### `terse replay [run-id]`
 
 Fetches the stored trigger event for one past run and re-executes the matching local workflow on your machine with verbose output.

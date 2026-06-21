@@ -168,7 +168,32 @@ Did you have something else in mind? Reach out on Slack and let us know.
 - **Frontend lint.** `pnpm --filter frontend run lint`
 - **Edit the Prisma schema.** Update `backend/prisma/schema.prisma`, then re-run `pnpm --filter backend run db:generate && pnpm --filter backend run db:push`.
 
+### Test CLI/SDK changes in sandboxes
 
+By default, Terse Cloud sandboxes install `terse-types`, `terse-sdk`, and `terse-cli` from npm. To test uncommitted changes to those packages in sandboxes without publishing, set these variables in `backend/.env` and restart the backend:
+
+```bash
+TERSE_DEV_LOCAL_PACKAGES=true
+TERSE_LOCAL_PACKAGES_ROOT=/absolute/path/to/your/Terse/checkout
+```
+
+> [!WARNING]
+> Local package hoisting is for local development only. Never set `TERSE_DEV_LOCAL_PACKAGES` in production.
+
+Prerequisites:
+
+- Run `pnpm run build` first — each package must have a `dist/` directory before the backend packs it.
+- `TERSE_LOCAL_PACKAGES_ROOT` must point at the monorepo root (the directory that contains `terse-types/`, `packages/terse-sdk/`, and `packages/terse-cli/`).
+
+When enabled, the backend `pnpm pack`s those three packages from your checkout and installs the resulting tarballs into sandbox dependency images instead of pulling from the registry. The dependency image hash includes a content hash of the packed tarballs, so image caches invalidate when your local builds change.
+
+Confirm hoisting worked by triggering a sandbox run and checking the Activity log for:
+
+```
+[terse] running locally-hoisted packages: terse-types@…, terse-sdk@…, terse-cli@… (…)
+```
+
+With the env vars unset, sandboxes use registry packages as usual.
 
 ### Submitting a PR
 
