@@ -5,6 +5,7 @@ import os from "node:os"
 import path from "node:path"
 
 import logger from "../common/logger"
+import { logProviderBanner } from "../common/providerBanner"
 
 export interface LocalPackageTarball {
     name: string
@@ -33,11 +34,10 @@ export function packLocalSdkPackages(monorepoRoot: string): LocalPackagesBundle 
     try {
         const packages = LOCAL_PACKAGE_DIRS.map(rel => packOne(path.join(monorepoRoot, rel), dest))
         const contentHash = hashBundle(packages)
-        logger.info("Packed local SDK packages for sandbox hoist", {
-            monorepoRoot,
-            packages: packages.map(p => `${p.name}@${p.version}`),
-            contentHash
-        })
+        // Loud, deliberate signal that local packages are being hoisted instead of the registry —
+        // confirms the right build during dev, and is an alarm if it ever shows up in prod logs.
+        logProviderBanner("local", "HOISTING LOCAL TERSE PACKAGES (TERSE_DEV_LOCAL_PACKAGES)", packages.map(p => `${p.name}@${p.version}`).join(", "))
+        logger.info("Packed local SDK packages for sandbox hoist", { monorepoRoot, contentHash })
         return { packages, contentHash }
     } finally {
         fs.rmSync(dest, { recursive: true, force: true })
