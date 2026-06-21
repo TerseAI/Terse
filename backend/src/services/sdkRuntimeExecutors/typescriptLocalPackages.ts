@@ -97,6 +97,15 @@ export async function installLocalCli(context: SdkDependencyImageBuildContext, t
     await context.ensureSandboxCommand("install local terse cli", `cd ${cliCachePath} && npm install --no-fund && mkdir -p ${binDir} && ln -sf ${installedBin} ${linkedBin}`)
 }
 
+// Bakes a marker into the installed CLI recording the hoisted versions + content hash. The CLI reads
+// it (relative to its own install) at run time to confirm in the run output that the local build ran.
+// Living in the image makes it authoritative: it travels with the image, unlike a runtime env flag.
+export async function writeHoistMarker(context: SdkDependencyImageBuildContext, localPackages: LocalPackagesBundle): Promise<void> {
+    const markerPath = `${context.cliCachePath}/node_modules/terse-cli/.terse-local-hoist`
+    const versions = localPackages.packages.map(p => `${p.name}@${p.version}`).join(", ")
+    await context.writeFile(markerPath, `${versions} (${localPackages.contentHash.slice(0, 12)})`)
+}
+
 // Local installs inject overrides that desync the lockfile, so a frozen install (pnpm --frozen-lockfile
 // / npm ci) would fail. Always do a regular install that can update the lockfile.
 export function buildLocalDependencyInstallCommand(packageManager: PackageManager, templateDir: string, escapeShellArg: (value: string) => string): string {

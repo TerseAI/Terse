@@ -11,7 +11,7 @@ import type {
     SdkRuntimeExecutorContext,
     SdkSourceImageBuildContext
 } from "./types"
-import { buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeLocalTarballs } from "./typescriptLocalPackages"
+import { buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeHoistMarker, writeLocalTarballs } from "./typescriptLocalPackages"
 
 const DEFAULT_PNPM_VERSION = "10.34.1"
 
@@ -54,9 +54,10 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         await context.ensureSandboxCommand("prepare TypeScript image filesystem", `mkdir -p ${templateDir} ${cliCachePath}`)
 
         // Dev-only: hoist the dev's locally-built SDK/CLI into the sandbox instead of the npm registry.
+        const localPackages = context.localPackages
         let localTarballs: Map<string, string> | undefined
-        if (context.localPackages) {
-            localTarballs = await writeLocalTarballs(context, context.localPackages)
+        if (localPackages) {
+            localTarballs = await writeLocalTarballs(context, localPackages)
             await context.writeFile(`${context.templateDir}/package.json`, withTerseOverrides(packageJson, localTarballs, packageManager))
         } else {
             await context.writeFile(`${context.templateDir}/package.json`, packageJson)
@@ -70,8 +71,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             }
         }
 
-        if (localTarballs) {
+        if (localPackages && localTarballs) {
             await installLocalCli(context, localTarballs)
+            await writeHoistMarker(context, localPackages)
         } else {
             await context.ensureSandboxCommand("install terse cli", `npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
         }

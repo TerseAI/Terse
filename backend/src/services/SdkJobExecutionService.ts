@@ -88,8 +88,7 @@ export class SdkJobExecutionService {
                 TERSE_RUN_ID: runId,
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
-                NO_UPDATE_NOTIFIER: "1",
-                ...(settings.devLocalPackages ? { TERSE_LOCAL_HOIST: "1" } : {})
+                NO_UPDATE_NOTIFIER: "1"
             }
 
             const result = await this.executeWithSourceImage({
