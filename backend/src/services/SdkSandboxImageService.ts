@@ -5,6 +5,8 @@ import crypto from "crypto"
 import logger from "../common/logger"
 import { shellQuote } from "../common/shellEscape"
 import { db } from "../loaders/prisma"
+import { settings } from "../settings"
+import { type LocalPackagesBundle, packLocalSdkPackages } from "../utility/localPackages"
 
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
@@ -90,7 +92,10 @@ export class SdkSandboxImageService {
         const archive = new ZipSdkProjectArchive(zipBuffer)
         const executor = sdkRuntimeExecutorRegistry.resolve(archive.entries)
 
-        const dependencyHash = executor.defineDependencyImage(archive, cliVersion).dependencyHash
+        // Dev-only: hoist the dev's locally-built SDK/CLI into the sandbox instead of the npm registry.
+        const localPackages = settings.devLocalPackages ? packLocalSdkPackages(settings.devLocalPackages.monorepoRoot) : undefined
+
+        const dependencyHash = executor.defineDependencyImage(archive, cliVersion, localPackages).dependencyHash
         const sourceHash = archive.computeSourceHash()
 
         onProgress?.("dependency_image")
@@ -98,7 +103,8 @@ export class SdkSandboxImageService {
             archive,
             dependencyHash,
             executor,
-            cliVersion
+            cliVersion,
+            localPackages
         })
 
         const sourceLayerKey = computeSourceLayerKey({ organizationId, dependencyHash, sourceHash })
@@ -191,8 +197,8 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async ensureDependencyImage(params: { archive: SdkProjectArchive; dependencyHash: string; executor: SdkRuntimeExecutor; cliVersion: string }) {
-        const { archive, dependencyHash, executor, cliVersion } = params
+    private async ensureDependencyImage(params: { archive: SdkProjectArchive; dependencyHash: string; executor: SdkRuntimeExecutor; cliVersion: string; localPackages?: LocalPackagesBundle }) {
+        const { archive, dependencyHash, executor, cliVersion, localPackages } = params
         const prisma = db()
         const sandboxService = getSandboxProvider()
 
@@ -220,7 +226,7 @@ export class SdkSandboxImageService {
         }
 
         const buildStarted = performance.now()
-        const sandboxImageId = await this.buildDependencyImage(archive, executor, dependencyHash, cliVersion)
+        const sandboxImageId = await this.buildDependencyImage(archive, executor, dependencyHash, cliVersion, localPackages)
 
         try {
             const row = await prisma.sdk_dependency_images.create({
@@ -351,7 +357,7 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async buildDependencyImage(archive: SdkProjectArchive, executor: SdkRuntimeExecutor, dependencyHash: string, cliVersion: string): Promise<string> {
+    private async buildDependencyImage(archive: SdkProjectArchive, executor: SdkRuntimeExecutor, dependencyHash: string, cliVersion: string, localPackages?: LocalPackagesBundle): Promise<string> {
         const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
 
@@ -363,6 +369,7 @@ export class SdkSandboxImageService {
             sb,
             archive,
             cliVersion,
+            localPackages,
             templateDir: sandboxService.getDependencyCachePath(sb, executor.runtime),
             cliCachePath: sandboxService.getCliCachePath(sb),
             ensureSandboxCommand: async (label, command) => {
@@ -370,6 +377,9 @@ export class SdkSandboxImageService {
             },
             writeFile: async (path, content) => {
                 await this.writeFileToSandbox(sb, path, content)
+            },
+            writeBinaryFile: async (path, content) => {
+                await this.writeBinaryToSandbox(sb, path, content)
             },
             escapeShellArg: shellQuote
         }

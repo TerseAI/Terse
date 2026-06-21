@@ -9,6 +9,9 @@ import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
 export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string, verbose?: boolean): Promise<void> {
+    // TEMP CANARY (local-package hoist test) — remove before merge.
+    console.log(`[LOCAL-HOIST canary] terse-cli run("${jobName ?? ""}")`)
+
     if (eventFile && !eventJson) {
         try {
             eventJson = fs.readFileSync(eventFile, "utf-8")

@@ -1,5 +1,8 @@
 import crypto from "crypto"
 
+import type { LocalPackagesBundle } from "../../utility/localPackages"
+
+import { buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeLocalTarballs } from "./typescriptLocalPackages"
 import type {
     SandboxCommandResult,
     SdkDependencyImageBuildContext,
@@ -20,7 +23,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return entries.has("package.json")
     }
 
-    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string): SdkDependencyImageDefinition {
+    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string, localPackages?: LocalPackagesBundle): SdkDependencyImageDefinition {
         const packageManager = this.detectPackageManager(archive)
         const relevantFiles = ["package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc"]
         const hashPayload = {
@@ -29,6 +32,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             baseImage: this.sandboxImage,
             packageManager,
             terseCliSpec: `terse-cli@${cliVersion}`,
+            localPackages: localPackages?.contentHash,
             files: Object.fromEntries(relevantFiles.filter(path => archive.has(path)).map(path => [path, archive.readText(path)]))
         }
 
@@ -45,9 +49,19 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             throw new Error("package.json is required to build the TypeScript sandbox image")
         }
 
+        const packageManager = this.detectPackageManager(context.archive)
+
         await context.ensureSandboxCommand("prepare TypeScript image filesystem", `mkdir -p ${templateDir} ${cliCachePath}`)
 
-        await context.writeFile(`${context.templateDir}/package.json`, packageJson)
+        // Dev-only: hoist the dev's locally-built SDK/CLI into the sandbox instead of the npm registry.
+        let localTarballs: Map<string, string> | undefined
+        if (context.localPackages) {
+            localTarballs = await writeLocalTarballs(context, context.localPackages)
+            await context.writeFile(`${context.templateDir}/package.json`, withTerseOverrides(packageJson, localTarballs, packageManager))
+        } else {
+            await context.writeFile(`${context.templateDir}/package.json`, packageJson)
+        }
+        // === end dev-only ===
 
         for (const path of ["package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc"]) {
             const content = context.archive.readText(path)
@@ -56,13 +70,20 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             }
         }
 
-        await context.ensureSandboxCommand("install terse cli", `npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
+        if (localTarballs) {
+            await installLocalCli(context, localTarballs)
+        } else {
+            await context.ensureSandboxCommand("install terse cli", `npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
+        }
 
-        if (this.detectPackageManager(context.archive) === "pnpm") {
+        if (packageManager === "pnpm") {
             const pnpmVersion = this.detectPnpmVersion(context.archive)
             await context.ensureSandboxCommand("install pnpm", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund >/dev/null`)
         }
-        await context.ensureSandboxCommand("install cached TypeScript dependencies", this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg))
+        const installCommand = localTarballs
+            ? buildLocalDependencyInstallCommand(packageManager, context.templateDir, context.escapeShellArg)
+            : this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg)
+        await context.ensureSandboxCommand("install cached TypeScript dependencies", installCommand)
     }
 
     async prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void> {
