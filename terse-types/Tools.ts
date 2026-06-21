@@ -2103,6 +2103,78 @@ export const snowflakeExplainQueryTool = defineTool({
     })
 })
 
+export const volumeListFilesTool = defineTool({
+    name: "volume_list_files",
+    inputSchema: z.object({
+        path: z.string().nullable().describe("Directory path relative to the agent volume root. Use empty or null for root.")
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        message: z.string(),
+        entries: z.array(
+            z.object({
+                path: z.string(),
+                isDirectory: z.boolean(),
+                sizeBytes: z.number().int()
+            })
+        )
+    })
+})
+
+export const volumeReadFileTool = defineTool({
+    name: "volume_read_file",
+    inputSchema: z.object({
+        path: z.string().describe("File path relative to the agent volume root.")
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        path: z.string(),
+        content: z.string()
+    })
+})
+
+export const volumeWriteFileTool = defineTool({
+    name: "volume_write_file",
+    inputSchema: z.object({
+        path: z.string().describe("File path relative to the agent volume root."),
+        content: z.string().describe("Full file contents to write.")
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        message: z.string(),
+        path: z.string()
+    })
+})
+
+export const volumeDeleteFileTool = defineTool({
+    name: "volume_delete_file",
+    inputSchema: z.object({
+        path: z.string().describe("File or directory path relative to the agent volume root.")
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        message: z.string(),
+        path: z.string()
+    })
+})
+
+const memoryCommandSchema = z.enum(["view", "create", "str_replace", "insert", "delete", "rename"])
+
+export const memoryTool = defineTool({
+    name: "memory",
+    inputSchema: z.object({
+        command: memoryCommandSchema,
+        path: z.string().nullable().optional().describe("Target path under /memories."),
+        view_range: z.tuple([z.number().int(), z.number().int()]).nullable().optional().describe("Optional 1-indexed line range for view."),
+        file_text: z.string().nullable().optional().describe("File contents for create."),
+        old_str: z.string().nullable().optional().describe("Exact text to replace for str_replace."),
+        new_str: z.string().nullable().optional().describe("Replacement text for str_replace."),
+        insert_line: z.number().int().nullable().optional().describe("Line number for insert."),
+        insert_text: z.string().nullable().optional().describe("Text to insert."),
+        old_path: z.string().nullable().optional().describe("Source path for rename."),
+        new_path: z.string().nullable().optional().describe("Destination path for rename.")
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        message: z.string()
+    })
+})
+
 export const webSearchTool = defineTool({
     name: "web_search",
     inputSchema: z.object({
@@ -2168,7 +2240,12 @@ export const ToolDefinitions = {
     [webSearchTool.name]: webSearchTool,
     [webExtractTool.name]: webExtractTool,
     [webResearchTool.name]: webResearchTool,
-    [imageEditTool.name]: imageEditTool
+    [imageEditTool.name]: imageEditTool,
+    [volumeListFilesTool.name]: volumeListFilesTool,
+    [volumeReadFileTool.name]: volumeReadFileTool,
+    [volumeWriteFileTool.name]: volumeWriteFileTool,
+    [volumeDeleteFileTool.name]: volumeDeleteFileTool,
+    [memoryTool.name]: memoryTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

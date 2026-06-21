@@ -18,6 +18,8 @@ export enum ConfigType {
     LAUNCHDARKLY = "launchdarkly",
     WEB = "web",
     IMAGE_EDIT = "image_edit",
+    VOLUME = "volume",
+    MEMORY = "memory",
     WORKOS_INPUT = "workos_input",
     WORKOS_OUTPUT = "workos_output",
     ATTIO_INPUT = "attio_input",
@@ -178,6 +180,24 @@ export const ImageEditConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const VolumeConfigMetadata = {
+    configType: ConfigType.VOLUME,
+    name: "Volume",
+    description: "Persistent shared file storage for this agent across runs",
+    integrationType: IntegrationType.TERSE,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
+export const MemoryConfigMetadata = {
+    configType: ConfigType.MEMORY,
+    name: "Memory",
+    description: "Persistent memory files for this agent across runs",
+    integrationType: IntegrationType.TERSE,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export const WorkOSInputConfigMetadata = {
     configType: ConfigType.WORKOS_INPUT,
     name: "WorkOS",
@@ -268,6 +288,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
     [ConfigType.WEB]: WebConfigMetadata,
     [ConfigType.IMAGE_EDIT]: ImageEditConfigMetadata,
+    [ConfigType.VOLUME]: VolumeConfigMetadata,
+    [ConfigType.MEMORY]: MemoryConfigMetadata,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfigMetadata,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfigMetadata,
     [ConfigType.ATTIO_INPUT]: AttioInputConfigMetadata,
@@ -928,6 +950,50 @@ export class ImageEditConfig extends BaseConfigInstance<IntegrationType.TERSE, C
     }
 }
 
+export const VolumeConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.TERSE),
+    configType: z.literal(ConfigType.VOLUME)
+})
+export type VolumeConfigData = z.infer<typeof VolumeConfigSchema>
+export type VolumeConfigInstance = VolumeConfigData & ConfigBehavior
+
+export class VolumeConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.VOLUME, "system"> implements VolumeConfigInstance {
+    constructor() {
+        super("system", IntegrationType.TERSE, ConfigType.VOLUME)
+    }
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return "Type: Agent Volume (persistent shared files)"
+    }
+}
+
+export const MemoryConfigSchema = ConfigInstanceSchema.extend({
+    integrationId: z.literal("system"),
+    integrationType: z.literal(IntegrationType.TERSE),
+    configType: z.literal(ConfigType.MEMORY)
+})
+export type MemoryConfigData = z.infer<typeof MemoryConfigSchema>
+export type MemoryConfigInstance = MemoryConfigData & ConfigBehavior
+
+export class MemoryConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.MEMORY, "system"> implements MemoryConfigInstance {
+    constructor() {
+        super("system", IntegrationType.TERSE, ConfigType.MEMORY)
+    }
+
+    isComplete(): boolean {
+        return true
+    }
+
+    formatForAgent(): string {
+        return "Type: Agent Memory (persistent memory files)"
+    }
+}
+
 export const WorkOSInputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.WORKOS),
     configType: z.literal(ConfigType.WORKOS_INPUT),
@@ -1207,6 +1273,8 @@ export const configDataSchema = z.union([
     LaunchDarklyConfigSchema,
     WebConfigSchema,
     ImageEditConfigSchema,
+    VolumeConfigSchema,
+    MemoryConfigSchema,
     WorkOSInputConfigSchema,
     WorkOSOutputConfigSchema,
     AttioInputConfigSchema,
@@ -1246,6 +1314,8 @@ export const skillConfigDataSchema = z.union([
     LaunchDarklyConfigSchema,
     WebConfigSchema,
     ImageEditConfigSchema,
+    VolumeConfigSchema,
+    MemoryConfigSchema,
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema
@@ -1265,6 +1335,8 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.LINEAR_INPUT:
         case ConfigType.WEB:
         case ConfigType.IMAGE_EDIT:
+        case ConfigType.VOLUME:
+        case ConfigType.MEMORY:
         case ConfigType.WEBHOOK_INPUT:
             return true
         case ConfigType.SLACK:
@@ -1398,6 +1470,10 @@ export function formatConfigForAgent(config: ConfigData): string {
             return "Type: Web (search, extract, research)"
         case ConfigType.IMAGE_EDIT:
             return "Type: Image Edit"
+        case ConfigType.VOLUME:
+            return "Type: Agent Volume (persistent shared files)"
+        case ConfigType.MEMORY:
+            return "Type: Agent Memory (persistent memory files)"
         case ConfigType.WORKOS_INPUT:
             return `Type: WorkOS Events\nListening for: ${config.eventTypes.join(", ")}`
         case ConfigType.HEY_REACH_INPUT: {
@@ -1453,6 +1529,8 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig
     [ConfigType.WEB]: typeof WebConfig
     [ConfigType.IMAGE_EDIT]: typeof ImageEditConfig
+    [ConfigType.VOLUME]: typeof VolumeConfig
+    [ConfigType.MEMORY]: typeof MemoryConfig
     [ConfigType.WORKOS_INPUT]: typeof WorkOSInputConfig
     [ConfigType.WORKOS_OUTPUT]: typeof WorkOSOutputConfig
     [ConfigType.ATTIO_INPUT]: typeof AttioInputConfig
@@ -1479,6 +1557,8 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
     [ConfigType.WEB]: WebConfig,
     [ConfigType.IMAGE_EDIT]: ImageEditConfig,
+    [ConfigType.VOLUME]: VolumeConfig,
+    [ConfigType.MEMORY]: MemoryConfig,
     [ConfigType.WORKOS_INPUT]: WorkOSInputConfig,
     [ConfigType.WORKOS_OUTPUT]: WorkOSOutputConfig,
     [ConfigType.ATTIO_INPUT]: AttioInputConfig,
