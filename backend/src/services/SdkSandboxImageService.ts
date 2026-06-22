@@ -10,7 +10,8 @@ import { type LocalPackagesBundle, packLocalSdkPackages } from "../utility/local
 
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
-import type { Sandbox } from "./sandboxProvider/SandboxService"
+import type { Sandbox, SandboxCreateParams } from "./sandboxProvider/SandboxService"
+import { getProjectVolumeMount } from "./volumeStore"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkDependencyImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
@@ -85,10 +86,11 @@ export class SdkSandboxImageService {
     async prepareFromSourceZip(params: {
         zipBuffer: Buffer
         organizationId: string
+        projectId: string
         cliVersion: string
         onProgress?: (phase: "dependency_image" | "source_image") => void
     }): Promise<PreparedSdkSandboxImages> {
-        const { zipBuffer, organizationId, cliVersion, onProgress } = params
+        const { zipBuffer, organizationId, projectId, cliVersion, onProgress } = params
         const archive = new ZipSdkProjectArchive(zipBuffer)
         const executor = sdkRuntimeExecutorRegistry.resolve(archive.entries)
 
@@ -115,6 +117,7 @@ export class SdkSandboxImageService {
             dependencySandboxImageId: dependencyImage.image_id,
             executor,
             organizationId,
+            projectId,
             sourceHash,
             sourceLayerKey,
             zipBuffer
@@ -268,11 +271,12 @@ export class SdkSandboxImageService {
         dependencySandboxImageId: string
         executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>
         organizationId: string
+        projectId: string
         sourceHash: string
         sourceLayerKey: string
         zipBuffer: Buffer
     }) {
-        const { dependencyImageId, dependencySandboxImageId, executor, organizationId, sourceHash, sourceLayerKey, zipBuffer } = params
+        const { dependencyImageId, dependencySandboxImageId, executor, organizationId, projectId, sourceHash, sourceLayerKey, zipBuffer } = params
         const prisma = db()
         const sandboxService = getSandboxProvider()
 
@@ -329,7 +333,7 @@ export class SdkSandboxImageService {
                 imageId: created.image_id,
                 duration: this.elapsed(buildStarted)
             })
-            await this.prewarmRuntimeSandbox(sandboxImageId, sourceLayerKey)
+            await this.prewarmRuntimeSandbox(sandboxImageId, sourceLayerKey, organizationId, projectId)
             return created
         } catch (error) {
             if (isUniqueConstraintError(error)) {
@@ -426,12 +430,14 @@ export class SdkSandboxImageService {
         return image.imageId
     }
 
-    private async prewarmRuntimeSandbox(modalSourceImageId: string, sourceLayerKey: string): Promise<void> {
+    private async prewarmRuntimeSandbox(modalSourceImageId: string, sourceLayerKey: string, organizationId: string, projectId: string): Promise<void> {
         const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
         const image = await sandboxService.getImageFromId(modalSourceImageId)
-        const uniqueName = runtimeSandboxUniqueName(sourceLayerKey)
-        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+        const uniqueName = runtimeSandboxUniqueName(sourceLayerKey, projectId)
+        // Mount the volume here too, so the prewarmed sandbox matches the one a run would create.
+        const options: SandboxCreateParams = { ...SANDBOX_DEFAULT_OPTIONS, volumes: await getProjectVolumeMount(sandboxService, organizationId, projectId) }
+        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, options)
 
         const proc = await sb.exec(["true"], { stdout: "pipe", stderr: "pipe" })
         const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])

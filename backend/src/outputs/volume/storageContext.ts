@@ -1,8 +1,6 @@
 import type { Session } from "../../express"
 import { findAutomationInOrg } from "../../modules/improvements/repository"
-import type { SessionWithTracking } from "../../modules/agents/AgentRunner/BaseAgentRunner"
-
-const SDK_AGENT_RUN_ID = "sdk-agent-run"
+import { SDK_AGENT_ID, type SessionWithTracking } from "../../modules/agents/AgentRunner/BaseAgentRunner"
 
 export type AgentStorageContext = {
     agentId: string
@@ -29,7 +27,7 @@ function resolveContextClaim(context: SessionWithTracking<Session> | undefined):
         return context.storage
     }
 
-    if (context.agentId && context.agentId !== SDK_AGENT_RUN_ID && context.user.organizationId) {
+    if (context.agentId && context.agentId !== SDK_AGENT_ID && context.user.organizationId) {
         return {
             agentId: context.agentId,
             organizationId: context.user.organizationId

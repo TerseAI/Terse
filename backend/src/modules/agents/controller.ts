@@ -559,7 +559,7 @@ export async function deleteAgent(req: Request, res: Response) {
         // but don't throw — orphan external webhooks will fire and find
         // no matching automation, which is already handled downstream.
         await tearDownAgentTriggers(existingAgent)
-        await deleteAgentVolumes(organizationId, agentId)
+        await deleteAgentVolumes(organizationId, agentId, existingAgent.project_id)
 
         // Invalidate recent agents cache
         emitCacheInvalidationWithKey(organizationId, "recentAgents")

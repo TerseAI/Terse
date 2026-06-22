@@ -26,7 +26,7 @@ import { AgentType, runnerFactory } from "../runner"
 import { appendToolApprovalRequestSystemEvent } from "../systemEvents/toolApprovalSystemEvent"
 import { buildUserMessage } from "../userMessage"
 
-import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SessionWithTracking } from "./BaseAgentRunner"
+import { AgentRunnerLoopResult, BaseAgentRunner, PendingApprovalState, SDK_AGENT_ID, SessionWithTracking } from "./BaseAgentRunner"
 import { StreamEventEmitter } from "./StreamProcessor"
 import { BaseSystemPromptBuilder, SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 import { clearPendingApprovalState as clearPendingApprovalStateDb, markRunInProgress as markRunInProgressDb, storePendingApprovalState } from "./runHistory"
@@ -412,8 +412,6 @@ type SdkAgentRunnerParams = {
 type SdkAgentRunnerResult = {
     loopResult: AgentRunnerLoopResult<SdkRunnerSession, Agent<SdkRunnerSession, AgentOutputType>>
 }
-
-const SDK_AGENT_ID = "sdk-agent-run"
 
 class InMemoryAgentSession implements AgentMemorySession {
     private readonly sessionId: string

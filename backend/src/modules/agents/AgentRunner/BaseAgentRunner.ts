@@ -16,6 +16,8 @@ import { isFailedToolExecutionStatus } from "../toolExecution"
 
 import { SystemPromptBuilderDependencies } from "./SystemPromptBuilder"
 
+export const SDK_AGENT_ID = "sdk-agent-run"
+
 export type SessionWithTracking<T extends AppSession> = T & {
     agent: {
         toolApprovals?: string[]

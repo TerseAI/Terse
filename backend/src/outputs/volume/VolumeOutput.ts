@@ -20,9 +20,9 @@ export class VolumeOutput extends Output<VolumeConfig> {
     protected getSystemInstructionsForConfigs(_configs: VolumeConfig[]): string {
         return [
             "AGENT FILES:",
-            "- You have a persistent file store for this agent.",
+            "- You have a persistent file store that carries over between runs.",
             "- Use the `file` tool with command: list, read, write, or delete.",
-            "- Paths are relative to the storage root; you cannot access other agents' files."
+            "- Paths are relative to the storage root."
         ].join("\n")
     }
 }

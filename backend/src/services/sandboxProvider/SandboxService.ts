@@ -5,6 +5,8 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     getOrCreateApp(name: string): Promise<SandboxApp>
     getOrCreateVolume(name: string): Promise<V>
     deleteVolume(volumeId: string): Promise<void>
+    /** Remove a path (recursively) within a volume, without deleting the volume itself. */
+    deleteVolumePath(volumeName: string, relativePath: string): Promise<void>
 
     getImageFromRegistry(registry: string): I
     getImageFromId(imageId: string): Promise<I>
@@ -86,14 +88,9 @@ export type SandboxCreateParams = {
     idleTimeoutMs?: number
     blockNetwork?: boolean
     cidrAllowlist?: string[]
-    proxy?: SandboxProxy
     secrets?: Secret[]
     /** Mount paths mapped to persistent sandbox volumes. */
     volumes?: Record<string, SandboxVolume>
-}
-
-interface SandboxProxy {
-    proxyId?: string
 }
 
 interface Secret {

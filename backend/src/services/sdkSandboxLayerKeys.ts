@@ -30,6 +30,12 @@ export function sourceImageBuildSandboxUniqueName(sourceLayerKey: string): strin
     return `sb-${sourceLayerKeyHexBody(sourceLayerKey)}`
 }
 
-export function runtimeSandboxUniqueName(sourceLayerKey: string): string {
-    return `sr-${sourceLayerKeyHexBody(sourceLayerKey)}`
+// Runtime sandboxes are scoped per project (so identical-source projects never share a container)
+// and per source-layer body (so a code change spins a fresh one). Every run and the prewarm for a
+// project share this one name; whether the project volume is mounted is decided project-wide.
+export function runtimeSandboxUniqueName(sourceLayerKey: string, projectId?: string): string {
+    const body = sourceLayerKeyHexBody(sourceLayerKey)
+    if (!projectId) return `sr-${body}`
+    const projectSuffix = crypto.createHash("sha256").update(projectId).digest("hex").slice(0, 12)
+    return `sr-${body}-${projectSuffix}`
 }

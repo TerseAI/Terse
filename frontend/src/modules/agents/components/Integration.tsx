@@ -56,6 +56,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <RadarIcon />
         case ConfigType.WEB:
         case ConfigType.IMAGE_EDIT:
+        case ConfigType.VOLUME:
+        case ConfigType.MEMORY:
             return <TerseIcon />
         case ConfigType.HEY_REACH_INPUT:
             return <HeyReachIcon />

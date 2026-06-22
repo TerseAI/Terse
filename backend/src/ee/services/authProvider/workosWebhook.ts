@@ -152,7 +152,7 @@ async function cleanupIdentity(workosUserId: string): Promise<void> {
     const prisma = db()
     const automations = await prisma.automations.findMany({
         where: { user_id: workosUserId },
-        select: { id: true, organization_id: true }
+        select: { id: true, organization_id: true, project_id: true }
     })
 
     try {
@@ -179,5 +179,5 @@ async function cleanupIdentity(workosUserId: string): Promise<void> {
         throw error
     }
 
-    await deleteAgentVolumesForAgents(automations.map(a => ({ organizationId: a.organization_id, agentId: a.id })))
+    await deleteAgentVolumesForAgents(automations.map(a => ({ organizationId: a.organization_id, agentId: a.id, projectId: a.project_id })))
 }

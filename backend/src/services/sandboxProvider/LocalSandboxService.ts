@@ -65,6 +65,12 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         logger.info("#LocalSandbox volume deleted", { volumeId, volumePath })
     }
 
+    async deleteVolumePath(volumeName: string, relativePath: string): Promise<void> {
+        const target = path.join(LOCAL_VOLUMES_DIR, volumeName, relativePath)
+        await fs.rm(target, { recursive: true, force: true })
+        logger.info("#LocalSandbox volume path deleted", { volume: volumeName, target })
+    }
+
     getImageFromRegistry(_registry: string): SandboxImage {
         logger.info("#LocalSandbox image registry marker (fresh starting point)")
         return { imageId: REGISTRY_IMAGE_MARKER }

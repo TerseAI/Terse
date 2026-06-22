@@ -92,6 +92,14 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         }
     }
 
+    async deleteVolumePath(volumeName: string, relativePath: string): Promise<void> {
+        const t0 = Date.now()
+        const volume = await this.modal.volumes.fromName(volumeName)
+        const path = `/${relativePath.replace(/^\/+/, "")}`
+        await this.modal.cpClient.volumeRemoveFile2({ volumeId: volume.volumeId, path, recursive: true } as Parameters<typeof this.modal.cpClient.volumeRemoveFile2>[0])
+        logger.info("Modal volume: removed path", { volume: volumeName, path, durationMs: Date.now() - t0 })
+    }
+
     getImageFromRegistry(registry: string): ModalImage {
         return this.modal.images.fromRegistry(registry)
     }

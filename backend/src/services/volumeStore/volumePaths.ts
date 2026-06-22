@@ -19,17 +19,21 @@ export function agentMemoryVolumeName(organizationId: string, agentId: string): 
 }
 
 /**
- * The single co-located volume mounted into a project's shared sandbox. Memory and
- * filesystem live as subtrees on this one volume (unified store, shared across all of the
- * project's jobs). Keyed by project so it persists across deploys (sandbox identity changes
- * with code; the volume does not).
+ * The single co-located volume mounted into a project's shared sandbox. Each job gets its own
+ * subtree under agentFsRoot(agentId); memory and filesystem live beneath that. Keyed by project
+ * so it persists across deploys (sandbox identity changes with code; the volume does not).
  */
 export function projectVolumeName(organizationId: string, projectId: string): string {
     return `sdk-${orgSegment(organizationId)}-proj-${projectId}`
 }
 
-/** Mount path of the project volume inside the sandbox; the co-located memory/FS root. */
+/** Mount path of the project volume inside the sandbox. */
 export const PROJECT_VOLUME_MOUNT = "/terse-fs"
+
+/** Per-agent subtree on the shared project volume; the co-located memory/FS root for one job. */
+export function agentFsRoot(agentId: string): string {
+    return `${PROJECT_VOLUME_MOUNT}/${agentId}`
+}
 
 export function resolveVolumeRelativePath(inputPath: string): string {
     const normalized = inputPath.replace(/\\/g, "/").trim()

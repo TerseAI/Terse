@@ -77,6 +77,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
                 zipBuffer: sourceZipBuffer,
                 organizationId,
+                projectId,
                 cliVersion,
                 onProgress: phase => {
                     emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
@@ -276,7 +277,7 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
 
     await prisma.automations.deleteMany({ where: { id: { in: staleIds }, organization_id: organizationId } })
 
-    await deleteAgentVolumesForAgents(staleIds.map(agentId => ({ organizationId, agentId })))
+    await deleteAgentVolumesForAgents(staleIds.map(agentId => ({ organizationId, agentId, projectId })))
 
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")

@@ -22,7 +22,8 @@ import { Sandbox, SandboxCreateParams, SandboxService } from "./sandboxProvider/
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
-import { PROJECT_VOLUME_MOUNT, projectVolumeName } from "./volumeStore/volumePaths"
+import { getProjectVolumeMount } from "./volumeStore"
+import { agentFsRoot } from "./volumeStore/volumePaths"
 
 interface SdkJobExecutionParams {
     runId: string
@@ -80,11 +81,12 @@ export class SdkJobExecutionService {
 
             const sandboxBackendUrl = getSandboxProvider().supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
 
-            // Co-located memory/filesystem: when the runner is containerized (Modal), a per-project
-            // volume is mounted into the sandbox and both reach-back paths operate on it directly.
-            // TERSE_FS_COMMIT enables the post-write `sync` (Volumes v2 commit). On non-containerized
-            // self-host the SDK falls back to a local path and the backend uses LocalVolumeStore.
-            const colocatedEnv: Record<string, string> = getSandboxProvider().supportsContainerizedRunners ? { TERSE_FS_ROOT: PROJECT_VOLUME_MOUNT, TERSE_FS_COMMIT: "1" } : {}
+            // Co-located memory/filesystem: containerized runners mount the shared project volume and
+            // point each job at its own subtree. TERSE_FS_COMMIT enables the post-write `sync` (Volumes
+            // v2 commit). On non-containerized self-host the SDK falls back to a local path and the
+            // backend uses LocalVolumeStore.
+            const colocatedEnv: Record<string, string> =
+                getSandboxProvider().supportsContainerizedRunners ? { TERSE_FS_ROOT: agentFsRoot(agent.id), TERSE_FS_COMMIT: "1" } : {}
 
             const sandboxEnv = {
                 // Make sure to keep this first as the sandbox env,
@@ -271,16 +273,11 @@ export class SdkJobExecutionService {
 
         const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
         const image = await sandboxService.getImageFromId(source.imageId)
-        const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey)
 
-        // Mount the shared per-project volume so memory/filesystem are co-located with the job.
-        // Only for containerized runners (Modal); self-host uses the backend LocalVolumeStore.
-        const options: SandboxCreateParams = { ...SANDBOX_DEFAULT_OPTIONS }
-        if (sandboxService.supportsContainerizedRunners) {
-            const volume = await sandboxService.getOrCreateVolume(projectVolumeName(organizationId, projectId))
-            options.volumes = { [PROJECT_VOLUME_MOUNT]: volume }
-        }
-
+        // The project's runtime sandbox always mounts its shared volume (containerized runners only),
+        // so memory/filesystem are co-located with every job and the prewarmed sandbox matches.
+        const options: SandboxCreateParams = { ...SANDBOX_DEFAULT_OPTIONS, volumes: await getProjectVolumeMount(sandboxService, organizationId, projectId) }
+        const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey, projectId)
         return sandboxService.getOrCreateSandbox(app, image, uniqueName, options)
     }
 

@@ -6,7 +6,7 @@ import { db } from "../loaders/prisma"
 import { getSandboxProvider } from "./sandboxProvider"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
-import { PROJECT_VOLUME_MOUNT } from "./volumeStore/volumePaths"
+import { agentFsRoot } from "./volumeStore/volumePaths"
 
 export type MemoryFsTool = "memory" | "file"
 
@@ -39,7 +39,7 @@ export async function reachBackMemoryFs(params: { organizationId: string; agentI
     const payload = Buffer.from(JSON.stringify({ tool: params.tool, input: params.input }), "utf8").toString("base64")
     const command = `${shellQuote(cliBin)} __fs-exec ${shellQuote(payload)}`
 
-    const { exitCode, stdout, stderr } = await execInSandbox(sandbox, command)
+    const { exitCode, stdout, stderr } = await execInSandbox(sandbox, command, agentFsRoot(params.agentId))
     const envelope = parseEnvelope(stdout)
 
     if (envelope?.success) {
@@ -51,11 +51,11 @@ export async function reachBackMemoryFs(params: { organizationId: string; agentI
     throw new Error(stderr.trim() || `Memory/FS reach-back failed (exit ${exitCode})`)
 }
 
-async function execInSandbox(sandbox: Sandbox, command: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function execInSandbox(sandbox: Sandbox, command: string, fsRoot: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
     const proc = await sandbox.exec(["sh", "-c", command], {
         stdout: "pipe",
         stderr: "pipe",
-        env: { TERSE_FS_ROOT: PROJECT_VOLUME_MOUNT, TERSE_FS_COMMIT: "1" }
+        env: { TERSE_FS_ROOT: fsRoot, TERSE_FS_COMMIT: "1" }
     })
     const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
     const exitCode = await proc.wait()
@@ -74,7 +74,8 @@ function parseEnvelope(stdout: string): FsExecEnvelope | null {
 
 /**
  * Resolve the unique name of the sandbox running this agent's project, mirroring how
- * SdkJobExecutionService names it: project → active deploy → source image → source layer key.
+ * SdkJobExecutionService names it: project → active deploy → source image → source layer key,
+ * scoped by project id.
  */
 async function resolveRuntimeSandboxUniqueName(organizationId: string, agentId: string): Promise<string | null> {
     const agent = await db().automations.findFirst({
@@ -97,5 +98,5 @@ async function resolveRuntimeSandboxUniqueName(organizationId: string, agentId: 
         dependencyHash: sourceImage.dependency_image.dependency_hash,
         sourceHash: sourceImage.source_hash
     })
-    return runtimeSandboxUniqueName(sourceLayerKey)
+    return runtimeSandboxUniqueName(sourceLayerKey, agent.project_id)
 }
