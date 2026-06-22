@@ -93,6 +93,7 @@ import { z } from "zod"
 
 import { claimAgentApprovalHandling, getJobContext, releaseAgentApprovalHandling, runWithJobContext } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
+import { isMemoryFsTool, runMemoryFsCommand } from "./memoryfs/index.js"
 import { openSessionStream } from "./sessionStream.js"
 import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
 
@@ -113,6 +114,11 @@ export type { TerseJobContext } from "./context.js"
 
 export { SessionStreamError, openListenStream, openSessionStream } from "./sessionStream.js"
 export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
+
+// Co-located memory/filesystem executor — shared by the `terse __fs-exec` CLI (reach-back)
+// and the in-process executeTool interception below.
+export { MEMORY_FS_TOOL_NAMES, isMemoryFsTool, runMemoryFsCommand } from "./memoryfs/index.js"
+export type { MemoryFsRequest, MemoryFsResult, MemoryFsToolName } from "./memoryfs/index.js"
 
 // Re-export SDK-specific types
 export { createSDKTrigger, registerEventTransform } from "./types.js"
@@ -495,6 +501,14 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     static async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
+        // Deterministic memory/filesystem ops (called directly from job code) run against the
+        // co-located TERSE_FS_ROOT in-process: the mounted sandbox volume during `terse run`,
+        // or a temp dir during local `terse test`. The agent loop instead reaches back into the
+        // sandbox from the backend (sb.exec) — these meet on the same volume in `terse run`.
+        if (isMemoryFsTool(toolName)) {
+            const result = await runMemoryFsCommand({ tool: toolName, input: params as never })
+            return result as TOutput
+        }
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
             headers: TerseAgent.buildHeaders(),

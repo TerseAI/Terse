@@ -53,9 +53,27 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
 
     async getOrCreateVolume(name: string): Promise<ModalVolume> {
         const t0 = Date.now()
+        // Prefer Volumes v2 so writes can be committed from inside the sandbox via `sync`
+        // (the TS SDK exposes no commit()/reload(), and `volumes.fromName` can't request a
+        // version — it leaves the server to pick the workspace default). Fall back to the
+        // default-version helper if the server rejects v2 (older account/region).
+        try {
+            const resp = await this.modal.cpClient.volumeGetOrCreate({
+                deploymentName: name,
+                environmentName: this.modal.environmentName(),
+                objectCreationType: 1, // OBJECT_CREATION_TYPE_CREATE_IF_MISSING
+                appId: "",
+                version: 2 // VOLUME_FS_VERSION_V2
+            } as Parameters<typeof this.modal.cpClient.volumeGetOrCreate>[0])
+            logger.info("Modal volume: ready (v2)", { volume: name, durationMs: Date.now() - t0 })
+            return new ModalVolume(resp.volumeId, name)
+        } catch (error) {
+            logger.warn("Modal volume: v2 get-or-create failed; falling back to default version", { volume: name, errorMessage: errorMessage(error) })
+        }
+
         try {
             const volume = await this.modal.volumes.fromName(name, { createIfMissing: true })
-            logger.info("Modal volume: ready", { volume: name, durationMs: Date.now() - t0 })
+            logger.info("Modal volume: ready (default version)", { volume: name, durationMs: Date.now() - t0 })
             return volume
         } catch (error) {
             logger.error("Modal volume: fromName failed", { volume: name, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
@@ -131,6 +149,12 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         }
 
         return this.createSandboxWithRetries(app, image, name, params, opStart)
+    }
+
+    async findLiveSandbox(uniqueName: string): Promise<ModalSandbox | null> {
+        const app = await this.getOrCreateApp("terse-sdk-sandbox")
+        if (!app.name) return null
+        return this.lookupLiveSandbox(app.name, `${app.name}__${uniqueName}`, Date.now())
     }
 
     private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<ModalSandbox | null> {

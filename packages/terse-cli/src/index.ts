@@ -14,6 +14,7 @@ import { completionHandler, completionInstall, completionUninstall } from "./com
 import { openDashboard } from "./commands/dashboard.js"
 import { deploy } from "./commands/deploy.js"
 import { openDocs } from "./commands/docs.js"
+import { fsExec } from "./commands/fsExec.js"
 import { generate } from "./commands/generate.js"
 import { history } from "./commands/history.js"
 import { applyImprovement, listImprovements } from "./commands/improvements.js"
@@ -340,6 +341,15 @@ if (isCliRunCommandEnabled()) {
         .option(...ENTRY_FILE_OPTION)
         .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
             await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile, opts?.verbose)
+        })
+
+    // Hidden: invoked by the backend reach-back to run memory/filesystem ops against the
+    // sandbox's co-located volume. Payload is base64-encoded JSON `{ tool, input }`.
+    program
+        .command("__fs-exec [payload]", { hidden: true })
+        .description("Internal: execute a memory/filesystem command on the co-located volume")
+        .action(async (payload?: string) => {
+            await fsExec(payload)
         })
 }
 

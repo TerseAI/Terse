@@ -134,6 +134,12 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         logger.info("#LocalSandbox created", { uniqueName, workingDir, durationMs: Date.now() - t0 })
         return new LocalSandbox(uniqueName, workingDir)
     }
+
+    // Self-host does not reach back into running sandboxes; memory/FS resolves via the
+    // backend LocalVolumeStore fallback instead.
+    async findLiveSandbox(_uniqueName: string): Promise<LocalSandbox | null> {
+        return null
+    }
 }
 
 // ─────────────── helpers (bottom) ───────────────

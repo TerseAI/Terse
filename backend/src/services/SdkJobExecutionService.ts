@@ -18,10 +18,11 @@ import { getSocketIO } from "./CacheInvalidationService"
 import { SecretService } from "./SecretService"
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
-import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
+import { Sandbox, SandboxCreateParams, SandboxService } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import { PROJECT_VOLUME_MOUNT, projectVolumeName } from "./volumeStore/volumePaths"
 
 interface SdkJobExecutionParams {
     runId: string
@@ -79,6 +80,12 @@ export class SdkJobExecutionService {
 
             const sandboxBackendUrl = getSandboxProvider().supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
 
+            // Co-located memory/filesystem: when the runner is containerized (Modal), a per-project
+            // volume is mounted into the sandbox and both reach-back paths operate on it directly.
+            // TERSE_FS_COMMIT enables the post-write `sync` (Volumes v2 commit). On non-containerized
+            // self-host the SDK falls back to a local path and the backend uses LocalVolumeStore.
+            const colocatedEnv: Record<string, string> = getSandboxProvider().supportsContainerizedRunners ? { TERSE_FS_ROOT: PROJECT_VOLUME_MOUNT, TERSE_FS_COMMIT: "1" } : {}
+
             const sandboxEnv = {
                 // Make sure to keep this first as the sandbox env,
                 // so that the following env variables take precedence.
@@ -88,7 +95,8 @@ export class SdkJobExecutionService {
                 TERSE_RUN_ID: runId,
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
-                NO_UPDATE_NOTIFIER: "1"
+                NO_UPDATE_NOTIFIER: "1",
+                ...colocatedEnv
             }
 
             const result = await this.executeWithSourceImage({
@@ -97,6 +105,8 @@ export class SdkJobExecutionService {
                 sandboxService: getSandboxProvider(),
                 runId,
                 agentId: agent.id,
+                organizationId: orgId,
+                projectId: agent.project.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
                 cliVersion: sourceImage.cliVersion
@@ -205,13 +215,15 @@ export class SdkJobExecutionService {
         sandboxService: SandboxService
         runId: string
         agentId: string
+        organizationId: string
+        projectId: string
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
         cliVersion: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion } = params
+        const { executor, jobName, sandboxService, runId, agentId, organizationId, projectId, sandboxEnv, sourceImageRecordId, cliVersion } = params
 
-        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
+        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, organizationId, projectId)
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
@@ -251,7 +263,7 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string): Promise<Sandbox> {
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, organizationId: string, projectId: string): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
@@ -261,7 +273,15 @@ export class SdkJobExecutionService {
         const image = await sandboxService.getImageFromId(source.imageId)
         const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey)
 
-        return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+        // Mount the shared per-project volume so memory/filesystem are co-located with the job.
+        // Only for containerized runners (Modal); self-host uses the backend LocalVolumeStore.
+        const options: SandboxCreateParams = { ...SANDBOX_DEFAULT_OPTIONS }
+        if (sandboxService.supportsContainerizedRunners) {
+            const volume = await sandboxService.getOrCreateVolume(projectVolumeName(organizationId, projectId))
+            options.volumes = { [PROJECT_VOLUME_MOUNT]: volume }
+        }
+
+        return sandboxService.getOrCreateSandbox(app, image, uniqueName, options)
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

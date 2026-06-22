@@ -14,6 +14,9 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
 
     getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<S>
 
+    /** Look up an already-running sandbox by its unique name without creating one. Returns null if none is live. */
+    findLiveSandbox(uniqueName: string): Promise<S | null>
+
     getProjectPath(sandbox: S): string
     getDependencyCachePath(sandbox: S, runtime: string): string
     getCliCachePath(sandbox: S): string

@@ -9,7 +9,7 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { tearDownAgentTriggers } from "../../modules/agents/controller"
 import { createProjectScopedToken } from "../../modules/auth/helpers/apiTokens"
 import { SecretService } from "../../services/SecretService"
-import { deleteAgentVolumesForAgents } from "../../services/volumeStore"
+import { deleteAgentVolumesForAgents, deleteProjectVolume } from "../../services/volumeStore"
 import { getAuthProvider } from "../../services/authProvider"
 
 import {
@@ -86,6 +86,7 @@ export async function deleteProjectForOrganization(projectId: string, organizati
 
     const secretService = SecretService.getInstance()
     await deleteProject(projectId)
+    await deleteProjectVolume(organizationId, projectId)
     await deleteAgentVolumesForAgents(automationIds.map(agentId => ({ organizationId, agentId })))
     try {
         await secretService.deleteSecrets({ type: "project", secret: { projectId } })
