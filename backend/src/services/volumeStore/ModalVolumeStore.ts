@@ -4,8 +4,8 @@ import { getSandboxProvider } from "../sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
 import type { Sandbox, SandboxVolume } from "../sandboxProvider/SandboxService"
 
-import type { AgentVolumeStore, VolumeFileEntry, VolumeStat } from "./types"
-import { joinVolumePath, resolveVolumeRelativePath, volumeUtilitySandboxName } from "./volumePaths"
+import type { AgentVolumeStore, VolumeFileEntry } from "./types"
+import { resolveVolumeRelativePath, volumeUtilitySandboxName } from "./volumePaths"
 
 const MODAL_VOLUME_MOUNT = "/vol"
 const UTILITY_APP_NAME = "terse-volume-access"
@@ -19,13 +19,12 @@ type CachedVolumeSandbox = {
 export class ModalVolumeStore implements AgentVolumeStore {
     private readonly cache = new Map<string, CachedVolumeSandbox>()
 
-    private resolveMountedPath(relativePath: string, options?: { requiredPrefix?: string }): string {
-        const resolved = resolveVolumeRelativePath(relativePath, options)
-        const joined = joinVolumePath(resolved)
-        if (joined === "." || joined === "") {
+    private resolveMountedPath(relativePath: string): string {
+        const resolved = resolveVolumeRelativePath(relativePath)
+        if (resolved === "") {
             return MODAL_VOLUME_MOUNT
         }
-        return `${MODAL_VOLUME_MOUNT}/${joined}`
+        return `${MODAL_VOLUME_MOUNT}/${resolved}`
     }
 
     /** Drop cached utility sandboxes after the backing volume is deleted. */
@@ -66,12 +65,29 @@ export class ModalVolumeStore implements AgentVolumeStore {
         return sandbox
     }
 
-    private async exec(volumeName: string, command: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+    private async withSandbox<T>(volumeName: string, fn: (sandbox: Sandbox) => Promise<T>): Promise<T> {
         const sandbox = await this.getUtilitySandbox(volumeName)
-        const proc = await sandbox.exec(["sh", "-c", command], { stdout: "pipe", stderr: "pipe" })
-        const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
-        const exitCode = await proc.wait()
-        return { exitCode, stdout, stderr }
+        try {
+            return await fn(sandbox)
+        } catch (error) {
+            logger.warn("Modal volume store: utility sandbox operation failed; rebuilding and retrying once", {
+                volumeName,
+                sandboxId: sandbox.sandboxId,
+                error
+            })
+            this.evictCache([volumeName])
+            const fresh = await this.getUtilitySandbox(volumeName)
+            return fn(fresh)
+        }
+    }
+
+    private async exec(volumeName: string, command: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+        return this.withSandbox(volumeName, async sandbox => {
+            const proc = await sandbox.exec(["sh", "-c", command], { stdout: "pipe", stderr: "pipe" })
+            const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
+            const exitCode = await proc.wait()
+            return { exitCode, stdout, stderr }
+        })
     }
 
     /** Persist pending writes to the backing Volume. For Volumes v2, `sync <mountpoint>` flushes and commits. */
@@ -93,19 +109,20 @@ export class ModalVolumeStore implements AgentVolumeStore {
 
     async write(volumeName: string, relativePath: string, content: string): Promise<void> {
         const mountedPath = this.resolveMountedPath(relativePath)
-        const sandbox = await this.getUtilitySandbox(volumeName)
         const dirResult = await this.exec(volumeName, `mkdir -p ${shellQuote(mountedPath.replace(/\/[^/]+$/, "") || MODAL_VOLUME_MOUNT)}`)
         if (dirResult.exitCode !== 0) {
             throw new Error(dirResult.stderr.trim() || `Failed to create parent directory for ${relativePath}`)
         }
 
-        const file = await sandbox.open(mountedPath, "w")
-        try {
-            await file.write(new TextEncoder().encode(content))
-            await file.flush()
-        } finally {
-            await file.close()
-        }
+        await this.withSandbox(volumeName, async sandbox => {
+            const file = await sandbox.open(mountedPath, "w")
+            try {
+                await file.write(new TextEncoder().encode(content))
+                await file.flush()
+            } finally {
+                await file.close()
+            }
+        })
         await this.commit(volumeName)
     }
 
@@ -133,7 +150,10 @@ export class ModalVolumeStore implements AgentVolumeStore {
 
         const entries: VolumeFileEntry[] = []
         for (const absolute of lines) {
-            const statResult = await this.exec(volumeName, `if [ -d ${shellQuote(absolute)} ]; then echo dir; stat -c %s ${shellQuote(absolute)} 2>/dev/null || echo 0; else echo file; stat -c %s ${shellQuote(absolute)}; fi`)
+            const statResult = await this.exec(
+                volumeName,
+                `if [ -d ${shellQuote(absolute)} ]; then echo dir; stat -c %s ${shellQuote(absolute)} 2>/dev/null || echo 0; else echo file; stat -c %s ${shellQuote(absolute)}; fi`
+            )
             if (statResult.exitCode !== 0) continue
             const [kind, sizeRaw] = statResult.stdout.trim().split("\n")
             const rel = absolute.startsWith(`${MODAL_VOLUME_MOUNT}/`) ? absolute.slice(MODAL_VOLUME_MOUNT.length + 1) : absolute.replace(`${MODAL_VOLUME_MOUNT}/`, "")
@@ -156,7 +176,7 @@ export class ModalVolumeStore implements AgentVolumeStore {
         return result.stdout.trim() === "yes"
     }
 
-    async stat(volumeName: string, relativePath: string): Promise<VolumeStat> {
+    async stat(volumeName: string, relativePath: string): Promise<VolumeFileEntry> {
         const mountedPath = this.resolveMountedPath(relativePath)
         const result = await this.exec(
             volumeName,
@@ -200,15 +220,6 @@ export class ModalVolumeStore implements AgentVolumeStore {
         }
         if (result.exitCode !== 0) {
             throw new Error(result.stderr.trim() || `Failed to rename ${fromPath}`)
-        }
-        await this.commit(volumeName)
-    }
-
-    async mkdir(volumeName: string, relativePath: string): Promise<void> {
-        const mountedPath = this.resolveMountedPath(relativePath)
-        const result = await this.exec(volumeName, `mkdir -p ${shellQuote(mountedPath)}`)
-        if (result.exitCode !== 0) {
-            throw new Error(result.stderr.trim() || `Failed to mkdir ${relativePath}`)
         }
         await this.commit(volumeName)
     }

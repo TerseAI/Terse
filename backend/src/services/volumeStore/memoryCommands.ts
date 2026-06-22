@@ -1,4 +1,4 @@
-import { getAgentVolumeStore, agentMemoryVolumeName, MEMORY_ROOT, resolveVolumeRelativePath } from "../../services/volumeStore"
+import { getAgentVolumeStore, agentMemoryVolumeName, formatHumanSize, MEMORY_ROOT, resolveVolumeRelativePath } from "../../services/volumeStore"
 import type { AgentVolumeStore } from "../../services/volumeStore"
 
 export type MemoryCommand = "view" | "create" | "str_replace" | "insert" | "delete" | "rename"
@@ -14,12 +14,6 @@ export type MemoryCommandInput = {
     insert_text?: string
     old_path?: string
     new_path?: string
-}
-
-function formatHumanSize(sizeBytes: number): string {
-    if (sizeBytes < 1024) return `${sizeBytes}B`
-    if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)}K`
-    return `${(sizeBytes / (1024 * 1024)).toFixed(1)}M`
 }
 
 function memoryDisplayPath(relativePath: string): string {
@@ -63,7 +57,7 @@ async function listDirectoryView(store: AgentVolumeStore, volumeName: string, re
     lines.push(`${formatHumanSize(rootStat?.sizeBytes ?? 4096)}\t${displayPath}`)
 
     for (const entry of entries) {
-        lines.push(`${formatHumanSize(entry.sizeBytes)}\t${memoryDisplayPath(entry.path)}${entry.isDirectory ? "" : ""}`)
+        lines.push(`${formatHumanSize(entry.sizeBytes)}\t${memoryDisplayPath(entry.path)}`)
         if (entry.isDirectory) {
             const children = await store.list(volumeName, entry.path)
             for (const child of children) {

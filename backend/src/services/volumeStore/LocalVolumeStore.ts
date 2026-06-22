@@ -2,8 +2,8 @@ import { existsSync } from "node:fs"
 import fs from "node:fs/promises"
 import path from "node:path"
 
-import { joinVolumePath, resolveVolumeRelativePath } from "./volumePaths"
-import type { AgentVolumeStore, VolumeFileEntry, VolumeStat } from "./types"
+import { resolveVolumeRelativePath } from "./volumePaths"
+import type { AgentVolumeStore, VolumeFileEntry } from "./types"
 
 const SANDBOX_ROOT = "/data/sandbox"
 export const LOCAL_VOLUMES_DIR = path.join(SANDBOX_ROOT, "volumes")
@@ -13,10 +13,10 @@ export class LocalVolumeStore implements AgentVolumeStore {
         return path.join(LOCAL_VOLUMES_DIR, volumeName)
     }
 
-    private resolveAbsolute(volumeName: string, inputPath: string, options?: { requiredPrefix?: string }): string {
-        const relative = resolveVolumeRelativePath(inputPath, options)
+    private resolveAbsolute(volumeName: string, inputPath: string): string {
+        const relative = resolveVolumeRelativePath(inputPath)
         const root = this.volumeRoot(volumeName)
-        const absolute = path.resolve(root, joinVolumePath(relative))
+        const absolute = path.resolve(root, relative)
         const normalizedRoot = path.resolve(root)
         if (absolute !== normalizedRoot && !absolute.startsWith(`${normalizedRoot}${path.sep}`)) {
             throw new Error("Path traversal is not allowed.")
@@ -38,7 +38,10 @@ export class LocalVolumeStore implements AgentVolumeStore {
     async list(volumeName: string, relativePath: string): Promise<VolumeFileEntry[]> {
         const absolute = relativePath === "" ? this.volumeRoot(volumeName) : this.resolveAbsolute(volumeName, relativePath)
         if (!existsSync(absolute)) {
-            throw new Error(`The path ${relativePath || "/"} does not exist. Please provide a valid path.`)
+            if (relativePath === "") {
+                return []
+            }
+            throw new Error(`The path ${relativePath} does not exist. Please provide a valid path.`)
         }
 
         const stat = await fs.stat(absolute)
@@ -72,7 +75,7 @@ export class LocalVolumeStore implements AgentVolumeStore {
         return existsSync(absolute)
     }
 
-    async stat(volumeName: string, relativePath: string): Promise<VolumeStat> {
+    async stat(volumeName: string, relativePath: string): Promise<VolumeFileEntry> {
         const absolute = this.resolveAbsolute(volumeName, relativePath)
         if (!existsSync(absolute)) {
             throw new Error(`The path ${relativePath} does not exist. Please provide a valid path.`)
@@ -101,10 +104,5 @@ export class LocalVolumeStore implements AgentVolumeStore {
         }
         await fs.mkdir(path.dirname(toAbsolute), { recursive: true })
         await fs.rename(fromAbsolute, toAbsolute)
-    }
-
-    async mkdir(volumeName: string, relativePath: string): Promise<void> {
-        const absolute = this.resolveAbsolute(volumeName, relativePath)
-        await fs.mkdir(absolute, { recursive: true })
     }
 }

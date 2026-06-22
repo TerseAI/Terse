@@ -1,9 +1,6 @@
 import crypto from "node:crypto"
 import path from "node:path"
 
-export const AGENT_FILES_MOUNT_PATH = "/mnt/agent-volume"
-export const AGENT_MEMORY_MOUNT_PATH = "/mnt/agent-memory"
-
 export const MEMORY_ROOT = "/memories"
 
 // Org is folded into the volume name as a fixed-length hash so volumes are namespaced per
@@ -26,7 +23,7 @@ export function volumeUtilitySandboxName(volumeName: string): string {
     return `volacc-${digest}`
 }
 
-export function resolveVolumeRelativePath(inputPath: string, options?: { requiredPrefix?: string }): string {
+export function resolveVolumeRelativePath(inputPath: string): string {
     const normalized = inputPath.replace(/\\/g, "/").trim()
     if (!normalized) {
         throw new Error("Path is required.")
@@ -42,21 +39,7 @@ export function resolveVolumeRelativePath(inputPath: string, options?: { require
         throw new Error("Path traversal is not allowed.")
     }
 
-    let relative = segments.join("/")
-    if (options?.requiredPrefix) {
-        const prefix = options.requiredPrefix.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "")
-        if (prefix.length > 0) {
-            if (relative.length === 0) {
-                relative = prefix
-            } else if (relative === prefix || relative.startsWith(`${prefix}/`)) {
-                // already under prefix
-            } else {
-                relative = `${prefix}/${relative}`
-            }
-        }
-    }
-
-    const resolved = path.posix.normalize(relative === "" ? "." : relative)
+    const resolved = path.posix.normalize(segments.join("/") || ".")
     if (resolved === ".." || resolved.startsWith("../")) {
         throw new Error("Path traversal is not allowed.")
     }
@@ -64,7 +47,8 @@ export function resolveVolumeRelativePath(inputPath: string, options?: { require
     return resolved === "." ? "" : resolved
 }
 
-export function joinVolumePath(relativePath: string): string {
-    if (!relativePath) return "."
-    return relativePath
+export function formatHumanSize(sizeBytes: number): string {
+    if (sizeBytes < 1024) return `${sizeBytes}B`
+    if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)}K`
+    return `${(sizeBytes / (1024 * 1024)).toFixed(1)}M`
 }

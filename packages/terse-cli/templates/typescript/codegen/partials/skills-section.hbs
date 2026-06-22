@@ -93,7 +93,7 @@ export const Skills = {
         return new ImageEditConfig()
     },
     /** Volume — persistent shared file storage for this agent across runs */
-    volume(): TypedSkill<"volume_list_files" | "volume_read_file" | "volume_write_file" | "volume_delete_file"> {
+    volume(): TypedSkill<"file"> {
         return new VolumeConfig()
     },
     /** Memory — persistent memory files for this agent across runs */

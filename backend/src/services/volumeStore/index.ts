@@ -52,12 +52,5 @@ export async function deleteAgentVolumesForAgents(agents: Array<{ organizationId
     await Promise.all(agents.map(({ organizationId, agentId }) => deleteAgentVolumes(organizationId, agentId)))
 }
 
-export type { AgentVolumeStore, VolumeFileEntry, VolumeStat } from "./types"
-export {
-    AGENT_FILES_MOUNT_PATH,
-    AGENT_MEMORY_MOUNT_PATH,
-    MEMORY_ROOT,
-    agentFilesVolumeName,
-    agentMemoryVolumeName,
-    resolveVolumeRelativePath
-} from "./volumePaths"
+export type { AgentVolumeStore, VolumeFileEntry } from "./types"
+export { MEMORY_ROOT, agentFilesVolumeName, agentMemoryVolumeName, formatHumanSize, resolveVolumeRelativePath } from "./volumePaths"

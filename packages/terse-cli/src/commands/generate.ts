@@ -87,7 +87,9 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
     try {
         const raw = await fetchWithAuth<unknown>(ApiRoutes.SDK.TOOL_DEFINITIONS, apiKey)
         const resp = toolDefinitionsResponseSchema.parse(raw)
-        const activeSet = new Set(activeTypes as string[])
+        // System integrations (e.g. agent memory/volume) are always available and never appear
+        // in the org's connected-integrations list, so include them explicitly.
+        const activeSet = new Set([...activeTypes, IntegrationType.TERSE] as string[])
         toolDefs = resp.tools.filter(t => activeSet.has(t.integration))
         const skippedToolNames = [...new Set(toolDefs.filter(t => !isValidToolName(t.name)).map(t => t.name))].sort()
         toolDefs = toolDefs.filter(t => isValidToolName(t.name))

@@ -6,16 +6,11 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 import { unrestricted } from "../abstract/acl"
 
-import { volumeDeleteFileTool, volumeListFilesTool, volumeReadFileTool, volumeWriteFileTool } from "./tools/volumeTools"
+import { fileTool } from "./tools/fileTool"
 
 export class VolumeOutput extends Output<VolumeConfig> {
     constructor() {
-        super(OutputConfigType.VOLUME, [
-            { tool: volumeListFilesTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "List volume files", validateACL: unrestricted },
-            { tool: volumeReadFileTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Read volume file", validateACL: unrestricted },
-            { tool: volumeWriteFileTool, isReadOnly: false, integration: IntegrationType.TERSE, displayName: "Write volume file", validateACL: unrestricted },
-            { tool: volumeDeleteFileTool, isReadOnly: false, integration: IntegrationType.TERSE, displayName: "Delete volume file", validateACL: unrestricted }
-        ])
+        super(OutputConfigType.VOLUME, [{ tool: fileTool, isReadOnly: false, integration: IntegrationType.TERSE, displayName: "File", validateACL: unrestricted }])
     }
 
     async validateConfig(_output: VolumeConfig, _userId: string): Promise<void> {}
@@ -24,10 +19,10 @@ export class VolumeOutput extends Output<VolumeConfig> {
 
     protected getSystemInstructionsForConfigs(_configs: VolumeConfig[]): string {
         return [
-            "AGENT VOLUME:",
-            "- You have access to a persistent shared volume for this agent.",
-            "- Use volume_list_files, volume_read_file, volume_write_file, and volume_delete_file.",
-            "- Paths are relative to the volume root; you cannot access other agents' volumes."
+            "AGENT FILES:",
+            "- You have a persistent file store for this agent.",
+            "- Use the `file` tool with command: list, read, write, or delete.",
+            "- Paths are relative to the storage root; you cannot access other agents' files."
         ].join("\n")
     }
 }

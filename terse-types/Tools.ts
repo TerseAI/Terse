@@ -2103,54 +2103,28 @@ export const snowflakeExplainQueryTool = defineTool({
     })
 })
 
-export const volumeListFilesTool = defineTool({
-    name: "volume_list_files",
+const fileCommandSchema = z.enum(["list", "read", "write", "delete"])
+
+export const fileTool = defineTool({
+    name: "file",
     inputSchema: z.object({
-        path: z.string().nullable().describe("Directory path relative to the agent volume root. Use empty or null for root.")
+        command: fileCommandSchema,
+        path: z.string().nullable().optional().describe("File or directory path relative to the storage root. Empty or null means the root (list only)."),
+        content: z.string().nullable().optional().describe("Full file contents for write.")
     }),
     outputSchema: toolOutputBaseSchema.extend({
         message: z.string(),
-        entries: z.array(
-            z.object({
-                path: z.string(),
-                isDirectory: z.boolean(),
-                sizeBytes: z.number().int()
-            })
-        )
-    })
-})
-
-export const volumeReadFileTool = defineTool({
-    name: "volume_read_file",
-    inputSchema: z.object({
-        path: z.string().describe("File path relative to the agent volume root.")
-    }),
-    outputSchema: toolOutputBaseSchema.extend({
-        path: z.string(),
-        content: z.string()
-    })
-})
-
-export const volumeWriteFileTool = defineTool({
-    name: "volume_write_file",
-    inputSchema: z.object({
-        path: z.string().describe("File path relative to the agent volume root."),
-        content: z.string().describe("Full file contents to write.")
-    }),
-    outputSchema: toolOutputBaseSchema.extend({
-        message: z.string(),
-        path: z.string()
-    })
-})
-
-export const volumeDeleteFileTool = defineTool({
-    name: "volume_delete_file",
-    inputSchema: z.object({
-        path: z.string().describe("File or directory path relative to the agent volume root.")
-    }),
-    outputSchema: toolOutputBaseSchema.extend({
-        message: z.string(),
-        path: z.string()
+        entries: z
+            .array(
+                z.object({
+                    path: z.string(),
+                    isDirectory: z.boolean(),
+                    sizeBytes: z.number().int()
+                })
+            )
+            .nullable()
+            .optional(),
+        content: z.string().nullable().optional()
     })
 })
 
@@ -2241,10 +2215,7 @@ export const ToolDefinitions = {
     [webExtractTool.name]: webExtractTool,
     [webResearchTool.name]: webResearchTool,
     [imageEditTool.name]: imageEditTool,
-    [volumeListFilesTool.name]: volumeListFilesTool,
-    [volumeReadFileTool.name]: volumeReadFileTool,
-    [volumeWriteFileTool.name]: volumeWriteFileTool,
-    [volumeDeleteFileTool.name]: volumeDeleteFileTool,
+    [fileTool.name]: fileTool,
     [memoryTool.name]: memoryTool
 } as const
 
