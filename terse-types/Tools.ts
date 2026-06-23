@@ -2117,6 +2117,33 @@ export const webSearchTool = defineTool({
     outputSchema: webSearchOutputSchema
 })
 
+export const memoryCommandSchema = z.enum(["view", "create", "str_replace", "insert", "delete", "rename"])
+
+// Mirrors the Anthropic memory tool (memory_20250818) contract: a flat input where the relevant
+// fields depend on `command`. All non-command fields are nullable so the schema stays strict-compatible.
+export const memoryInputSchema = z.object({
+    command: memoryCommandSchema.describe("The memory operation to perform"),
+    path: z.string().nullable().describe("Path under /memories for view/create/str_replace/insert/delete (e.g. '/memories/notes.md')"),
+    view_range: z.array(z.number().int()).nullable().describe("Optional [startLine, endLine] (1-indexed) to view a slice of a file"),
+    file_text: z.string().nullable().describe("Full file contents, for create"),
+    old_str: z.string().nullable().describe("Exact text to replace, for str_replace (must appear verbatim exactly once)"),
+    new_str: z.string().nullable().describe("Replacement text, for str_replace"),
+    insert_line: z.number().int().nullable().describe("Line number after which to insert, for insert (0 = beginning of file)"),
+    insert_text: z.string().nullable().describe("Text to insert, for insert"),
+    old_path: z.string().nullable().describe("Source path, for rename"),
+    new_path: z.string().nullable().describe("Destination path, for rename")
+})
+
+export const memoryOutputSchema = toolOutputBaseSchema.extend({
+    result: z.string()
+})
+
+export const memoryTool = defineTool({
+    name: "memory",
+    inputSchema: memoryInputSchema,
+    outputSchema: memoryOutputSchema
+})
+
 export const ToolDefinitions = {
     [linearCreateTicketTool.name]: linearCreateTicketTool,
     [linearUpdateTicketTool.name]: linearUpdateTicketTool,
@@ -2169,7 +2196,8 @@ export const ToolDefinitions = {
     [webSearchTool.name]: webSearchTool,
     [webExtractTool.name]: webExtractTool,
     [webResearchTool.name]: webResearchTool,
-    [imageEditTool.name]: imageEditTool
+    [imageEditTool.name]: imageEditTool,
+    [memoryTool.name]: memoryTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

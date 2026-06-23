@@ -139,6 +139,7 @@ export {
     LinearEventType,
     LinearInputConfig,
     LinearOutputConfig,
+    MemoryConfig,
     NotionConfig,
     PosthogConfig,
     SlackConfig,

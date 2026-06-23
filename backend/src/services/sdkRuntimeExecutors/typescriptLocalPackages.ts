@@ -24,8 +24,6 @@ export async function writeLocalTarballs(context: SdkDependencyImageBuildContext
 
 // Points the user project's terse-sdk/terse-types at the local tarballs. With the dev flags on, the
 // versions in the project's package.json are ignored in favor of the local build. A direct dependency
-// is rewritten in place; transitive-only packages (e.g. terse-types via terse-sdk) are pinned through
-// overrides instead, since npm rejects an override that collides with a direct dependency (EOVERRIDE).
 export function withTerseOverrides(packageJsonText: string, tarballs: Map<string, string>, packageManager: PackageManager): string {
     type DepRecord = Record<string, string>
     const pkg = JSON.parse(packageJsonText) as {
@@ -56,7 +54,7 @@ export function withTerseOverrides(packageJsonText: string, tarballs: Map<string
     const overrides: DepRecord = {}
     for (const name of targets) {
         const tarballPath = tarballs.get(name)
-        if (tarballPath && !directlyPinned.has(name)) {
+        if (tarballPath && (packageManager === "pnpm" || !directlyPinned.has(name))) {
             overrides[name] = `file:${tarballPath}`
         }
     }

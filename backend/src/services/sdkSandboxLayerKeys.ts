@@ -30,6 +30,16 @@ export function sourceImageBuildSandboxUniqueName(sourceLayerKey: string): strin
     return `sb-${sourceLayerKeyHexBody(sourceLayerKey)}`
 }
 
-export function runtimeSandboxUniqueName(sourceLayerKey: string): string {
-    return `sr-${sourceLayerKeyHexBody(sourceLayerKey)}`
+export function runtimeSandboxUniqueName(projectId: string): string {
+    return `sr-${projectId}`
+}
+
+export const SDK_SANDBOX_APP_NAME = "terse-sdk-sandbox"
+
+/** Mount point for the per-project memory volume inside executing runtime sandboxes. */
+export const MEMORY_MOUNT_PATH = "/mnt/memory"
+
+/** Name of the per-project persistent volume (Modal Volume / local dir). */
+export function projectVolumeName(projectId: string): string {
+    return `mem-${projectId}`
 }

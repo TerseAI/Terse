@@ -21,7 +21,7 @@ import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
-import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import { computeSourceLayerKey, MEMORY_MOUNT_PATH, runtimeSandboxUniqueName, SDK_SANDBOX_APP_NAME } from "./sdkSandboxLayerKeys"
 
 interface SdkJobExecutionParams {
     runId: string
@@ -40,6 +40,8 @@ type SdkSourceImageRecord = {
     sourceLayerKey: string
     cliVersion: string
 }
+
+export { SDK_SANDBOX_APP_NAME }
 
 export class SdkJobExecutionService {
     private emitter: StreamEventEmitter | null = null
@@ -96,6 +98,7 @@ export class SdkJobExecutionService {
                 jobName,
                 sandboxService: getSandboxProvider(),
                 runId,
+                projectId: agent.project.id,
                 agentId: agent.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
@@ -205,13 +208,14 @@ export class SdkJobExecutionService {
         sandboxService: SandboxService
         runId: string
         agentId: string
+        projectId: string
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
         cliVersion: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion } = params
 
-        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
+        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId)
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
@@ -251,16 +255,18 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string): Promise<Sandbox> {
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
         }
 
-        const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
+        const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
         const image = await sandboxService.getImageFromId(source.imageId)
-        const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey)
-        return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+        const uniqueName = runtimeSandboxUniqueName(projectId)
+        const volume = await sandboxService.getOrCreateProjectVolume(projectId)
+        logger.info("SDK sandbox: mounting project memory volume", { projectId, mountPath: MEMORY_MOUNT_PATH, uniqueName })
+        return sandboxService.getOrCreateSandbox(app, image, uniqueName, { ...SANDBOX_DEFAULT_OPTIONS, volumes: { [MEMORY_MOUNT_PATH]: volume } })
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

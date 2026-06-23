@@ -742,6 +742,32 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return prompt ? `Image edited: "${truncate(prompt)}"` : "Image edited"
         }
     },
+    memory: {
+        preparing: "Checking memory",
+        executing: params => {
+            const command = params?.command as string | undefined
+            const path = (params?.path ?? params?.old_path) as string | undefined
+            switch (command) {
+                case "view":
+                    return path ? `Reading memory ${truncate(path, 40)}` : "Reading memory"
+                case "create":
+                    return path ? `Saving memory ${truncate(path, 40)}` : "Saving memory"
+                case "str_replace":
+                case "insert":
+                    return path ? `Updating memory ${truncate(path, 40)}` : "Updating memory"
+                case "delete":
+                    return path ? `Deleting memory ${truncate(path, 40)}` : "Deleting memory"
+                case "rename":
+                    return "Reorganizing memory"
+                default:
+                    return "Accessing memory"
+            }
+        },
+        complete: params => {
+            const command = params?.command as string | undefined
+            return command === "view" ? "Memory read" : "Memory updated"
+        }
+    },
 
     // ===================
     // Snowflake Tools

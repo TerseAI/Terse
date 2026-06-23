@@ -8,12 +8,13 @@ import { db } from "../loaders/prisma"
 import { settings } from "../settings"
 import { type LocalPackagesBundle, packLocalSdkPackages } from "../utility/localPackages"
 
+import { SDK_SANDBOX_APP_NAME } from "./SdkJobExecutionService"
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkDependencyImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
-import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, MEMORY_MOUNT_PATH, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
@@ -85,10 +86,11 @@ export class SdkSandboxImageService {
     async prepareFromSourceZip(params: {
         zipBuffer: Buffer
         organizationId: string
+        projectId: string
         cliVersion: string
         onProgress?: (phase: "dependency_image" | "source_image") => void
     }): Promise<PreparedSdkSandboxImages> {
-        const { zipBuffer, organizationId, cliVersion, onProgress } = params
+        const { zipBuffer, organizationId, projectId, cliVersion, onProgress } = params
         const archive = new ZipSdkProjectArchive(zipBuffer)
         const executor = sdkRuntimeExecutorRegistry.resolve(archive.entries)
 
@@ -115,6 +117,7 @@ export class SdkSandboxImageService {
             dependencySandboxImageId: dependencyImage.image_id,
             executor,
             organizationId,
+            projectId,
             sourceHash,
             sourceLayerKey,
             zipBuffer
@@ -268,11 +271,12 @@ export class SdkSandboxImageService {
         dependencySandboxImageId: string
         executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>
         organizationId: string
+        projectId: string
         sourceHash: string
         sourceLayerKey: string
         zipBuffer: Buffer
     }) {
-        const { dependencyImageId, dependencySandboxImageId, executor, organizationId, sourceHash, sourceLayerKey, zipBuffer } = params
+        const { dependencyImageId, dependencySandboxImageId, executor, organizationId, projectId, sourceHash, sourceLayerKey, zipBuffer } = params
         const prisma = db()
         const sandboxService = getSandboxProvider()
 
@@ -329,7 +333,7 @@ export class SdkSandboxImageService {
                 imageId: created.image_id,
                 duration: this.elapsed(buildStarted)
             })
-            await this.prewarmRuntimeSandbox(sandboxImageId, sourceLayerKey)
+            await this.prewarmRuntimeSandbox(sandboxImageId, projectId)
             return created
         } catch (error) {
             if (isUniqueConstraintError(error)) {
@@ -426,12 +430,15 @@ export class SdkSandboxImageService {
         return image.imageId
     }
 
-    private async prewarmRuntimeSandbox(modalSourceImageId: string, sourceLayerKey: string): Promise<void> {
+    private async prewarmRuntimeSandbox(modalSourceImageId: string, projectId: string): Promise<void> {
         const sandboxService = getSandboxProvider()
-        const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
+        const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
+        const uniqueName = runtimeSandboxUniqueName(projectId)
+        await sandboxService.terminateSandbox(app, uniqueName)
         const image = await sandboxService.getImageFromId(modalSourceImageId)
-        const uniqueName = runtimeSandboxUniqueName(sourceLayerKey)
-        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+        const volume = await sandboxService.getOrCreateProjectVolume(projectId)
+        logger.info("SDK runtime sandbox prewarm: mounting project memory volume", { projectId, mountPath: MEMORY_MOUNT_PATH, uniqueName })
+        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, { ...SANDBOX_DEFAULT_OPTIONS, volumes: { [MEMORY_MOUNT_PATH]: volume } })
 
         const proc = await sb.exec(["true"], { stdout: "pipe", stderr: "pipe" })
         const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
@@ -439,7 +446,7 @@ export class SdkSandboxImageService {
 
         if (exitCode !== 0) {
             logger.error("SDK runtime sandbox prewarm failed", {
-                sourceLayerKey,
+                projectId,
                 modalSourceImageId,
                 exitCode,
                 stderr: stderr.trim().slice(0, 500),
@@ -448,7 +455,7 @@ export class SdkSandboxImageService {
             throw new Error(`SDK runtime sandbox prewarm failed with exit code ${exitCode}`)
         }
 
-        logger.info("SDK runtime sandbox prewarm completed", { sourceLayerKey, modalSourceImageId })
+        logger.info("SDK runtime sandbox prewarm completed", { projectId, modalSourceImageId })
     }
 
     private async deleteImage(imageId: string): Promise<void> {

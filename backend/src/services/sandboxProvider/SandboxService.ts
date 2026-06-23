@@ -12,6 +12,19 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
 
     getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<S>
 
+    // Best-effort: terminate a sandbox by its unique name if one is live. No-op if absent.
+    terminateSandbox(app: SandboxApp, uniqueName: string): Promise<void>
+
+    // Return a live sandbox by its unique name, or null if none is live. Does not create.
+    getExistingSandbox(app: SandboxApp, uniqueName: string): Promise<S | null>
+
+    // Per-project persistent volume (Modal Volume v2 / local dir). Always created for executing sandboxes.
+    getOrCreateProjectVolume(projectId: string): Promise<SandboxVolume>
+    deleteProjectVolume(projectId: string): Promise<void>
+    // Filesystem rooted at the project volume. On Modal this attaches to the project's live runtime
+    // sandbox and operates on the mounted volume (committing via `sync`); locally it is direct disk IO.
+    getProjectVolumeFs(projectId: string): Promise<VolumeFs>
+
     getProjectPath(sandbox: S): string
     getDependencyCachePath(sandbox: S, runtime: string): string
     getCliCachePath(sandbox: S): string
@@ -79,6 +92,34 @@ type SandboxCreateParams = {
     cidrAllowlist?: string[]
     proxy?: SandboxProxy
     secrets?: Secret[]
+    /** Mount points (absolute path -> volume handle from getOrCreateProjectVolume). */
+    volumes?: Record<string, SandboxVolume>
+}
+
+/** Opaque per-provider volume handle (Modal Volume / local dir marker). */
+export type SandboxVolume = unknown
+
+export interface VolumeDirEntry {
+    name: string
+    isDirectory: boolean
+    sizeBytes: number
+}
+
+/**
+ * Filesystem rooted at a project volume. All paths are relative to the volume root.
+ * Mutations are only durable after sync() (Modal Volumes v2 commit; no-op locally).
+ */
+export interface VolumeFs {
+    list(dirPath: string): Promise<VolumeDirEntry[]>
+    read(filePath: string): Promise<string | null>
+    write(filePath: string, content: string): Promise<void>
+    stat(path: string): Promise<{ isDirectory: boolean; sizeBytes: number } | null>
+    remove(path: string): Promise<void>
+    rename(fromPath: string, toPath: string): Promise<void>
+    mkdirp(dirPath: string): Promise<void>
+    sync(): Promise<void>
+    /** Release any resources (e.g. an ephemeral sandbox spun up to reach the volume). No-op when attached to a live sandbox. */
+    dispose(): Promise<void>
 }
 
 interface SandboxProxy {

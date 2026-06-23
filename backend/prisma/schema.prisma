@@ -734,6 +734,7 @@ enum OutputConfigType {
   GMAIL_DRAFT
   WEB
   IMAGE_EDIT
+  MEMORY
   ATTIO
   GITHUB
   POSTHOG
