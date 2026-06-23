@@ -38,6 +38,10 @@ import {
 } from "../providers/codegenTypes.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
+// Platform-native integrations have no connected instance, so they never appear in the org's active
+// integrations. Their tools are always generated; availability is still gated by skills at runtime.
+const PLATFORM_NATIVE_INTEGRATIONS = new Set<string>([IntegrationType.TERSE])
+
 export async function generate(provider: LanguageProvider = resolveProvider(), opts?: { apiKey?: string }): Promise<void> {
     intro("terse generate")
     assertProjectRoot(provider, provider.detectionMarkers)
@@ -88,7 +92,7 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
         const raw = await fetchWithAuth<unknown>(ApiRoutes.SDK.TOOL_DEFINITIONS, apiKey)
         const resp = toolDefinitionsResponseSchema.parse(raw)
         const activeSet = new Set(activeTypes as string[])
-        toolDefs = resp.tools.filter(t => activeSet.has(t.integration))
+        toolDefs = resp.tools.filter(t => activeSet.has(t.integration) || PLATFORM_NATIVE_INTEGRATIONS.has(t.integration))
         const skippedToolNames = [...new Set(toolDefs.filter(t => !isValidToolName(t.name)).map(t => t.name))].sort()
         toolDefs = toolDefs.filter(t => isValidToolName(t.name))
         if (skippedToolNames.length > 0) {
