@@ -18,6 +18,7 @@ const VOLUMES_DIR = path.join(SANDBOX_ROOT, "volumes")
 const FAKE_APP_ID = "local-app"
 // "Registry images" don't exist locally — we just mark them as a fresh starting point.
 const REGISTRY_IMAGE_MARKER = "__registry__"
+const IMAGE_MARKER_FILE = ".terse-image-id"
 
 /**
  * Local sandbox provider for self-host. Each sandbox is a working directory on
@@ -95,7 +96,20 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         const t0 = Date.now()
         logger.info("#LocalSandbox getOrCreate begin", { uniqueName, imageId: image.imageId })
         const workingDir = path.join(SANDBOXES_DIR, uniqueName)
-        await fs.rm(workingDir, { recursive: true, force: true })
+
+        if (existsSync(workingDir)) {
+            const existingImageId = await fs
+                .readFile(path.join(workingDir, IMAGE_MARKER_FILE), "utf8")
+                .then(s => s.trim())
+                .catch(() => null)
+            if (existingImageId === image.imageId) {
+                logger.info("#LocalSandbox reused existing", { uniqueName, workingDir, imageId: image.imageId, durationMs: Date.now() - t0 })
+                return new LocalSandbox(uniqueName, workingDir)
+            }
+            logger.info("#LocalSandbox image changed, terminating before recreate", { uniqueName, existingImageId, imageId: image.imageId })
+            await this.terminateSandbox(_app, uniqueName)
+        }
+
         await fs.mkdir(workingDir, { recursive: true })
 
         if (image.imageId !== REGISTRY_IMAGE_MARKER) {
@@ -107,6 +121,8 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
             }
             await fs.cp(imagePath, workingDir, { recursive: true })
         }
+
+        await fs.writeFile(path.join(workingDir, IMAGE_MARKER_FILE), image.imageId)
 
         logger.info("#LocalSandbox created", { uniqueName, workingDir, durationMs: Date.now() - t0 })
         return new LocalSandbox(uniqueName, workingDir)
@@ -143,7 +159,7 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         logger.info("#LocalSandbox volume deleted", { projectId, dir })
     }
 
-    async getProjectVolumeFs(projectId: string): Promise<VolumeFs> {
+    async getProjectVolumeFs(projectId: string, _runId?: string): Promise<VolumeFs> {
         const dir = path.join(VOLUMES_DIR, projectVolumeName(projectId))
         await fs.mkdir(dir, { recursive: true })
         logger.info("#LocalSandbox volume fs ready", { projectId, dir })

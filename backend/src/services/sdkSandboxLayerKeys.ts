@@ -30,8 +30,9 @@ export function sourceImageBuildSandboxUniqueName(sourceLayerKey: string): strin
     return `sb-${sourceLayerKeyHexBody(sourceLayerKey)}`
 }
 
-export function runtimeSandboxUniqueName(projectId: string): string {
-    return `sr-${projectId}`
+export function runtimeSandboxUniqueName(projectId: string, runId: string): string {
+    const digest = crypto.createHash("sha256").update(projectId).update("\0").update(runId).digest("hex").slice(0, 32)
+    return `sr-${digest}`
 }
 
 export const SDK_SANDBOX_APP_NAME = "terse-sdk-sandbox"

@@ -132,6 +132,7 @@ export class SdkJobExecutionService {
                     logger.warn("Failed to delete sandbox API token", { error: err, tokenId: sandboxTokenId })
                 })
             }
+            await this.terminateRunSandbox(agent.project.id, runId)
         }
     }
 
@@ -215,7 +216,7 @@ export class SdkJobExecutionService {
     }): Promise<SandboxCommandResult> {
         const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion } = params
 
-        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId)
+        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId)
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
@@ -255,7 +256,17 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string): Promise<Sandbox> {
+    private async terminateRunSandbox(projectId: string, runId: string): Promise<void> {
+        try {
+            const sandboxService = getSandboxProvider()
+            const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
+            await sandboxService.terminateSandbox(app, runtimeSandboxUniqueName(projectId, runId))
+        } catch (error) {
+            logger.warn("SDK sandbox: failed to terminate run sandbox", { projectId, runId, error })
+        }
+    }
+
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string, runId: string): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
@@ -263,9 +274,9 @@ export class SdkJobExecutionService {
 
         const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
         const image = await sandboxService.getImageFromId(source.imageId)
-        const uniqueName = runtimeSandboxUniqueName(projectId)
+        const uniqueName = runtimeSandboxUniqueName(projectId, runId)
         const volume = await sandboxService.getOrCreateProjectVolume(projectId)
-        logger.info("SDK sandbox: mounting project memory volume", { projectId, mountPath: MEMORY_MOUNT_PATH, uniqueName })
+        logger.info("SDK sandbox: mounting project memory volume", { projectId, runId, mountPath: MEMORY_MOUNT_PATH, uniqueName })
         return sandboxService.getOrCreateSandbox(app, image, uniqueName, { ...SANDBOX_DEFAULT_OPTIONS, volumes: { [MEMORY_MOUNT_PATH]: volume } })
     }
 

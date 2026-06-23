@@ -34,7 +34,7 @@ export const memoryTool = defineSessionTool({
         const { projectId, automationId } = await resolveMemoryScope(runId)
         const command = (input as MemoryInput).command
         logger.info("SDK memory tool: command", { runId, projectId, automationId, command, path: (input as MemoryInput).path ?? undefined })
-        const fs = await getSandboxProvider().getProjectVolumeFs(projectId)
+        const fs = await getSandboxProvider().getProjectVolumeFs(projectId, runId)
         try {
             const result = await runMemoryCommand(fs, automationId, input as MemoryInput)
             return { success: true, result }

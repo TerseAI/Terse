@@ -77,7 +77,6 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
                 zipBuffer: sourceZipBuffer,
                 organizationId,
-                projectId,
                 cliVersion,
                 onProgress: phase => {
                     emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")

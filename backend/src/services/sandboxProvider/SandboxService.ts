@@ -21,9 +21,10 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     // Per-project persistent volume (Modal Volume v2 / local dir). Always created for executing sandboxes.
     getOrCreateProjectVolume(projectId: string): Promise<SandboxVolume>
     deleteProjectVolume(projectId: string): Promise<void>
-    // Filesystem rooted at the project volume. On Modal this attaches to the project's live runtime
-    // sandbox and operates on the mounted volume (committing via `sync`); locally it is direct disk IO.
-    getProjectVolumeFs(projectId: string): Promise<VolumeFs>
+    // Filesystem rooted at the project volume. On Modal, when runId names a live runtime sandbox this
+    // attaches to it and operates on the mounted volume (committing via `sync`); otherwise it mounts the
+    // volume on a throwaway sandbox. Locally it is direct disk IO.
+    getProjectVolumeFs(projectId: string, runId?: string): Promise<VolumeFs>
 
     getProjectPath(sandbox: S): string
     getDependencyCachePath(sandbox: S, runtime: string): string
