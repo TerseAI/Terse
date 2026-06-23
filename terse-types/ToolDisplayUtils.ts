@@ -33,6 +33,40 @@ function safeParseResult(result?: string): Record<string, unknown> | undefined {
     }
 }
 
+/** The memory tool returns { success, result }; pull out the human-readable result message. */
+function memoryResultMessage(result?: string): string | undefined {
+    const message = safeParseResult(result)?.result
+    return typeof message === "string" ? message : undefined
+}
+
+/**
+ * Map a memory tool result message (authored in backend memoryTool.ts) to a specific past-tense label.
+ * Returns null when unrecognized (errors / no-ops) so the caller can fall back to the params.
+ */
+function describeMemoryResult(message?: string): string | null {
+    if (!message) return null
+    if (message.startsWith("Here's the content of ")) {
+        return `Read memory ${truncate(message.slice("Here's the content of ".length).split(" with line numbers")[0], 40)}`
+    }
+    if (message.startsWith("Here're the files and directories")) {
+        const match = message.match(/ in (.+?), excluding/)
+        return match ? `Listed memory ${truncate(match[1], 40)}` : "Listed memory"
+    }
+    if (message.startsWith("File created successfully at: ")) {
+        return `Saved memory ${truncate(message.slice("File created successfully at: ".length), 40)}`
+    }
+    if (message.startsWith("Successfully deleted ")) {
+        return `Deleted memory ${truncate(message.slice("Successfully deleted ".length), 40)}`
+    }
+    if (message.startsWith("Successfully renamed ")) {
+        return "Renamed memory file"
+    }
+    const editedFile = message.match(/^The file (.+) has been edited\.$/)
+    if (editedFile) return `Updated memory ${truncate(editedFile[1], 40)}`
+    if (message === "The memory file has been edited.") return "Updated memory"
+    return null
+}
+
 /**
  * Display configurations for all tools.
  * Each tool defines how it should be displayed in preparing, executing, and complete phases.
@@ -763,9 +797,29 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
                     return "Accessing memory"
             }
         },
-        complete: params => {
+        complete: (params, result) => {
+            // Prefer the tool's own result message: it's always present at completion and authored by us,
+            // so the label stays accurate even when streamed params aren't reflected at completion time.
+            const fromResult = describeMemoryResult(memoryResultMessage(result))
+            if (fromResult) return fromResult
+
             const command = params?.command as string | undefined
-            return command === "view" ? "Memory read" : "Memory updated"
+            const path = (params?.path ?? params?.old_path) as string | undefined
+            switch (command) {
+                case "view":
+                    return path ? `Read memory ${truncate(path, 40)}` : "Read memory"
+                case "create":
+                    return path ? `Saved memory ${truncate(path, 40)}` : "Saved memory"
+                case "str_replace":
+                case "insert":
+                    return path ? `Updated memory ${truncate(path, 40)}` : "Updated memory"
+                case "delete":
+                    return path ? `Deleted memory ${truncate(path, 40)}` : "Deleted memory"
+                case "rename":
+                    return "Renamed memory file"
+                default:
+                    return "Memory"
+            }
         }
     },
 
