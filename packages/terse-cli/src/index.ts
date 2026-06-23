@@ -150,7 +150,7 @@ Examples:
 
 testCommand
     .command("clear-memory")
-    .description("Delete the isolated memory that `terse test`/`terse run` accumulate for this project")
+    .description("Delete the isolated memory that `terse test` accumulates for this project")
     .action(async () => {
         await testClearMemory()
     })

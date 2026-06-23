@@ -41,8 +41,6 @@ type SdkSourceImageRecord = {
     cliVersion: string
 }
 
-export { SDK_SANDBOX_APP_NAME }
-
 export class SdkJobExecutionService {
     private emitter: StreamEventEmitter | null = null
 

@@ -3,8 +3,8 @@ import { getSandboxProvider } from "../sandboxProvider"
 
 /**
  * Remove the memory subtrees of the given automations from a project's volume. Best-effort: a failure
- * is logged and swallowed so it never blocks the deletion that triggered it. Reuses the project's live
- * runtime sandbox when present; otherwise the provider spins an ephemeral mounted sandbox.
+ * is logged and swallowed so it never blocks the deletion that triggered it. Runs against an ephemeral
+ * mounted sandbox (no runId passed), since purge happens on delete when no run sandbox is live.
  */
 export async function purgeAutomationsMemory(projectId: string, automationIds: string[]): Promise<void> {
     if (automationIds.length === 0) return

@@ -54,7 +54,7 @@ async function resolveMemoryScope(runId: string): Promise<{ projectId: string; s
         select: { automation_id: true, automation: { select: { project_id: true } } }
     })
     if (!run) {
-        throw new Error(`memory tool: run ${runId} not found`)
+        throw new Error("memory tool: no project linked for this run. Memory requires a project (link one with `terse init` or run a deployed job).")
     }
     return { projectId: run.automation.project_id, subtreeKey: run.automation_id }
 }
