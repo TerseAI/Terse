@@ -26,6 +26,13 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     // volume on a throwaway sandbox. Locally it is direct disk IO.
     getProjectVolumeFs(projectId: string, runId?: string): Promise<VolumeFs>
 
+    // Isolated per-project volume for `terse test` memory (mem-test-<projectId>), separate from the
+    // production volume above. The fs always uses a throwaway sandbox / direct disk IO; it never attaches
+    // to a live runtime sandbox (those mount the production volume).
+    getOrCreateTestProjectVolume(projectId: string): Promise<SandboxVolume>
+    deleteTestProjectVolume(projectId: string): Promise<void>
+    getTestProjectVolumeFs(projectId: string): Promise<VolumeFs>
+
     getProjectPath(sandbox: S): string
     getDependencyCachePath(sandbox: S, runtime: string): string
     getCliCachePath(sandbox: S): string

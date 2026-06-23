@@ -22,6 +22,7 @@ export type SessionWithTracking<T extends AppSession> = T & {
     }
     runId: string
     agentId: string
+    testMemoryScope?: { projectId: string; jobName: string }
 }
 
 /**

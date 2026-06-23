@@ -6,7 +6,7 @@ import path from "node:path"
 import { Readable } from "node:stream"
 
 import logger from "../../common/logger"
-import { projectVolumeName } from "../sdkSandboxLayerKeys"
+import { projectVolumeName, testProjectVolumeName } from "../sdkSandboxLayerKeys"
 
 import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, SandboxVolume, VolumeDirEntry, VolumeFs, WriteStream } from "./SandboxService"
 import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, terminateSandboxDirProcesses, unregisterSandbox } from "./localSandboxLifecycle"
@@ -160,9 +160,30 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
     }
 
     async getProjectVolumeFs(projectId: string, _runId?: string): Promise<VolumeFs> {
-        const dir = path.join(VOLUMES_DIR, projectVolumeName(projectId))
+        return this.volumeFsForName(projectVolumeName(projectId))
+    }
+
+    async getOrCreateTestProjectVolume(projectId: string): Promise<SandboxVolume> {
+        const dir = path.join(VOLUMES_DIR, testProjectVolumeName(projectId))
         await fs.mkdir(dir, { recursive: true })
-        logger.info("#LocalSandbox volume fs ready", { projectId, dir })
+        logger.info("#LocalSandbox test volume ensured", { projectId, dir })
+        return dir
+    }
+
+    async deleteTestProjectVolume(projectId: string): Promise<void> {
+        const dir = path.join(VOLUMES_DIR, testProjectVolumeName(projectId))
+        await fs.rm(dir, { recursive: true, force: true })
+        logger.info("#LocalSandbox test volume deleted", { projectId, dir })
+    }
+
+    async getTestProjectVolumeFs(projectId: string): Promise<VolumeFs> {
+        return this.volumeFsForName(testProjectVolumeName(projectId))
+    }
+
+    private async volumeFsForName(name: string): Promise<VolumeFs> {
+        const dir = path.join(VOLUMES_DIR, name)
+        await fs.mkdir(dir, { recursive: true })
+        logger.info("#LocalSandbox volume fs ready", { name, dir })
         return new LocalVolumeFs(dir)
     }
 }

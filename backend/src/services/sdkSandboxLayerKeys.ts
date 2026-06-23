@@ -44,3 +44,13 @@ export const MEMORY_MOUNT_PATH = "/mnt/memory"
 export function projectVolumeName(projectId: string): string {
     return `mem-${projectId}`
 }
+
+/** Name of the per-project isolated volume holding `terse test` memory, separate from production. */
+export function testProjectVolumeName(projectId: string): string {
+    return `mem-test-${projectId}`
+}
+
+/** Filesystem-safe per-job subtree key for test memory (job names are user-controlled). */
+export function testMemorySubtreeKey(jobName: string): string {
+    return `job-${crypto.createHash("sha256").update(jobName).digest("hex").slice(0, 32)}`
+}

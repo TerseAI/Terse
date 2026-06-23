@@ -520,6 +520,8 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         if (ctx?.sessionId) headers["X-Terse-Session-Id"] = ctx.sessionId
         const runIdHeader = ctx?.runId ?? process.env.TERSE_RUN_ID
         if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
+        if (ctx?.projectId) headers["X-Terse-Project-Id"] = ctx.projectId
+        if (ctx?.jobName) headers["X-Terse-Job-Name"] = ctx.jobName
         return headers
     }
 

@@ -3,7 +3,7 @@ import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, 
 import logger from "../../common/logger"
 import { shellQuote } from "../../common/shellEscape"
 import { SettingsDependant } from "../../settings"
-import { MEMORY_MOUNT_PATH, SDK_SANDBOX_APP_NAME, projectVolumeName, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
+import { MEMORY_MOUNT_PATH, SDK_SANDBOX_APP_NAME, projectVolumeName, runtimeSandboxUniqueName, testProjectVolumeName } from "../sdkSandboxLayerKeys"
 
 import { Sandbox, SandboxApp, SandboxImage, SandboxService, SandboxVolume, VolumeDirEntry, VolumeFs } from "./SandboxService"
 
@@ -149,8 +149,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return this.lookupLiveSandbox(app.name, this.fullSandboxName(app.name, uniqueName), Date.now())
     }
 
-    async getOrCreateProjectVolume(projectId: string): Promise<SandboxVolume> {
-        const name = projectVolumeName(projectId)
+    private async getOrCreateVolumeByName(name: string): Promise<ModalVolume> {
         // Modal's high-level volumes.fromName() cannot request a filesystem version, so we call the
         // control-plane VolumeGetOrCreate RPC directly to force Volumes v2 (required so `sync` can commit
         // memory writes from a JS-driven sandbox). This uses SDK-internal surface (cpClient + the proto
@@ -165,24 +164,43 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             version: 2
         })
         const volume = await this.modal.volumes.fromName(name)
-        logger.info("Modal volume: ensured project volume (v2)", { projectId, name, volumeId: resp.volumeId, durationMs: Date.now() - t0 })
+        logger.info("Modal volume: ensured volume (v2)", { name, volumeId: resp.volumeId, durationMs: Date.now() - t0 })
         return volume
     }
 
-    async deleteProjectVolume(projectId: string): Promise<void> {
-        const name = projectVolumeName(projectId)
+    private async deleteVolumeByName(name: string): Promise<void> {
         try {
             await this.modal.volumes.delete(name)
-            logger.info("Modal volume: deleted project volume", { projectId, name })
+            logger.info("Modal volume: deleted volume", { name })
         } catch (error) {
             if (error instanceof NotFoundError) return
-            logger.warn("Modal volume: delete project volume failed, continuing", { projectId, name, errorMessage: errorMessage(error) })
+            logger.warn("Modal volume: delete volume failed, continuing", { name, errorMessage: errorMessage(error) })
         }
     }
 
-    async getProjectVolumeFs(projectId: string, runId?: string): Promise<VolumeFs> {
+    private async ephemeralVolumeFs(volumeName: string): Promise<VolumeFs> {
         const app = await this.getOrCreateApp(SDK_SANDBOX_APP_NAME)
+        const volume = await this.getOrCreateVolumeByName(volumeName)
+        const image = this.getImageFromRegistry("alpine:3")
+        const sb = await this.modal.sandboxes.create(app as ModalApp, image, {
+            ...SANDBOX_DEFAULT_OPTIONS,
+            volumes: { [MEMORY_MOUNT_PATH]: volume }
+        })
+        logger.info("Modal volume: attached fs via ephemeral sandbox", { volumeName, mountPath: MEMORY_MOUNT_PATH, sandboxId: sb.sandboxId })
+        return new ModalVolumeFs(sb, MEMORY_MOUNT_PATH, sb)
+    }
+
+    async getOrCreateProjectVolume(projectId: string): Promise<SandboxVolume> {
+        return this.getOrCreateVolumeByName(projectVolumeName(projectId))
+    }
+
+    async deleteProjectVolume(projectId: string): Promise<void> {
+        await this.deleteVolumeByName(projectVolumeName(projectId))
+    }
+
+    async getProjectVolumeFs(projectId: string, runId?: string): Promise<VolumeFs> {
         if (runId) {
+            const app = await this.getOrCreateApp(SDK_SANDBOX_APP_NAME)
             const existing = await this.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
             if (existing) {
                 logger.info("Modal volume: attached fs to live runtime sandbox", { projectId, runId, mountPath: MEMORY_MOUNT_PATH, sandboxId: existing.sandboxId })
@@ -192,14 +210,19 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
 
         // No live runtime sandbox (e.g. memory op outside a run, such as agent-delete purge): spin up a
         // throwaway minimal sandbox with the volume mounted, which dispose() terminates.
-        const volume = (await this.getOrCreateProjectVolume(projectId)) as ModalVolume
-        const image = this.getImageFromRegistry("alpine:3")
-        const sb = await this.modal.sandboxes.create(app as ModalApp, image, {
-            ...SANDBOX_DEFAULT_OPTIONS,
-            volumes: { [MEMORY_MOUNT_PATH]: volume }
-        })
-        logger.info("Modal volume: attached fs via ephemeral sandbox (no live runtime sandbox)", { projectId, mountPath: MEMORY_MOUNT_PATH, sandboxId: sb.sandboxId })
-        return new ModalVolumeFs(sb, MEMORY_MOUNT_PATH, sb)
+        return this.ephemeralVolumeFs(projectVolumeName(projectId))
+    }
+
+    async getOrCreateTestProjectVolume(projectId: string): Promise<SandboxVolume> {
+        return this.getOrCreateVolumeByName(testProjectVolumeName(projectId))
+    }
+
+    async deleteTestProjectVolume(projectId: string): Promise<void> {
+        await this.deleteVolumeByName(testProjectVolumeName(projectId))
+    }
+
+    async getTestProjectVolumeFs(projectId: string): Promise<VolumeFs> {
+        return this.ephemeralVolumeFs(testProjectVolumeName(projectId))
     }
 
     private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<ModalSandbox | null> {

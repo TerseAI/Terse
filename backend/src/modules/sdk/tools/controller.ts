@@ -20,6 +20,7 @@ import {
     persistDeterministicToolCallStart
 } from "../../../modules/agents/toolCallHistory"
 import { OutputFactory } from "../../../outputs/abstract/OutputFactory"
+import { resolveTestMemoryScope } from "../testMemoryScope"
 
 type SdkFunctionTool = FunctionTool<SessionWithTracking<Session>, z.ZodObject<any>, unknown>
 type SdkToolDescriptor = {
@@ -126,6 +127,7 @@ export async function handleToolExecute(req: Request, res: Response) {
     const persistedRunContext = await resolvePersistedRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
     const effectiveRunId = persistedRunContext?.runId ?? crypto.randomUUID()
     const effectiveAgentId = persistedRunContext?.agentId ?? "sdk-tool-execute"
+    const testMemoryScope = persistedRunContext ? null : await resolveTestMemoryScope(req, user)
     const toolParams = params ?? {}
     const callId = `sdk-tool-${randomString(15)}`
 
@@ -143,7 +145,8 @@ export async function handleToolExecute(req: Request, res: Response) {
             user,
             agent: { toolApprovals: [] },
             runId: effectiveRunId,
-            agentId: effectiveAgentId
+            agentId: effectiveAgentId,
+            testMemoryScope: testMemoryScope ?? undefined
         } satisfies SessionWithTracking<Session>
     }
 

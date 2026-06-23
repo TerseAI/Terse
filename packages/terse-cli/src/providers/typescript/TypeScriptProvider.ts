@@ -166,6 +166,7 @@ class TypeScriptProvider implements LanguageProvider {
         opts?: {
             verbose?: boolean
             entryFile?: string
+            projectId?: string
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
@@ -239,7 +240,7 @@ class TypeScriptProvider implements LanguageProvider {
         })
         const closeSession = session.close
 
-        await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL }, async () => {
+        await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL, projectId: opts?.projectId, jobName: job.name }, async () => {
             try {
                 if (job.filter) {
                     const shouldRun = await job.filter(serializedEventRuntime)

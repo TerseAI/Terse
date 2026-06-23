@@ -18,7 +18,9 @@ import { CancelReason } from "../../../modules/agents/cancellation/RunCancellati
 import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellation/runCancellationEffects"
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
+import { getSandboxProvider } from "../../../services/sandboxProvider"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
+import { TestMemoryScope, resolveTestMemoryScope, userOwnsProject } from "../testMemoryScope"
 
 const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({ prompt: z.string().min(1) })
 
@@ -40,6 +42,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     const { send, sandboxRunId } = initSseStream(req, res, productionRunContext?.organizationId)
     const isProductionRun = !!sandboxRunId
     const orgId = productionRunContext?.organizationId ?? user.organizationId
+    const testMemoryScope = isProductionRun ? null : await resolveTestMemoryScope(req, user)
 
     try {
         const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
@@ -52,6 +55,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             toolApprovals: data.toolApprovals ?? [],
             send,
             isProductionRun,
+            testMemoryScope,
             options: data.options,
             outputSchema: data.outputSchema,
             billing: billingForRunner
@@ -123,6 +127,18 @@ async function finalizeFailedProductionRun(runId: string, organizationId: string
     } catch (markErr) {
         logger.error("Failed to finalize failed SDK production run", { error: markErr, runId })
     }
+}
+
+export async function handleClearTestMemory(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
+
+    const projectId = await userOwnsProject(req.body?.projectId, user)
+    if (!projectId) return res.status(404).json({ success: false, error: "Project not found" })
+
+    await getSandboxProvider().deleteTestProjectVolume(projectId)
+    logger.info("[sdk/test-memory/clear] cleared test memory volume", { projectId, userId: user.id })
+    return res.json({ success: true })
 }
 
 async function resolveProductionRunContext(headerRunId: string, user: UserSession): Promise<{ runId: string; agentId: string; organizationId: string } | null> {
@@ -216,6 +232,7 @@ function createSdkRunner(params: {
     toolApprovals: string[]
     send: (event: SdkAgentStreamEvent) => void
     isProductionRun: boolean
+    testMemoryScope: TestMemoryScope | null
     options?: { maxTurns?: number; requireApproval?: boolean }
     outputSchema?: Record<string, unknown>
     billing: BillingService
@@ -230,6 +247,7 @@ function createSdkRunner(params: {
         requireApproval: params.options?.requireApproval ?? true,
         send: params.send,
         isProductionRun: params.isProductionRun,
+        testMemoryScope: params.testMemoryScope,
         outputSchema: params.outputSchema,
         billing: params.billing
     })

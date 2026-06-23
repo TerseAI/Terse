@@ -149,6 +149,7 @@
         "TOOL_DEFINITIONS": "/sdk/tool-definitions",
         "RUN_TRIGGER_EVENT": "/sdk/runs/:runId/trigger-event",
         "AGENT_RUN": "/sdk/agent-run",
+        "CLEAR_TEST_MEMORY": "/sdk/test-memory/clear",
         "APPROVAL_DECISION": "/sdk/approval-decision",
         "SESSION_EVENTS": "/sdk/session-events",
         "LISTEN": "/sdk/listen",

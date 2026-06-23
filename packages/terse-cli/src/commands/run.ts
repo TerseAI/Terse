@@ -6,6 +6,7 @@ import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
 import { getLocalHoistMarker } from "../cliVersion.js"
 import { loadJob } from "../loadJob.js"
+import { readProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
@@ -65,5 +66,5 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         parsedEvent = resolvedEvent.event
     }
 
-    await provider.executeJob(job, runId, parsedEvent, { entryFile, verbose })
+    await provider.executeJob(job, runId, parsedEvent, { entryFile, verbose, projectId: readProjectConfig()?.projectId })
 }

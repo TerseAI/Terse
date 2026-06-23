@@ -4,6 +4,7 @@ import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
 import { getSandboxProvider } from "../../../services/sandboxProvider"
 import { VolumeFs } from "../../../services/sandboxProvider/SandboxService"
+import { testMemorySubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 const MEMORY_ROOT = "/memories"
@@ -31,12 +32,15 @@ export const memoryTool = defineSessionTool({
             throw new Error("memory tool requires an active run context")
         }
 
-        const { projectId, automationId } = await resolveMemoryScope(runId)
+        const testScope = context?.context?.testMemoryScope
+        const isTest = !!testScope
+        const { projectId, subtreeKey } = testScope ? { projectId: testScope.projectId, subtreeKey: testMemorySubtreeKey(testScope.jobName) } : await resolveMemoryScope(runId)
         const command = (input as MemoryInput).command
-        logger.info("SDK memory tool: command", { runId, projectId, automationId, command, path: (input as MemoryInput).path ?? undefined })
-        const fs = await getSandboxProvider().getProjectVolumeFs(projectId, runId)
+        logger.info("SDK memory tool: command", { runId, projectId, subtreeKey, isTest, command, path: (input as MemoryInput).path ?? undefined })
+        const provider = getSandboxProvider()
+        const fs = isTest ? await provider.getTestProjectVolumeFs(projectId) : await provider.getProjectVolumeFs(projectId, runId)
         try {
-            const result = await runMemoryCommand(fs, automationId, input as MemoryInput)
+            const result = await runMemoryCommand(fs, subtreeKey, input as MemoryInput)
             return { success: true, result }
         } finally {
             await fs.dispose().catch(err => logger.warn("memory tool: volume fs dispose failed", { runId, error: err }))
@@ -44,7 +48,7 @@ export const memoryTool = defineSessionTool({
     }
 })
 
-async function resolveMemoryScope(runId: string): Promise<{ projectId: string; automationId: string }> {
+async function resolveMemoryScope(runId: string): Promise<{ projectId: string; subtreeKey: string }> {
     const run = await db().run_history_records.findUnique({
         where: { id: runId },
         select: { automation_id: true, automation: { select: { project_id: true } } }
@@ -52,41 +56,41 @@ async function resolveMemoryScope(runId: string): Promise<{ projectId: string; a
     if (!run) {
         throw new Error(`memory tool: run ${runId} not found`)
     }
-    return { projectId: run.automation.project_id, automationId: run.automation_id }
+    return { projectId: run.automation.project_id, subtreeKey: run.automation_id }
 }
 
-async function runMemoryCommand(fs: VolumeFs, automationId: string, input: MemoryInput): Promise<string> {
+async function runMemoryCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInput): Promise<string> {
     switch (input.command) {
         case "view":
-            return viewCommand(fs, automationId, input)
+            return viewCommand(fs, subtreeKey, input)
         case "create":
-            return createCommand(fs, automationId, input)
+            return createCommand(fs, subtreeKey, input)
         case "str_replace":
-            return strReplaceCommand(fs, automationId, input)
+            return strReplaceCommand(fs, subtreeKey, input)
         case "insert":
-            return insertCommand(fs, automationId, input)
+            return insertCommand(fs, subtreeKey, input)
         case "delete":
-            return deleteCommand(fs, automationId, input)
+            return deleteCommand(fs, subtreeKey, input)
         case "rename":
-            return renameCommand(fs, automationId, input)
+            return renameCommand(fs, subtreeKey, input)
         default:
             return `Error: Unknown command ${String((input as { command?: unknown }).command)}`
     }
 }
 
-async function viewCommand(fs: VolumeFs, automationId: string, input: MemoryInput): Promise<string> {
+async function viewCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInput): Promise<string> {
     const modelPath = input.path ?? MEMORY_ROOT
-    const rel = safeRel(automationId, modelPath)
+    const rel = safeRel(subtreeKey, modelPath)
     if (rel === null) return invalidPath(modelPath)
 
     const stat = await fs.stat(rel)
     if (!stat) {
-        if (rel === automationId) return renderDirListing(modelPath, 0, [])
+        if (rel === subtreeKey) return renderDirListing(modelPath, 0, [])
         return `The path ${modelPath} does not exist. Please provide a valid path.`
     }
 
     if (stat.isDirectory) {
-        const lines = await listDirTwoLevels(fs, automationId, rel, modelPath)
+        const lines = await listDirTwoLevels(fs, subtreeKey, rel, modelPath)
         return renderDirListing(modelPath, stat.sizeBytes, lines)
     }
 
@@ -98,14 +102,14 @@ function renderDirListing(modelPath: string, sizeBytes: number, lines: string[])
     return [`Here're the files and directories up to 2 levels deep in ${modelPath}, excluding hidden items and node_modules:`, `${humanSize(sizeBytes)}\t${modelPath}`, ...lines].join("\n")
 }
 
-async function listDirTwoLevels(fs: VolumeFs, automationId: string, rel: string, modelPath: string): Promise<string[]> {
+async function listDirTwoLevels(fs: VolumeFs, subtreeKey: string, rel: string, modelPath: string): Promise<string[]> {
     const out: string[] = []
     const top = (await fs.list(rel)).filter(e => !e.name.startsWith(".") && e.name !== "node_modules").sort((a, b) => a.name.localeCompare(b.name))
     for (const entry of top) {
         const childModelPath = joinModelPath(modelPath, entry.name)
         out.push(`${humanSize(entry.sizeBytes)}\t${childModelPath}`)
         if (entry.isDirectory) {
-            const childRel = safeRel(automationId, childModelPath)
+            const childRel = safeRel(subtreeKey, childModelPath)
             if (childRel === null) continue
             const children = (await fs.list(childRel)).filter(e => !e.name.startsWith(".") && e.name !== "node_modules").sort((a, b) => a.name.localeCompare(b.name))
             for (const child of children) {
@@ -116,10 +120,10 @@ async function listDirTwoLevels(fs: VolumeFs, automationId: string, rel: string,
     return out
 }
 
-async function createCommand(fs: VolumeFs, automationId: string, input: MemoryInput): Promise<string> {
+async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInput): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: create requires a path"
-    const rel = safeRel(automationId, modelPath)
+    const rel = safeRel(subtreeKey, modelPath)
     if (rel === null) return invalidPath(modelPath)
 
     const existing = await fs.stat(rel)
@@ -130,10 +134,10 @@ async function createCommand(fs: VolumeFs, automationId: string, input: MemoryIn
     return `File created successfully at: ${modelPath}`
 }
 
-async function strReplaceCommand(fs: VolumeFs, automationId: string, input: MemoryInput): Promise<string> {
+async function strReplaceCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInput): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: str_replace requires a path"
-    const rel = safeRel(automationId, modelPath)
+    const rel = safeRel(subtreeKey, modelPath)
     if (rel === null) return invalidPath(modelPath)
 
     const content = await fs.read(rel)
@@ -154,10 +158,10 @@ async function strReplaceCommand(fs: VolumeFs, automationId: string, input: Memo
     return "The memory file has been edited."
 }
 
-async function insertCommand(fs: VolumeFs, automationId: string, input: MemoryInput): Promise<string> {
+async function insertCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInput): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: insert requires a path"
-    const rel = safeRel(automationId, modelPath)
+    const rel = safeRel(subtreeKey, modelPath)
     if (rel === null) return invalidPath(modelPath)
 
     const content = await fs.read(rel)
@@ -176,10 +180,10 @@ async function insertCommand(fs: VolumeFs, automationId: string, input: MemoryIn
     return `The file ${modelPath} has been edited.`
 }
 
-async function deleteCommand(fs: VolumeFs, automationId: string, input: MemoryInput): Promise<string> {
+async function deleteCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInput): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: delete requires a path"
-    const rel = safeRel(automationId, modelPath)
+    const rel = safeRel(subtreeKey, modelPath)
     if (rel === null) return invalidPath(modelPath)
 
     const stat = await fs.stat(rel)
@@ -190,12 +194,12 @@ async function deleteCommand(fs: VolumeFs, automationId: string, input: MemoryIn
     return `Successfully deleted ${modelPath}`
 }
 
-async function renameCommand(fs: VolumeFs, automationId: string, input: MemoryInput): Promise<string> {
+async function renameCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInput): Promise<string> {
     const oldModelPath = input.old_path
     const newModelPath = input.new_path
     if (!oldModelPath || !newModelPath) return "Error: rename requires old_path and new_path"
-    const oldRel = safeRel(automationId, oldModelPath)
-    const newRel = safeRel(automationId, newModelPath)
+    const oldRel = safeRel(subtreeKey, oldModelPath)
+    const newRel = safeRel(subtreeKey, newModelPath)
     if (oldRel === null) return invalidPath(oldModelPath)
     if (newRel === null) return invalidPath(newModelPath)
 
@@ -209,7 +213,7 @@ async function renameCommand(fs: VolumeFs, automationId: string, input: MemoryIn
 
 // Maps a model-facing /memories path to a volume-relative path under the automation's subtree, or null
 // if it escapes /memories (path traversal). The automation subtree gives per-agent isolation.
-function safeRel(automationId: string, modelPath: string): string | null {
+function safeRel(subtreeKey: string, modelPath: string): string | null {
     if (!modelPath || modelPath.includes("\0")) return null
     const lowered = modelPath.toLowerCase()
     if (lowered.includes("%2e") || lowered.includes("%2f") || modelPath.includes("..")) return null
@@ -225,8 +229,8 @@ function safeRel(automationId: string, modelPath: string): string | null {
 
     const normalized = path.posix.normalize(rest)
     if (normalized.startsWith("..") || path.posix.isAbsolute(normalized)) return null
-    if (normalized === "" || normalized === ".") return automationId
-    return `${automationId}/${normalized}`
+    if (normalized === "" || normalized === ".") return subtreeKey
+    return `${subtreeKey}/${normalized}`
 }
 
 function invalidPath(modelPath: string): string {

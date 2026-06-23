@@ -24,7 +24,7 @@ import { replay } from "./commands/replay.js"
 import { run } from "./commands/run.js"
 import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./commands/secrets.js"
 import { targetClear, targetStatus, targetUse } from "./commands/target.js"
-import { test, testList, testRun, testShow } from "./commands/test.js"
+import { test, testClearMemory, testList, testRun, testShow } from "./commands/test.js"
 import { isCliRunCommandEnabled } from "./env.js"
 import { isPromptCancellationError } from "./promptErrors.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
@@ -146,6 +146,13 @@ Examples:
             verbose: opts?.verbose,
             entryFile: opts?.entryFile
         })
+    })
+
+testCommand
+    .command("clear-memory")
+    .description("Delete the isolated memory that `terse test`/`terse run` accumulate for this project")
+    .action(async () => {
+        await testClearMemory()
     })
 
 program

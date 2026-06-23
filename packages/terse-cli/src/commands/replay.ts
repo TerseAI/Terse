@@ -1,6 +1,7 @@
 import { readApiKeyOrBail, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
 import { loadJob } from "../loadJob.js"
+import { readProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
@@ -20,5 +21,5 @@ export async function replay(runId: string, provider: LanguageProvider = resolve
 
     const { job } = await loadJob(provider, runHistoryRecord.agentName)
 
-    await provider.executeJob(job, null, runHistoryRecord.event, { verbose: true })
+    await provider.executeJob(job, null, runHistoryRecord.event, { verbose: true, projectId: readProjectConfig()?.projectId })
 }
