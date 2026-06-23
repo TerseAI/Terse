@@ -15,6 +15,8 @@ export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
 const CREATE_MAX_ATTEMPTS = 6
 const CREATE_RETRY_BASE_DELAY_MS = 150
 
+const SANDBOX_IMAGE_TAG = "terseSourceImageId"
+
 export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, ModalSandbox> {
     readonly settingsKey = "modal"
     readonly supportsContainerizedRunners = true
@@ -108,7 +110,10 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
 
         const existing = await this.lookupLiveSandbox(app.name, name, opStart)
         if (existing) {
-            return existing
+            if (await this.sandboxMatchesImage(existing, image.imageId, app.name, name)) {
+                return existing
+            }
+            await this.terminateStaleSandbox(existing, app.name, name)
         }
 
         return this.createSandboxWithRetries(app, image, name, params, opStart)
@@ -248,6 +253,19 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         }
     }
 
+    private async sandboxMatchesImage(sandbox: ModalSandbox, expectedImageId: string, appName: string, name: string): Promise<boolean> {
+        try {
+            const tags = await sandbox.getTags()
+            const taggedImageId = tags[SANDBOX_IMAGE_TAG]
+            if (taggedImageId === expectedImageId) return true
+            logger.info("Modal sandbox: live sandbox image mismatch, will recreate", { app: appName, name, sandboxId: sandbox.sandboxId, taggedImageId: taggedImageId ?? null, expectedImageId })
+            return false
+        } catch (error) {
+            logger.warn("Modal sandbox: getTags failed, recreating to be safe", { app: appName, name, sandboxId: sandbox.sandboxId, errorMessage: errorMessage(error) })
+            return false
+        }
+    }
+
     /** terminate() is a no-op if the sandbox already finished (Modal docs). */
     private async terminateStaleSandbox(sandbox: Sandbox, appName: string, name: string): Promise<void> {
         const t0 = Date.now()
@@ -289,7 +307,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
                     throw error
                 }
 
-                const recovered = await this.recoverFromCreateConflict(app.name!, name, attempt, opStart)
+                const recovered = await this.recoverFromCreateConflict(app.name!, name, imageRef.imageId, attempt, opStart)
                 if (recovered) {
                     return recovered
                 }
@@ -313,6 +331,9 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             attempt
         })
         const sandbox = await this.modal.sandboxes.create(appRef, imageRef, { ...params, name })
+        await sandbox.setTags({ [SANDBOX_IMAGE_TAG]: imageRef.imageId }).catch(error => {
+            logger.warn("Modal sandbox: setTags failed, image reuse check will recreate next time", { app: app.name, name, sandboxId: sandbox.sandboxId, errorMessage: errorMessage(error) })
+        })
 
         logger.info("Modal sandbox: created new", {
             app: app.name,
@@ -326,7 +347,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return sandbox
     }
 
-    private async recoverFromCreateConflict(appName: string, name: string, attempt: number, opStart: number): Promise<ModalSandbox | null> {
+    private async recoverFromCreateConflict(appName: string, name: string, expectedImageId: string, attempt: number, opStart: number): Promise<ModalSandbox | null> {
         const recoveryStart = Date.now()
 
         logger.warn("Modal sandbox: name conflict on create, attempting recovery", {
@@ -339,7 +360,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             const sandbox = await this.modal.sandboxes.fromName(appName, name)
             const status = await sandbox.poll()
 
-            if (status === null && (await this.livenessProbe(sandbox, appName, name))) {
+            if (status === null && (await this.sandboxMatchesImage(sandbox, expectedImageId, appName, name)) && (await this.livenessProbe(sandbox, appName, name))) {
                 logger.info("Modal sandbox: conflict resolved by reusing live sandbox", {
                     app: appName,
                     name,
@@ -516,11 +537,11 @@ class ModalVolumeFs implements VolumeFs {
         // Volumes v2: flush + persist all data and metadata changes from the mount.
         const t0 = Date.now()
         const res = await this.run(`sync ${shellQuote(this.mountPath)}`)
-        if (res.exitCode === 0) {
-            logger.info("Modal volume: committed (sync)", { mountPath: this.mountPath, sandboxId: this.sb.sandboxId, durationMs: Date.now() - t0 })
-        } else {
-            logger.warn("Modal volume: sync returned non-zero exit", { mountPath: this.mountPath, sandboxId: this.sb.sandboxId, exitCode: res.exitCode, stderr: res.stderr.trim().slice(0, 200) })
+        if (res.exitCode !== 0) {
+            logger.error("Modal volume: sync returned non-zero exit", { mountPath: this.mountPath, sandboxId: this.sb.sandboxId, exitCode: res.exitCode, stderr: res.stderr.trim().slice(0, 200) })
+            throw new Error(res.stderr.trim() || `Failed to sync ${this.mountPath} (exit ${res.exitCode})`)
         }
+        logger.info("Modal volume: committed (sync)", { mountPath: this.mountPath, sandboxId: this.sb.sandboxId, durationMs: Date.now() - t0 })
     }
 
     async dispose(): Promise<void> {
