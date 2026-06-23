@@ -99,7 +99,8 @@ export class SdkJobExecutionService {
                 agentId: agent.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
-                cliVersion: sourceImage.cliVersion
+                cliVersion: sourceImage.cliVersion,
+                projectId: agent.project.id
             })
 
             if (result.exitCode === 0) {
@@ -208,10 +209,11 @@ export class SdkJobExecutionService {
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
         cliVersion: string
+        projectId: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion } = params
+        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion, projectId } = params
 
-        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
+        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId)
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
@@ -251,7 +253,7 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string): Promise<Sandbox> {
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
@@ -259,7 +261,7 @@ export class SdkJobExecutionService {
 
         const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
         const image = await sandboxService.getImageFromId(source.imageId)
-        const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey)
+        const uniqueName = runtimeSandboxUniqueName(projectId)
         return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
     }
 

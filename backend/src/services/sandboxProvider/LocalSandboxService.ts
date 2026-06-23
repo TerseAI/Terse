@@ -8,7 +8,7 @@ import { Readable } from "node:stream"
 import logger from "../../common/logger"
 
 import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, WriteStream } from "./SandboxService"
-import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, unregisterSandbox } from "./localSandboxLifecycle"
+import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, terminateSandboxDir, unregisterSandbox } from "./localSandboxLifecycle"
 
 const SANDBOX_ROOT = "/data/sandbox"
 const IMAGES_DIR = path.join(SANDBOX_ROOT, "images")
@@ -108,6 +108,12 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
 
         logger.info("#LocalSandbox created", { uniqueName, workingDir, durationMs: Date.now() - t0 })
         return new LocalSandbox(uniqueName, workingDir)
+    }
+
+    async terminateSandboxByName(_app: SandboxApp, uniqueName: string): Promise<void> {
+        const workingDir = path.join(SANDBOXES_DIR, uniqueName)
+        logger.info("#LocalSandbox terminate by name", { uniqueName, workingDir })
+        await terminateSandboxDir(workingDir)
     }
 }
 

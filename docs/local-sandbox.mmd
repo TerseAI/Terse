@@ -1,0 +1,40 @@
+flowchart LR
+    subgraph DEPLOY["terse deploy (build image)"]
+        direction LR
+        D1["getOrCreateSandbox(__registry__)<br/>rm -rf + mkdir<br/>sandboxes/&lt;name&gt;/"] --> D2["exec(npm install ...)<br/>child_process.spawn<br/>cwd = workingDir"]
+        D2 --> D3["snapshotFilesystem()<br/>fs.cp(workingDir → images/local-&lt;uuid&gt;/)"]
+        D3 --> D4(["imageId saved in DB"])
+    end
+
+    subgraph DISK["/data/sandbox/ (on disk)"]
+        direction LR
+        IMG["images/<br/>local-abc123/<br/>(frozen snapshots)"]
+        SBX["sandboxes/<br/>&lt;run&gt;/<br/>├─ project/<br/>├─ cache/<br/>├─ scratch/<br/>└─ .terse-pids"]
+    end
+
+    subgraph RUN["job run (use image)"]
+        direction LR
+        R1["getOrCreateSandbox(local-abc123)<br/>fs.cp(images/... → sandboxes/&lt;run&gt;/)"] --> R2["exec(node run.js, env)<br/>spawn cwd=workingDir<br/>append pid → .terse-pids"]
+        R2 --> R3["stdout/stderr streams<br/>(wrapped as ContainerProcess)"]
+        R3 --> R4["terminate()<br/>SIGTERM children<br/>clear .terse-pids"]
+    end
+
+    subgraph LIFE["orphan cleanup (localSandboxLifecycle.ts)"]
+        direction LR
+        L1{"how did<br/>backend stop?"} -->|"Ctrl+C / SIGTERM"| L2["signal handler<br/>walks liveSandboxes<br/>→ SIGTERM each"]
+        L1 -->|"exception"| L3["terminate()<br/>→ SIGTERM children"]
+        L1 -->|"hard crash / OOM"| L4["no JS handler runs"]
+        L4 --> L5["next startup:<br/>sweepOrphanedSandboxProcesses<br/>read .terse-pids → SIGTERM survivors"]
+    end
+
+    D3 --> IMG
+    IMG --> R1
+    R2 --> SBX
+    R2 -.records pid.-> SBX
+    SBX -.read at boot.-> L5
+
+    style DISK fill:#e8f0ff
+    style IMG fill:#dbeafe
+    style SBX fill:#dcfce7
+    style L4 fill:#fee2e2
+    style L5 fill:#fef9c3

@@ -329,7 +329,6 @@ export class SdkSandboxImageService {
                 imageId: created.image_id,
                 duration: this.elapsed(buildStarted)
             })
-            await this.prewarmRuntimeSandbox(sandboxImageId, sourceLayerKey)
             return created
         } catch (error) {
             if (isUniqueConstraintError(error)) {
@@ -426,29 +425,39 @@ export class SdkSandboxImageService {
         return image.imageId
     }
 
-    private async prewarmRuntimeSandbox(modalSourceImageId: string, sourceLayerKey: string): Promise<void> {
+    /**
+     * Tear down a project's runtime sandbox and prewarm from the given source image. Terminate
+     * must precede getOrCreateSandbox: it returns a live sandbox by name and ignores the image,
+     * so without teardown a redeploy keeps serving the previous image until idle timeout.
+     */
+    async refreshProjectRuntimeSandbox(params: { projectId: string; sourceImageRecordId: string }): Promise<void> {
+        const { projectId, sourceImageRecordId } = params
         const sandboxService = getSandboxProvider()
         const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
-        const image = await sandboxService.getImageFromId(modalSourceImageId)
-        const uniqueName = runtimeSandboxUniqueName(sourceLayerKey)
-        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+        const uniqueName = runtimeSandboxUniqueName(projectId)
 
-        const proc = await sb.exec(["true"], { stdout: "pipe", stderr: "pipe" })
-        const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
-        const exitCode = await proc.wait()
+        await sandboxService.terminateSandboxByName(app, uniqueName).catch(error => {
+            logger.warn("SDK runtime sandbox teardown failed, continuing", { projectId, error })
+        })
 
-        if (exitCode !== 0) {
-            logger.error("SDK runtime sandbox prewarm failed", {
-                sourceLayerKey,
-                modalSourceImageId,
-                exitCode,
-                stderr: stderr.trim().slice(0, 500),
-                stdout: stdout.trim().slice(0, 200)
-            })
-            throw new Error(`SDK runtime sandbox prewarm failed with exit code ${exitCode}`)
+        const record = await db().sdk_source_images.findUnique({
+            where: { id: sourceImageRecordId },
+            select: { image_id: true }
+        })
+        if (!record) {
+            logger.warn("SDK runtime sandbox refresh skipped: source image not found", { projectId, sourceImageRecordId })
+            return
         }
 
-        logger.info("SDK runtime sandbox prewarm completed", { sourceLayerKey, modalSourceImageId })
+        try {
+            const image = await sandboxService.getImageFromId(record.image_id)
+            const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+            const proc = await sb.exec(["true"], { stdout: "pipe", stderr: "pipe" })
+            const exitCode = await proc.wait()
+            logger.info("SDK runtime sandbox refreshed", { projectId, imageId: record.image_id, exitCode })
+        } catch (error) {
+            logger.warn("SDK runtime sandbox prewarm failed, continuing", { projectId, imageId: record.image_id, error })
+        }
     }
 
     private async deleteImage(imageId: string): Promise<void> {

@@ -12,6 +12,9 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
 
     getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<S>
 
+    /** Terminate the sandbox registered under {@link uniqueName}, if one exists. No-op when absent. */
+    terminateSandboxByName(app: SandboxApp, uniqueName: string): Promise<void>
+
     getProjectPath(sandbox: S): string
     getDependencyCachePath(sandbox: S, runtime: string): string
     getCliCachePath(sandbox: S): string

@@ -30,6 +30,7 @@ export function sourceImageBuildSandboxUniqueName(sourceLayerKey: string): strin
     return `sb-${sourceLayerKeyHexBody(sourceLayerKey)}`
 }
 
-export function runtimeSandboxUniqueName(sourceLayerKey: string): string {
-    return `sr-${sourceLayerKeyHexBody(sourceLayerKey)}`
+export function runtimeSandboxUniqueName(projectId: string): string {
+    const digest = crypto.createHash("sha256").update(projectId).digest("hex").slice(0, 32)
+    return `sr-${digest}`
 }

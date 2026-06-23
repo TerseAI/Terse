@@ -112,6 +112,26 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return this.createSandboxWithRetries(app, image, name, params, opStart)
     }
 
+    async terminateSandboxByName(app: SandboxApp, uniqueName: string): Promise<void> {
+        if (!app.name) {
+            throw new Error("App name is required")
+        }
+
+        const name = `${app.name}__${uniqueName}`
+        const t0 = Date.now()
+
+        try {
+            const sandbox = await this.modal.sandboxes.fromName(app.name, name)
+            await sandbox.terminate()
+            logger.info("Modal sandbox: terminated by name", { app: app.name, name, sandboxId: sandbox.sandboxId, durationMs: Date.now() - t0 })
+        } catch (error) {
+            if (error instanceof NotFoundError) {
+                return
+            }
+            logger.warn("Modal sandbox: terminate by name failed, continuing", { app: app.name, name, durationMs: Date.now() - t0, errorMessage: errorMessage(error) })
+        }
+    }
+
     private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<ModalSandbox | null> {
         const lookupStart = Date.now()
 

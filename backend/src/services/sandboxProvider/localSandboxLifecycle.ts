@@ -56,6 +56,34 @@ export async function clearPidFile(workingDir: string): Promise<void> {
 }
 
 /**
+ * SIGTERM any PIDs recorded for a single sandbox dir and remove the dir. Used to
+ * tear down a project's runtime sandbox on redeploy so the next run rebuilds from
+ * the freshly deployed image. Best-effort: missing dir / dead PIDs are ignored.
+ */
+export async function terminateSandboxDir(workingDir: string): Promise<void> {
+    if (!existsSync(workingDir)) return
+
+    const pidFile = path.join(workingDir, PID_FILE_NAME)
+    const content = await fs.readFile(pidFile, "utf8").catch(() => "")
+    const pids = content
+        .split("\n")
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(Number)
+        .filter(n => Number.isFinite(n) && n > 0)
+
+    for (const pid of pids) {
+        try {
+            process.kill(pid, "SIGTERM")
+        } catch {
+            // Process already dead or PID recycled out of our reach — fine.
+        }
+    }
+
+    await fs.rm(workingDir, { recursive: true, force: true }).catch(() => {})
+}
+
+/**
  * Walk all sandbox working directories and SIGTERM any PIDs recorded in their
  * `.terse-pids` file that are still alive. Call once at startup, before any new
  * sandboxes get created.

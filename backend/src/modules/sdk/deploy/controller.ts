@@ -69,11 +69,13 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         }
 
         const results: SdkDeployResponseBody["results"] = []
+        const sandboxImageService = new SdkSandboxImageService()
+        let deployedSourceImageId: string | undefined
 
         if (sourceZipBase64) {
             const sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64)
 
-            const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
+            const preparedImages = await sandboxImageService.prepareFromSourceZip({
                 zipBuffer: sourceZipBuffer,
                 organizationId,
                 cliVersion,
@@ -81,6 +83,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
                 }
             })
+            deployedSourceImageId = preparedImages.sourceImageId
 
             await prisma.project_deploys.update({
                 where: { id: deploy.id },
@@ -145,6 +148,12 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             jobsAdded,
             removed.length
         )
+
+        if (deployedSourceImageId) {
+            await sandboxImageService.refreshProjectRuntimeSandbox({ projectId, sourceImageRecordId: deployedSourceImageId }).catch(error => {
+                logger.warn("Failed to refresh project runtime sandbox after deploy", { projectId, error })
+            })
+        }
 
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
         emitCacheInvalidationWithKey(organizationId, "agents")
