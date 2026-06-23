@@ -170,6 +170,7 @@ skills: [
     Skills.attio({ object: AttioObject.Deal }),
     Skills.snowflake(),
     Skills.web(),                                                        // built-in web search / extract / research
+    Skills.web({ allowedDomains: ["example.com"] }),                     // restrict search + extract to a whitelist of domains
     Skills.imageEdit(),                                                  // built-in image edit / generate
 ]
 ```

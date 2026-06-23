@@ -21,7 +21,8 @@ export class TavilyWebSearchService implements WebSearchService {
             searchDepth: input.searchDepth,
             includeAnswer: input.includeAnswer,
             topic: input.topic,
-            timeRange: input.timeRange
+            timeRange: input.timeRange,
+            includeDomains: input.includeDomains
         })
         return {
             query: response.query,

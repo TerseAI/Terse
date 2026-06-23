@@ -210,11 +210,17 @@ Web search and research tools available to all workflows.
 skills: [Skills.web()]
 ```
 
-| Tool           | Description                             | Access |
-| -------------- | --------------------------------------- | ------ |
-| `web_search`   | Search the web                          | Read   |
-| `web_extract`  | Extract and process web page content    | Read   |
-| `web_research` | Research and synthesize web information | Read   |
+Pass `allowedDomains` to restrict the agent to a whitelist of sites. When set, `web_search` results and `web_extract` page fetches are limited to those domains and their subdomains; requests to any other domain are blocked.
+
+```ts
+skills: [Skills.web({ allowedDomains: ["example.com", "docs.acme.com"] })]
+```
+
+| Tool           | Description                             | Access | Respects `allowedDomains` |
+| -------------- | --------------------------------------- | ------ | ------------------------- |
+| `web_search`   | Search the web                          | Read   | Yes                       |
+| `web_extract`  | Extract and process web page content    | Read   | Yes                       |
+| `web_research` | Research and synthesize web information | Read   | No (not domain-limited)   |
 
 ## Image Edit (built-in)
 

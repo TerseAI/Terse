@@ -2111,7 +2111,8 @@ export const webSearchTool = defineTool({
         search_depth: z.enum(["basic", "advanced"]).nullable().describe("'basic' is faster, 'advanced' is more thorough (default 'basic')"),
         include_answer: z.boolean().nullable().describe("Include an LLM-generated answer summarizing the results (default false)"),
         topic: z.enum(["general", "news"]).nullable().describe("'news' for recent news articles, 'general' for all web content (default 'general')"),
-        time_range: z.enum(["day", "week", "month", "year"]).nullable().describe("Filter results by recency")
+        time_range: z.enum(["day", "week", "month", "year"]).nullable().describe("Filter results by recency"),
+        include_domains: z.array(z.string()).nullable().describe("Restrict results to these domains (e.g. ['example.com']). Required when web access is limited to an allowed list of domains.")
     }),
     outputSchema: webSearchOutputSchema
 })

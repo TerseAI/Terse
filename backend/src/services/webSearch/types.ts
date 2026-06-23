@@ -16,6 +16,7 @@ export interface WebSearchRequest {
     includeAnswer: boolean
     topic: WebSearchTopic
     timeRange?: WebSearchTimeRange
+    includeDomains?: string[]
 }
 
 interface WebSearchResultItem {
