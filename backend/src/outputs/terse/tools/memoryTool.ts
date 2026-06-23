@@ -80,15 +80,22 @@ async function viewCommand(fs: VolumeFs, automationId: string, input: MemoryInpu
     if (rel === null) return invalidPath(modelPath)
 
     const stat = await fs.stat(rel)
-    if (!stat) return `The path ${modelPath} does not exist. Please provide a valid path.`
+    if (!stat) {
+        if (rel === automationId) return renderDirListing(modelPath, 0, [])
+        return `The path ${modelPath} does not exist. Please provide a valid path.`
+    }
 
     if (stat.isDirectory) {
         const lines = await listDirTwoLevels(fs, automationId, rel, modelPath)
-        return [`Here're the files and directories up to 2 levels deep in ${modelPath}, excluding hidden items and node_modules:`, `${humanSize(stat.sizeBytes)}\t${modelPath}`, ...lines].join("\n")
+        return renderDirListing(modelPath, stat.sizeBytes, lines)
     }
 
     const content = (await fs.read(rel)) ?? ""
     return renderFileWithLineNumbers(modelPath, content, input.view_range)
+}
+
+function renderDirListing(modelPath: string, sizeBytes: number, lines: string[]): string {
+    return [`Here're the files and directories up to 2 levels deep in ${modelPath}, excluding hidden items and node_modules:`, `${humanSize(sizeBytes)}\t${modelPath}`, ...lines].join("\n")
 }
 
 async function listDirTwoLevels(fs: VolumeFs, automationId: string, rel: string, modelPath: string): Promise<string[]> {
