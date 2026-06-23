@@ -14,7 +14,7 @@ import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkDependencyImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
-import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, MEMORY_MOUNT_PATH, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import { MEMORY_MOUNT_PATH, computeSourceLayerKey, dependencyBuildSandboxUniqueName, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72

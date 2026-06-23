@@ -16,8 +16,8 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "../../../modules/agents/controller"
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
-import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
+import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
