@@ -2117,57 +2117,63 @@ export const webSearchTool = defineTool({
     outputSchema: webSearchOutputSchema
 })
 
-export const memoryCommandSchema = z.enum(["view", "create", "str_replace", "insert", "delete", "rename"])
-
-// Mirrors the Anthropic memory tool (memory_20250818) contract, modelled as a discriminated union on
-// `command` so each command's required fields are enforced and callers only pass what it needs.
-// Required vs optional is taken from each command's implementation: a field is required when the
-// command cannot do meaningful work without it, optional when the implementation supplies a default.
-export const memoryViewInputSchema = z.object({
-    command: z.literal("view"),
+export const memoryViewCommandSchema = z.object({
+    op: z.literal("view"),
     path: z.string().nullable().optional().describe("Path under /memories to view; omit to list the memory root"),
     view_range: z.array(z.number().int()).nullable().optional().describe("Optional [startLine, endLine] (1-indexed) to view a slice of a file")
 })
 
-export const memoryCreateInputSchema = z.object({
-    command: z.literal("create"),
+export const memoryCreateCommandSchema = z.object({
+    op: z.literal("create"),
     path: z.string().describe("Path under /memories to create (e.g. '/memories/notes.md')"),
     file_text: z.string().nullable().optional().describe("Full file contents; defaults to empty")
 })
 
-export const memoryStrReplaceInputSchema = z.object({
-    command: z.literal("str_replace"),
+export const memoryStrReplaceCommandSchema = z.object({
+    op: z.literal("str_replace"),
     path: z.string().describe("Path under /memories to edit"),
     old_str: z.string().describe("Exact text to replace (must appear verbatim exactly once)"),
     new_str: z.string().nullable().optional().describe("Replacement text; omit to delete the matched text")
 })
 
-export const memoryInsertInputSchema = z.object({
-    command: z.literal("insert"),
+export const memoryInsertCommandSchema = z.object({
+    op: z.literal("insert"),
     path: z.string().describe("Path under /memories to edit"),
     insert_line: z.number().int().describe("Line number after which to insert (0 = beginning of file)"),
     insert_text: z.string().nullable().optional().describe("Text to insert; defaults to empty")
 })
 
-export const memoryDeleteInputSchema = z.object({
-    command: z.literal("delete"),
+export const memoryDeleteCommandSchema = z.object({
+    op: z.literal("delete"),
     path: z.string().describe("Path under /memories to delete")
 })
 
-export const memoryRenameInputSchema = z.object({
-    command: z.literal("rename"),
+export const memoryRenameCommandSchema = z.object({
+    op: z.literal("rename"),
     old_path: z.string().describe("Source path under /memories"),
     new_path: z.string().describe("Destination path under /memories")
 })
 
-export const memoryInputSchema = z.discriminatedUnion("command", [memoryViewInputSchema, memoryCreateInputSchema, memoryStrReplaceInputSchema, memoryInsertInputSchema, memoryDeleteInputSchema, memoryRenameInputSchema])
+export const memoryCommandSchema = z.discriminatedUnion("op", [
+    memoryViewCommandSchema,
+    memoryCreateCommandSchema,
+    memoryStrReplaceCommandSchema,
+    memoryInsertCommandSchema,
+    memoryDeleteCommandSchema,
+    memoryRenameCommandSchema
+])
 
-export type MemoryViewInput = z.infer<typeof memoryViewInputSchema>
-export type MemoryCreateInput = z.infer<typeof memoryCreateInputSchema>
-export type MemoryStrReplaceInput = z.infer<typeof memoryStrReplaceInputSchema>
-export type MemoryInsertInput = z.infer<typeof memoryInsertInputSchema>
-export type MemoryDeleteInput = z.infer<typeof memoryDeleteInputSchema>
-export type MemoryRenameInput = z.infer<typeof memoryRenameInputSchema>
+export const memoryInputSchema = z.object({
+    command: memoryCommandSchema.describe("The memory operation to perform and its arguments")
+})
+
+export type MemoryViewCommand = z.infer<typeof memoryViewCommandSchema>
+export type MemoryCreateCommand = z.infer<typeof memoryCreateCommandSchema>
+export type MemoryStrReplaceCommand = z.infer<typeof memoryStrReplaceCommandSchema>
+export type MemoryInsertCommand = z.infer<typeof memoryInsertCommandSchema>
+export type MemoryDeleteCommand = z.infer<typeof memoryDeleteCommandSchema>
+export type MemoryRenameCommand = z.infer<typeof memoryRenameCommandSchema>
+export type MemoryCommand = z.infer<typeof memoryCommandSchema>
 export type MemoryInput = z.infer<typeof memoryInputSchema>
 
 export const memoryOutputSchema = toolOutputBaseSchema.extend({

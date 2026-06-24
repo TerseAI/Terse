@@ -1,6 +1,5 @@
 import path from "node:path"
-
-import { MemoryCreateInput, MemoryDeleteInput, MemoryInput, MemoryInsertInput, MemoryRenameInput, MemoryStrReplaceInput, MemoryViewInput } from "terse-types"
+import { MemoryCommand, MemoryCreateCommand, MemoryDeleteCommand, MemoryInsertCommand, MemoryRenameCommand, MemoryStrReplaceCommand, MemoryViewCommand } from "terse-types"
 
 import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
@@ -25,11 +24,11 @@ export const memoryTool = defineSessionTool({
         const isTest = !!testScope
         const { projectId, subtreeKey } = testScope ? { projectId: testScope.projectId, subtreeKey: testMemorySubtreeKey(testScope.jobName) } : await resolveMemoryScope(runId)
         const command = input.command
-        logger.info("SDK memory tool: command", { runId, projectId, subtreeKey, isTest, command, path: "path" in input ? (input.path ?? undefined) : undefined })
+        logger.info("SDK memory tool: command", { runId, projectId, subtreeKey, isTest, op: command.op, path: "path" in command ? (command.path ?? undefined) : undefined })
         const provider = getSandboxProvider()
         const fs = isTest ? await provider.getTestProjectVolumeFs(projectId) : await provider.getProjectVolumeFs(projectId, runId)
         try {
-            const result = await runMemoryCommand(fs, subtreeKey, input)
+            const result = await runMemoryCommand(fs, subtreeKey, command)
             return { success: true, result }
         } finally {
             await fs.dispose().catch(err => logger.warn("memory tool: volume fs dispose failed", { runId, error: err }))
@@ -48,26 +47,26 @@ async function resolveMemoryScope(runId: string): Promise<{ projectId: string; s
     return { projectId: run.automation.project_id, subtreeKey: run.automation_id }
 }
 
-async function runMemoryCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInput): Promise<string> {
-    switch (input.command) {
+async function runMemoryCommand(fs: VolumeFs, subtreeKey: string, command: MemoryCommand): Promise<string> {
+    switch (command.op) {
         case "view":
-            return viewCommand(fs, subtreeKey, input)
+            return viewCommand(fs, subtreeKey, command)
         case "create":
-            return createCommand(fs, subtreeKey, input)
+            return createCommand(fs, subtreeKey, command)
         case "str_replace":
-            return strReplaceCommand(fs, subtreeKey, input)
+            return strReplaceCommand(fs, subtreeKey, command)
         case "insert":
-            return insertCommand(fs, subtreeKey, input)
+            return insertCommand(fs, subtreeKey, command)
         case "delete":
-            return deleteCommand(fs, subtreeKey, input)
+            return deleteCommand(fs, subtreeKey, command)
         case "rename":
-            return renameCommand(fs, subtreeKey, input)
+            return renameCommand(fs, subtreeKey, command)
         default:
-            return `Error: Unknown command ${String((input as { command?: unknown }).command)}`
+            return `Error: Unknown command ${String((command as { op?: unknown }).op)}`
     }
 }
 
-async function viewCommand(fs: VolumeFs, subtreeKey: string, input: MemoryViewInput): Promise<string> {
+async function viewCommand(fs: VolumeFs, subtreeKey: string, input: MemoryViewCommand): Promise<string> {
     const modelPath = input.path ?? MEMORY_ROOT
     const rel = safeRel(subtreeKey, modelPath)
     if (rel === null) return invalidPath(modelPath)
@@ -84,7 +83,7 @@ async function viewCommand(fs: VolumeFs, subtreeKey: string, input: MemoryViewIn
     }
 
     const content = (await fs.read(rel)) ?? ""
-    return renderFileWithLineNumbers(modelPath, content, input.view_range)
+    return renderFileWithLineNumbers(modelPath, content, input.view_range ?? null)
 }
 
 function renderDirListing(modelPath: string, sizeBytes: number, lines: string[]): string {
@@ -109,7 +108,7 @@ async function listDirTwoLevels(fs: VolumeFs, subtreeKey: string, rel: string, m
     return out
 }
 
-async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryCreateInput): Promise<string> {
+async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryCreateCommand): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: create requires a path"
     const rel = safeRel(subtreeKey, modelPath)
@@ -123,7 +122,7 @@ async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryCrea
     return `File created successfully at: ${modelPath}`
 }
 
-async function strReplaceCommand(fs: VolumeFs, subtreeKey: string, input: MemoryStrReplaceInput): Promise<string> {
+async function strReplaceCommand(fs: VolumeFs, subtreeKey: string, input: MemoryStrReplaceCommand): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: str_replace requires a path"
     const rel = safeRel(subtreeKey, modelPath)
@@ -147,7 +146,7 @@ async function strReplaceCommand(fs: VolumeFs, subtreeKey: string, input: Memory
     return "The memory file has been edited."
 }
 
-async function insertCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInsertInput): Promise<string> {
+async function insertCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInsertCommand): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: insert requires a path"
     const rel = safeRel(subtreeKey, modelPath)
@@ -169,7 +168,7 @@ async function insertCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInse
     return `The file ${modelPath} has been edited.`
 }
 
-async function deleteCommand(fs: VolumeFs, subtreeKey: string, input: MemoryDeleteInput): Promise<string> {
+async function deleteCommand(fs: VolumeFs, subtreeKey: string, input: MemoryDeleteCommand): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: delete requires a path"
     const rel = safeRel(subtreeKey, modelPath)
@@ -183,7 +182,7 @@ async function deleteCommand(fs: VolumeFs, subtreeKey: string, input: MemoryDele
     return `Successfully deleted ${modelPath}`
 }
 
-async function renameCommand(fs: VolumeFs, subtreeKey: string, input: MemoryRenameInput): Promise<string> {
+async function renameCommand(fs: VolumeFs, subtreeKey: string, input: MemoryRenameCommand): Promise<string> {
     const oldModelPath = input.old_path
     const newModelPath = input.new_path
     if (!oldModelPath || !newModelPath) return "Error: rename requires old_path and new_path"
