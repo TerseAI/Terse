@@ -455,6 +455,7 @@ program
     .option("--triggers", "Also fetch the input trigger event JSON for each run (cheap, recommended for /improve)")
     .option("--events", "Also fetch the full model event stream for each run (heavy, includes trigger event)")
     .option("--run-id <id>", "Show full chat events for a single run instead of a list")
+    .option("--include-test", "Include runs from `terse test` (hidden by default)")
     .action(
         async (
             jobName: string | undefined,
@@ -469,6 +470,7 @@ program
                 triggers?: boolean
                 events?: boolean
                 runId?: string
+                includeTest?: boolean
             }
         ) => {
             await history(jobName, opts)

@@ -11,11 +11,6 @@ import { VolumeDirEntry, VolumeFs } from "./types"
 const SANDBOX_ROOT = "/data/sandbox"
 const VOLUMES_DIR = path.join(SANDBOX_ROOT, "volumes")
 
-/**
- * Local self-host volume manager: each volume is a directory under /data/sandbox/volumes (the same
- * persistent disk as the SQLite DB). Memory is direct disk IO, never mounted in a runner sandbox, so
- * there is no "attached" mode — `runId` is ignored.
- */
 export class LocalVolumeManager implements VolumeManager {
     async getOrCreateProjectVolume(projectId: string): Promise<SandboxVolume> {
         const dir = path.join(VOLUMES_DIR, projectVolumeName(projectId))

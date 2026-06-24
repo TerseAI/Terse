@@ -4,10 +4,6 @@ export interface VolumeDirEntry {
     sizeBytes: number
 }
 
-/**
- * Filesystem rooted at a project volume. All paths are relative to the volume root.
- * Mutations are only durable after sync() (Modal Volumes v2 commit; no-op locally).
- */
 export interface VolumeFs {
     list(dirPath: string): Promise<VolumeDirEntry[]>
     read(filePath: string): Promise<string | null>

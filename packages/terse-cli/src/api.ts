@@ -144,6 +144,7 @@ export async function fetchRunHistory(agentId: string, apiKey: string, params: G
     if (params.status?.length) usp.set("status", params.status.join(","))
     if (params.page) usp.set("page", String(params.page))
     if (params.pageSize) usp.set("pageSize", String(params.pageSize))
+    if (params.includeTest) usp.set("includeTest", "true")
 
     const base = buildRoute(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, { agentId })
     const url = usp.toString() ? `${base}?${usp.toString()}` : base

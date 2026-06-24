@@ -58,19 +58,19 @@ async function runMemoryCommand(fs: VolumeFs, subtreeKey: string, command: Memor
         case "rename":
             return renameCommand(fs, subtreeKey, command)
         default:
-            return `Error: Unknown command ${String((command as { op?: unknown }).op)}`
+            throw new Error(`Error: Unknown command ${String((command as { op?: unknown }).op)}`)
     }
 }
 
 async function viewCommand(fs: VolumeFs, subtreeKey: string, input: MemoryViewCommand): Promise<string> {
     const modelPath = input.path ?? MEMORY_ROOT
     const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
-    if (rel === null) return invalidPath(modelPath)
+    if (rel === null) throw new Error(invalidPath(modelPath))
 
     const stat = await fs.stat(rel)
     if (!stat) {
         if (rel === subtreeKey) return renderDirListing(modelPath, 0, [])
-        return `The path ${modelPath} does not exist. Please provide a valid path.`
+        throw new Error(`The path ${modelPath} does not exist. Please provide a valid path.`)
     }
 
     if (stat.isDirectory) {
@@ -106,12 +106,12 @@ async function listDirTwoLevels(fs: VolumeFs, subtreeKey: string, rel: string, m
 
 async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryCreateCommand): Promise<string> {
     const modelPath = input.path
-    if (!modelPath) return "Error: create requires a path"
+    if (!modelPath) throw new Error("Error: create requires a path")
     const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
-    if (rel === null) return invalidPath(modelPath)
+    if (rel === null) throw new Error(invalidPath(modelPath))
 
     const existing = await fs.stat(rel)
-    if (existing) return `Error: File ${modelPath} already exists`
+    if (existing) throw new Error(`Error: File ${modelPath} already exists`)
 
     await fs.write(rel, input.file_text ?? "")
     await fs.sync()
@@ -120,21 +120,21 @@ async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryCrea
 
 async function strReplaceCommand(fs: VolumeFs, subtreeKey: string, input: MemoryStrReplaceCommand): Promise<string> {
     const modelPath = input.path
-    if (!modelPath) return "Error: str_replace requires a path"
+    if (!modelPath) throw new Error("Error: str_replace requires a path")
     const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
-    if (rel === null) return invalidPath(modelPath)
+    if (rel === null) throw new Error(invalidPath(modelPath))
 
     const content = await fs.read(rel)
-    if (content === null) return `Error: The path ${modelPath} does not exist. Please provide a valid path.`
+    if (content === null) throw new Error(`Error: The path ${modelPath} does not exist. Please provide a valid path.`)
 
     const oldStr = input.old_str ?? ""
     const occurrences = countOccurrences(content, oldStr)
     if (occurrences === 0) {
-        return `No replacement was performed, old_str \`${oldStr}\` did not appear verbatim in ${modelPath}.`
+        throw new Error(`No replacement was performed, old_str \`${oldStr}\` did not appear verbatim in ${modelPath}.`)
     }
     if (occurrences > 1) {
         const lineNumbers = matchingLineNumbers(content, oldStr)
-        return `No replacement was performed. Multiple occurrences of old_str \`${oldStr}\` in lines: ${lineNumbers.join(", ")}. Please ensure it is unique`
+        throw new Error(`No replacement was performed. Multiple occurrences of old_str \`${oldStr}\` in lines: ${lineNumbers.join(", ")}. Please ensure it is unique`)
     }
 
     await fs.write(rel, content.replace(oldStr, input.new_str ?? ""))
@@ -144,17 +144,17 @@ async function strReplaceCommand(fs: VolumeFs, subtreeKey: string, input: Memory
 
 async function insertCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInsertCommand): Promise<string> {
     const modelPath = input.path
-    if (!modelPath) return "Error: insert requires a path"
+    if (!modelPath) throw new Error("Error: insert requires a path")
     const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
-    if (rel === null) return invalidPath(modelPath)
+    if (rel === null) throw new Error(invalidPath(modelPath))
 
     const content = await fs.read(rel)
-    if (content === null) return `Error: The path ${modelPath} does not exist`
+    if (content === null) throw new Error(`Error: The path ${modelPath} does not exist`)
 
     const lines = content.split("\n")
     const insertLine = input.insert_line ?? 0
     if (insertLine < 0 || insertLine > lines.length) {
-        return `Error: Invalid \`insert_line\` parameter: ${insertLine}. It should be within the range of lines of the file: [0, ${lines.length}]`
+        throw new Error(`Error: Invalid \`insert_line\` parameter: ${insertLine}. It should be within the range of lines of the file: [0, ${lines.length}]`)
     }
 
     const insertText = input.insert_text ?? ""
@@ -166,12 +166,12 @@ async function insertCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInse
 
 async function deleteCommand(fs: VolumeFs, subtreeKey: string, input: MemoryDeleteCommand): Promise<string> {
     const modelPath = input.path
-    if (!modelPath) return "Error: delete requires a path"
+    if (!modelPath) throw new Error("Error: delete requires a path")
     const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
-    if (rel === null) return invalidPath(modelPath)
+    if (rel === null) throw new Error(invalidPath(modelPath))
 
     const stat = await fs.stat(rel)
-    if (!stat) return `Error: The path ${modelPath} does not exist`
+    if (!stat) throw new Error(`Error: The path ${modelPath} does not exist`)
 
     await fs.remove(rel)
     await fs.sync()
@@ -181,14 +181,14 @@ async function deleteCommand(fs: VolumeFs, subtreeKey: string, input: MemoryDele
 async function renameCommand(fs: VolumeFs, subtreeKey: string, input: MemoryRenameCommand): Promise<string> {
     const oldModelPath = input.old_path
     const newModelPath = input.new_path
-    if (!oldModelPath || !newModelPath) return "Error: rename requires old_path and new_path"
+    if (!oldModelPath || !newModelPath) throw new Error("Error: rename requires old_path and new_path")
     const oldRel = resolveMemoryVolumePath({ subtreeKey, inputPath: oldModelPath, source: "model" })
     const newRel = resolveMemoryVolumePath({ subtreeKey, inputPath: newModelPath, source: "model" })
-    if (oldRel === null) return invalidPath(oldModelPath)
-    if (newRel === null) return invalidPath(newModelPath)
+    if (oldRel === null) throw new Error(invalidPath(oldModelPath))
+    if (newRel === null) throw new Error(invalidPath(newModelPath))
 
-    if (!(await fs.stat(oldRel))) return `Error: The path ${oldModelPath} does not exist`
-    if (await fs.stat(newRel)) return `Error: The destination ${newModelPath} already exists`
+    if (!(await fs.stat(oldRel))) throw new Error(`Error: The path ${oldModelPath} does not exist`)
+    if (await fs.stat(newRel)) throw new Error(`Error: The destination ${newModelPath} already exists`)
 
     await fs.rename(oldRel, newRel)
     await fs.sync()

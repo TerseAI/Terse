@@ -101,6 +101,7 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
         new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.CANCELLED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL])
     )
     const [searchQuery, setSearchQuery] = useState("")
+    const [includeTest, setIncludeTest] = useState(false)
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
         from: undefined,
         to: undefined
@@ -116,7 +117,8 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
         pageSize: runsPerPage,
         searchQuery,
         dateRange,
-        selectedStatuses
+        selectedStatuses,
+        includeTest
     })
 
     const totalPages = Math.ceil(total / runsPerPage) || 1
@@ -135,6 +137,11 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
         const next = new Set(selectedStatuses)
         next.has(status) ? next.delete(status) : next.add(status)
         setSelectedStatuses(next)
+        setCurrentPage(1)
+    }
+
+    const toggleIncludeTest = () => {
+        setIncludeTest(prev => !prev)
         setCurrentPage(1)
     }
 
@@ -164,6 +171,8 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                     }}
                     selectedStatuses={selectedStatuses}
                     onToggleStatus={toggleStatus}
+                    includeTest={includeTest}
+                    onToggleIncludeTest={toggleIncludeTest}
                     runsPerPageValue={runsPerPage}
                     onRunsPerPageChange={handleRunsPerPageChange}
                     currentPage={currentPage}
@@ -176,9 +185,10 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                     <RunHistoryLoadingState />
                 ) : paginatedRuns.length === 0 ? (
                     <RunHistoryEmptyState
-                        hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length}
+                        hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length || includeTest}
                         onClearAll={() => {
                             setSearchQuery("")
+                            setIncludeTest(false)
                             setDateRange({ from: undefined, to: undefined })
                             setSelectedStatuses(
                                 new Set([

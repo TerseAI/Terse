@@ -1,3 +1,5 @@
+import type { MemoryCommand } from "./Tools"
+
 /**
  * The phases a tool call can be in for display purposes.
  */
@@ -33,46 +35,32 @@ function safeParseResult(result?: string): Record<string, unknown> | undefined {
     }
 }
 
-/** The memory tool returns { success, result }; pull out the human-readable result message. */
-function memoryResultMessage(result?: string): string | undefined {
-    const message = safeParseResult(result)?.result
-    return typeof message === "string" ? message : undefined
+function memoryCommand(params?: Record<string, unknown>): MemoryCommand | undefined {
+    const command = params?.command
+    return command && typeof command === "object" && "op" in command ? (command as MemoryCommand) : undefined
 }
 
-/** Memory tool params nest the operation under `command` ({ op, path | old_path }). */
-function memoryCommandFields(params?: Record<string, unknown>): { op?: string; path?: string } {
-    const command = params?.command as { op?: unknown; path?: unknown; old_path?: unknown } | undefined
-    const op = typeof command?.op === "string" ? command.op : undefined
-    const path = typeof command?.path === "string" ? command.path : typeof command?.old_path === "string" ? command.old_path : undefined
-    return { op, path }
+function memoryTarget(command: MemoryCommand): string | undefined {
+    return command.op === "rename" ? command.old_path : (command.path ?? undefined)
 }
 
-/**
- * Map a memory tool result message (authored in backend memoryTool.ts) to a specific past-tense label.
- * Returns null when unrecognized (errors / no-ops) so the caller can fall back to the params.
- */
-function describeMemoryResult(message?: string): string | null {
-    if (!message) return null
-    if (message.startsWith("Here's the content of ")) {
-        return `Read memory ${truncate(message.slice("Here's the content of ".length).split(" with line numbers")[0], 40)}`
+function memoryLabel(command: MemoryCommand | undefined, done: boolean): string {
+    if (!command) return done ? "Updated memory" : "Accessing memory"
+    const target = memoryTarget(command)
+    const suffix = target ? ` ${truncate(target, 40)}` : ""
+    switch (command.op) {
+        case "view":
+            return (done ? "Read memory" : "Reading memory") + suffix
+        case "create":
+            return (done ? "Saved memory" : "Saving memory") + suffix
+        case "str_replace":
+        case "insert":
+            return (done ? "Updated memory" : "Updating memory") + suffix
+        case "delete":
+            return (done ? "Deleted memory" : "Deleting memory") + suffix
+        case "rename":
+            return done ? "Renamed memory file" : "Reorganizing memory"
     }
-    if (message.startsWith("Here're the files and directories")) {
-        const match = message.match(/ in (.+?), excluding/)
-        return match ? `Listed memory ${truncate(match[1], 40)}` : "Listed memory"
-    }
-    if (message.startsWith("File created successfully at: ")) {
-        return `Saved memory ${truncate(message.slice("File created successfully at: ".length), 40)}`
-    }
-    if (message.startsWith("Successfully deleted ")) {
-        return `Deleted memory ${truncate(message.slice("Successfully deleted ".length), 40)}`
-    }
-    if (message.startsWith("Successfully renamed ")) {
-        return "Renamed memory file"
-    }
-    const editedFile = message.match(/^The file (.+) has been edited\.$/)
-    if (editedFile) return `Updated memory ${truncate(editedFile[1], 40)}`
-    if (message === "The memory file has been edited.") return "Updated memory"
-    return null
 }
 
 /**
@@ -786,47 +774,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     },
     memory: {
         preparing: "Checking memory",
-        executing: params => {
-            const { op, path } = memoryCommandFields(params)
-            switch (op) {
-                case "view":
-                    return path ? `Reading memory ${truncate(path, 40)}` : "Reading memory"
-                case "create":
-                    return path ? `Saving memory ${truncate(path, 40)}` : "Saving memory"
-                case "str_replace":
-                case "insert":
-                    return path ? `Updating memory ${truncate(path, 40)}` : "Updating memory"
-                case "delete":
-                    return path ? `Deleting memory ${truncate(path, 40)}` : "Deleting memory"
-                case "rename":
-                    return "Reorganizing memory"
-                default:
-                    return "Accessing memory"
-            }
-        },
-        complete: (params, result) => {
-            // Prefer the tool's own result message: it's always present at completion and authored by us,
-            // so the label stays accurate even when streamed params aren't reflected at completion time.
-            const fromResult = describeMemoryResult(memoryResultMessage(result))
-            if (fromResult) return fromResult
-
-            const { op, path } = memoryCommandFields(params)
-            switch (op) {
-                case "view":
-                    return path ? `Read memory ${truncate(path, 40)}` : "Read memory"
-                case "create":
-                    return path ? `Saved memory ${truncate(path, 40)}` : "Saved memory"
-                case "str_replace":
-                case "insert":
-                    return path ? `Updated memory ${truncate(path, 40)}` : "Updated memory"
-                case "delete":
-                    return path ? `Deleted memory ${truncate(path, 40)}` : "Deleted memory"
-                case "rename":
-                    return "Renamed memory file"
-                default:
-                    return "Memory"
-            }
-        }
+        executing: params => memoryLabel(memoryCommand(params), false),
+        complete: params => memoryLabel(memoryCommand(params), true)
     },
 
     // ===================

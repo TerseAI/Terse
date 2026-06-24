@@ -989,6 +989,7 @@ export const BackendProvider: BackendService = {
         if (params.start) usp.append("start", params.start)
         if (params.end) usp.append("end", params.end)
         if (params.status && params.status.length) usp.append("status", params.status.join(","))
+        if (params.includeTest) usp.append("includeTest", "true")
         const url = `${backendBaseUrl}${ApiRoutes.RUN_HISTORY.ALL}${usp.toString() ? `?${usp.toString()}` : ""}`
         return axios.get<GetAllRunHistoryResponse>(url, { withCredentials: true }).then(r => r.data)
     },
@@ -1001,6 +1002,7 @@ export const BackendProvider: BackendService = {
         if (params.start) usp.append("start", params.start)
         if (params.end) usp.append("end", params.end)
         if (params.status && params.status.length) usp.append("status", params.status.join(","))
+        if (params.includeTest) usp.append("includeTest", "true")
         const apiUrl = buildRoute(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, { agentId })
         const url = `${backendBaseUrl}${apiUrl}${usp.toString() ? `?${usp.toString()}` : ""}`
         return axios.get<GetRunHistoryResponse>(url, { withCredentials: true }).then(r => r.data)

@@ -87,10 +87,6 @@ interface VolumeGetOrCreateRpc {
     volumeGetOrCreate(req: { deploymentName: string; environmentName: string; objectCreationType: number; appId: string; version: number }): Promise<{ volumeId: string }>
 }
 
-/**
- * VolumeFs over a Modal sandbox with the project volume mounted at `mountPath`. File logic stays here;
- * primitives run via sandbox exec/open against the mount. Mutations are committed with `sync` (v2).
- */
 class ModalVolumeFs implements VolumeFs {
     constructor(
         private readonly sb: Sandbox,

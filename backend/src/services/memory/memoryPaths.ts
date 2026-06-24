@@ -2,6 +2,8 @@ import path from "node:path"
 
 export const MEMORY_ROOT = "/memories"
 
+const CONTAINMENT_BASE = "/__memory__"
+
 type MemoryPathSource = "model" | "relative"
 
 /**
@@ -11,16 +13,15 @@ type MemoryPathSource = "model" | "relative"
 export function resolveMemoryVolumePath(params: { subtreeKey: string; inputPath: unknown; source: MemoryPathSource }): string | null {
     const rawPath = normalizeRawPath(params.inputPath)
     if (rawPath === null || rawPath.includes("\0")) return null
-    const lowered = rawPath.toLowerCase()
-    if (lowered.includes("%2e") || lowered.includes("%2f") || rawPath.includes("..")) return null
 
     const relative = params.source === "model" ? stripMemoryRoot(rawPath) : rawPath.replace(/^\/+/, "")
     if (relative === null) return null
 
-    const normalized = path.posix.normalize(relative)
-    if (normalized.startsWith("..") || path.posix.isAbsolute(normalized)) return null
-    if (normalized === "" || normalized === ".") return params.subtreeKey
-    return `${params.subtreeKey}/${normalized}`
+    const resolved = path.posix.resolve(CONTAINMENT_BASE, relative)
+    if (resolved !== CONTAINMENT_BASE && !resolved.startsWith(`${CONTAINMENT_BASE}/`)) return null
+
+    const within = resolved.slice(CONTAINMENT_BASE.length).replace(/^\/+/, "")
+    return within === "" ? params.subtreeKey : `${params.subtreeKey}/${within}`
 }
 
 function normalizeRawPath(inputPath: unknown): string | null {
