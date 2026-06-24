@@ -1,7 +1,7 @@
 import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { ToolDefinition } from "terse-types"
+import { RunHistoryStatus, ToolDefinition } from "terse-types"
 import { UserSession } from "terse-types/types"
 import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { z } from "zod"
@@ -11,6 +11,7 @@ import { extractErrorMessage, randomString } from "../../../common/strings"
 import { Session } from "../../../express"
 import { db } from "../../../loaders/prisma"
 import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
+import { finalizeRunStatus, markRunFailed } from "../../../modules/agents/AgentRunner/runHistory"
 import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import {
     type DeterministicToolCallRunContext,
@@ -20,6 +21,7 @@ import {
     persistDeterministicToolCallStart
 } from "../../../modules/agents/toolCallHistory"
 import { OutputFactory } from "../../../outputs/abstract/OutputFactory"
+import { mintTestRunRecord, resolveTestRunContext } from "../testRunContext"
 
 type SdkFunctionTool = FunctionTool<SessionWithTracking<Session>, z.ZodObject<any>, unknown>
 type SdkToolDescriptor = {
@@ -113,6 +115,13 @@ async function resolvePersistedRunContext(runIdHeader: string | undefined, user:
     return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id }
 }
 
+async function mintTestRunContextForTools(req: Request, user: UserSession): Promise<DeterministicToolCallRunContext | null> {
+    const testCtx = await resolveTestRunContext(req, user)
+    if (!testCtx || !user.organizationId) return null
+    const { runId, agentId } = await mintTestRunRecord(user, testCtx)
+    return { runId, agentId, organizationId: user.organizationId }
+}
+
 export async function handleToolExecute(req: Request, res: Response) {
     const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
@@ -124,8 +133,13 @@ export async function handleToolExecute(req: Request, res: Response) {
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
     const persistedRunContext = await resolvePersistedRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
-    const effectiveRunId = persistedRunContext?.runId ?? crypto.randomUUID()
-    const effectiveAgentId = persistedRunContext?.agentId ?? "sdk-tool-execute"
+    // A `terse test` deterministic call has no run-id header, but carries project/job headers: mint a
+    // first-class is_test run so it records and resolves memory exactly like the agent path. We own its
+    // lifecycle (there is no orchestrator), so finalize it below.
+    const testRunContext = persistedRunContext ? null : await mintTestRunContextForTools(req, user)
+    const runContext = persistedRunContext ?? testRunContext
+    const effectiveRunId = runContext?.runId ?? crypto.randomUUID()
+    const effectiveAgentId = runContext?.agentId ?? "sdk-tool-execute"
     const toolParams = params ?? {}
     const callId = `sdk-tool-${randomString(15)}`
 
@@ -134,8 +148,8 @@ export async function handleToolExecute(req: Request, res: Response) {
         emitSessionEvent(sessionId, { type: "tool_call_started", toolCallStarted: toolName })
     }
 
-    if (persistedRunContext) {
-        await persistDeterministicToolCallStart(persistedRunContext, toolName, toolParams, callId)
+    if (runContext) {
+        await persistDeterministicToolCallStart(runContext, toolName, toolParams, callId)
     }
 
     const runContextPayload = {
@@ -153,8 +167,11 @@ export async function handleToolExecute(req: Request, res: Response) {
         const result = normalizeInvokedToolResult(rawResult)
         const actions = extractRunHistoryActions(result)
 
-        if (persistedRunContext) {
-            await persistDeterministicToolCallComplete(persistedRunContext, toolDescriptor, toolName, result, callId)
+        if (runContext) {
+            await persistDeterministicToolCallComplete(runContext, toolDescriptor, toolName, result, callId)
+        }
+        if (testRunContext) {
+            await finalizeRunStatus(testRunContext.runId, RunHistoryStatus.SUCCESS)
         }
 
         if (sessionId) {
@@ -171,8 +188,11 @@ export async function handleToolExecute(req: Request, res: Response) {
         const message = extractErrorMessage(err)
         logger.error("[sdk/tool-execute] Tool execution failed", { toolName, error: message })
 
-        if (persistedRunContext) {
-            await persistDeterministicToolCallFailure(persistedRunContext, toolName, message, callId)
+        if (runContext) {
+            await persistDeterministicToolCallFailure(runContext, toolName, message, callId)
+        }
+        if (testRunContext) {
+            await markRunFailed(testRunContext.runId, message, "agent")
         }
 
         if (sessionId) {

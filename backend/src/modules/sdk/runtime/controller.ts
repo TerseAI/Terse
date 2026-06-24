@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { BillingError, CreditGateDeniedError, IntegrationType, RunHistoryStatus, SdkListenStreamEvent, sdkListenQuerySchema } from "terse-types"
+import { BillingError, CreditGateDeniedError, RunHistoryStatus, SdkListenStreamEvent, sdkListenQuerySchema } from "terse-types"
 import { SkillConfigData } from "terse-types/Configs"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, UserSession, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
@@ -10,7 +10,7 @@ import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../../loaders/socket"
 import { SdkAgentRunner } from "../../../modules/agents/AgentRunner/SdkAgentRunner"
-import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
+import { appendRunAction, finalizeRunStatus, markRunFailed, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
 import { onListenForwardedEvent } from "../../../modules/agents/ListenBus"
 import { emitSessionEvent, onSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { classifyAgentError } from "../../../modules/agents/agentErrorUtils"
@@ -19,14 +19,9 @@ import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellat
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
-import { ensureTestAutomation, resolveTestRunContext } from "../testRunContext"
+import { mintTestRunRecord, resolveTestRunContext } from "../testRunContext"
 
 const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({ prompt: z.string().min(1) })
-
-/** Synthetic trigger metadata for a `terse test` run (the sample event isn't sent to /sdk/agent-run). */
-function testRunTrigger(jobName: string) {
-    return { event: "test", integration: IntegrationType.TERSE, source: "terse test", title: `Test run: ${jobName}` }
-}
 
 export async function handleSdkAgentRun(req: Request, res: Response) {
     const user = req.session?.user
@@ -52,8 +47,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     } else {
         const testCtx = await resolveTestRunContext(req, user)
         if (testCtx && user.organizationId) {
-            const agentId = await ensureTestAutomation(user, testCtx.projectId, testCtx.jobName)
-            const runId = await createRunRecord({ agentId, trigger: testRunTrigger(testCtx.jobName), isManuallyTriggered: true, isTest: true })
+            const { runId, agentId } = await mintTestRunRecord(user, testCtx)
             emitCacheInvalidationWithWildcard(user.organizationId, "runHistory", agentId)
             emitCacheInvalidationWithKey(user.organizationId, "recentAgents")
             runContext = { runId, agentId, organizationId: user.organizationId, isTest: true, recorded: true }
