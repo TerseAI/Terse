@@ -45,12 +45,10 @@ export function projectVolumeName(projectId: string): string {
     return `mem-${projectId}`
 }
 
-/** Name of the per-project isolated volume holding `terse test` memory, separate from production. */
-export function testProjectVolumeName(projectId: string): string {
-    return `mem-test-${projectId}`
-}
-
-/** Filesystem-safe per-job subtree key for test memory (job names are user-controlled). */
-export function testMemorySubtreeKey(jobName: string): string {
-    return `job-${crypto.createHash("sha256").update(jobName).digest("hex").slice(0, 32)}`
+/**
+ * Memory subtree (within the project volume) for an automation's `terse test` runs. Kept separate from the
+ * automation's production subtree (= its id) so a test can never read or overwrite deployed memory.
+ */
+export function testMemorySubtreeKey(automationId: string): string {
+    return `test-${automationId}`
 }

@@ -3,16 +3,22 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 
-import { handleClearTestMemory, handleSdkAgentRun, handleSdkApprovalDecision, handleSdkListen, handleSessionEvents } from "./controller"
+import { handleMemoryDelete, handleMemoryGet, handleMemoryList, handleMemoryPut } from "../memory/controller"
+
+import { handleSdkAgentRun, handleSdkApprovalDecision, handleSdkListen, handleSessionEvents } from "./controller"
 
 const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken])
 const limit = rateLimit(RateLimitKind.Default)
 
 router.post("/agent-run", limit, auth, handleSdkAgentRun)
-router.post("/test-memory/clear", limit, auth, handleClearTestMemory)
 router.post("/approval-decision", limit, auth, handleSdkApprovalDecision)
 router.get("/session-events", limit, auth, handleSessionEvents)
 router.get("/listen", limit, auth, handleSdkListen)
+
+router.post("/memory/list", limit, auth, handleMemoryList)
+router.post("/memory/get", limit, auth, handleMemoryGet)
+router.post("/memory/put", limit, auth, handleMemoryPut)
+router.post("/memory/delete", limit, auth, handleMemoryDelete)
 
 export default router

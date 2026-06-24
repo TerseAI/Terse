@@ -1,13 +1,15 @@
 import logger from "../../common/logger"
-import { getSandboxProvider } from "../sandboxProvider"
+import { testMemorySubtreeKey } from "../sdkSandboxLayerKeys"
+import { getVolumeManager } from "../volumes"
 
 export async function purgeAutomationsMemory(projectId: string, automationIds: string[]): Promise<void> {
     if (automationIds.length === 0) return
     try {
-        const fs = await getSandboxProvider().getProjectVolumeFs(projectId)
+        const fs = await getVolumeManager().openProjectVolumeFs(projectId)
         try {
             for (const automationId of automationIds) {
-                await fs.remove(automationId)
+                await fs.remove(automationId) // production subtree
+                await fs.remove(testMemorySubtreeKey(automationId)) // `terse test` subtree
             }
             await fs.sync()
         } finally {
@@ -19,18 +21,12 @@ export async function purgeAutomationsMemory(projectId: string, automationIds: s
     }
 }
 
-/** Delete a project's entire memory, both production and `terse test` volumes. Best-effort. */
+/** Delete a project's entire memory volume. Best-effort. */
 export async function purgeProjectMemory(projectId: string): Promise<void> {
     try {
-        await getSandboxProvider().deleteProjectVolume(projectId)
+        await getVolumeManager().deleteProjectVolume(projectId)
         logger.info("memory: deleted project volume", { projectId })
     } catch (error) {
         logger.warn("memory: delete project volume failed, continuing", { projectId, error })
-    }
-    try {
-        await getSandboxProvider().deleteTestProjectVolume(projectId)
-        logger.info("memory: deleted test project volume", { projectId })
-    } catch (error) {
-        logger.warn("memory: delete test project volume failed, continuing", { projectId, error })
     }
 }

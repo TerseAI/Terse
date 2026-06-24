@@ -643,6 +643,7 @@ async function transformAgentToFrontendFormat(agent: AgentWithRelations & Partia
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
         createdByUserId: agent.user_id,
         updatedAt: agent.updated_at.toISOString(),
+        deployedAt: agent.deployed_at ? agent.deployed_at.toISOString() : null,
         metadata: agent.project
             ? {
                   remoteServerUrl: agent.project.remote_server_url ?? null,

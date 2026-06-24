@@ -256,6 +256,9 @@ model automations {
   improvements_enabled Boolean  @default(true)
   require_approval     Boolean  @default(false)
   consecutive_failures Int      @default(0)
+  // Set when the job is first deployed. Null = draft automation created by `terse test`, not yet deployed
+  // (inert: no triggers, is_active false, excluded from stale-deploy cleanup, badged "not deployed").
+  deployed_at          DateTime?
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
@@ -810,6 +813,8 @@ model run_history_records {
   status                RunHistoryStatus
   // Whether this run ever involved a tool approval request (persists after approval is processed)
   has_approval_request  Boolean                  @default(false)
+  // Whether this run was produced by `terse test` (hidden from run history by default)
+  is_test               Boolean                  @default(false)
   // SDK skill configs (SkillConfigData[]) persisted at run time so correction agents can reconstruct tools
   sdk_skills            Json?
   created_at            DateTime                 @default(now())
@@ -829,6 +834,7 @@ model run_history_records {
   @@index([timestamp])
   @@index([automation_id, timestamp]) // Composite index for user filtering + time range queries
   @@index([has_approval_request, automation_id, timestamp]) // For pending approvals endpoint
+  @@index([is_test])
 }
 
 model run_history_actions {

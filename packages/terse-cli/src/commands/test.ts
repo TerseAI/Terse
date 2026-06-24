@@ -175,18 +175,6 @@ export async function testRun(opts: TestRunOpts): Promise<void> {
     await provider.executeJob(job, null, event, { verbose: !!opts.verbose, entryFile: opts.entryFile, projectId: readProjectConfig()?.projectId })
 }
 
-export async function testClearMemory(): Promise<void> {
-    const apiKey = readApiKeyOrBail()
-    const projectId = readProjectConfig()?.projectId
-    if (!projectId) {
-        throw new CliError("missing_project", "No linked project found.", {
-            detail: "Run this from a project directory with a terse.config.json."
-        })
-    }
-    await fetchWithAuth(ApiRoutes.SDK.CLEAR_TEST_MEMORY, apiKey, { projectId }, "POST")
-    log.info(`Cleared ${chalk.cyan("terse test")} memory for this project.`)
-}
-
 async function resolveEventById(provider: LanguageProvider, id: string, jobNameHint: string | undefined, entryFile: string | undefined): Promise<SerializedEvent> {
     const { job } = await loadJob(provider, jobNameHint, entryFile, { nonInteractive: true })
     return resolveEventByIdForJob(job, id)

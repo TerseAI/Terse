@@ -63,6 +63,7 @@ export type GetRunHistoryParams = {
     status?: RunHistoryStatus[]
     page?: number
     pageSize?: number
+    includeTest?: boolean // include `terse test` runs (hidden by default)
 }
 
 export type GetRunHistoryResponse = {

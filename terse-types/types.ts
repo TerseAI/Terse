@@ -345,6 +345,11 @@ export type TriggerPayload = {
     isTriggerEventTruncated: boolean
 }
 
+// `terse memory` (per-job persistent memory inspection)
+export type SdkMemoryFileEntry = { path: string; isDirectory: boolean; sizeBytes: number }
+export type SdkMemoryListResponse = { job: string; files: SdkMemoryFileEntry[] }
+export type SdkMemoryGetResponse = { path: string; content: string }
+
 export const runHistoryDecisionSchema = z.object({
     action: runHistoryDecisionActionSchema,
     reasoning: z.string()
@@ -360,7 +365,8 @@ export const runHistoryRecordSchema = z.object({
     decision: runHistoryDecisionSchema,
     actions: z.array(runHistoryActionBaseSchema).optional(),
     status: runHistoryStatusSchema,
-    isManuallyTriggered: z.boolean()
+    isManuallyTriggered: z.boolean(),
+    isTest: z.boolean().optional()
 })
 export type RunHistoryRecord = z.infer<typeof runHistoryRecordSchema>
 
@@ -394,7 +400,9 @@ export const agentSchema = z.object({
     notificationSettings: agentNotificationSettingsSchema.nullable(),
     toolApprovals: z.array(z.string()).nullable(),
     updatedAt: z.string().nullable(),
-    metadata: jobMetadataSchema.nullable()
+    metadata: jobMetadataSchema.nullable(),
+    // null when the job exists only as a `terse test` draft (never deployed). Frontend badges these "not deployed".
+    deployedAt: z.string().nullable().optional()
 })
 export type Agent = z.infer<typeof agentSchema>
 
