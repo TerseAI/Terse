@@ -1,11 +1,6 @@
 /**
  * Small key/value store with per-entry TTL. Values must be JSON-serializable so a Redis-backed
  * implementation can be slotted in unchanged.
- *
- * Today this is in-process (single-instance / sticky-session, matching the SDK runtime path's existing
- * in-memory coordination — see approval-gate/queue and SessionEventBus). When cross-instance sharing is
- * needed, add a RedisKvStore (node-redis SET key val PX ttl / GET / DEL) and return it from getKvStore()
- * behind settings.optional.redisUrl, mirroring RateLimiterClient / ConnectionCap. Callers don't change.
  */
 export interface KvStore {
     get<T>(key: string): Promise<T | null>
