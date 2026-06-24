@@ -412,6 +412,86 @@ Options:
 | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `-y, --non-interactive` | Fail fast instead of prompting. Requires an improvement id and a clean apply (no `--reject` fallback prompt). |
 
+## Memory
+
+If a job uses the built-in [memory skill](/reference/skills#memory-built-in), it keeps a persistent `/memories` directory that carries over between runs. These commands let you inspect and manage that memory from the terminal without opening the app.
+
+Memory is isolated per project and per job. Every command resolves the job by `--job <name>`, or auto-selects when the project has only one workflow. Pass `--test` to target the isolated memory used by `terse test` runs instead of the production memory a deployed job writes to.
+
+### `terse memory list`
+
+Lists the memory files for a job with their sizes.
+
+```bash
+terse memory list --job my-job
+terse memory list --job my-job --test
+terse memory list --job my-job --json
+```
+
+Options:
+
+| Flag                  | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)      |
+| `--test`              | Target the isolated `terse test` memory instead of production |
+| `--json`              | Emit JSON                                                  |
+| `--entry-file <path>` | Override the default workflow entry file                   |
+
+### `terse memory get <path>`
+
+Reads one memory file. Prints to stdout by default, or writes to a local file with `--out`.
+
+```bash
+terse memory get notes.md --job my-job
+terse memory get notes.md --job my-job --out ./notes.md
+```
+
+`path` is relative to the job's memory root. The command exits with an error if the file does not exist.
+
+Options:
+
+| Flag                  | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)      |
+| `--test`              | Target the isolated `terse test` memory instead of production |
+| `--out <file>`        | Write the contents to a local file instead of stdout      |
+| `--entry-file <path>` | Override the default workflow entry file                   |
+
+### `terse memory put <path>`
+
+Creates or replaces a memory file. Reads the contents from `--file`, or from stdin when no file is given.
+
+```bash
+printf '%s' "new contents" | terse memory put notes.md --job my-job
+terse memory put notes.md --job my-job --file ./notes.md
+```
+
+Options:
+
+| Flag                  | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)      |
+| `--test`              | Target the isolated `terse test` memory instead of production |
+| `--file <path>`       | Local file to upload (otherwise reads stdin)              |
+| `--entry-file <path>` | Override the default workflow entry file                   |
+
+### `terse memory rm <path>`
+
+Deletes one memory file. Prompts for confirmation in a terminal; pass `--yes` in scripts.
+
+```bash
+terse memory rm notes.md --job my-job --yes
+```
+
+Options:
+
+| Flag                  | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)      |
+| `--test`              | Target the isolated `terse test` memory instead of production |
+| `--yes`               | Skip the confirmation prompt                               |
+| `--entry-file <path>` | Override the default workflow entry file                   |
+
 ## Observability
 ### `terse listen [job-name]`
 

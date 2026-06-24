@@ -257,3 +257,9 @@ Only files under `/memories` carry over. Every run otherwise starts fresh from y
 - **Scoped to `/memories`** — all paths stay inside the `/memories` directory.
 
 Cleanup is automatic: deleting a job removes that job's memory, and deleting a project removes all memory for the project.
+
+`terse test` runs against a separate, isolated test memory, so local testing never touches what your deployed job has saved.
+
+### Inspecting memory
+
+Use the [`terse memory`](/reference/cli#memory) commands to list, read, write, and delete a job's memory files from the terminal. Add `--test` to any of them to target the isolated `terse test` memory instead of production.
