@@ -1,8 +1,8 @@
 import { RunHistoryStatus } from "terse-types"
 import { UserSession } from "terse-types/types"
 
-import logger from "../../common/logger"
 import { getKvStore } from "../../common/kvStore"
+import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
 
 import { TestRunContext, mintTestRunRecord } from "./testRunContext"
