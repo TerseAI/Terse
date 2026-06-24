@@ -14,9 +14,6 @@ export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
 
 const CREATE_MAX_ATTEMPTS = 6
 const CREATE_RETRY_BASE_DELAY_MS = 150
-// Minimal GNU-userland image for ephemeral volume file ops. Must be GNU (not
-// BusyBox/Alpine): ModalVolumeFs.list relies on `find -printf`, which BusyBox
-// lacks. Debian slim matches the GNU `find` in the node-slim runtime image.
 const VOLUME_OPS_IMAGE = "debian:bookworm-slim"
 
 export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, ModalSandbox> {

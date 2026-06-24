@@ -55,10 +55,6 @@ export async function clearPidFile(workingDir: string): Promise<void> {
     await fs.rm(pidFile, { force: true })
 }
 
-/**
- * SIGTERM any PIDs recorded in a single sandbox's `.terse-pids` file that are
- * still alive, then remove the pid file. Returns how many were killed.
- */
 export async function terminateSandboxDirProcesses(workingDir: string): Promise<number> {
     const pidFile = path.join(workingDir, PID_FILE_NAME)
     if (!existsSync(pidFile)) return 0
