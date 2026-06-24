@@ -196,7 +196,7 @@ export async function handleToolExecute(req: Request, res: Response) {
         if (runContext) {
             await persistDeterministicToolCallFailure(runContext, toolName, message, callId)
         }
-        if (testRun && !testRun.sessionBound) {
+        if (testRun) {
             await markRunFailed(testRun.context.runId, message, "agent")
         }
 

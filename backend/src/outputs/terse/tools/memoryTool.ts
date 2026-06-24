@@ -1,13 +1,11 @@
-import path from "node:path"
 import { MemoryCommand, MemoryCreateCommand, MemoryDeleteCommand, MemoryInsertCommand, MemoryRenameCommand, MemoryStrReplaceCommand, MemoryViewCommand } from "terse-types"
 
 import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
+import { MEMORY_ROOT, resolveMemoryVolumePath } from "../../../services/memory/memoryPaths"
 import { testMemorySubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { VolumeFs, getVolumeManager } from "../../../services/volumes"
 import { defineSessionTool } from "../../../tools/toolUtils"
-
-const MEMORY_ROOT = "/memories"
 
 export const memoryTool = defineSessionTool({
     name: "memory",
@@ -66,7 +64,7 @@ async function runMemoryCommand(fs: VolumeFs, subtreeKey: string, command: Memor
 
 async function viewCommand(fs: VolumeFs, subtreeKey: string, input: MemoryViewCommand): Promise<string> {
     const modelPath = input.path ?? MEMORY_ROOT
-    const rel = safeRel(subtreeKey, modelPath)
+    const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
     if (rel === null) return invalidPath(modelPath)
 
     const stat = await fs.stat(rel)
@@ -95,7 +93,7 @@ async function listDirTwoLevels(fs: VolumeFs, subtreeKey: string, rel: string, m
         const childModelPath = joinModelPath(modelPath, entry.name)
         out.push(`${humanSize(entry.sizeBytes)}\t${childModelPath}`)
         if (entry.isDirectory) {
-            const childRel = safeRel(subtreeKey, childModelPath)
+            const childRel = resolveMemoryVolumePath({ subtreeKey, inputPath: childModelPath, source: "model" })
             if (childRel === null) continue
             const children = (await fs.list(childRel)).filter(e => !e.name.startsWith(".") && e.name !== "node_modules").sort((a, b) => a.name.localeCompare(b.name))
             for (const child of children) {
@@ -109,7 +107,7 @@ async function listDirTwoLevels(fs: VolumeFs, subtreeKey: string, rel: string, m
 async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryCreateCommand): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: create requires a path"
-    const rel = safeRel(subtreeKey, modelPath)
+    const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
     if (rel === null) return invalidPath(modelPath)
 
     const existing = await fs.stat(rel)
@@ -123,7 +121,7 @@ async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryCrea
 async function strReplaceCommand(fs: VolumeFs, subtreeKey: string, input: MemoryStrReplaceCommand): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: str_replace requires a path"
-    const rel = safeRel(subtreeKey, modelPath)
+    const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
     if (rel === null) return invalidPath(modelPath)
 
     const content = await fs.read(rel)
@@ -147,7 +145,7 @@ async function strReplaceCommand(fs: VolumeFs, subtreeKey: string, input: Memory
 async function insertCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInsertCommand): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: insert requires a path"
-    const rel = safeRel(subtreeKey, modelPath)
+    const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
     if (rel === null) return invalidPath(modelPath)
 
     const content = await fs.read(rel)
@@ -169,7 +167,7 @@ async function insertCommand(fs: VolumeFs, subtreeKey: string, input: MemoryInse
 async function deleteCommand(fs: VolumeFs, subtreeKey: string, input: MemoryDeleteCommand): Promise<string> {
     const modelPath = input.path
     if (!modelPath) return "Error: delete requires a path"
-    const rel = safeRel(subtreeKey, modelPath)
+    const rel = resolveMemoryVolumePath({ subtreeKey, inputPath: modelPath, source: "model" })
     if (rel === null) return invalidPath(modelPath)
 
     const stat = await fs.stat(rel)
@@ -184,8 +182,8 @@ async function renameCommand(fs: VolumeFs, subtreeKey: string, input: MemoryRena
     const oldModelPath = input.old_path
     const newModelPath = input.new_path
     if (!oldModelPath || !newModelPath) return "Error: rename requires old_path and new_path"
-    const oldRel = safeRel(subtreeKey, oldModelPath)
-    const newRel = safeRel(subtreeKey, newModelPath)
+    const oldRel = resolveMemoryVolumePath({ subtreeKey, inputPath: oldModelPath, source: "model" })
+    const newRel = resolveMemoryVolumePath({ subtreeKey, inputPath: newModelPath, source: "model" })
     if (oldRel === null) return invalidPath(oldModelPath)
     if (newRel === null) return invalidPath(newModelPath)
 
@@ -195,28 +193,6 @@ async function renameCommand(fs: VolumeFs, subtreeKey: string, input: MemoryRena
     await fs.rename(oldRel, newRel)
     await fs.sync()
     return `Successfully renamed ${oldModelPath} to ${newModelPath}`
-}
-
-// Maps a model-facing /memories path to a volume-relative path under the automation's subtree, or null
-// if it escapes /memories (path traversal). The automation subtree gives per-agent isolation.
-function safeRel(subtreeKey: string, modelPath: string): string | null {
-    if (!modelPath || modelPath.includes("\0")) return null
-    const lowered = modelPath.toLowerCase()
-    if (lowered.includes("%2e") || lowered.includes("%2f") || modelPath.includes("..")) return null
-
-    let rest: string
-    if (modelPath === MEMORY_ROOT || modelPath === `${MEMORY_ROOT}/`) {
-        rest = ""
-    } else if (modelPath.startsWith(`${MEMORY_ROOT}/`)) {
-        rest = modelPath.slice(MEMORY_ROOT.length + 1)
-    } else {
-        return null
-    }
-
-    const normalized = path.posix.normalize(rest)
-    if (normalized.startsWith("..") || path.posix.isAbsolute(normalized)) return null
-    if (normalized === "" || normalized === ".") return subtreeKey
-    return `${subtreeKey}/${normalized}`
 }
 
 function invalidPath(modelPath: string): string {

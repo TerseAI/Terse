@@ -1,9 +1,9 @@
 import { Request, Response } from "express"
-import path from "node:path"
 import { SdkMemoryFileEntry, SdkMemoryGetResponse, SdkMemoryListResponse } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
+import { resolveMemoryVolumePath } from "../../../services/memory/memoryPaths"
 import { testMemorySubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { VolumeFs, getVolumeManager } from "../../../services/volumes"
 import { userOwnsProject } from "../testRunContext"
@@ -30,29 +30,17 @@ async function resolveMemoryScope(req: Request, res: Response): Promise<MemorySc
         res.status(400).json({ success: false, error: "jobName is required" })
         return null
     }
+    const isTest = req.body?.test === true
     const automation = await db().automations.findFirst({
-        where: { name: jobName, organization_id: user.organizationId, project_id: projectId },
+        where: { name: jobName, organization_id: user.organizationId, project_id: projectId, ...(isTest ? {} : { deployed_at: { not: null } }) },
         select: { id: true }
     })
     if (!automation) {
         res.status(404).json({ success: false, error: `No memory for job "${jobName}" yet. Run \`terse test\` or deploy it first.` })
         return null
     }
-    const subtreeKey = req.body?.test === true ? testMemorySubtreeKey(automation.id) : automation.id
+    const subtreeKey = isTest ? testMemorySubtreeKey(automation.id) : automation.id
     return { projectId, jobName, subtreeKey }
-}
-
-// Map a user-supplied path (relative to the job memory root) to a volume-relative path under the subtree,
-// or null on traversal attempts.
-function resolveRel(subtreeKey: string, rawPath: string | undefined): string | null {
-    const input = (rawPath ?? "").replace(/^\/+/, "")
-    if (input.includes("\0") || input.includes("..")) return null
-    const lowered = input.toLowerCase()
-    if (lowered.includes("%2e") || lowered.includes("%2f")) return null
-    const normalized = path.posix.normalize(input)
-    if (normalized.startsWith("..") || path.posix.isAbsolute(normalized)) return null
-    if (normalized === "" || normalized === ".") return subtreeKey
-    return `${subtreeKey}/${normalized}`
 }
 
 export async function handleMemoryList(req: Request, res: Response) {
@@ -76,7 +64,7 @@ export async function handleMemoryGet(req: Request, res: Response) {
     const scope = await resolveMemoryScope(req, res)
     if (!scope) return
 
-    const rel = resolveRel(scope.subtreeKey, req.body?.path as string | undefined)
+    const rel = resolveMemoryVolumePath({ subtreeKey: scope.subtreeKey, inputPath: req.body?.path, source: "relative" })
     if (rel === null || rel === scope.subtreeKey) return res.status(400).json({ success: false, error: "A valid file path is required" })
 
     const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId)
@@ -94,7 +82,7 @@ export async function handleMemoryPut(req: Request, res: Response) {
     const scope = await resolveMemoryScope(req, res)
     if (!scope) return
 
-    const rel = resolveRel(scope.subtreeKey, req.body?.path as string | undefined)
+    const rel = resolveMemoryVolumePath({ subtreeKey: scope.subtreeKey, inputPath: req.body?.path, source: "relative" })
     if (rel === null || rel === scope.subtreeKey) return res.status(400).json({ success: false, error: "A valid file path is required" })
     const content = req.body?.content
     if (typeof content !== "string") return res.status(400).json({ success: false, error: "content (string) is required" })
@@ -114,7 +102,7 @@ export async function handleMemoryDelete(req: Request, res: Response) {
     const scope = await resolveMemoryScope(req, res)
     if (!scope) return
 
-    const rel = resolveRel(scope.subtreeKey, req.body?.path as string | undefined)
+    const rel = resolveMemoryVolumePath({ subtreeKey: scope.subtreeKey, inputPath: req.body?.path, source: "relative" })
     if (rel === null || rel === scope.subtreeKey) return res.status(400).json({ success: false, error: "A valid file path is required" })
 
     const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId)

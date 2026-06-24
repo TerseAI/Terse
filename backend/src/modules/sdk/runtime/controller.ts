@@ -121,7 +121,13 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         // Production success is finalized by SdkJobExecutionService after the sandbox returns. Session-bound
         // test runs are finalized when the SSE session closes (they may span more calls). A non-session test
         // run is a single call, so finalize it here.
-        if (isTest && recorded && !sessionBound) await finalizeRunStatus(runId, succeeded ? RunHistoryStatus.SUCCESS : RunHistoryStatus.FAILED)
+        if (isTest && recorded) {
+            if (!sessionBound) {
+                await finalizeRunStatus(runId, succeeded ? RunHistoryStatus.SUCCESS : RunHistoryStatus.FAILED)
+            } else if (!succeeded) {
+                await markRunFailed(runId, sdkRunner.getToolFailureSummary(), "agent")
+            }
+        }
     } catch (error) {
         if (isProductionRun) {
             await finalizeFailedProductionRun(runId, orgId, user, error)

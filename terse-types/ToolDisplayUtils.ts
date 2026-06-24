@@ -39,6 +39,14 @@ function memoryResultMessage(result?: string): string | undefined {
     return typeof message === "string" ? message : undefined
 }
 
+/** Memory tool params nest the operation under `command` ({ op, path | old_path }). */
+function memoryCommandFields(params?: Record<string, unknown>): { op?: string; path?: string } {
+    const command = params?.command as { op?: unknown; path?: unknown; old_path?: unknown } | undefined
+    const op = typeof command?.op === "string" ? command.op : undefined
+    const path = typeof command?.path === "string" ? command.path : typeof command?.old_path === "string" ? command.old_path : undefined
+    return { op, path }
+}
+
 /**
  * Map a memory tool result message (authored in backend memoryTool.ts) to a specific past-tense label.
  * Returns null when unrecognized (errors / no-ops) so the caller can fall back to the params.
@@ -779,9 +787,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     memory: {
         preparing: "Checking memory",
         executing: params => {
-            const command = params?.command as string | undefined
-            const path = (params?.path ?? params?.old_path) as string | undefined
-            switch (command) {
+            const { op, path } = memoryCommandFields(params)
+            switch (op) {
                 case "view":
                     return path ? `Reading memory ${truncate(path, 40)}` : "Reading memory"
                 case "create":
@@ -803,9 +810,8 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const fromResult = describeMemoryResult(memoryResultMessage(result))
             if (fromResult) return fromResult
 
-            const command = params?.command as string | undefined
-            const path = (params?.path ?? params?.old_path) as string | undefined
-            switch (command) {
+            const { op, path } = memoryCommandFields(params)
+            switch (op) {
                 case "view":
                     return path ? `Read memory ${truncate(path, 40)}` : "Read memory"
                 case "create":
