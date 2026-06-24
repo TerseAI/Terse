@@ -16,5 +16,5 @@ export function getVolumeManager(): VolumeManager {
     return volumeManagerSingleton
 }
 
-export { VolumeManager } from "./VolumeManager"
-export { VolumeFs, VolumeDirEntry } from "./types"
+export type { VolumeManager } from "./VolumeManager"
+export type { VolumeFs, VolumeDirEntry } from "./types"
