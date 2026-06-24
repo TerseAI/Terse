@@ -5,8 +5,8 @@ import logger from "../../common/logger"
 import { SandboxVolume } from "../sandboxProvider/SandboxService"
 import { projectVolumeName } from "../sdkSandboxLayerKeys"
 
-import { VolumeDirEntry, VolumeFs } from "./types"
 import { VolumeManager } from "./VolumeManager"
+import { VolumeDirEntry, VolumeFs } from "./types"
 
 const SANDBOX_ROOT = "/data/sandbox"
 const VOLUMES_DIR = path.join(SANDBOX_ROOT, "volumes")

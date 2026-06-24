@@ -6,8 +6,8 @@ import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider
 import { Sandbox, SandboxVolume } from "../sandboxProvider/SandboxService"
 import { MEMORY_MOUNT_PATH, SDK_SANDBOX_APP_NAME, projectVolumeName, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
 
-import { VolumeDirEntry, VolumeFs } from "./types"
 import { VolumeManager } from "./VolumeManager"
+import { VolumeDirEntry, VolumeFs } from "./types"
 
 const VOLUME_OPS_IMAGE = "debian:bookworm-slim"
 

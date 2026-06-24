@@ -248,19 +248,19 @@ model projects {
 
 // Automation tables
 model automations {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   user_id              String
   organization_id      String
   name                 String
-  is_active            Boolean  @default(true)
-  improvements_enabled Boolean  @default(true)
-  require_approval     Boolean  @default(false)
-  consecutive_failures Int      @default(0)
+  is_active            Boolean   @default(true)
+  improvements_enabled Boolean   @default(true)
+  require_approval     Boolean   @default(false)
+  consecutive_failures Int       @default(0)
   // Set when the job is first deployed. Null = draft automation created by `terse test`, not yet deployed
   // (inert: no triggers, is_active false, excluded from stale-deploy cleanup, badged "not deployed").
   deployed_at          DateTime?
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
 
   prompt                     automation_prompts?
   inputs                     automation_inputs[]
