@@ -22,6 +22,7 @@ import {
 } from "../../../modules/agents/toolCallHistory"
 import { OutputFactory } from "../../../outputs/abstract/OutputFactory"
 import { mintTestRunRecord, resolveTestRunContext } from "../testRunContext"
+import { getOrCreateSessionTestRun } from "../testRunSession"
 
 type SdkFunctionTool = FunctionTool<SessionWithTracking<Session>, z.ZodObject<any>, unknown>
 type SdkToolDescriptor = {
@@ -115,11 +116,15 @@ async function resolvePersistedRunContext(runIdHeader: string | undefined, user:
     return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id }
 }
 
-async function mintTestRunContextForTools(req: Request, user: UserSession): Promise<DeterministicToolCallRunContext | null> {
+type TestToolRun = { context: DeterministicToolCallRunContext; sessionBound: boolean }
+
+async function resolveTestRunForTools(req: Request, user: UserSession, sessionId: string | undefined): Promise<TestToolRun | null> {
     const testCtx = await resolveTestRunContext(req, user)
     if (!testCtx || !user.organizationId) return null
-    const { runId, agentId } = await mintTestRunRecord(user, testCtx)
-    return { runId, agentId, organizationId: user.organizationId }
+    // Reuse the session's single is_test run so repeated toolbox calls in one `terse test` share one run
+    // (and one memory subtree) instead of each minting its own. Session close finalizes it.
+    const { runId, agentId } = sessionId ? await getOrCreateSessionTestRun(sessionId, user, testCtx) : await mintTestRunRecord(user, testCtx)
+    return { context: { runId, agentId, organizationId: user.organizationId }, sessionBound: !!sessionId }
 }
 
 export async function handleToolExecute(req: Request, res: Response) {
@@ -133,11 +138,11 @@ export async function handleToolExecute(req: Request, res: Response) {
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
     const persistedRunContext = await resolvePersistedRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
-    // A `terse test` deterministic call has no run-id header, but carries project/job headers: mint a
-    // first-class is_test run so it records and resolves memory exactly like the agent path. We own its
-    // lifecycle (there is no orchestrator), so finalize it below.
-    const testRunContext = persistedRunContext ? null : await mintTestRunContextForTools(req, user)
-    const runContext = persistedRunContext ?? testRunContext
+    // A `terse test` deterministic call carries project/job headers (no run-id): bind it to the session's
+    // single is_test run so it records and resolves memory exactly like the agent path, instead of minting
+    // a fresh run per call. A session-bound run is finalized on session close; a non-session one here.
+    const testRun = persistedRunContext ? null : await resolveTestRunForTools(req, user, sessionId)
+    const runContext = persistedRunContext ?? testRun?.context ?? null
     const effectiveRunId = runContext?.runId ?? crypto.randomUUID()
     const effectiveAgentId = runContext?.agentId ?? "sdk-tool-execute"
     const toolParams = params ?? {}
@@ -170,8 +175,8 @@ export async function handleToolExecute(req: Request, res: Response) {
         if (runContext) {
             await persistDeterministicToolCallComplete(runContext, toolDescriptor, toolName, result, callId)
         }
-        if (testRunContext) {
-            await finalizeRunStatus(testRunContext.runId, RunHistoryStatus.SUCCESS)
+        if (testRun && !testRun.sessionBound) {
+            await finalizeRunStatus(testRun.context.runId, RunHistoryStatus.SUCCESS)
         }
 
         if (sessionId) {
@@ -191,8 +196,8 @@ export async function handleToolExecute(req: Request, res: Response) {
         if (runContext) {
             await persistDeterministicToolCallFailure(runContext, toolName, message, callId)
         }
-        if (testRunContext) {
-            await markRunFailed(testRunContext.runId, message, "agent")
+        if (testRun && !testRun.sessionBound) {
+            await markRunFailed(testRun.context.runId, message, "agent")
         }
 
         if (sessionId) {

@@ -20,6 +20,7 @@ import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
 import { mintTestRunRecord, resolveTestRunContext } from "../testRunContext"
+import { finalizeSessionTestRun, getOrCreateSessionTestRun } from "../testRunSession"
 
 const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({ prompt: z.string().min(1) })
 
@@ -33,30 +34,34 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         return res.status(400).json(response)
     }
 
+    const sessionId = req.headers["x-terse-session-id"] as string | undefined
     const headerRunId = req.headers["x-terse-run-id"] as string | undefined
     const productionRunContext = headerRunId ? await resolveProductionRunContext(headerRunId, user) : null
     if (headerRunId && !productionRunContext) return res.status(404).json({ success: false, error: "Run not found" })
 
-    // Both production and test runs resolve to a real run_history_records row. Production runs are
-    // pre-created upstream (EventProcessor) and threaded via the x-terse-run-id header; test runs (local
-    // `terse test`, no header) mint a row here against a find-or-created draft automation and finalize inline.
-    // A `terse test` from a project that isn't linked yet (no project header) still runs, just unrecorded.
     let runContext: ResolvedRunContext
     if (productionRunContext) {
-        runContext = { runId: productionRunContext.runId, agentId: productionRunContext.agentId, organizationId: productionRunContext.organizationId, isTest: false, recorded: true }
+        runContext = {
+            runId: productionRunContext.runId,
+            agentId: productionRunContext.agentId,
+            organizationId: productionRunContext.organizationId,
+            isTest: false,
+            recorded: true,
+            sessionBound: false
+        }
     } else {
         const testCtx = await resolveTestRunContext(req, user)
         if (testCtx && user.organizationId) {
-            const { runId, agentId } = await mintTestRunRecord(user, testCtx)
+            const { runId, agentId } = sessionId ? await getOrCreateSessionTestRun(sessionId, user, testCtx) : await mintTestRunRecord(user, testCtx)
             emitCacheInvalidationWithWildcard(user.organizationId, "runHistory", agentId)
             emitCacheInvalidationWithKey(user.organizationId, "recentAgents")
-            runContext = { runId, agentId, organizationId: user.organizationId, isTest: true, recorded: true }
+            runContext = { runId, agentId, organizationId: user.organizationId, isTest: true, recorded: true, sessionBound: !!sessionId }
         } else {
-            runContext = { runId: crypto.randomUUID(), agentId: "", organizationId: user.organizationId ?? "", isTest: true, recorded: false }
+            runContext = { runId: crypto.randomUUID(), agentId: "", organizationId: user.organizationId ?? "", isTest: true, recorded: false, sessionBound: false }
         }
     }
 
-    const { runId, agentId, organizationId: orgId, isTest, recorded } = runContext
+    const { runId, agentId, organizationId: orgId, isTest, recorded, sessionBound } = runContext
     const isProductionRun = !isTest
     const { data } = parsed
     const { send } = initSseStream(req, res, recorded ? { runId, organizationId: orgId } : null)
@@ -113,9 +118,10 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         }
 
         const succeeded = finishSseStream(res, send, result, sdkRunner)
-        // Production success is finalized by SdkJobExecutionService after the sandbox returns; test runs
-        // have no such orchestrator, so finalize their terminal status here.
-        if (isTest && recorded) await finalizeRunStatus(runId, succeeded ? RunHistoryStatus.SUCCESS : RunHistoryStatus.FAILED)
+        // Production success is finalized by SdkJobExecutionService after the sandbox returns. Session-bound
+        // test runs are finalized when the SSE session closes (they may span more calls). A non-session test
+        // run is a single call, so finalize it here.
+        if (isTest && recorded && !sessionBound) await finalizeRunStatus(runId, succeeded ? RunHistoryStatus.SUCCESS : RunHistoryStatus.FAILED)
     } catch (error) {
         if (isProductionRun) {
             await finalizeFailedProductionRun(runId, orgId, user, error)
@@ -140,7 +146,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 }
 
-type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean; recorded: boolean }
+type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean; recorded: boolean; sessionBound: boolean }
 
 async function finalizeFailedProductionRun(runId: string, organizationId: string, user: UserSession, error: unknown): Promise<void> {
     try {
@@ -373,6 +379,7 @@ export async function handleSessionEvents(req: Request, res: Response) {
         closed = true
         clearInterval(heartbeat)
         unsubscribe()
+        void finalizeSessionTestRun(sessionId)
         void slot.release().catch(error => logger.warn("[sdkSession] slot.release failed", { error, sessionId, userId: user.id }))
         try {
             res.end()
