@@ -1,29 +1,22 @@
-import { trackIntegrationAdded } from "../common/analytics"
 import logger from "../common/logger"
 
 import { INTEGRATION_COMPLETED_TASK_NAME, IntegrationCompletedTask } from "./IntegrationCompletedTask"
 import { integrationTaskQueue } from "./IntegrationTaskQueues"
+import { handleIntegrationCompleted } from "./integrationEventHandler"
 
 /**
- * Register listener for integration completed tasks (OAuth).
- * Tracks analytics when an integration is added.
+ * In-process handler for integration completed tasks (OAuth analytics). Only fires on the no-Redis
+ * dev path; when the queue Redis is configured the BullMQ worker consumes these instead (see
+ * IntegrationTaskQueues + worker.ts).
  */
 integrationTaskQueue.addListener({
     taskName: INTEGRATION_COMPLETED_TASK_NAME,
-    onTask: async (task: IntegrationCompletedTask) => {
-        try {
-            trackIntegrationAdded(task.userId, {
-                integrationType: task.integrationType
-            })
-        } catch (error) {
-            logger.error("Error in integration completion task handler", {
-                error,
-                integrationType: task.integrationType,
-                integrationId: task.integrationId,
-                userId: task.userId
-            })
-        }
-    }
+    onTask: (task: IntegrationCompletedTask) =>
+        handleIntegrationCompleted({
+            integrationType: task.integrationType,
+            integrationId: task.integrationId,
+            userId: task.userId
+        })
 })
 
 logger.info("Integration task handler listener registered")

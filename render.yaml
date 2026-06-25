@@ -1,0 +1,77 @@
+# Render Blueprint for Terse (Render-ready; not the active prod deploy yet).
+#
+# Provisions the dedicated BullMQ Key Value (Valkey, noeviction), a Postgres DB, the backend web
+# service, and the background worker. Backend image build is driven by the repo Dockerfile.
+#
+# NOTE: self-host today also relies on a local SQLite DB (LOCAL_DB_URL) for secrets/identity. On
+# Render that needs a persistent disk on each service (omitted here for brevity) or migrating those
+# stores to Postgres. Integration OAuth secrets (WORKOS_*, GMAIL_*, SLACK_*, etc.) should be added
+# to the `terse-shared` env group as sync:false before a real deploy.
+
+databases:
+  - name: terse-postgres
+    plan: basic-256mb
+    region: oregon
+
+envVarGroups:
+  - name: terse-shared
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      # Set per-environment before deploy:
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+
+services:
+  - type: keyvalue
+    name: terse-bullmq
+    plan: starter
+    region: oregon
+    # Required for BullMQ — never evict queued jobs.
+    maxmemoryPolicy: noeviction
+    ipAllowList: [] # internal-network only
+
+  - type: web
+    name: terse-backend
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c "cd backend && pnpm exec prisma migrate deploy && pnpm run start"
+    healthCheckPath: /healthz
+    envVars:
+      - fromGroup: terse-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: terse-postgres
+          property: connectionString
+      - key: BULLMQ_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: terse-bullmq
+          property: connectionString
+
+  - type: worker
+    name: terse-worker
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c "cd backend && pnpm run start:worker"
+    # Long enough for an in-flight run's current step to finish draining on deploy (see Phase 5).
+    maxShutdownDelaySeconds: 120
+    envVars:
+      - fromGroup: terse-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: terse-postgres
+          property: connectionString
+      - key: BULLMQ_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: terse-bullmq
+          property: connectionString

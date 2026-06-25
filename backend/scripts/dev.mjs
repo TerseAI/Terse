@@ -41,6 +41,7 @@ const shouldStartTunnel = forceTunnel || isTruthy(process.env.DEV_TUNNEL) || Boo
 let shuttingDown = false
 let serverProcess = null
 let tunnelProcess = null
+let workerProcess = null
 
 function runPnpm(args, options = {}) {
     return spawn(pnpmCommand, args, {
@@ -184,8 +185,31 @@ function startServer() {
         if (!shuttingDown && tunnelProcess && !tunnelProcess.killed) {
             tunnelProcess.kill("SIGTERM")
         }
+        if (!shuttingDown && workerProcess && !workerProcess.killed) {
+            workerProcess.kill("SIGTERM")
+        }
 
         process.exit(code ?? 0)
+    })
+}
+
+function startWorker() {
+    if (!isTruthy(process.env.BULLMQ_REDIS_URL)) {
+        console.log("BULLMQ_REDIS_URL not set — skipping BullMQ worker (queues run via in-memory fallback where supported).")
+        return
+    }
+
+    workerProcess = runPnpm(["run", "dev:worker"], { env: process.env })
+
+    workerProcess.on("exit", code => {
+        if (shuttingDown) {
+            return
+        }
+        console.error(`BullMQ worker exited unexpectedly with code ${code ?? "unknown"}.`)
+        if (serverProcess && !serverProcess.killed) {
+            serverProcess.kill("SIGTERM")
+        }
+        process.exit(code ?? 1)
     })
 }
 
@@ -199,6 +223,10 @@ function shutdown(signal) {
     if (tunnelProcess && !tunnelProcess.killed) {
         tunnelProcess.kill(signal)
     }
+
+    if (workerProcess && !workerProcess.killed) {
+        workerProcess.kill(signal)
+    }
 }
 
 process.on("SIGINT", () => shutdown("SIGINT"))
@@ -209,3 +237,4 @@ if (shouldStartTunnel) {
 }
 
 startServer()
+startWorker()
