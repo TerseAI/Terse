@@ -197,6 +197,10 @@ export const settings = {
     // Optional configuration
     optional: {
         redisUrl: optionalEnv("REDIS_URL"),
+        // Dedicated Redis for BullMQ queues + RedisTaskQueue pub/sub. MUST be configured with
+        // maxmemory-policy=noeviction (BullMQ drops queued jobs under allkeys-lru). Kept separate
+        // from REDIS_URL (cache/socket adapter), which tolerates eviction.
+        bullmqRedisUrl: optionalEnv("BULLMQ_REDIS_URL"),
         cookieDomain: optionalEnv("COOKIE_DOMAIN"),
         corsAllowedOrigins: optionalEnv("CORS_ALLOWED_ORIGINS")
     },
