@@ -9,11 +9,13 @@ import { Worker } from "bullmq"
 import "dotenv/config"
 
 import logger from "./common/logger"
+import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
 import { handleIntegrationCompleted } from "./integrations/integrationEventHandler"
 import { closeQueues, createWorkerConnection, isQueueRedisConfigured } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
 import { closeTaskQueuePubSub } from "./tasks/abstract/redisTaskQueue"
 import { QueueName } from "./tasks/queues/queueNames"
+import { ScheduleJobData, upsertScheduleTrigger } from "./tasks/queues/scheduleQueue"
 
 const workers: Worker[] = []
 
@@ -33,7 +35,36 @@ function startWorker<T>(name: string, processor: (data: T) => Promise<void> | vo
 
 function registerWorkers(): void {
     startWorker<Parameters<typeof handleIntegrationCompleted>[0]>(QueueName.IntegrationEvents, data => handleIntegrationCompleted(data))
-    // Phase 3 registers the Schedule worker; Phase 5 registers SdkRunExecution + SdkRunResume.
+
+    // Recurring cron triggers: a fired scheduler enqueues a `schedule` job; we process it by
+    // invoking the same handler the old Cloud Scheduler webhook used. is_active is enforced inside.
+    startWorker<ScheduleJobData>(QueueName.Schedule, async data => {
+        await new CronJobIntegrationManager().processWebhookEvent({ inputId: data.inputId })
+    })
+    // Phase 5 registers SdkRunExecution + SdkRunResume.
+}
+
+/**
+ * Rebuild the BullMQ Job Schedulers from Postgres (the durable source of truth) on every boot.
+ * upsert is idempotent, so this self-heals a wiped/lost Redis and keeps schedulers in sync with the
+ * automation_time_trigger_configs table.
+ */
+async function reconcileSchedules(): Promise<void> {
+    const configs = await db().automation_time_trigger_configs.findMany({
+        select: { automation_input_id: true, cron_expression: true }
+    })
+
+    let reconciled = 0
+    for (const config of configs) {
+        if (!config.cron_expression) continue
+        try {
+            await upsertScheduleTrigger(config.automation_input_id, config.cron_expression)
+            reconciled++
+        } catch (error) {
+            logger.error("Failed to reconcile schedule from Postgres", { inputId: config.automation_input_id, error })
+        }
+    }
+    logger.info("✅ Reconciled BullMQ schedules from Postgres", { reconciled, total: configs.length })
 }
 
 async function main(): Promise<void> {
@@ -44,6 +75,7 @@ async function main(): Promise<void> {
 
     logger.info("🛠  Terse worker starting")
     registerWorkers()
+    await reconcileSchedules()
     logger.info("✅ Terse worker ready", { queues: workers.length })
 }
 
