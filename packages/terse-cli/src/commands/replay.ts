@@ -1,3 +1,5 @@
+import chalk from "chalk"
+
 import { readApiKeyOrBail, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
 import { loadJob } from "../loadJob.js"
@@ -20,6 +22,10 @@ export async function replay(runId: string, provider: LanguageProvider = resolve
     }
 
     const { job } = await loadJob(provider, runHistoryRecord.agentName)
+
+    if (runHistoryRecord.isTest) {
+        console.log(chalk.magenta("  🧪 Replaying a test run — the replay runs as a test run (excluded from reporting, no notifications)."))
+    }
 
     await provider.executeJob(job, null, runHistoryRecord.event, { verbose: true, projectId: readProjectConfig()?.projectId })
 }

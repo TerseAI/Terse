@@ -28,7 +28,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
                     SELECT TO_CHAR(DATE_TRUNC('minute', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:MI') as bucket_key, COUNT(*) as count
                     FROM run_history_records rhr
                     INNER JOIN automations a ON rhr.automation_id = a.id
-                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.timestamp >= ${chartStartDate}
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.is_test = false AND rhr.timestamp >= ${chartStartDate}
                     GROUP BY 1
                     ORDER BY 1
                 `
@@ -37,7 +37,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
                     SELECT TO_CHAR(DATE_TRUNC('hour', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD HH24:00') as bucket_key, COUNT(*) as count
                     FROM run_history_records rhr
                     INNER JOIN automations a ON rhr.automation_id = a.id
-                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.timestamp >= ${chartStartDate}
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.is_test = false AND rhr.timestamp >= ${chartStartDate}
                     GROUP BY 1
                     ORDER BY 1
                 `
@@ -45,7 +45,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
                     SELECT TO_CHAR(DATE_TRUNC('day', rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}), 'YYYY-MM-DD') as bucket_key, COUNT(*) as count
                     FROM run_history_records rhr
                     INNER JOIN automations a ON rhr.automation_id = a.id
-                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.timestamp >= ${chartStartDate}
+                    WHERE a.organization_id = ${organizationId} AND rhr.status != ${PrismaRunHistoryStatus.skipped}::"RunHistoryStatus" AND rhr.is_test = false AND rhr.timestamp >= ${chartStartDate}
                     GROUP BY 1
                     ORDER BY 1
                 `
@@ -54,6 +54,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
         prisma.run_history_records.count({
             where: {
                 automation: { organization_id: organizationId },
+                is_test: false,
                 status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: currentPeriodStart }
             }
@@ -61,6 +62,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
         prisma.run_history_records.count({
             where: {
                 automation: { organization_id: organizationId },
+                is_test: false,
                 status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: previousPeriodStart, lt: currentPeriodStart }
             }
@@ -68,6 +70,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
         prisma.run_history_actions.count({
             where: {
                 run_history_record: {
+                    is_test: false,
                     automation: { organization_id: organizationId },
                     timestamp: { gte: currentPeriodStart }
                 },
@@ -77,6 +80,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
         prisma.run_history_actions.count({
             where: {
                 run_history_record: {
+                    is_test: false,
                     automation: { organization_id: organizationId },
                     timestamp: { gte: previousPeriodStart, lt: currentPeriodStart }
                 },
@@ -93,6 +97,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
         prisma.run_history_actions.findMany({
             where: {
                 run_history_record: {
+                    is_test: false,
                     automation: { organization_id: organizationId }
                 },
                 is_read_only: false
@@ -110,6 +115,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
         prisma.run_history_records.findMany({
             where: {
                 automation: { organization_id: organizationId },
+                is_test: false,
                 status: { not: PrismaRunHistoryStatus.skipped }
             },
             include: {
@@ -123,6 +129,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
             by: ["automation_id"],
             where: {
                 automation: { organization_id: organizationId },
+                is_test: false,
                 status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: currentPeriodStart }
             },
@@ -134,6 +141,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
             by: ["status"],
             where: {
                 automation: { organization_id: organizationId },
+                is_test: false,
                 status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: currentPeriodStart }
             },
@@ -144,6 +152,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
             by: ["trigger_integration"],
             where: {
                 automation: { organization_id: organizationId },
+                is_test: false,
                 status: { not: PrismaRunHistoryStatus.skipped },
                 timestamp: { gte: currentPeriodStart }
             },
@@ -154,6 +163,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
             by: ["integration"],
             where: {
                 run_history_record: {
+                    is_test: false,
                     automation: { organization_id: organizationId },
                     timestamp: { gte: currentPeriodStart }
                 },
@@ -166,6 +176,7 @@ export async function fetchStatsRawData(boundaries: StatsQueryBoundaries) {
             by: ["type"],
             where: {
                 run_history_record: {
+                    is_test: false,
                     automation: { organization_id: organizationId },
                     timestamp: { gte: currentPeriodStart }
                 },

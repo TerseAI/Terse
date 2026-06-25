@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
 
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
+import RunTypeBadge from "../RunTypeBadge"
 
 type Props = {
     trigger: RunHistoryTrigger
@@ -15,6 +16,8 @@ type Props = {
     totalEvents?: number
     status: RunHistoryStatus
     filtered: boolean
+    isTest?: boolean
+    isManuallyTriggered?: boolean
     runs?: RunHistoryRecord[]
     currentRunIndex?: number
     onNavigate?: (runId: string) => void
@@ -29,6 +32,8 @@ export default function RunHistoryChatDrawerHeader({
     trigger,
     runId,
     status,
+    isTest,
+    isManuallyTriggered,
     runs,
     currentRunIndex,
     onNavigate,
@@ -70,7 +75,8 @@ export default function RunHistoryChatDrawerHeader({
                     {trigger.subheader && <p className="mt-1 text-sm leading-5 text-muted-foreground break-words">{trigger.subheader}</p>}
                 </div>
 
-                <div className="flex flex-shrink-0 items-center gap-1">
+                <div className="flex flex-shrink-0 items-center gap-1.5">
+                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} className="text-[11px]" />
                     <RunHistoryStatusBadge status={status} />
                     {hasRunNavigation && (
                         <div className="ml-1 flex items-center rounded-md border border-border/60">

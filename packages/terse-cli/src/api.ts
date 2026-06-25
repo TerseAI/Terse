@@ -160,6 +160,7 @@ export type RunChatHistory = {
     triggerEvent: string | null
     triggerEventType: string | null
     isTriggerEventTruncated: boolean
+    isTest?: boolean
 }
 
 export async function fetchRunChatHistory(runId: string, apiKey: string): Promise<RunChatHistory> {

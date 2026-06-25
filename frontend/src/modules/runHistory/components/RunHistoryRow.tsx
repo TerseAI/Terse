@@ -11,6 +11,7 @@ import { IconForIntegration } from "@/modules/agents/components/Integration"
 import { formatTimestamp } from "@/utils/time"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
+import RunTypeBadge from "./RunTypeBadge"
 
 interface RunHistoryRowProps {
     run: RunHistoryRecordWithAgent
@@ -64,10 +65,12 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                 </div>
             </div>
 
+            {/* Run type */}
+            <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} className="hidden sm:inline-flex text-[10px]" />
+
             {/* Write actions count */}
             {writeActions.length > 0 && (
                 <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
-                    {run.isManuallyTriggered && <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-success shrink-0">Manual</span>}
                     <Zap className="w-3 h-3" />
                     <span>
                         {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}

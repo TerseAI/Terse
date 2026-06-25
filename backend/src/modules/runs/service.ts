@@ -225,7 +225,8 @@ export async function fetchChatHistoryForRun(runId: string, organizationId: stri
         status: runRecord.status,
         triggerEvent,
         triggerEventType,
-        isTriggerEventTruncated
+        isTriggerEventTruncated,
+        isTest: runRecord.is_test
     }
 }
 

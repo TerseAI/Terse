@@ -3,6 +3,8 @@ import type { RunHistoryRecord } from "terse-types"
 
 import { IconForIntegration } from "@/modules/agents/components/Integration"
 
+import RunTypeBadge from "./RunTypeBadge"
+
 type Props = {
     run: RunHistoryRecord
     formattedTimestamp: string
@@ -56,10 +58,10 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                         </>
                     )}
                     <span className="flex-shrink-0">{formattedTimestamp}</span>
-                    {run.isManuallyTriggered && (
+                    {(run.isTest || run.isManuallyTriggered) && (
                         <>
                             <span className="flex-shrink-0 text-muted-foreground/40">·</span>
-                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 font-medium text-success flex-shrink-0">Manual</span>
+                            <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} />
                         </>
                     )}
                 </div>
