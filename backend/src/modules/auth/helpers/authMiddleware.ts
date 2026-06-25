@@ -4,13 +4,12 @@ import type { UserSession } from "terse-types/types"
 
 import { clearSessionCookies } from "../../../ee/services/authProvider/service"
 
-import { authenticateViaApiToken, authenticateViaCookie, readBearerToken, readSealedSessionCookie, validateCloudSchedulerHeader } from "./authDispatch"
+import { authenticateViaApiToken, authenticateViaCookie, readBearerToken, readSealedSessionCookie } from "./authDispatch"
 
 export enum AuthKind {
     UserCookie = "user_cookie",
     UserToken = "user_token",
-    ProjectToken = "project_token",
-    CloudScheduler = "cloud_scheduler"
+    ProjectToken = "project_token"
 }
 
 export interface AuthOptions {
@@ -47,8 +46,7 @@ type CredentialChannel = "bearer" | "cookie"
 const CREDENTIAL_CHANNEL: Record<AuthKind, CredentialChannel> = {
     [AuthKind.UserCookie]: "cookie",
     [AuthKind.UserToken]: "bearer",
-    [AuthKind.ProjectToken]: "bearer",
-    [AuthKind.CloudScheduler]: "bearer"
+    [AuthKind.ProjectToken]: "bearer"
 }
 
 async function handleBearer(bearer: string, allow: AuthKind[], opts: AuthOptions, req: Request, res: Response, next: NextFunction) {
@@ -73,18 +71,6 @@ async function handleBearer(bearer: string, allow: AuthKind[], opts: AuthOptions
         req.session = { user: result.user, authMethod: { kind: "api_token", tokenKind: result.tokenKind } }
         if (!assertAdminIfRequired(opts, result.user, res)) return
         return next()
-    }
-
-    if (allow.includes(AuthKind.CloudScheduler)) {
-        if (validateCloudSchedulerHeader(req.headers.authorization)) {
-            if (opts.requireAdmin) {
-                res.status(403).json({ error: "Only organization admins can perform this action" })
-                return
-            }
-            return next()
-        }
-        res.status(401).json({ error: "Invalid scheduler credential" })
-        return
     }
 
     res.status(401).json({ error: "Invalid credential" })

@@ -1,21 +1,3 @@
-/**
- * The TaskQueue implementation, backed by mqemitter-redis (Redis pub/sub).
- *
- * Signals (cancellation, streamed events, approval decisions) cross process boundaries, so the
- * instance holding an SSE stream / running a job receives a signal emitted on a different instance.
- *
- * mqemitter-redis gives us an emitter-style API (`emit`/`on`/`removeListener`) over Redis pub/sub
- * and handles subscription multiplexing, reconnection, and local-vs-redis echo de-duplication (via
- * its internal LRU cache) for us, so the originating instance receives its own events exactly once
- * and `waitFor` works on the same instance that emitted.
- *
- * A single shared emitter is multiplexed across every RedisTaskQueue instance (two Redis
- * connections total), keyed by topic `<namespace>/<taskName>`.
- *
- * The queue Redis (BULLMQ_REDIS_URL) is a hard dependency: the backend fails loud at boot if it is
- * unset (see settings). While Redis is down, emits are logged and subscribers receive nothing until
- * reconnect (mqemitter-redis reconnects under the hood); signals are not delivered during an outage.
- */
 import MQEmitterRedis from "mqemitter-redis"
 
 import logger from "../../common/logger"

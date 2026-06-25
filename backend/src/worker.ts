@@ -16,6 +16,7 @@ import { closeQueues, createWorkerConnection, getQueue } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
 import { closeWorkerSocketEmitter, getWorkerSocket, initWorkerSocketEmitter } from "./loaders/workerSocket"
 import { markRunFailed } from "./modules/agents/AgentRunner/runHistory"
+import { runReviewAllAgents } from "./modules/agents/review/controller"
 import { runClearOldSecretVersions, runTokenRefresh } from "./modules/maintenance/controller"
 import { runCleanupSdkImages } from "./modules/sdk/maintenance/controller"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
@@ -100,6 +101,9 @@ async function runMaintenanceJob(name: string): Promise<void> {
             return
         case MaintenanceJob.CleanupSdkImages:
             await runCleanupSdkImages()
+            return
+        case MaintenanceJob.ReviewAgents:
+            await runReviewAllAgents({ dryRun: false })
             return
         default:
             logger.warn(`[worker:${QueueName.Maintenance}] unknown maintenance job`, { name })

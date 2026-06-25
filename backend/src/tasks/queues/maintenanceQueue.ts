@@ -10,7 +10,8 @@ import { QueueName } from "./queueNames"
 export const MaintenanceJob = {
     RefreshTokens: "refresh-tokens",
     ClearOldSecretVersions: "clear-old-secret-versions",
-    CleanupSdkImages: "cleanup-sdk-images"
+    CleanupSdkImages: "cleanup-sdk-images",
+    ReviewAgents: "review-agents"
 } as const
 
 export type MaintenanceJob = (typeof MaintenanceJob)[keyof typeof MaintenanceJob]
@@ -19,7 +20,8 @@ export type MaintenanceJob = (typeof MaintenanceJob)[keyof typeof MaintenanceJob
 const MAINTENANCE_SCHEDULES: Record<MaintenanceJob, string> = {
     [MaintenanceJob.RefreshTokens]: "0 * * * *", // hourly
     [MaintenanceJob.ClearOldSecretVersions]: "0 3 * * *", // daily 03:00 UTC
-    [MaintenanceJob.CleanupSdkImages]: "0 4 * * *" // daily 04:00 UTC
+    [MaintenanceJob.CleanupSdkImages]: "0 4 * * *", // daily 04:00 UTC
+    [MaintenanceJob.ReviewAgents]: "0 13 * * 1" // weekly, Monday 13:00 UTC
 }
 
 /** Declare/refresh the static maintenance schedulers. Throws if Redis is unavailable. */

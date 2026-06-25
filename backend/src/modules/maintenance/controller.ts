@@ -1,18 +1,10 @@
-import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
-import { z } from "zod"
 
 import logger from "../../common/logger"
 import { GoogleSecretManagerClient } from "../../ee/services/secretManager/GoogleSecretManagerClient"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
 import { settings } from "../../settings"
-
-const clearOldSecretVersionsRequestSchema = z.object({
-    dryRun: z.preprocess(value => {
-        return value !== undefined && typeof value === "string" && value.trim().toLowerCase() === "true"
-    }, z.boolean())
-})
 
 interface TokenRefreshSummary {
     summary: { total: number; refreshed: number; failed: number }
@@ -79,21 +71,8 @@ export async function runTokenRefresh(): Promise<TokenRefreshSummary> {
     return { summary: { total, refreshed, failed }, results }
 }
 
-export async function refreshAllTokens(req: Request, res: Response) {
-    logger.info("Token refresh cron job triggered")
-
-    try {
-        const { summary, results } = await runTokenRefresh()
-        return res.json({ message: "Token refresh completed", summary, results })
-    } catch (error) {
-        logger.error("Error in token refresh cron job:", { error })
-        return res.status(500).json({ error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" })
-    }
-}
-
 /**
- * Core logic for the clear-old-secret-versions cron. Callable from the HTTP route and the worker.
- * Returns null when skipped (gcp not configured).
+ * Core logic for the clear-old-secret-versions cron. Returns null when skipped (gcp not configured).
  */
 export async function runClearOldSecretVersions(opts: { dryRun: boolean }): Promise<Awaited<ReturnType<GoogleSecretManagerClient["clearOldSecretVersions"]>> | null> {
     if (!settings.gcp) {
@@ -109,38 +88,4 @@ export async function runClearOldSecretVersions(opts: { dryRun: boolean }): Prom
         numberOfErrors: report.numberOfErrors
     })
     return report
-}
-
-export async function clearOldSecretVersions(req: Request, res: Response) {
-    logger.info("Clearing old secret versions cron job triggered")
-
-    const parsedInput = clearOldSecretVersionsRequestSchema.safeParse({
-        dryRun: req.query.dryRun ?? req.body?.dryRun
-    })
-
-    if (!parsedInput.success) {
-        return res.status(400).json({ error: "Invalid request", details: parsedInput.error.flatten() })
-    }
-
-    try {
-        const report = await runClearOldSecretVersions(parsedInput.data)
-        if (!report) {
-            return res.status(200).json({ skipped: true, reason: "gcp_not_configured" })
-        }
-
-        return res.json({
-            message: report.dryRun ? "Dry run for clearing old secret versions completed" : "Clear old secret versions completed",
-            summary: {
-                dryRun: report.dryRun,
-                secretsCleared: report.numberOfSecretsCleared,
-                versionsCleared: report.numberOfVersionsCleared,
-                errors: report.numberOfErrors
-            },
-            plannedDestructions: report.plannedDestructions,
-            errors: report.errors
-        })
-    } catch (error) {
-        logger.error("Error in clear old secret versions cron job:", { error })
-        return res.status(500).json({ error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" })
-    }
 }

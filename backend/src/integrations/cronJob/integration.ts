@@ -25,7 +25,7 @@ export class CronJobIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.CRON_JOB>
 {
     readonly integrationType = IntegrationType.CRON_JOB
-    readonly settingsKey = "cloudScheduler"
+    readonly settingsKey = null
 
     getFormFields(): FormFieldDefinition[] {
         return []

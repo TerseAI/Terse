@@ -12,7 +12,6 @@ import { handleWorkOSWebhook } from "./ee/services/authProvider/workosWebhook"
 import { INTEGRATION_REGISTRY } from "./integrations/abstract/IntegrationRegistry"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
 import { httpAccessLog } from "./middlewares/httpAccessLog"
-import agentsReviewRouter from "./modules/agents/review/routes"
 import agentsRouter from "./modules/agents/routes"
 import apiTokensRouter from "./modules/api-tokens/routes"
 import approvalsRouter from "./modules/approvals/routes"
@@ -40,7 +39,6 @@ import slackVendorRouter from "./modules/integrations/slack/routes"
 import snowflakeRouter from "./modules/integrations/snowflake/routes"
 import { handleWorkOSTriggerWebhook } from "./modules/integrations/workosIntegration/controller"
 import workosIntegrationRouter from "./modules/integrations/workosIntegration/routes"
-import maintenanceRouter from "./modules/maintenance/routes"
 import notificationDestinationsRouter from "./modules/notifications/destinations/routes"
 import sentNotificationsRouter from "./modules/notifications/sent/routes"
 import notificationSettingsRouter from "./modules/notifications/settings/routes"
@@ -48,7 +46,6 @@ import organizationsRouter from "./modules/organizations/routes"
 import projectsRouter from "./modules/projects/routes"
 import projectSecretsRouter from "./modules/projects/secrets/routes"
 import runsRouter from "./modules/runs/routes"
-import sdkMaintenanceRouter from "./modules/sdk/maintenance/routes"
 import sdkRouter from "./modules/sdk/routes"
 import statsRouter from "./modules/stats/routes"
 import toolsRouter from "./modules/tools/routes"
@@ -223,9 +220,6 @@ export function createApp(options: CreateAppOptions) {
     app.use(triggersRouter)
     app.use("/integrations", integrationsRouter)
     app.use("/sdk", sdkRouter)
-    app.use(sdkMaintenanceRouter)
-    app.use(agentsReviewRouter)
-    app.use(maintenanceRouter)
     app.use(billingCacheInvalidationRouter)
     app.use(authRouter)
     // Per-vendor integration routers (mounted at vendor-specific prefixes). Gated on

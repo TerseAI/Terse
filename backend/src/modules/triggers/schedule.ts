@@ -95,27 +95,6 @@ export async function handleManualTrigger(req: Request, res: Response) {
         })
 }
 
-export async function handleScheduleWebhook(req: Request, res: Response) {
-    const { inputId } = req.params
-
-    logger.info("⏰ Schedule webhook received", { inputId })
-
-    if (!inputId) {
-        logger.warn("⚠️  Schedule webhook missing inputId")
-        res.status(400).json({ error: "Missing inputId" })
-        return
-    }
-
-    // Acknowledge immediately
-    res.status(200).json({ received: true })
-
-    // Process asynchronously
-    const cronJobManager = new CronJobIntegrationManager()
-    cronJobManager.processWebhookEvent({ inputId }).catch(error => {
-        logger.error("❌ Error processing schedule webhook", { error, inputId })
-    })
-}
-
 function isPrismaUniqueViolation(error: unknown): boolean {
     return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }

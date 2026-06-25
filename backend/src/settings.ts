@@ -156,11 +156,6 @@ export const settings = {
         imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images")
     },
 
-    // Cloud Scheduler (for cron jobs) — opt-in
-    cloudScheduler: optionalIntegrationSettings(["CLOUD_SCHEDULER_SECRET"], () => ({
-        secret: requireSecretMinLength("CLOUD_SCHEDULER_SECRET")
-    })),
-
     // Posthog Logs
     posthog: {
         apiKey: optionalEnv("POSTHOG_API_KEY"),
@@ -230,7 +225,7 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 }
 
 // Export individual always-on settings for convenience. Opt-in integration blocks
-// (gmail, githubApp, notion, slack, linear, attio, cloudScheduler, parallel) must be
+// (gmail, githubApp, notion, slack, linear, attio, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
 export const { jwt, gemini, urls, gcs, optional, queue } = settings
 

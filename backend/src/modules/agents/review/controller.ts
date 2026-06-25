@@ -1,11 +1,9 @@
 import { NotificationDestinationType, SentNotificationEventType, SentNotificationStatus } from "@prisma/client"
-import { Request, Response } from "express"
 import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { sentNotificationsKey } from "terse-types/InvalidationKeys"
 import { UserSession } from "terse-types/types"
 
-import { FeatureFlagService } from "../../../common/featureFlags"
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
@@ -40,7 +38,8 @@ type EmailGroup = {
     agents: EmailAgentSummary[]
 }
 
-export async function reviewAllAgents(req: Request, res: Response) {
+/** Core logic for the weekly agent-review cron. Invoked by the BullMQ maintenance worker. */
+export async function runReviewAllAgents({ dryRun = false }: { dryRun?: boolean } = {}): Promise<void> {
     logger.info("[ReviewAgents] Weekly review job triggered")
 
     // Weekly reviews depend on ClaudeCodeSandboxService, which runs the Claude Code CLI
@@ -48,11 +47,9 @@ export async function reviewAllAgents(req: Request, res: Response) {
     // is a plain child_process.spawn on the host and can't host that — cloud-only for now.
     if (!getSandboxProvider().supportsContainerizedRunners) {
         logger.info("[ReviewAgents] Skipping: current sandbox provider does not support containerized runners")
-        res.status(200).json({ skipped: true, reason: "sandbox_provider_no_containers" })
         return
     }
 
-    const dryRun = req.query.dryRun === "true"
     if (dryRun) logger.info("[ReviewAgents] Dry-run: computing improvements without persisting or notifying")
 
     const periodEnd = new Date()
@@ -63,7 +60,6 @@ export async function reviewAllAgents(req: Request, res: Response) {
             where: { is_active: true, improvements_enabled: true },
             select: { id: true, name: true, user_id: true, organization_id: true }
         })
-        resolveUserInOrg
         const userCache = new Map<string, Awaited<ReturnType<typeof resolveUserInOrg>>>()
         const emailGroups = new Map<string, EmailGroup>()
         const failures: Array<{ automationId: string; error: string }> = []
@@ -240,14 +236,13 @@ export async function reviewAllAgents(req: Request, res: Response) {
             }
         }
 
-        return res.status(200).json({
-            success: true,
+        logger.info("[ReviewAgents] Weekly review job completed", {
             dryRun,
             summary: { scannedAgents: automations.length, reviewedAgents, skippedNoRuns, skippedTooManyImprovements, improvementsCreated, emailsSent, failures: failures.length },
             failures
         })
     } catch (error) {
         logger.error("[ReviewAgents] Weekly review job failed", { error })
-        return res.status(500).json({ error: "Internal server error" })
+        throw error
     }
 }

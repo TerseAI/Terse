@@ -1,14 +1,3 @@
-/**
- * Emit-only Socket.IO for the worker process.
- *
- * Run execution streams output and cache-invalidation events via Socket.IO. On the worker there is
- * no HTTP server and no connected clients, so we create a standalone Socket.IO Server wired to the
- * SAME Redis adapter as the web process (REDIS_URL — the cache/socket Redis, NOT the BullMQ Redis).
- * Emits then propagate through the adapter to clients connected on the web instances.
- *
- * If REDIS_URL is absent the server has no adapter and cross-process emits go nowhere; execution
- * still runs, but live streaming/cache invalidation won't reach browsers in a multi-process setup.
- */
 import { createAdapter } from "@socket.io/redis-adapter"
 import { createClient } from "redis"
 import { Server } from "socket.io"
