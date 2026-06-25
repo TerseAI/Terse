@@ -565,6 +565,55 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 }
 
+export class MemoryNotFoundError extends Error {
+    readonly path: string
+    constructor(path: string) {
+        super(`Memory file not found: ${path}`)
+        this.name = "MemoryNotFoundError"
+        this.path = path
+    }
+}
+
+export async function readMemory<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>> {
+    let raw: string
+    try {
+        const out = await TerseAgent.executeTool<{ result: string }>("memory", { command: { op: "view", path, raw: true } })
+        raw = out.result
+    } catch (error) {
+        if (error instanceof Error && /does not exist/.test(error.message)) throw new MemoryNotFoundError(path)
+        throw error
+    }
+    return schema.parse(JSON.parse(raw)) as z.infer<S>
+}
+
+export async function writeMemory<S extends z.ZodType>(path: string, data: z.infer<S>, schema: S): Promise<void> {
+    const file_text = JSON.stringify(schema.parse(data))
+    await TerseAgent.executeTool("memory", { command: { op: "create", path, file_text, overwrite: true } })
+}
+
+export type TypedMemoryStore<S extends z.ZodType> = {
+    read(path: string): Promise<z.infer<S>>
+    write(path: string, data: z.infer<S>): Promise<void>
+}
+
+export function memoryStore<S extends z.ZodType>(root: string, schema: S): TypedMemoryStore<S> {
+    const join = (p: string) => `${root.replace(/\/$/, "")}/${p.replace(/^\//, "")}`
+    return {
+        read: (p: string) => readMemory(join(p), schema),
+        write: (p: string, data: z.infer<S>) => writeMemory(join(p), data, schema)
+    }
+}
+
+// Attached to the generated `tools.terse.memory` callable so jobs get typed JSON read/write
+// alongside the existing op-based tool call. Validation runs in the SDK; the server stores raw strings.
+export type TypedMemory = {
+    read<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>>
+    write<S extends z.ZodType>(path: string, data: z.infer<S>, schema: S): Promise<void>
+    store<S extends z.ZodType>(root: string, schema: S): TypedMemoryStore<S>
+}
+
+export const memoryHelpers: TypedMemory = { read: readMemory, write: writeMemory, store: memoryStore }
+
 type GenerateTextParams<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> = {
     prompt: string
     skills?: TSkills

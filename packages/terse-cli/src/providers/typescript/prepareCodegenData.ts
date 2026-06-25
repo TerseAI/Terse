@@ -801,6 +801,10 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     if (tools.length === 0) return sectionData([])
 
     const imports = new Set(["TerseAgent", "ToolInputByName", "ToolOutputByName"])
+    if (tools.some(tool => tool.name === "memory")) {
+        imports.add("TypedMemory")
+        imports.add("memoryHelpers")
+    }
     const attioPreludeLines: string[] = []
 
     const instanceMap = new Map<string, { id: string; displayName: string }[]>()
@@ -1052,7 +1056,9 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
 
             let generatedSignature: string
-            if (group.integration === "attio" && tool.name === "attio_query_records") {
+            if (tool.name === "memory") {
+                generatedSignature = `${methodName}: ((params: ${paramsType}) => Promise<ToolOutputByName["${escapeString(tool.name)}"]>) & TypedMemory`
+            } else if (group.integration === "attio" && tool.name === "attio_query_records") {
                 generatedSignature = `${methodName}<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>`
             } else if (group.integration === "attio" && tool.name === "attio_upsert_record") {
                 generatedSignature = `${methodName}<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>`
@@ -1063,7 +1069,14 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             }
 
             let runtimeLines: string[]
-            if (group.integration === "attio" && tool.name === "attio_query_records" && group.integrationId) {
+            if (tool.name === "memory") {
+                runtimeLines = [
+                    `${methodName}: Object.assign(`,
+                    `    (params: ${paramsType}) => TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", params),`,
+                    `    memoryHelpers,`,
+                    `) as ((params: ${paramsType}) => Promise<ToolOutputByName["${escapeString(tool.name)}"]>) & TypedMemory,`
+                ]
+            } else if (group.integration === "attio" && tool.name === "attio_query_records" && group.integrationId) {
                 runtimeLines = [
                     `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>`,
                     `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioQueryResult(params.object, result)),`

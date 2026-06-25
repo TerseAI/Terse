@@ -2120,13 +2120,15 @@ export const webSearchTool = defineTool({
 export const memoryViewCommandSchema = z.object({
     op: z.literal("view"),
     path: z.string().nullable().optional().describe("Path under /memories to view; omit to list the memory root"),
-    view_range: z.array(z.number().int()).nullable().optional().describe("Optional [startLine, endLine] (1-indexed) to view a slice of a file")
+    view_range: z.array(z.number().int()).nullable().optional().describe("Optional [startLine, endLine] (1-indexed) to view a slice of a file"),
+    raw: z.boolean().nullable().optional().describe("Return the file's exact bytes without line numbers (SDK use)")
 })
 
 export const memoryCreateCommandSchema = z.object({
     op: z.literal("create"),
     path: z.string().describe("Path under /memories to create (e.g. '/memories/notes.md')"),
-    file_text: z.string().nullable().optional().describe("Full file contents; defaults to empty")
+    file_text: z.string().nullable().optional().describe("Full file contents; defaults to empty"),
+    overwrite: z.boolean().nullable().optional().describe("Overwrite the file if it already exists (SDK use)")
 })
 
 export const memoryStrReplaceCommandSchema = z.object({
