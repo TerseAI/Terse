@@ -1,34 +1,42 @@
 /**
  * Terse background worker — a second entry point in the backend package that consumes BullMQ
- * queues (integration analytics now; crons + run execution in later phases). Reuses Prisma,
- * settings, and the domain handlers from the web process.
+ * queues: integration analytics, user cron triggers, platform maintenance crons, and durable agent
+ * run execution. Reuses Prisma, settings, and the domain handlers from the web process.
  *
  * Requires BULLMQ_REDIS_URL. Mirrors server.ts's graceful-shutdown lifecycle.
  */
 import { Worker } from "bullmq"
 import "dotenv/config"
+import { RunHistoryStatus } from "terse-types"
 
 import logger from "./common/logger"
 import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
 import { handleIntegrationCompleted } from "./integrations/integrationEventHandler"
-import { closeQueues, createWorkerConnection, isQueueRedisConfigured } from "./loaders/bullmq"
+import { closeQueues, createWorkerConnection, getQueue, isQueueRedisConfigured } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
+import { closeWorkerSocketEmitter, getWorkerSocket, initWorkerSocketEmitter } from "./loaders/workerSocket"
+import { markRunFailed } from "./modules/agents/AgentRunner/runHistory"
 import { runClearOldSecretVersions, runTokenRefresh } from "./modules/maintenance/controller"
 import { runCleanupSdkImages } from "./modules/sdk/maintenance/controller"
+import { registerSocketGetter } from "./services/CacheInvalidationService"
 import { closeTaskQueuePubSub } from "./tasks/abstract/redisTaskQueue"
+import { handleRunExecution } from "./tasks/handlers/runExecutionHandler"
 import { MaintenanceJob, upsertMaintenanceSchedulers } from "./tasks/queues/maintenanceQueue"
 import { QueueName } from "./tasks/queues/queueNames"
+import { RunExecutionJobData, runExecutionJobId } from "./tasks/queues/runExecutionQueue"
 import { ScheduleJobData, upsertScheduleTrigger } from "./tasks/queues/scheduleQueue"
+
+const SDK_RUN_CONCURRENCY = Number(process.env.SDK_RUN_CONCURRENCY) || 25
 
 const workers: Worker[] = []
 
-function startWorker<T>(name: string, processor: (data: T) => Promise<void> | void, opts: { concurrency?: number } = {}): void {
+function startWorker<T>(name: string, processor: (data: T) => Promise<void> | void, opts: { concurrency?: number; maxStalledCount?: number } = {}): void {
     const worker = new Worker<T>(
         name,
         async job => {
             await processor(job.data)
         },
-        { connection: createWorkerConnection(), concurrency: opts.concurrency ?? 10 }
+        { connection: createWorkerConnection(), concurrency: opts.concurrency ?? 10, ...(opts.maxStalledCount !== undefined ? { maxStalledCount: opts.maxStalledCount } : {}) }
     )
     worker.on("failed", (job, error) => logger.error(`[worker:${name}] job failed`, { jobId: job?.id, error }))
     worker.on("error", error => logger.error(`[worker:${name}] worker error`, { error }))
@@ -47,7 +55,10 @@ function registerWorkers(): void {
 
     // Platform maintenance crons, discriminated by job name.
     startMaintenanceWorker()
-    // Phase 5 registers SdkRunExecution + SdkRunResume.
+
+    // Durable agent run execution. attempts:1 + jobId run:<runId> dedupe + maxStalledCount:0 mean a
+    // crashed-mid-run job fails rather than silently re-spawning a second Modal sandbox / double bill.
+    startWorker<RunExecutionJobData>(QueueName.SdkRunExecution, data => handleRunExecution(data), { concurrency: SDK_RUN_CONCURRENCY, maxStalledCount: 0 })
 }
 
 /** Maintenance jobs share one queue and are dispatched by job name. */
@@ -104,6 +115,40 @@ async function reconcileSchedules(): Promise<void> {
     logger.info("✅ Reconciled BullMQ schedules from Postgres", { reconciled, total: configs.length })
 }
 
+/**
+ * Fail runs left IN_PROGRESS with no live execution job — orphaned when a worker died mid-run
+ * (the Modal sandbox lifecycle is independent of BullMQ, so a re-delivered/killed job can't be
+ * trusted to have finalized the run). Conservative: only stale runs with no active/queued job.
+ */
+async function reconcileOrphanedRuns(): Promise<void> {
+    const STALE_MS = 15 * 60_000
+    const cutoff = new Date(Date.now() - STALE_MS)
+
+    const stale = await db().run_history_records.findMany({
+        where: { status: RunHistoryStatus.IN_PROGRESS, updated_at: { lt: cutoff } },
+        select: { id: true }
+    })
+    if (stale.length === 0) {
+        logger.info("No orphaned runs to reconcile")
+        return
+    }
+
+    const queue = getQueue(QueueName.SdkRunExecution)
+    const liveStates = new Set(["active", "waiting", "delayed", "prioritized", "waiting-children"])
+    let failed = 0
+    for (const run of stale) {
+        const job = await queue.getJob(runExecutionJobId(run.id))
+        const state = job ? await job.getState() : null
+        if (state && liveStates.has(state)) continue // legitimately executing
+        try {
+            if (await markRunFailed(run.id, "Run orphaned (no active execution job after worker restart)", "agent")) failed++
+        } catch (error) {
+            logger.error("Failed to mark orphaned run as failed", { runId: run.id, error })
+        }
+    }
+    logger.info("✅ Reconciled orphaned runs", { candidates: stale.length, failed })
+}
+
 async function main(): Promise<void> {
     if (!isQueueRedisConfigured()) {
         logger.error("❌ BULLMQ_REDIS_URL is not set — the worker has nothing to connect to. Exiting.")
@@ -111,9 +156,16 @@ async function main(): Promise<void> {
     }
 
     logger.info("🛠  Terse worker starting")
+
+    // Run execution streams via Socket.IO; wire the emit-only adapter and the getter the run/cache
+    // services read through, before any run job can be picked up.
+    await initWorkerSocketEmitter()
+    registerSocketGetter(getWorkerSocket)
+
     registerWorkers()
     await reconcileSchedules()
     await upsertMaintenanceSchedulers()
+    await reconcileOrphanedRuns()
     logger.info("✅ Terse worker ready", { queues: workers.length })
 }
 
@@ -139,6 +191,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 
         await closeQueues()
         await closeTaskQueuePubSub()
+        await closeWorkerSocketEmitter()
         logger.info("✅ Redis connections closed")
 
         try {

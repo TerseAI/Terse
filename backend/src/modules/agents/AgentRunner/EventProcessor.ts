@@ -4,12 +4,14 @@ import logger from "../../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../../common/prismaIncludes"
 import { getActiveDeployForProject } from "../../../common/projectHelper"
 import { TriggerRuntime } from "../../../integrations/abstract/TriggerRuntime"
+import { isQueueRedisConfigured } from "../../../loaders/bullmq"
 import { db } from "../../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../../loaders/socket"
 import { NotificationManager } from "../../../modules/notifications/Notification"
 import { billingServiceProxyForOrganization, startBillingRun } from "../../../services/BillingService"
 import { SdkJobExecutionService } from "../../../services/SdkJobExecutionService"
 import { WebhookJobExecutionService } from "../../../services/WebhookJobExecutionService"
+import { enqueueRunExecution } from "../../../tasks/queues/runExecutionQueue"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../../types/prisma"
 import { emitListenForwardedEvent } from "../ListenBus"
 import { classifyAgentError } from "../agentErrorUtils"
@@ -273,9 +275,29 @@ export class EventProcessor {
             return new ProcessorResult(false, error instanceof Error ? error.message : "SDK job failed to start", agent, runId)
         }
 
-        // Fire-and-forget: sandbox runs asynchronously
-        const service = new SdkJobExecutionService()
-        void service
+        // Durable dispatch: enqueue the run for the BullMQ worker to execute. When the queue Redis
+        // is configured it is a hard dependency — a failed enqueue fails the run, we never run it
+        // inline on this (web) process. When it isn't configured (local dev without Redis), fall
+        // back to the legacy in-process fire-and-forget.
+        if (isQueueRedisConfigured()) {
+            try {
+                await enqueueRunExecution({
+                    runId,
+                    agentId: agent.id,
+                    orgId: this.user.organizationId,
+                    userId: agent.user_id,
+                    jobName: agent.name
+                })
+            } catch (error) {
+                logger.error(`Failed to enqueue SDK run execution for agent "${agent.name}"`, { error, runId, agentId: agent.id })
+                await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
+                return new ProcessorResult(false, "Failed to enqueue SDK run execution", agent, runId)
+            }
+            return new ProcessorResult(true, "SDK job execution enqueued", agent, runId)
+        }
+
+        // Local dev without a queue Redis: run in-process, fire-and-forget (legacy behavior).
+        void new SdkJobExecutionService()
             .execute({
                 runId,
                 agent,
