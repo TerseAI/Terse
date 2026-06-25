@@ -2,7 +2,7 @@
 
 Scaffold and launch a self-hosted [Terse](https://useterse.ai) instance with one command.
 
-Terse is a code-first AI workflow platform. You write workflows in TypeScript, generate a typed SDK from your connected integrations, and deploy them. Full docs at [docs.useterse.ai](https://docs.useterse.ai).
+Terse is the AI workflow platform for coding agents. You write workflows in TypeScript, generate a typed SDK from your connected integrations, and deploy them. Full docs at [docs.useterse.ai](https://docs.useterse.ai).
 
 ## Usage
 
