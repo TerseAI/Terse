@@ -1,5 +1,4 @@
 import { log } from "@clack/prompts"
-import { select } from "@inquirer/prompts"
 import chalk from "chalk"
 import { type DeviceTokenExchangeResponse, type IdentifyResponse, type UserSession, authModeResponseSchema } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
@@ -133,12 +132,17 @@ async function exchangeForApiKey(accessToken: string, organizationId: string): P
     return res.json() as Promise<DeviceTokenExchangeResponse>
 }
 
-async function pickOrganization(orgs: IdentifyResponse["organizations"]): Promise<string> {
-    if (orgs.length === 1) return orgs[0].id
-    return select({
-        message: "Select an organization for this CLI session",
-        choices: orgs.map(o => ({ name: `${o.name}  ${chalk.dim(o.id)}`, value: o.id }))
-    })
+function pickOrganization(orgs: IdentifyResponse["organizations"]): string {
+    return orgs[0].id
+}
+
+function logOrgSwitchHint(orgs: IdentifyResponse["organizations"], activeOrgId: string): void {
+    if (orgs.length <= 1) return
+    log.info("Switch anytime with `terse auth org switch <org-id>`:")
+    for (const o of orgs) {
+        const marker = o.id === activeOrgId ? chalk.green("*") : " "
+        console.error(`  ${marker} ${o.name}  ${chalk.dim(o.id)}`)
+    }
 }
 
 async function login(): Promise<{ apiKey: string; displayName: string | null; organizationId: string; organizationName: string } | null> {
@@ -215,19 +219,13 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
         }
     }
 
-    let organizationId: string
-    try {
-        s.stop("Organizations loaded")
-        organizationId = await pickOrganization(identity.organizations)
-        s.start("Issuing API key")
-    } catch (err: any) {
-        console.error(chalk.red(`  ${err.message}`))
-        return null
-    }
+    const organizationId = pickOrganization(identity.organizations)
+    s.message("Issuing API key")
 
     try {
         const exchangeData = await exchangeForApiKey(accessToken, organizationId)
         s.stop(`Logged in as ${exchangeData.user.displayName || exchangeData.user.email} · ${exchangeData.organization.name}`)
+        logOrgSwitchHint(identity.organizations, exchangeData.organization.id)
         return {
             apiKey: exchangeData.apiKey,
             displayName: exchangeData.user.displayName,
