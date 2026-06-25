@@ -13,7 +13,10 @@ import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
 import { handleIntegrationCompleted } from "./integrations/integrationEventHandler"
 import { closeQueues, createWorkerConnection, isQueueRedisConfigured } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
+import { runClearOldSecretVersions, runTokenRefresh } from "./modules/maintenance/controller"
+import { runCleanupSdkImages } from "./modules/sdk/maintenance/controller"
 import { closeTaskQueuePubSub } from "./tasks/abstract/redisTaskQueue"
+import { MaintenanceJob, upsertMaintenanceSchedulers } from "./tasks/queues/maintenanceQueue"
 import { QueueName } from "./tasks/queues/queueNames"
 import { ScheduleJobData, upsertScheduleTrigger } from "./tasks/queues/scheduleQueue"
 
@@ -41,7 +44,41 @@ function registerWorkers(): void {
     startWorker<ScheduleJobData>(QueueName.Schedule, async data => {
         await new CronJobIntegrationManager().processWebhookEvent({ inputId: data.inputId })
     })
+
+    // Platform maintenance crons, discriminated by job name.
+    startMaintenanceWorker()
     // Phase 5 registers SdkRunExecution + SdkRunResume.
+}
+
+/** Maintenance jobs share one queue and are dispatched by job name. */
+async function runMaintenanceJob(name: string): Promise<void> {
+    switch (name) {
+        case MaintenanceJob.RefreshTokens:
+            await runTokenRefresh()
+            return
+        case MaintenanceJob.ClearOldSecretVersions:
+            await runClearOldSecretVersions({ dryRun: false })
+            return
+        case MaintenanceJob.CleanupSdkImages:
+            await runCleanupSdkImages()
+            return
+        default:
+            logger.warn(`[worker:${QueueName.Maintenance}] unknown maintenance job`, { name })
+    }
+}
+
+function startMaintenanceWorker(): void {
+    const worker = new Worker(
+        QueueName.Maintenance,
+        async job => {
+            await runMaintenanceJob(job.name)
+        },
+        { connection: createWorkerConnection(), concurrency: 1 }
+    )
+    worker.on("failed", (job, error) => logger.error(`[worker:${QueueName.Maintenance}] job failed`, { job: job?.name, error }))
+    worker.on("error", error => logger.error(`[worker:${QueueName.Maintenance}] worker error`, { error }))
+    workers.push(worker)
+    logger.info(`[worker:${QueueName.Maintenance}] started`)
 }
 
 /**
@@ -76,6 +113,7 @@ async function main(): Promise<void> {
     logger.info("🛠  Terse worker starting")
     registerWorkers()
     await reconcileSchedules()
+    await upsertMaintenanceSchedulers()
     logger.info("✅ Terse worker ready", { queues: workers.length })
 }
 
