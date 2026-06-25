@@ -1,4 +1,4 @@
-import { createTaskQueue } from "../../../tasks/abstract/taskQueueFactory"
+import { RedisTaskQueue } from "../../../tasks/abstract/redisTaskQueue"
 import { Task } from "../../../tasks/abstract/tasks"
 
 const APPROVAL_DECISION_TASK_NAME = "SDK_APPROVAL_DECISION" as const
@@ -21,7 +21,7 @@ class ApprovalDecisionTask implements Task {
     ) {}
 }
 
-const approvalTaskQueue = createTaskQueue<ApprovalDecisionTask>("approval")
+const approvalTaskQueue = new RedisTaskQueue<ApprovalDecisionTask>("approval")
 
 export function waitForApprovalDecision(runId: string, stepId: string, organizationId: string): Promise<ApprovalDecision> {
     return approvalTaskQueue.waitFor(APPROVAL_DECISION_TASK_NAME, task => task.runId === runId && task.stepId === stepId && task.organizationId === organizationId).then(task => task.decision)

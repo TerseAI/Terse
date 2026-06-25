@@ -1,13 +1,13 @@
 import { SdkListenForwardedEvent } from "terse-types"
 
-import { createTaskQueue } from "../../tasks/abstract/taskQueueFactory"
+import { RedisTaskQueue } from "../../tasks/abstract/redisTaskQueue"
 import { Task } from "../../tasks/abstract/tasks"
 
 interface ListenForwardedTask extends Task {
     event: SdkListenForwardedEvent
 }
 
-const queue = createTaskQueue<ListenForwardedTask>("listen")
+const queue = new RedisTaskQueue<ListenForwardedTask>("listen")
 
 export function emitListenForwardedEvent(organizationId: string, event: SdkListenForwardedEvent): void {
     queue.emit({ taskName: organizationId, event })

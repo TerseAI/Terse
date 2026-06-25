@@ -1,4 +1,4 @@
-import { createTaskQueue } from "../../../tasks/abstract/taskQueueFactory"
+import { RedisTaskQueue } from "../../../tasks/abstract/redisTaskQueue"
 import { Task } from "../../../tasks/abstract/tasks"
 
 const CANCELLATION_TASK_NAME = "CANCELLATION_TASK" as const
@@ -19,7 +19,7 @@ class CancellationTask implements Task {
     ) {}
 }
 
-const cancellationTaskQueue = createTaskQueue<CancellationTask>("cancellation")
+const cancellationTaskQueue = new RedisTaskQueue<CancellationTask>("cancellation")
 
 type RunCancellationSubscription = {
     isCancellationRequested: () => boolean

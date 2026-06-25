@@ -37,6 +37,13 @@ export const settings = {
         url: requireEnv("DATABASE_URL")
     },
 
+    // Dedicated Redis for BullMQ queues + RedisTaskQueue pub/sub. REQUIRED — the backend and worker
+    // refuse to start without it. Must be configured with maxmemory-policy=noeviction (BullMQ drops
+    // queued jobs under any eviction policy). Kept separate from REDIS_URL (cache/socket adapter).
+    queue: {
+        redisUrl: requireEnv("BULLMQ_REDIS_URL")
+    },
+
     // WorkOS — opt-in. Present means AuthProvider picks WorkOS; absent means LocalAuthProvider.
     workos: optionalIntegrationSettings(["WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD", "WORKOS_REDIRECT_URI", "WORKOS_WEBHOOK_SECRET"], () => ({
         clientId: requireEnv("WORKOS_CLIENT_ID"),
@@ -197,10 +204,6 @@ export const settings = {
     // Optional configuration
     optional: {
         redisUrl: optionalEnv("REDIS_URL"),
-        // Dedicated Redis for BullMQ queues + RedisTaskQueue pub/sub. MUST be configured with
-        // maxmemory-policy=noeviction (BullMQ drops queued jobs under allkeys-lru). Kept separate
-        // from REDIS_URL (cache/socket adapter), which tolerates eviction.
-        bullmqRedisUrl: optionalEnv("BULLMQ_REDIS_URL"),
         cookieDomain: optionalEnv("COOKIE_DOMAIN"),
         corsAllowedOrigins: optionalEnv("CORS_ALLOWED_ORIGINS")
     },
@@ -229,7 +232,7 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 // Export individual always-on settings for convenience. Opt-in integration blocks
 // (gmail, githubApp, notion, slack, linear, attio, cloudScheduler, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
-export const { jwt, gemini, urls, gcs, optional } = settings
+export const { jwt, gemini, urls, gcs, optional, queue } = settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively

@@ -15,23 +15,7 @@ import { Queue } from "bullmq"
 import IORedis from "ioredis"
 
 import logger from "../common/logger"
-import { optional } from "../settings"
-
-function getQueueRedisUrl(): string | undefined {
-    return optional.bullmqRedisUrl?.trim() || undefined
-}
-
-export function isQueueRedisConfigured(): boolean {
-    return getQueueRedisUrl() !== undefined
-}
-
-function requireQueueRedisUrl(): string {
-    const url = getQueueRedisUrl()
-    if (!url) {
-        throw new Error("BULLMQ_REDIS_URL is not configured. The queue Redis is a hard dependency for BullMQ queues and RedisTaskQueue.")
-    }
-    return url
-}
+import { queue } from "../settings"
 
 function attachConnectionLogging(connection: IORedis, label: string): IORedis {
     connection.on("error", error => {
@@ -55,7 +39,7 @@ let producerConnection: IORedis | null = null
 export function getProducerConnection(): IORedis {
     if (!producerConnection) {
         producerConnection = attachConnectionLogging(
-            new IORedis(requireQueueRedisUrl(), {
+            new IORedis(queue.redisUrl, {
                 maxRetriesPerRequest: 3
             }),
             "bullmq-producer"
@@ -70,7 +54,7 @@ export function getProducerConnection(): IORedis {
  */
 export function createQueueRedisConnection(label: string): IORedis {
     return attachConnectionLogging(
-        new IORedis(requireQueueRedisUrl(), {
+        new IORedis(queue.redisUrl, {
             maxRetriesPerRequest: null
         }),
         label

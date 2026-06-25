@@ -194,11 +194,7 @@ function startServer() {
 }
 
 function startWorker() {
-    if (!isTruthy(process.env.BULLMQ_REDIS_URL)) {
-        console.log("BULLMQ_REDIS_URL not set — skipping BullMQ worker (queues run via in-memory fallback where supported).")
-        return
-    }
-
+    // BULLMQ_REDIS_URL is required; the worker (and server) fail loud at boot if it is unset.
     workerProcess = runPnpm(["run", "dev:worker"], { env: process.env })
 
     workerProcess.on("exit", code => {

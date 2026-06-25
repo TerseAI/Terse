@@ -12,7 +12,7 @@ import { RunHistoryStatus } from "terse-types"
 import logger from "./common/logger"
 import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
 import { handleIntegrationCompleted } from "./integrations/integrationEventHandler"
-import { closeQueues, createWorkerConnection, getQueue, isQueueRedisConfigured } from "./loaders/bullmq"
+import { closeQueues, createWorkerConnection, getQueue } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
 import { closeWorkerSocketEmitter, getWorkerSocket, initWorkerSocketEmitter } from "./loaders/workerSocket"
 import { markRunFailed } from "./modules/agents/AgentRunner/runHistory"
@@ -178,11 +178,8 @@ async function reconcileOrphanedRuns(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-    if (!isQueueRedisConfigured()) {
-        logger.error("❌ BULLMQ_REDIS_URL is not set — the worker has nothing to connect to. Exiting.")
-        process.exit(1)
-    }
-
+    // BULLMQ_REDIS_URL is a hard requirement enforced in settings (requireEnv); importing settings
+    // throws loudly before we get here if it is missing.
     logger.info("🛠  Terse worker starting")
 
     // Run execution streams via Socket.IO; wire the emit-only adapter and the getter the run/cache

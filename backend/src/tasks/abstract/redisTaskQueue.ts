@@ -1,9 +1,8 @@
 /**
- * Redis pub/sub implementation of the {@link TaskQueue} interface, backed by mqemitter-redis.
+ * The TaskQueue implementation, backed by mqemitter-redis (Redis pub/sub).
  *
- * Unlike {@link EventEmitterTaskQueue}, signals (cancellation, streamed events, approval
- * decisions) cross process boundaries, so the instance holding an SSE stream / running a job
- * receives a signal emitted on a different instance.
+ * Signals (cancellation, streamed events, approval decisions) cross process boundaries, so the
+ * instance holding an SSE stream / running a job receives a signal emitted on a different instance.
  *
  * mqemitter-redis gives us an emitter-style API (`emit`/`on`/`removeListener`) over Redis pub/sub
  * and handles subscription multiplexing, reconnection, and local-vs-redis echo de-duplication (via
@@ -13,14 +12,14 @@
  * A single shared emitter is multiplexed across every RedisTaskQueue instance (two Redis
  * connections total), keyed by topic `<namespace>/<taskName>`.
  *
- * There is NO in-process fallback: when Redis is configured it is a hard dependency. While Redis is
- * down, emits are logged and subscribers receive nothing until reconnect (mqemitter-redis
- * reconnects under the hood) — cross-instance signals are simply not delivered during an outage.
+ * The queue Redis (BULLMQ_REDIS_URL) is a hard dependency: the backend fails loud at boot if it is
+ * unset (see settings). While Redis is down, emits are logged and subscribers receive nothing until
+ * reconnect (mqemitter-redis reconnects under the hood); signals are not delivered during an outage.
  */
 import MQEmitterRedis from "mqemitter-redis"
 
 import logger from "../../common/logger"
-import { optional } from "../../settings"
+import { queue } from "../../settings"
 
 import { Task, TaskListener, TaskQueue, Unsubscribe, WaitForOptions } from "./tasks"
 
@@ -31,11 +30,7 @@ let sharedEmitter: ReturnType<typeof MQEmitterRedis> | null = null
 
 function getEmitter(): ReturnType<typeof MQEmitterRedis> {
     if (!sharedEmitter) {
-        const connectionString = optional.bullmqRedisUrl?.trim()
-        if (!connectionString) {
-            throw new Error("BULLMQ_REDIS_URL is not configured; RedisTaskQueue requires the queue Redis.")
-        }
-        sharedEmitter = MQEmitterRedis({ connectionString })
+        sharedEmitter = MQEmitterRedis({ connectionString: queue.redisUrl })
     }
     return sharedEmitter
 }

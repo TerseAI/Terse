@@ -1,13 +1,13 @@
 import { SdkAgentStreamEvent } from "terse-types/types"
 
-import { createTaskQueue } from "../../tasks/abstract/taskQueueFactory"
+import { RedisTaskQueue } from "../../tasks/abstract/redisTaskQueue"
 import { Task } from "../../tasks/abstract/tasks"
 
 interface SessionEventTask extends Task {
     event: SdkAgentStreamEvent
 }
 
-const queue = createTaskQueue<SessionEventTask>("session")
+const queue = new RedisTaskQueue<SessionEventTask>("session")
 
 export function emitSessionEvent(sessionId: string, event: SdkAgentStreamEvent): void {
     queue.emit({ taskName: sessionId, event })
