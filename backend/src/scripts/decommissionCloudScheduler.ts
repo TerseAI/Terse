@@ -20,13 +20,75 @@
  *                        Postgres and labelled tracked|orphan.
  *   --names a,b,c      → operate ONLY on these exact GCP job names (use for the maintenance jobs).
  */
+import { CloudSchedulerClient } from "@google-cloud/scheduler"
 import "dotenv/config"
 
-import { createSchedulerClient } from "../common/schedulerClient"
 import { db } from "../loaders/prisma"
 import { settings } from "../settings"
 
 const USER_CRON_PREFIX = "terse-schedule-"
+
+interface ScheduledJob {
+    id: string
+    schedule: string
+    url: string
+    state: string
+}
+
+/**
+ * Minimal, self-contained GCP Cloud Scheduler client. Lives only in this one-off decommission
+ * script so the main codebase ships no Cloud Scheduler code. Delete this script and the
+ * @google-cloud/scheduler dependency once decommission is complete.
+ */
+class CloudScheduler {
+    private client: CloudSchedulerClient
+    private parent: string
+
+    constructor() {
+        const gcp = settings.gcp!
+        const credentials = JSON.parse(Buffer.from(gcp.serviceAccountBase64, "base64").toString("utf-8"))
+        this.client = new CloudSchedulerClient({ credentials })
+        this.parent = `projects/${gcp.projectId}/locations/${gcp.region}`
+    }
+
+    private jobPath(jobId: string): string {
+        return `${this.parent}/jobs/${jobId}`
+    }
+
+    private stateLabel(state: unknown): string {
+        if (state === 1 || state === "ENABLED") return "ENABLED"
+        if (state === 2 || state === "PAUSED") return "PAUSED"
+        if (state === 3 || state === "DISABLED") return "DISABLED"
+        if (state === 4 || state === "UPDATE_FAILED") return "UPDATE_FAILED"
+        return "STATE_UNSPECIFIED"
+    }
+
+    async list(): Promise<ScheduledJob[]> {
+        const all: ScheduledJob[] = []
+        let pageToken: string | undefined
+        do {
+            const [jobs, , response] = await this.client.listJobs({ parent: this.parent, pageSize: 500, pageToken })
+            all.push(
+                ...(jobs ?? []).map(job => ({
+                    id: (job.name ?? "").split("/").pop() || (job.name ?? ""),
+                    schedule: job.schedule ?? "",
+                    url: job.httpTarget?.uri ?? "",
+                    state: this.stateLabel(job.state)
+                }))
+            )
+            pageToken = response?.nextPageToken || undefined
+        } while (pageToken)
+        return all
+    }
+
+    async pause(jobId: string): Promise<void> {
+        await this.client.pauseJob({ name: this.jobPath(jobId) })
+    }
+
+    async delete(jobId: string): Promise<void> {
+        await this.client.deleteJob({ name: this.jobPath(jobId) })
+    }
+}
 
 type Action = "list" | "pause" | "delete"
 
@@ -62,17 +124,6 @@ function parseNames(value: string | undefined): string[] {
         .filter(Boolean)
 }
 
-async function listAllJobs(scheduler: ReturnType<typeof createSchedulerClient>) {
-    const all: { id: string; schedule: string; url: string; state: string }[] = []
-    let pageToken: string | undefined
-    do {
-        const page = await scheduler.list(500, pageToken)
-        all.push(...page.jobs)
-        pageToken = page.nextPageToken
-    } while (pageToken)
-    return all
-}
-
 /** inputId for a job named `terse-schedule-<inputId>`, else null. */
 function inputIdFromJob(jobId: string): string | null {
     return jobId.startsWith(USER_CRON_PREFIX) ? jobId.slice(USER_CRON_PREFIX.length) : null
@@ -91,11 +142,11 @@ async function main(): Promise<void> {
         process.exit(1)
     }
 
-    const scheduler = createSchedulerClient()
+    const scheduler = new CloudScheduler()
     const banner = args.apply ? "APPLY (mutating)" : "DRY RUN (no changes)"
     console.log(`\n=== Cloud Scheduler decommission — action=${args.action} — ${banner} ===\n`)
 
-    const allJobs = await listAllJobs(scheduler)
+    const allJobs = await scheduler.list()
 
     if (args.action === "list") {
         const tracked = await loadTrackedInputIds()
