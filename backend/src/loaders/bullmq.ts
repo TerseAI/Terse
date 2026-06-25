@@ -15,7 +15,7 @@ import { Queue } from "bullmq"
 import IORedis from "ioredis"
 
 import logger from "../common/logger"
-import { queue } from "../settings"
+import { redis } from "../settings"
 
 function attachConnectionLogging(connection: IORedis, label: string): IORedis {
     connection.on("error", error => {
@@ -39,7 +39,7 @@ let producerConnection: IORedis | null = null
 export function getProducerConnection(): IORedis {
     if (!producerConnection) {
         producerConnection = attachConnectionLogging(
-            new IORedis(queue.redisUrl, {
+            new IORedis(redis.url, {
                 maxRetriesPerRequest: 3
             }),
             "bullmq-producer"
@@ -54,7 +54,7 @@ export function getProducerConnection(): IORedis {
  */
 export function createQueueRedisConnection(label: string): IORedis {
     return attachConnectionLogging(
-        new IORedis(queue.redisUrl, {
+        new IORedis(redis.url, {
             maxRetriesPerRequest: null
         }),
         label

@@ -1,7 +1,7 @@
 import MQEmitterRedis from "mqemitter-redis"
 
 import logger from "../../common/logger"
-import { queue } from "../../settings"
+import { redis } from "../../settings"
 
 import { Task, TaskListener, TaskQueue, Unsubscribe, WaitForOptions } from "./tasks"
 
@@ -12,7 +12,7 @@ let sharedEmitter: ReturnType<typeof MQEmitterRedis> | null = null
 
 function getEmitter(): ReturnType<typeof MQEmitterRedis> {
     if (!sharedEmitter) {
-        sharedEmitter = MQEmitterRedis({ connectionString: queue.redisUrl })
+        sharedEmitter = MQEmitterRedis({ connectionString: redis.url })
     }
     return sharedEmitter
 }

@@ -23,7 +23,7 @@ import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalS
 import { billingServiceProxyForOrganization } from "../services/BillingService"
 import { invalidateRunAndChatHistory } from "../services/CacheInvalidationService"
 import { getAuthProvider } from "../services/authProvider"
-import { optional } from "../settings"
+import { redis } from "../settings"
 import { Agent, AgentWithRelations } from "../types/prisma"
 import { resolveUserInOrg } from "../utility/identity"
 
@@ -58,39 +58,14 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
     })
     logger.info("Socket.IO server initialized")
 
-    // Set up Redis adapter for Socket.IO (OPTIONAL - only needed for multi-server deployments)
-    //
-    // By default, Socket.IO uses an in-memory adapter which is perfect for:
-    // - Local development (single server instance)
-    // - Single-server production deployments
-    //
-    // Only set REDIS_URL if you're running multiple server instances and need them to share socket state.
-    // When REDIS_URL is not set, Socket.IO automatically uses the built-in in-memory adapter.
-    //
-    // To get Redis URL (only if needed for multi-server):
-    // - Cloud (Redis Cloud, Upstash, AWS ElastiCache, etc.): Use the public endpoint URL they provide
-    //   Format: redis://username:password@host:port or rediss://username:password@host:port (SSL)
-    //
-    const redisUrl = optional.redisUrl?.trim()
-    if (redisUrl && redisUrl.length > 0) {
-        try {
-            // Validate URL format before creating client
-            new URL(redisUrl)
-
-            pub = createClient({ url: redisUrl })
-            sub = pub.duplicate()
-
-            await pub.connect()
-            await sub.connect()
-            io.adapter(createAdapter(pub, sub))
-            logger.info("✅ Redis adapter connected for Socket.IO")
-        } catch (error) {
-            logger.warn("⚠️  Invalid REDIS_URL format - Socket.IO running in single-server mode (no Redis adapter)", { error })
-            logger.warn("REDIS_URL should be in format: redis://host:port or rediss://host:port")
-        }
-    } else {
-        logger.info("ℹ️  REDIS_URL not set - Socket.IO using in-memory adapter (perfect for local dev and single-server deployments)")
-    }
+    // Redis adapter so Socket.IO state is shared across web instances and the worker can emit into
+    // it. Redis is required; a connection failure here is fatal (fail loud at boot).
+    pub = createClient({ url: redis.url })
+    sub = pub.duplicate()
+    await pub.connect()
+    await sub.connect()
+    io.adapter(createAdapter(pub, sub))
+    logger.info("✅ Redis adapter connected for Socket.IO")
 
     // Authentication middleware: verify WorkOS access token via JWKS
     io.use(async (socket: Socket, next) => {

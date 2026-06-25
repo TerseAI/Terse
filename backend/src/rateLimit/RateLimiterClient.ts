@@ -1,9 +1,9 @@
 import { Request, RequestHandler, Response } from "express"
-import { type RateLimiterAbstract, RateLimiterMemory, RateLimiterRedis, RateLimiterRes } from "rate-limiter-flexible"
+import { type RateLimiterAbstract, RateLimiterRedis, RateLimiterRes } from "rate-limiter-flexible"
 import { type RedisClientType, createClient } from "redis"
 
 import logger from "../common/logger"
-import { settings } from "../settings"
+import { redis } from "../settings"
 
 import { ConnectionCap } from "./ConnectionCap"
 
@@ -36,7 +36,7 @@ export interface KeyLimiter {
 
 export class RateLimiterClient {
     private static instance: RateLimiterClient
-    private redisClient: RedisClientType | null = null
+    private redisClient!: RedisClientType
     private initialized = false
 
     public static getInstance(): RateLimiterClient {
@@ -50,26 +50,15 @@ export class RateLimiterClient {
 
     public async init(): Promise<void> {
         if (this.initialized) return
-        const url = settings.optional.redisUrl?.trim()
 
-        if (!url) {
-            logger.info("ℹ️  REDIS_URL not set — rate limiter using in-memory store")
-            this.initialized = true
-            return
-        }
-
-        try {
-            // Validate URL shape up front so a typo doesn't get swallowed
-            // by node-redis's lazy connection errors.
-            new URL(url)
-            const client = createClient({ url }) as RedisClientType
-            client.on("error", err => logger.error("Rate-limit Redis error", { err }))
-            await client.connect()
-            this.redisClient = client
-            logger.info("✅ Rate-limit Redis connected")
-        } catch (err) {
-            logger.warn("⚠️  Rate-limit Redis connect failed — falling back to in-memory", { err })
-        }
+        // Validate URL shape up front so a typo doesn't get swallowed by node-redis's lazy
+        // connection errors. Redis is required, so a connect failure is fatal (fail loud at boot).
+        new URL(redis.url)
+        const client = createClient({ url: redis.url }) as RedisClientType
+        client.on("error", err => logger.error("Rate-limit Redis error", { err }))
+        await client.connect()
+        this.redisClient = client
+        logger.info("✅ Rate-limit Redis connected")
 
         this.initialized = true
     }
@@ -133,7 +122,7 @@ export class RateLimiterClient {
             blockDuration: opts.blockDuration,
             keyPrefix: `rl:${opts.name}`
         }
-        return this.redisClient ? new RateLimiterRedis({ ...base, storeClient: this.redisClient, useRedisPackage: true }) : new RateLimiterMemory(base)
+        return new RateLimiterRedis({ ...base, storeClient: this.redisClient, useRedisPackage: true })
     }
 
     private assertInitialized(): void {

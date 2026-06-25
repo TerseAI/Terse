@@ -50,7 +50,7 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-terse}
       LOCAL_DB_URL: file:/data/local.db
-      BULLMQ_REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://redis:6379
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     volumes:
@@ -76,7 +76,7 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-terse}
       LOCAL_DB_URL: file:/data/local.db
-      BULLMQ_REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://redis:6379
     volumes:
       - terse_sqlite:/data
     command: pnpm run dev:worker

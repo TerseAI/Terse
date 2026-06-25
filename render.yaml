@@ -26,10 +26,10 @@ envVarGroups:
 
 services:
   - type: keyvalue
-    name: terse-bullmq
+    name: terse-redis
     plan: starter
     region: oregon
-    # Required for BullMQ — never evict queued jobs.
+    # noeviction: BullMQ must never lose queued jobs (cache/rate-limit keys are TTL'd, so fine too).
     maxmemoryPolicy: noeviction
     ipAllowList: [] # internal-network only
 
@@ -48,10 +48,10 @@ services:
         fromDatabase:
           name: terse-postgres
           property: connectionString
-      - key: BULLMQ_REDIS_URL
+      - key: REDIS_URL
         fromService:
           type: keyvalue
-          name: terse-bullmq
+          name: terse-redis
           property: connectionString
 
   - type: worker
@@ -70,8 +70,8 @@ services:
         fromDatabase:
           name: terse-postgres
           property: connectionString
-      - key: BULLMQ_REDIS_URL
+      - key: REDIS_URL
         fromService:
           type: keyvalue
-          name: terse-bullmq
+          name: terse-redis
           property: connectionString

@@ -1,10 +1,3 @@
-/**
- * Producer for the `schedule` queue — recurring cron triggers via BullMQ Job Schedulers.
- *
- * Replaces GCP Cloud Scheduler. The job-scheduler id is deterministic (`terse-schedule-<inputId>`)
- * so it is reconstructable from Postgres (the durable source of truth) on worker boot. upsert is
- * idempotent, so reconciliation and re-deploys are safe.
- */
 import { getQueue } from "../../loaders/bullmq"
 
 import { QueueName } from "./queueNames"

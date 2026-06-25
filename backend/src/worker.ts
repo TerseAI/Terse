@@ -3,7 +3,7 @@
  * queues: user cron triggers, platform maintenance crons, and durable agent run execution. Reuses
  * Prisma, settings, and the domain handlers from the web process.
  *
- * Requires BULLMQ_REDIS_URL. Mirrors server.ts's graceful-shutdown lifecycle.
+ * Requires REDIS_URL. Mirrors server.ts's graceful-shutdown lifecycle.
  */
 import { Worker } from "bullmq"
 import "dotenv/config"
@@ -162,8 +162,8 @@ async function reconcileOrphanedRuns(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-    // BULLMQ_REDIS_URL is a hard requirement enforced in settings (requireEnv); importing settings
-    // throws loudly before we get here if it is missing.
+    // REDIS_URL is a hard requirement enforced in settings (requireEnv); importing settings throws
+    // loudly before we get here if it is missing.
     logger.info("🛠  Terse worker starting")
 
     // Run execution streams via Socket.IO; wire the emit-only adapter and the getter the run/cache

@@ -36,12 +36,8 @@ export const settings = {
     database: {
         url: requireEnv("DATABASE_URL")
     },
-
-    // Dedicated Redis for BullMQ queues + RedisTaskQueue pub/sub. REQUIRED — the backend and worker
-    // refuse to start without it. Must be configured with maxmemory-policy=noeviction (BullMQ drops
-    // queued jobs under any eviction policy). Kept separate from REDIS_URL (cache/socket adapter).
-    queue: {
-        redisUrl: requireEnv("BULLMQ_REDIS_URL")
+    redis: {
+        url: requireEnv("REDIS_URL")
     },
 
     // WorkOS — opt-in. Present means AuthProvider picks WorkOS; absent means LocalAuthProvider.
@@ -198,7 +194,6 @@ export const settings = {
 
     // Optional configuration
     optional: {
-        redisUrl: optionalEnv("REDIS_URL"),
         cookieDomain: optionalEnv("COOKIE_DOMAIN"),
         corsAllowedOrigins: optionalEnv("CORS_ALLOWED_ORIGINS")
     },
@@ -227,7 +222,7 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 // Export individual always-on settings for convenience. Opt-in integration blocks
 // (gmail, githubApp, notion, slack, linear, attio, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
-export const { jwt, gemini, urls, gcs, optional, queue } = settings
+export const { jwt, gemini, urls, gcs, optional, redis } = settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively
