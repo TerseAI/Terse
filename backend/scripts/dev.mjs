@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
+import dotenv from "dotenv"
+import { spawn, spawnSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import process from "node:process"
-import { spawn, spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import dotenv from "dotenv"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -105,13 +105,7 @@ function stopExistingNgrok() {
 }
 
 async function waitForTunnelUrl() {
-    const desiredAddrs = new Set([
-        String(backendPort),
-        `localhost:${backendPort}`,
-        `127.0.0.1:${backendPort}`,
-        `http://localhost:${backendPort}`,
-        `http://127.0.0.1:${backendPort}`
-    ])
+    const desiredAddrs = new Set([String(backendPort), `localhost:${backendPort}`, `127.0.0.1:${backendPort}`, `http://localhost:${backendPort}`, `http://127.0.0.1:${backendPort}`])
 
     for (let attempt = 0; attempt < 15; attempt += 1) {
         await new Promise(resolve => setTimeout(resolve, 1000))
@@ -194,7 +188,6 @@ function startServer() {
 }
 
 function startWorker() {
-    // BULLMQ_REDIS_URL is required; the worker (and server) fail loud at boot if it is unset.
     workerProcess = runPnpm(["run", "dev:worker"], { env: process.env })
 
     workerProcess.on("exit", code => {
