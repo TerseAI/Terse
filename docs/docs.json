@@ -70,7 +70,9 @@
         "indexing": "all",
         "metatags": {
             "og:type": "website",
-            "og:site_name": "Terse AI Documentation"
+            "og:site_name": "Terse AI Documentation",
+            "og:description": "Terse is the AI workflow platform for coding agents.",
+            "description": "Terse is the AI workflow platform for coding agents."
         }
     }
 }
