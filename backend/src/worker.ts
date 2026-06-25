@@ -1,7 +1,7 @@
 /**
  * Terse background worker — a second entry point in the backend package that consumes BullMQ
- * queues: integration analytics, user cron triggers, platform maintenance crons, and durable agent
- * run execution. Reuses Prisma, settings, and the domain handlers from the web process.
+ * queues: user cron triggers, platform maintenance crons, and durable agent run execution. Reuses
+ * Prisma, settings, and the domain handlers from the web process.
  *
  * Requires BULLMQ_REDIS_URL. Mirrors server.ts's graceful-shutdown lifecycle.
  */
@@ -11,7 +11,6 @@ import { RunHistoryStatus } from "terse-types"
 
 import logger from "./common/logger"
 import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
-import { handleIntegrationCompleted } from "./integrations/integrationEventHandler"
 import { closeQueues, createWorkerConnection, getQueue } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
 import { closeWorkerSocketEmitter, getWorkerSocket, initWorkerSocketEmitter } from "./loaders/workerSocket"
@@ -59,8 +58,6 @@ function startWorker<T>(name: string, processor: (data: T) => Promise<void> | vo
 }
 
 function registerWorkers(): void {
-    startWorker<Parameters<typeof handleIntegrationCompleted>[0]>(QueueName.IntegrationEvents, data => handleIntegrationCompleted(data))
-
     // Recurring cron triggers: a fired scheduler enqueues a `schedule` job; we process it by
     // invoking the same handler the old Cloud Scheduler webhook used. is_active is enforced inside.
     startWorker<ScheduleJobData>(QueueName.Schedule, async data => {
@@ -70,23 +67,6 @@ function registerWorkers(): void {
     // Platform maintenance crons, discriminated by job name.
     startMaintenanceWorker()
 
-    // Durable agent run execution.
-    //
-    // The job stays ACTIVE for the whole run, including across a human tool-approval: the agent loop
-    // runs server-side in handleSdkAgentRun (web), which holds the sandbox's SSE connection open
-    // during waitForApprovalDecision, so the sandbox stays alive and this job's proc.wait() does not
-    // return. BullMQ auto-renews the lock (every lockDuration/2) while this worker is alive, so a
-    // multi-hour approval does not stall a healthy worker.
-    //
-    // Safety on worker death: lock expires -> stalled -> maxStalledCount:0 fails the job (never
-    // re-delivered), and jobId run-<runId> dedupes any duplicate enqueue, so we never spawn a second
-    // Modal sandbox or double-bill. The cost is that a worker DEPLOY/restart mid-run fails that run
-    // (cleaned up by reconcileOrphanedRuns) rather than resuming it. True suspend-and-resume (so a
-    // run survives a deploy mid-approval) requires changing the sandbox-side SDK/CLI run protocol and
-    // is intentionally out of scope here — see the migration plan's Phase 5 notes.
-    //
-    // lockDuration is raised above the 30s default to give more headroom against transient event-loop
-    // stalls before a healthy job is mistaken for a dead one.
     startWorker<RunExecutionJobData>(QueueName.SdkRunExecution, data => handleRunExecution(data), { concurrency: SDK_RUN_CONCURRENCY, maxStalledCount: 0, lockDuration: 60_000 })
 }
 

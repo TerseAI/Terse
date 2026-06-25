@@ -14,6 +14,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse, SlackUserResponse, SlackUsersResponse } from "terse-types/types"
 import { z } from "zod"
 
+import { trackIntegrationAdded } from "../../common/analytics"
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../../integrations/slack/blockKitHelpers"
@@ -26,8 +27,6 @@ import { GetSecretsArg, SecretService } from "../../services/SecretService"
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithSlack } from "../../types/prisma"
 import { resolveUserInOrg } from "../../utility/identity"
-import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
-import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
@@ -491,7 +490,7 @@ export class SlackIntegrationManager
             }
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
-            integrationTaskQueue.emit(new IntegrationCompletedTask(IntegrationType.SLACK, userSlackIntegration.id, decoded.userId, decoded, new Date()))
+            trackIntegrationAdded(decoded.userId, { integrationType: IntegrationType.SLACK })
 
             logger.info("Slack OAuth completed successfully", {
                 userId: decoded.userId,

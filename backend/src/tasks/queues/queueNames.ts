@@ -3,16 +3,12 @@
  * sides never drift.
  */
 export const QueueName = {
-    /** Best-effort analytics on integration added (exactly-once work). */
-    IntegrationEvents: "integration-events",
     /** Recurring user cron triggers (BullMQ Job Schedulers). */
     Schedule: "schedule",
-    /** Platform maintenance crons (token refresh, secret cleanup, image cleanup). */
+    /** Platform maintenance crons (token refresh, secret cleanup, image cleanup, agent review). */
     Maintenance: "maintenance",
-    /** Durable agent run execution (start jobs). */
-    SdkRunExecution: "sdk-run-execution",
-    /** Resume an agent run after an approval decision (suspend-and-resume). */
-    SdkRunResume: "sdk-run-resume"
+    /** Durable agent run execution. */
+    SdkRunExecution: "sdk-run-execution"
 } as const
 
 export type QueueName = (typeof QueueName)[keyof typeof QueueName]

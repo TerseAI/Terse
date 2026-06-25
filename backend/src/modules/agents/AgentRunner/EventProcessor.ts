@@ -273,8 +273,7 @@ export class EventProcessor {
             return new ProcessorResult(false, error instanceof Error ? error.message : "SDK job failed to start", agent, runId)
         }
 
-        // Durable dispatch: enqueue the run for the BullMQ worker to execute. The queue Redis is a
-        // hard dependency — a failed enqueue fails the run; we never run it inline on this process.
+        // Durable dispatch: enqueue the run
         try {
             await enqueueRunExecution({
                 runId,
