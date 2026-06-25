@@ -1,138 +1,88 @@
 /**
- * Redis pub/sub implementation of the {@link TaskQueue} interface.
+ * Redis pub/sub implementation of the {@link TaskQueue} interface, backed by mqemitter-redis.
  *
- * Unlike {@link EventEmitterTaskQueue}, signals (cancellation, approval decisions, streamed
- * events) cross process boundaries, so an instance handling an SSE/socket request receives a
- * signal emitted on a different instance.
+ * Unlike {@link EventEmitterTaskQueue}, signals (cancellation, streamed events, approval
+ * decisions) cross process boundaries, so the instance holding an SSE stream / running a job
+ * receives a signal emitted on a different instance.
  *
- * Delivery model: a single shared pair of connections (one publisher, one subscriber) is
- * multiplexed across every RedisTaskQueue instance, keyed by channel. Redis delivers a published
- * message to ALL subscribers of the channel — including this process's own subscriber connection —
- * so the originating instance receives its own events without any local echo, and `waitFor` works
- * on the same instance that emitted (subscribe-before-publish ordering provided by the call sites).
+ * mqemitter-redis gives us an emitter-style API (`emit`/`on`/`removeListener`) over Redis pub/sub
+ * and handles subscription multiplexing, reconnection, and local-vs-redis echo de-duplication (via
+ * its internal LRU cache) for us, so the originating instance receives its own events exactly once
+ * and `waitFor` works on the same instance that emitted.
+ *
+ * A single shared emitter is multiplexed across every RedisTaskQueue instance (two Redis
+ * connections total), keyed by topic `<namespace>/<taskName>`.
  *
  * There is NO in-process fallback: when Redis is configured it is a hard dependency. While Redis is
- * down, publishes are logged-and-dropped and subscribers receive nothing until reconnect (ioredis
- * auto-reconnects and we resubscribe). Cross-instance signals are simply not delivered during an
- * outage — by design.
+ * down, emits are logged and subscribers receive nothing until reconnect (mqemitter-redis
+ * reconnects under the hood) — cross-instance signals are simply not delivered during an outage.
  */
-import IORedis from "ioredis"
+import MQEmitterRedis from "mqemitter-redis"
 
 import logger from "../../common/logger"
-import { createQueueRedisConnection } from "../../loaders/bullmq"
+import { optional } from "../../settings"
 
 import { Task, TaskListener, TaskQueue, Unsubscribe, WaitForOptions } from "./tasks"
 
-type MessageHandler = (raw: string) => void
+type MqMessage = Record<string, unknown> & { topic: string }
+type MqListener = (message: MqMessage, done: () => void) => void
 
-class RedisPubSubHub {
-    private pub: IORedis | null = null
-    private sub: IORedis | null = null
-    private channelHandlers = new Map<string, Set<MessageHandler>>()
+let sharedEmitter: ReturnType<typeof MQEmitterRedis> | null = null
 
-    private ensureConnections(): void {
-        if (this.pub && this.sub) return
-
-        this.pub = createQueueRedisConnection("taskqueue-pub")
-        this.sub = createQueueRedisConnection("taskqueue-sub")
-
-        this.sub.on("message", (channel: string, message: string) => {
-            const handlers = this.channelHandlers.get(channel)
-            if (!handlers) return
-            for (const handler of [...handlers]) {
-                try {
-                    handler(message)
-                } catch (error) {
-                    logger.error("RedisTaskQueue handler threw", { error, channel })
-                }
-            }
-        })
-
-        // After a reconnect the server has dropped our subscriptions — re-establish them.
-        this.sub.on("ready", () => {
-            const channels = [...this.channelHandlers.keys()]
-            if (channels.length === 0) return
-            this.sub?.subscribe(...channels).catch(error => logger.error("RedisTaskQueue resubscribe failed", { error, channels: channels.length }))
-        })
-    }
-
-    publish(channel: string, raw: string): void {
-        this.ensureConnections()
-        this.pub?.publish(channel, raw).catch(error => {
-            logger.error("RedisTaskQueue publish failed — signal dropped (Redis unavailable)", { error, channel })
-        })
-    }
-
-    subscribe(channel: string, handler: MessageHandler): Unsubscribe {
-        this.ensureConnections()
-
-        let handlers = this.channelHandlers.get(channel)
-        if (!handlers) {
-            handlers = new Set()
-            this.channelHandlers.set(channel, handlers)
-            this.sub?.subscribe(channel).catch(error => logger.error("RedisTaskQueue subscribe failed", { error, channel }))
+function getEmitter(): ReturnType<typeof MQEmitterRedis> {
+    if (!sharedEmitter) {
+        const connectionString = optional.bullmqRedisUrl?.trim()
+        if (!connectionString) {
+            throw new Error("BULLMQ_REDIS_URL is not configured; RedisTaskQueue requires the queue Redis.")
         }
-        handlers.add(handler)
-
-        return () => {
-            const set = this.channelHandlers.get(channel)
-            if (!set) return
-            set.delete(handler)
-            if (set.size === 0) {
-                this.channelHandlers.delete(channel)
-                this.sub?.unsubscribe(channel).catch(() => {})
-            }
-        }
+        sharedEmitter = MQEmitterRedis({ connectionString })
     }
-
-    async close(): Promise<void> {
-        await Promise.allSettled([this.pub?.quit(), this.sub?.quit()])
-        this.pub = null
-        this.sub = null
-        this.channelHandlers.clear()
-    }
+    return sharedEmitter
 }
 
-const hub = new RedisPubSubHub()
-
-/** Close the shared pub/sub connections. Call on graceful shutdown. */
+/** Close the shared emitter (both Redis connections). Call on graceful shutdown. */
 export async function closeTaskQueuePubSub(): Promise<void> {
-    await hub.close()
+    if (!sharedEmitter) return
+    const emitter = sharedEmitter
+    sharedEmitter = null
+    await new Promise<void>(resolve => emitter.close(() => resolve()))
 }
 
 export class RedisTaskQueue<T extends Task> implements TaskQueue<T> {
-    private unsubscribers = new Map<TaskListener<T>, Unsubscribe>()
+    private wrapped = new Map<TaskListener<T>, MqListener>()
 
     constructor(private readonly namespace: string) {}
 
-    private channel(taskName: string): string {
-        return `tq:${this.namespace}:${taskName}`
+    private topic(taskName: string): string {
+        return `${this.namespace}/${taskName}`
     }
 
     emit(task: T): void {
-        hub.publish(this.channel(task.taskName), JSON.stringify(task))
+        getEmitter().emit({ topic: this.topic(task.taskName), payload: task }, error => {
+            if (error) {
+                logger.error("RedisTaskQueue emit failed — signal dropped (Redis unavailable)", { error, taskName: task.taskName })
+            }
+        })
     }
 
     addListener(listener: TaskListener<T>): Unsubscribe {
-        const unsubscribe = hub.subscribe(this.channel(listener.taskName), raw => {
-            let task: T
+        const mqListener: MqListener = (message, done) => {
             try {
-                task = JSON.parse(raw) as T
-            } catch (error) {
-                logger.error("RedisTaskQueue failed to parse task payload", { error, taskName: listener.taskName })
-                return
+                void listener.onTask(message.payload as T)
+            } finally {
+                done()
             }
-            void listener.onTask(task)
-        })
-        this.unsubscribers.set(listener, unsubscribe)
+        }
+        this.wrapped.set(listener, mqListener)
+        getEmitter().on(this.topic(listener.taskName), mqListener)
         return () => this.removeListener(listener)
     }
 
     removeListener(listener: TaskListener<T>): void {
-        const unsubscribe = this.unsubscribers.get(listener)
-        if (unsubscribe) {
-            unsubscribe()
-            this.unsubscribers.delete(listener)
+        const mqListener = this.wrapped.get(listener)
+        if (mqListener) {
+            getEmitter().removeListener(this.topic(listener.taskName), mqListener)
+            this.wrapped.delete(listener)
         }
     }
 
