@@ -1,13 +1,13 @@
 import { SdkListenForwardedEvent } from "terse-types"
 
-import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
+import { createTaskQueue } from "../../tasks/abstract/taskQueueFactory"
 import { Task } from "../../tasks/abstract/tasks"
 
 interface ListenForwardedTask extends Task {
     event: SdkListenForwardedEvent
 }
 
-const queue = new EventEmitterTaskQueue<ListenForwardedTask>()
+const queue = createTaskQueue<ListenForwardedTask>("listen")
 
 export function emitListenForwardedEvent(organizationId: string, event: SdkListenForwardedEvent): void {
     queue.emit({ taskName: organizationId, event })

@@ -1,4 +1,4 @@
-import { EventEmitterTaskQueue } from "../tasks/abstract/eventEmitterTasks"
+import { createTaskQueue } from "../tasks/abstract/taskQueueFactory"
 
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
 
@@ -7,4 +7,4 @@ import { IntegrationCompletedTask } from "./IntegrationCompletedTask"
  * Exports the queue without handlers to avoid circular dependencies.
  * Handlers are registered in IntegrationTaskHandler.ts.
  */
-export const integrationTaskQueue = new EventEmitterTaskQueue<IntegrationCompletedTask>()
+export const integrationTaskQueue = createTaskQueue<IntegrationCompletedTask>("integration")

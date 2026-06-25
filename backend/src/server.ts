@@ -8,11 +8,13 @@ import { buildCorsAllowedOrigins } from "./common/corsOrigins"
 import logger from "./common/logger"
 import "./integrations/IntegrationTaskHandler"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
+import { closeQueues } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
 import { setupLLMAnalytics } from "./modules/agents/openaiInstance"
 import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
+import { closeTaskQueuePubSub } from "./tasks/abstract/redisTaskQueue"
 
 // MARK: ASYNC INITIALIZATION
 // Bootstrap async dependencies before the Express app is built.
@@ -91,6 +93,14 @@ async function gracefulShutdown(signal: string) {
             logger.info("✅ Analytics flushed")
         } catch (error) {
             logger.error("Analytics shutdown failed", { error })
+        }
+
+        try {
+            await closeTaskQueuePubSub()
+            await closeQueues()
+            logger.info("✅ Redis queues + pub/sub closed")
+        } catch (error) {
+            logger.error("Redis shutdown failed", { error })
         }
 
         try {

@@ -1,4 +1,4 @@
-import { EventEmitterTaskQueue } from "../../../tasks/abstract/eventEmitterTasks"
+import { createTaskQueue } from "../../../tasks/abstract/taskQueueFactory"
 import { Task } from "../../../tasks/abstract/tasks"
 
 const CANCELLATION_TASK_NAME = "CANCELLATION_TASK" as const
@@ -19,7 +19,7 @@ class CancellationTask implements Task {
     ) {}
 }
 
-const cancellationTaskQueue = new EventEmitterTaskQueue<CancellationTask>()
+const cancellationTaskQueue = createTaskQueue<CancellationTask>("cancellation")
 
 type RunCancellationSubscription = {
     isCancellationRequested: () => boolean

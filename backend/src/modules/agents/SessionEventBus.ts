@@ -1,13 +1,13 @@
 import { SdkAgentStreamEvent } from "terse-types/types"
 
-import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks"
+import { createTaskQueue } from "../../tasks/abstract/taskQueueFactory"
 import { Task } from "../../tasks/abstract/tasks"
 
 interface SessionEventTask extends Task {
     event: SdkAgentStreamEvent
 }
 
-const queue = new EventEmitterTaskQueue<SessionEventTask>()
+const queue = createTaskQueue<SessionEventTask>("session")
 
 export function emitSessionEvent(sessionId: string, event: SdkAgentStreamEvent): void {
     queue.emit({ taskName: sessionId, event })

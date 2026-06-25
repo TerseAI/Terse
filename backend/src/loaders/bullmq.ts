@@ -65,16 +65,23 @@ export function getProducerConnection(): IORedis {
 }
 
 /**
- * A dedicated connection for a Worker. Retries forever so processing resumes after a Redis blip.
- * Each Worker should own its own connection (BullMQ duplicates internally for blocking ops).
+ * A connection that retries forever (suitable for Workers and pub/sub) so it resumes after a
+ * Redis blip rather than throwing. Each consumer should own its own connection.
  */
-export function createWorkerConnection(): IORedis {
+export function createQueueRedisConnection(label: string): IORedis {
     return attachConnectionLogging(
         new IORedis(requireQueueRedisUrl(), {
             maxRetriesPerRequest: null
         }),
-        "bullmq-worker"
+        label
     )
+}
+
+/**
+ * A dedicated connection for a Worker. BullMQ duplicates internally for blocking ops.
+ */
+export function createWorkerConnection(): IORedis {
+    return createQueueRedisConnection("bullmq-worker")
 }
 
 const queues = new Map<string, Queue>()
