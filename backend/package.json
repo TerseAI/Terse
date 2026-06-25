@@ -29,6 +29,7 @@
         "db:push:local": "prisma db push --schema=./prisma/local/schema.prisma",
         "db:migrate:local": "prisma migrate dev --schema=./prisma/local/schema.prisma",
         "db:studio": "prisma studio",
+        "decommission:cloud-scheduler": "tsx src/scripts/decommissionCloudScheduler.ts",
         "index-tickets": "./index-tickets.sh"
     },
     "keywords": [],
