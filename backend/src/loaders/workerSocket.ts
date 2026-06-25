@@ -5,6 +5,8 @@ import { Server } from "socket.io"
 import logger from "../common/logger"
 import { redis } from "../settings"
 
+import { RedisNamespace } from "./redisNamespace"
+
 let io: Server | null = null
 let pub: ReturnType<typeof createClient> | null = null
 let sub: ReturnType<typeof createClient> | null = null
@@ -18,7 +20,7 @@ export async function initWorkerSocketEmitter(): Promise<void> {
     sub = pub.duplicate()
     await pub.connect()
     await sub.connect()
-    io.adapter(createAdapter(pub, sub))
+    io.adapter(createAdapter(pub, sub, { key: RedisNamespace.socketio }))
     logger.info("✅ Worker Socket.IO Redis adapter connected (emit-only)")
 }
 

@@ -1,6 +1,8 @@
 import crypto from "node:crypto"
 import { type RedisClientType } from "redis"
 
+import { RedisNamespace } from "../loaders/redisNamespace"
+
 import { type ConnectionCapOptions } from "./RateLimiterClient"
 
 export interface AcquiredSlot {
@@ -24,7 +26,7 @@ export class ConnectionCap {
 
     public async tryAcquire(key: string): Promise<AcquiredSlot | null> {
         const connId = crypto.randomUUID()
-        const redisKey = `rl:conn:${this.opts.name}:${key}`
+        const redisKey = `${RedisNamespace.rateLimit}:conn:${this.opts.name}:${key}`
 
         const result = (await this.redis.eval(ConnectionCap.ACQUIRE_LUA, {
             keys: [redisKey],

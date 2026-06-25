@@ -17,6 +17,8 @@ import IORedis from "ioredis"
 import logger from "../common/logger"
 import { redis } from "../settings"
 
+import { RedisNamespace } from "./redisNamespace"
+
 function attachConnectionLogging(connection: IORedis, label: string): IORedis {
     connection.on("error", error => {
         logger.error(`[${label}] Redis connection error`, { error })
@@ -76,7 +78,7 @@ const queues = new Map<string, Queue>()
 export function getQueue(name: string): Queue {
     let queue = queues.get(name)
     if (!queue) {
-        queue = new Queue(name, { connection: getProducerConnection() })
+        queue = new Queue(name, { connection: getProducerConnection(), prefix: RedisNamespace.bullmq })
         queues.set(name, queue)
     }
     return queue

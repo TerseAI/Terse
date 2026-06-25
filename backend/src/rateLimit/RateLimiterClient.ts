@@ -3,6 +3,7 @@ import { type RateLimiterAbstract, RateLimiterRedis, RateLimiterRes } from "rate
 import { type RedisClientType, createClient } from "redis"
 
 import logger from "../common/logger"
+import { RedisNamespace } from "../loaders/redisNamespace"
 import { redis } from "../settings"
 
 import { ConnectionCap } from "./ConnectionCap"
@@ -120,7 +121,7 @@ export class RateLimiterClient {
             points: opts.points,
             duration: opts.duration,
             blockDuration: opts.blockDuration,
-            keyPrefix: `rl:${opts.name}`
+            keyPrefix: `${RedisNamespace.rateLimit}:${opts.name}`
         }
         return new RateLimiterRedis({ ...base, storeClient: this.redisClient, useRedisPackage: true })
     }

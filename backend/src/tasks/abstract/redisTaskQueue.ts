@@ -1,6 +1,7 @@
 import MQEmitterRedis from "mqemitter-redis"
 
 import logger from "../../common/logger"
+import { RedisNamespace } from "../../loaders/redisNamespace"
 import { redis } from "../../settings"
 
 import { Task, TaskListener, TaskQueue, Unsubscribe, WaitForOptions } from "./tasks"
@@ -31,7 +32,7 @@ export class RedisTaskQueue<T extends Task> implements TaskQueue<T> {
     constructor(private readonly namespace: string) {}
 
     private topic(taskName: string): string {
-        return `${this.namespace}/${taskName}`
+        return `${RedisNamespace.pubsub}/${this.namespace}/${taskName}`
     }
 
     emit(task: T): void {

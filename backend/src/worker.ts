@@ -13,6 +13,7 @@ import logger from "./common/logger"
 import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
 import { closeQueues, createWorkerConnection, getQueue } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
+import { RedisNamespace } from "./loaders/redisNamespace"
 import { closeWorkerSocketEmitter, getWorkerSocket, initWorkerSocketEmitter } from "./loaders/workerSocket"
 import { markRunFailed } from "./modules/agents/AgentRunner/runHistory"
 import { runReviewAllAgents } from "./modules/agents/review/controller"
@@ -38,6 +39,7 @@ function startWorker<T>(name: string, processor: (data: T) => Promise<void> | vo
         },
         {
             connection: createWorkerConnection(),
+            prefix: RedisNamespace.bullmq,
             concurrency: opts.concurrency ?? 10,
             ...(opts.maxStalledCount !== undefined ? { maxStalledCount: opts.maxStalledCount } : {}),
             ...(opts.lockDuration !== undefined ? { lockDuration: opts.lockDuration } : {})
@@ -96,7 +98,7 @@ function startMaintenanceWorker(): void {
         async job => {
             await runMaintenanceJob(job.name)
         },
-        { connection: createWorkerConnection(), concurrency: 1 }
+        { connection: createWorkerConnection(), prefix: RedisNamespace.bullmq, concurrency: 1 }
     )
     worker.on("failed", (job, error) => logger.error(`[worker:${QueueName.Maintenance}] job failed`, { job: job?.name, error }))
     worker.on("error", error => logger.error(`[worker:${QueueName.Maintenance}] worker error`, { error }))

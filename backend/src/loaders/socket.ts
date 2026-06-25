@@ -27,6 +27,8 @@ import { redis } from "../settings"
 import { Agent, AgentWithRelations } from "../types/prisma"
 import { resolveUserInOrg } from "../utility/identity"
 
+import { RedisNamespace } from "./redisNamespace"
+
 // Extended Socket type with userId, organizationId, and WorkOS session ID
 interface AuthenticatedSocket extends Socket {
     userId: string
@@ -64,7 +66,7 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
     sub = pub.duplicate()
     await pub.connect()
     await sub.connect()
-    io.adapter(createAdapter(pub, sub))
+    io.adapter(createAdapter(pub, sub, { key: RedisNamespace.socketio }))
     logger.info("✅ Redis adapter connected for Socket.IO")
 
     // Authentication middleware: verify WorkOS access token via JWKS
