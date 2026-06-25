@@ -30,16 +30,29 @@ const SDK_RUN_CONCURRENCY = Number(process.env.SDK_RUN_CONCURRENCY) || 25
 
 const workers: Worker[] = []
 
-function startWorker<T>(name: string, processor: (data: T) => Promise<void> | void, opts: { concurrency?: number; maxStalledCount?: number } = {}): void {
+function startWorker<T>(name: string, processor: (data: T) => Promise<void> | void, opts: { concurrency?: number; maxStalledCount?: number; lockDuration?: number } = {}): void {
     const worker = new Worker<T>(
         name,
         async job => {
             await processor(job.data)
         },
-        { connection: createWorkerConnection(), concurrency: opts.concurrency ?? 10, ...(opts.maxStalledCount !== undefined ? { maxStalledCount: opts.maxStalledCount } : {}) }
+        {
+            connection: createWorkerConnection(),
+            concurrency: opts.concurrency ?? 10,
+            ...(opts.maxStalledCount !== undefined ? { maxStalledCount: opts.maxStalledCount } : {}),
+            ...(opts.lockDuration !== undefined ? { lockDuration: opts.lockDuration } : {})
+        }
     )
     worker.on("failed", (job, error) => logger.error(`[worker:${name}] job failed`, { jobId: job?.id, error }))
     worker.on("error", error => logger.error(`[worker:${name}] worker error`, { error }))
+    // A stalled job is one whose lock expired (worker died / event loop blocked past lockDuration).
+    // With maxStalledCount:0 the run queue fails it instead of re-delivering — log so it's visible.
+    worker.on("stalled", jobId => logger.warn(`[worker:${name}] job stalled (lock expired)`, { jobId }))
+    worker.on("completed", job => {
+        const startedAt = job.processedOn
+        const finishedAt = job.finishedOn
+        logger.info(`[worker:${name}] job completed`, { jobId: job.id, durationMs: startedAt && finishedAt ? finishedAt - startedAt : undefined })
+    })
     workers.push(worker)
     logger.info(`[worker:${name}] started`)
 }
@@ -56,9 +69,24 @@ function registerWorkers(): void {
     // Platform maintenance crons, discriminated by job name.
     startMaintenanceWorker()
 
-    // Durable agent run execution. attempts:1 + jobId run:<runId> dedupe + maxStalledCount:0 mean a
-    // crashed-mid-run job fails rather than silently re-spawning a second Modal sandbox / double bill.
-    startWorker<RunExecutionJobData>(QueueName.SdkRunExecution, data => handleRunExecution(data), { concurrency: SDK_RUN_CONCURRENCY, maxStalledCount: 0 })
+    // Durable agent run execution.
+    //
+    // The job stays ACTIVE for the whole run, including across a human tool-approval: the agent loop
+    // runs server-side in handleSdkAgentRun (web), which holds the sandbox's SSE connection open
+    // during waitForApprovalDecision, so the sandbox stays alive and this job's proc.wait() does not
+    // return. BullMQ auto-renews the lock (every lockDuration/2) while this worker is alive, so a
+    // multi-hour approval does not stall a healthy worker.
+    //
+    // Safety on worker death: lock expires -> stalled -> maxStalledCount:0 fails the job (never
+    // re-delivered), and jobId run-<runId> dedupes any duplicate enqueue, so we never spawn a second
+    // Modal sandbox or double-bill. The cost is that a worker DEPLOY/restart mid-run fails that run
+    // (cleaned up by reconcileOrphanedRuns) rather than resuming it. True suspend-and-resume (so a
+    // run survives a deploy mid-approval) requires changing the sandbox-side SDK/CLI run protocol and
+    // is intentionally out of scope here — see the migration plan's Phase 5 notes.
+    //
+    // lockDuration is raised above the 30s default to give more headroom against transient event-loop
+    // stalls before a healthy job is mistaken for a dead one.
+    startWorker<RunExecutionJobData>(QueueName.SdkRunExecution, data => handleRunExecution(data), { concurrency: SDK_RUN_CONCURRENCY, maxStalledCount: 0, lockDuration: 60_000 })
 }
 
 /** Maintenance jobs share one queue and are dispatched by job name. */
