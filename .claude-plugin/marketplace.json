@@ -5,7 +5,7 @@
         "email": "support@useterse.ai"
     },
     "metadata": {
-        "description": "Official Terse plugins for Claude Code — create and improve SDK jobs",
+        "description": "Official Claude Code plugins for Terse, the AI workflow platform for coding agents — create and improve workflows.",
         "version": "0.1.0",
         "pluginRoot": "./packages"
     },
@@ -13,7 +13,7 @@
         {
             "name": "terse",
             "source": "terse-claude-plugin",
-            "description": "Create and improve Terse SDK jobs — background AI agents that react to events and take actions across GitHub, Slack, Linear, and more",
+            "description": "Terse, the AI workflow platform for coding agents. Create and improve workflows that react to events and take actions across GitHub, Slack, Linear, and more.",
             "version": "0.1.0",
             "skills": ["./skills/init", "./skills/create", "./skills/improve"],
             "author": {
@@ -22,7 +22,7 @@
             },
             "homepage": "https://useterse.ai",
             "repository": "https://github.com/TerseAI/Terse",
-            "keywords": ["terse", "automation", "agents", "sdk"]
+            "keywords": ["terse", "workflow", "coding-agents", "automation", "agents", "sdk"]
         }
     ]
 }

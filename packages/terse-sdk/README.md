@@ -2,7 +2,7 @@
 
 TypeScript SDK for building workflows on the [Terse](https://useterse.ai) platform.
 
-Terse is a code-first AI workflow platform. You write workflows in TypeScript, mix deterministic tool calls with agentic loops, and deploy serverlessly. Full docs at [docs.useterse.ai](https://docs.useterse.ai).
+Terse is the AI workflow platform for coding agents. You write workflows in TypeScript, mix deterministic tool calls with agentic loops, and deploy serverlessly. Full docs at [docs.useterse.ai](https://docs.useterse.ai).
 
 ## Install
 
