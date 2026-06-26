@@ -94,7 +94,7 @@ import { z } from "zod"
 import { claimAgentApprovalHandling, getJobContext, releaseAgentApprovalHandling, runWithJobContext } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
-import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
+import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type SDKTrigger, type StateAccessor, type StateDefinition, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -104,6 +104,25 @@ function resolveTerseBackendUrl(): string {
 
 function resolveApiBaseUrl(): string {
     return getJobContext()?.apiBaseUrl ?? resolveTerseBackendUrl()
+}
+
+function buildSdkRequestHeaders(): Record<string, string> {
+    const apiKey = process.env.TERSE_API_KEY
+    if (!apiKey) {
+        throw new Error("TERSE_API_KEY environment variable is not set.")
+    }
+    const headers: Record<string, string> = {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "text/event-stream"
+    }
+    const ctx = getJobContext()
+    if (ctx?.sessionId) headers["X-Terse-Session-Id"] = ctx.sessionId
+    const runIdHeader = ctx ? ctx.runId : process.env.TERSE_RUN_ID
+    if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
+    if (ctx?.projectId) headers["X-Terse-Project-Id"] = ctx.projectId
+    if (ctx?.jobName) headers["X-Terse-Job-Name"] = ctx.jobName
+    return headers
 }
 
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
@@ -116,7 +135,7 @@ export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOpti
 
 // Re-export SDK-specific types
 export { createSDKTrigger, registerEventTransform } from "./types.js"
-export type { InferEvent, InferEvents, InferStructuredOutput, InferToolApproval, InferToolApprovals, SDKTrigger, ToolboxEntry, TypedSkill, TypedTrigger } from "./types.js"
+export type { InferEvent, InferEvents, InferStructuredOutput, InferToolApproval, InferToolApprovals, SDKTrigger, StateAccessor, StateDefinition, ToolboxEntry, TypedSkill, TypedTrigger } from "./types.js"
 
 // Re-export shared types for consumer convenience
 export {
@@ -246,15 +265,16 @@ export { RunHistoryAction, RunHistoryDecision, RunHistoryRecord, RunHistoryStatu
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[]> = {
+export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[], TStates extends readonly StateDefinition[] = readonly StateDefinition[]> = {
     name: string
     triggers: [...TTriggers]
-    filter?: (event: InferEvents<TTriggers>) => boolean | Promise<boolean>
-    onTrigger: (event: InferEvents<TTriggers>) => Promise<void>
+    states?: [...TStates]
+    filter?: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => boolean | Promise<boolean>
+    onTrigger: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => Promise<void>
     remoteServerUrl?: string
 }
 
-export function createJob<TTriggers extends readonly TypedTrigger[]>(params: CreateJobParameters<TTriggers>) {
+export function createJob<TTriggers extends readonly TypedTrigger[], const TStates extends readonly StateDefinition[] = readonly []>(params: CreateJobParameters<TTriggers, TStates>) {
     const currentJobs = fetchRegisteredJobs()
     if (currentJobs.has(params.name)) {
         throw new Error(`Job "${params.name}" is registered twice on this Terse instance.`)
@@ -295,6 +315,52 @@ export function fetchRegisteredJobs(): Map<string, CreateJobParameters> {
 export function __resetRegisteredTerseInstances(): void {
     const g = globalThis as GlobalWithInstances
     g[TERSE_INSTANCES_KEY] = new Map<string, CreateJobParameters>()
+}
+
+async function stateGet(key: string): Promise<string | null> {
+    const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_GET}`, {
+        method: "POST",
+        headers: buildSdkRequestHeaders(),
+        body: JSON.stringify({ key })
+    })
+    if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+        throw new Error(`Failed to read state "${key}": ${data.error ?? res.statusText}`)
+    }
+    const data = (await res.json()) as { content: string | null }
+    return data.content
+}
+
+async function statePut(key: string, content: string): Promise<void> {
+    const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_PUT}`, {
+        method: "POST",
+        headers: buildSdkRequestHeaders(),
+        body: JSON.stringify({ key, content })
+    })
+    if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+        throw new Error(`Failed to write state "${key}": ${data.error ?? res.statusText}`)
+    }
+}
+
+export function __buildJobStateAccessor<TStates extends readonly StateDefinition[]>(states: TStates): StateAccessor<TStates> {
+    const schemas = new Map<string, z.ZodType>(states.map(s => [s.key, s.value]))
+    const schemaFor = (key: string): z.ZodType => {
+        const schema = schemas.get(key)
+        if (!schema) throw new Error(`Unknown state key "${key}". Declare it in the job's \`states\`.`)
+        return schema
+    }
+    return {
+        get: async (key: string) => {
+            const schema = schemaFor(key)
+            const raw = await stateGet(key)
+            return raw === null ? undefined : schema.parse(JSON.parse(raw))
+        },
+        set: async (key: string, value: unknown) => {
+            const schema = schemaFor(key)
+            await statePut(key, JSON.stringify(schema.parse(value)))
+        }
+    } as StateAccessor<TStates>
 }
 
 export class Terse {
@@ -368,14 +434,15 @@ export class Terse {
         try {
             const result = await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl }, async () => {
                 const inputEvent = createSDKTrigger(event)
+                const state = __buildJobStateAccessor(job.states ?? [])
 
                 if (job.filter) {
-                    const shouldRun = await job.filter(inputEvent)
+                    const shouldRun = await job.filter(inputEvent, state)
                     if (!shouldRun) {
                         return { status: "ok" as const, filtered: true }
                     }
                 }
-                await job.onTrigger(inputEvent)
+                await job.onTrigger(inputEvent, state)
 
                 return { status: "ok" as const }
             })
@@ -444,7 +511,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         try {
             const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
                 method: "POST",
-                headers: TerseAgent.buildHeaders(),
+                headers: buildSdkRequestHeaders(),
                 body: JSON.stringify(requestBody)
             })
 
@@ -469,7 +536,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     async submitApprovalDecision(params: { runId: string; stepId: string; approved: boolean }): Promise<void> {
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
             method: "POST",
-            headers: TerseAgent.buildHeaders(),
+            headers: buildSdkRequestHeaders(),
             body: JSON.stringify(params satisfies SdkApprovalDecisionRequestBody)
         })
 
@@ -496,7 +563,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     static async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
-            headers: TerseAgent.buildHeaders(),
+            headers: buildSdkRequestHeaders(),
             body: JSON.stringify({ toolName, params })
         })
         const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
@@ -504,25 +571,6 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             throw new Error(data.error ?? "Tool execution failed")
         }
         return data.result as TOutput
-    }
-
-    private static buildHeaders(): Record<string, string> {
-        const apiKey = process.env.TERSE_API_KEY
-        if (!apiKey) {
-            throw new Error("TERSE_API_KEY environment variable is not set.")
-        }
-        const headers: Record<string, string> = {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            Accept: "text/event-stream"
-        }
-        const ctx = getJobContext()
-        if (ctx?.sessionId) headers["X-Terse-Session-Id"] = ctx.sessionId
-        const runIdHeader = ctx ? ctx.runId : process.env.TERSE_RUN_ID
-        if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
-        if (ctx?.projectId) headers["X-Terse-Project-Id"] = ctx.projectId
-        if (ctx?.jobName) headers["X-Terse-Job-Name"] = ctx.jobName
-        return headers
     }
 
     private async *consumeSseStream(res: Response): AsyncGenerator<TerseAgentResult> {
@@ -564,55 +612,6 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         }
     }
 }
-
-export class MemoryNotFoundError extends Error {
-    readonly path: string
-    constructor(path: string) {
-        super(`Memory file not found: ${path}`)
-        this.name = "MemoryNotFoundError"
-        this.path = path
-    }
-}
-
-export async function readMemory<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>> {
-    let raw: string
-    try {
-        const out = await TerseAgent.executeTool<{ result: string }>("memory", { command: { op: "view", path, raw: true } })
-        raw = out.result
-    } catch (error) {
-        if (error instanceof Error && /does not exist/.test(error.message)) throw new MemoryNotFoundError(path)
-        throw error
-    }
-    return schema.parse(JSON.parse(raw)) as z.infer<S>
-}
-
-export async function writeMemory<S extends z.ZodType>(path: string, data: z.infer<S>, schema: S): Promise<void> {
-    const file_text = JSON.stringify(schema.parse(data))
-    await TerseAgent.executeTool("memory", { command: { op: "create", path, file_text, overwrite: true } })
-}
-
-export type TypedMemoryStore<S extends z.ZodType> = {
-    read(path: string): Promise<z.infer<S>>
-    write(path: string, data: z.infer<S>): Promise<void>
-}
-
-export function memoryStore<S extends z.ZodType>(root: string, schema: S): TypedMemoryStore<S> {
-    const join = (p: string) => `${root.replace(/\/$/, "")}/${p.replace(/^\//, "")}`
-    return {
-        read: (p: string) => readMemory(join(p), schema),
-        write: (p: string, data: z.infer<S>) => writeMemory(join(p), data, schema)
-    }
-}
-
-// Attached to the generated `tools.terse.memory` callable so jobs get typed JSON read/write
-// alongside the existing op-based tool call. Validation runs in the SDK; the server stores raw strings.
-export type TypedMemory = {
-    read<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>>
-    write<S extends z.ZodType>(path: string, data: z.infer<S>, schema: S): Promise<void>
-    store<S extends z.ZodType>(root: string, schema: S): TypedMemoryStore<S>
-}
-
-export const memoryHelpers: TypedMemory = { read: readMemory, write: writeMemory, store: memoryStore }
 
 type GenerateTextParams<TSkills extends readonly TypedSkill<string>[] = readonly TypedSkill<string>[]> = {
     prompt: string

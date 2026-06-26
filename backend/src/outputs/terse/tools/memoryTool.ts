@@ -79,7 +79,6 @@ async function viewCommand(fs: VolumeFs, subtreeKey: string, input: MemoryViewCo
     }
 
     const content = (await fs.read(rel)) ?? ""
-    if (input.raw) return content
     return renderFileWithLineNumbers(modelPath, content, input.view_range ?? null)
 }
 
@@ -112,7 +111,7 @@ async function createCommand(fs: VolumeFs, subtreeKey: string, input: MemoryCrea
     if (rel === null) throw new Error(invalidPath(modelPath))
 
     const existing = await fs.stat(rel)
-    if (existing && !input.overwrite) throw new Error(`Error: File ${modelPath} already exists`)
+    if (existing) throw new Error(`Error: File ${modelPath} already exists`)
 
     await fs.write(rel, input.file_text ?? "")
     await fs.sync()

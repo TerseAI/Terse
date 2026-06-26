@@ -29,13 +29,45 @@ my-project/
 
 ```typescript
 type CreateJobParameters = {
-    name: string                                       // unique human-readable name
-    triggers: TypedTrigger[]                           // one or more trigger configs
-    filter?: (event) => boolean | Promise<boolean>     // return false to skip
-    onTrigger: (event) => Promise<void>                // automation logic
-    remoteServerUrl?: string                           // optional webhook host
+    name: string                                        // unique human-readable name
+    triggers: TypedTrigger[]                            // one or more trigger configs
+    states?: StateDefinition[]                          // typed persistent key/value state (see below)
+    filter?: (event, state) => boolean | Promise<boolean>  // return false to skip
+    onTrigger: (event, state) => Promise<void>          // automation logic
+    remoteServerUrl?: string                            // optional webhook host
 }
 ```
+
+## Typed state: `states` + `state.get`/`state.set`
+
+`states` declares persistent state on the job as a list of `{ key, value }`, where `value` is a Zod schema. Both `filter` and `onTrigger` receive a `state` object as their second argument. `state.get(key)` and `state.set(key, value)` are narrowed to the declared keys, with each value typed and validated against that key's schema. `get` returns `undefined` when a key has never been set.
+
+State is stored as JSON in the project volume, in a namespace the agent cannot read or write. Validation runs in the SDK.
+
+```typescript
+import { createJob } from "terse-sdk"
+import { z } from "zod"
+
+const Profile = z.object({ name: z.string(), tier: z.enum(["free", "pro"]) })
+
+createJob({
+    name: "track-account",
+    triggers: [/* ... */],
+    states: [
+        { key: "profile", value: Profile },
+        { key: "seenCount", value: z.number() },
+    ],
+    onTrigger: async (event, state) => {
+        const profile = await state.get("profile")        // Profile | undefined
+        const count = (await state.get("seenCount")) ?? 0  // number | undefined
+        await state.set("seenCount", count + 1)            // only `number` accepted
+        // state.set("seenCount", "x")  // type error
+        // state.get("nope")            // key not declared
+    },
+})
+```
+
+`states` is your job's own typed state. It is separate from `toolbox.terse.memory({ command })`, the memory the agent reads and edits.
 
 ## TerseAgent API
 

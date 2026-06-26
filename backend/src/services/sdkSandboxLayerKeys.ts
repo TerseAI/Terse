@@ -52,3 +52,8 @@ export function projectVolumeName(projectId: string): string {
 export function testMemorySubtreeKey(automationId: string): string {
     return `test-${automationId}`
 }
+
+/** State subtree for a job's typed `states`, a sibling of the agent's memory subtree so the memory tool can't reach it. */
+export function stateSubtreeKey(automationId: string, isTest: boolean): string {
+    return isTest ? `state-test-${automationId}` : `state-${automationId}`
+}
