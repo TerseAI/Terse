@@ -1002,12 +1002,6 @@ export const sdkStateGetResponseSchema = z.object({
 })
 export type SdkStateGetResponse = z.infer<typeof sdkStateGetResponseSchema>
 
-/**
- * Start a `terse test` run. Routed through the same EventProcessor path production runs use: it mints the
- * is_test run and then either returns early (the local CLI is the data plane) or dispatches the webhook to
- * a self-hosted data plane. `forceLocal` keeps inherently-local commands (listen, replay) local even when
- * the project is self-hosted; otherwise self-hosted projects auto-route to the webhook.
- */
 export const sdkTestRunStartRequestSchema = z.object({
     projectId: z.string().min(1),
     jobName: z.string().min(1),
