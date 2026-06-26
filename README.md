@@ -11,7 +11,7 @@
   <p><strong>Workflow building for the coding agent era.</strong></p>
 
   <p>
-    A code-first AI workflow platform for developers and coding agents.<br/>
+    The AI workflow platform for coding agents.<br/>
     Connect your tools, generate a typed SDK from your workspace, and deploy serverless workflows that mix deterministic tool calls with agentic loops.
   </p>
 

@@ -2,7 +2,7 @@
 
 ## About Terse
 
-Terse is an automation platform where developers build background AI agents in TypeScript. Each agent reacts to events from integrated services (GitHub, Slack, Linear, etc.) and takes actions using an AI-powered agent runner with access to those same services as tools.
+Terse is the AI workflow platform for coding agents. Workflows run in TypeScript, react to events from integrated services (GitHub, Slack, Linear, etc.), and take actions using an AI-powered agent runner with access to those same services as tools.
 
 ## Project Structure
 

@@ -2,7 +2,7 @@
 
 CLI for scaffolding, testing, and deploying [Terse](https://useterse.ai) workflows.
 
-Terse is a code-first AI workflow platform. You write workflows in TypeScript, generate a typed SDK from your connected integrations, and deploy serverlessly. Full docs at [docs.useterse.ai](https://docs.useterse.ai).
+Terse is the AI workflow platform for coding agents. You write workflows in TypeScript, generate a typed SDK from your connected integrations, and deploy serverlessly. Full docs at [docs.useterse.ai](https://docs.useterse.ai).
 
 ## Install
 

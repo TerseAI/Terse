@@ -41,7 +41,7 @@ function syncJsonErrorOutput(command: Command): void {
     setErrorOutputJson(Boolean(json))
 }
 
-program.name("terse").description("The Terse CLI — create and manage Terse projects").version(getCliVersion())
+program.name("terse").description("The CLI for Terse, the AI workflow platform for coding agents").version(getCliVersion())
 program.hook("preAction", (_thisCommand, actionCommand) => {
     syncJsonErrorOutput(actionCommand)
 })
