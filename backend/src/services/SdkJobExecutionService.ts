@@ -17,6 +17,7 @@ import { AgentWithRelations } from "../types/prisma"
 import { getSocketIO } from "./CacheInvalidationService"
 import { SecretService } from "./SecretService"
 import { getSandboxProvider } from "./sandboxProvider"
+import { runJournalDir } from "./sandboxProvider/journalVolume"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
@@ -86,6 +87,7 @@ export class SdkJobExecutionService {
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,
+                WORKFLOW_LOCAL_DATA_DIR: runJournalDir(runId),
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1"
