@@ -5,14 +5,6 @@ import type { SerializedEvent } from "terse-types"
 import { finalizeTestRun, startTestRun } from "./api.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 
-/**
- * Run a job as a first-class `terse test` run. Starts the run through the backend's run-trigger endpoint
- * (the EventProcessor path), which mints the is_test run and either returns it for local driving or
- * dispatches it to the project's self-hosted webhook. For a local run we drive execution here and finalize
- * it; for a webhook run the self-hosted server drives and finalizes, so we just report it.
- *
- * `forceLocal` keeps inherently-local commands (listen, replay) local even on self-hosted projects.
- */
 export async function runLocalTestJob(
     provider: LanguageProvider,
     job: CreateJobParameters,

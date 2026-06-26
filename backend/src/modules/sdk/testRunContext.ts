@@ -17,11 +17,6 @@ export async function userOwnsProject(projectId: string | undefined, user: UserS
     return trimmed
 }
 
-/**
- * Find-or-create the automation a test run keys off (run history + memory subtree). When the job hasn't been
- * deployed yet this creates an inert draft (is_active false, deployed_at null, no triggers); a later
- * `terse deploy` promotes it by name. Returns the automation id.
- */
 export async function ensureTestAutomation(user: UserSession, projectId: string, jobName: string): Promise<string> {
     const prisma = db()
     const existing = await prisma.automations.findFirst({
