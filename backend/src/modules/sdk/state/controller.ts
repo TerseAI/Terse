@@ -1,15 +1,14 @@
 import { Request, Response } from "express"
-import { z } from "zod"
+import { SdkStateGetResponse, sdkStateGetRequestSchema, sdkStatePutRequestSchema } from "terse-types/types"
 
 import { db } from "../../../loaders/prisma"
 import { resolveMemoryVolumePath } from "../../../services/memory/memoryPaths"
 import { stateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { getVolumeManager } from "../../../services/volumes"
+import { resolveTestRunContext } from "../testRunContext"
+import { getOrCreateSessionTestRun } from "../testRunSession"
 
 type StateScope = { projectId: string; runId: string; subtreeKey: string }
-
-const stateGetSchema = z.object({ key: z.string().min(1) })
-const statePutSchema = z.object({ key: z.string().min(1), content: z.string() })
 
 async function resolveStateScope(req: Request, res: Response): Promise<StateScope | null> {
     const user = req.session?.user
@@ -17,20 +16,32 @@ async function resolveStateScope(req: Request, res: Response): Promise<StateScop
         res.status(401).json({ success: false, error: "Unauthorized" })
         return null
     }
-    const runId = (req.headers["x-terse-run-id"] as string | undefined)?.trim()
-    if (!runId) {
+
+    const headerRunId = (req.headers["x-terse-run-id"] as string | undefined)?.trim()
+    if (headerRunId) {
+        const run = await db().run_history_records.findFirst({
+            where: { id: headerRunId, automation: { organization_id: user.organizationId } },
+            select: { id: true, automation_id: true, is_test: true, automation: { select: { project_id: true } } }
+        })
+        if (!run) {
+            res.status(404).json({ success: false, error: "Run not found" })
+            return null
+        }
+        return { projectId: run.automation.project_id, runId: run.id, subtreeKey: stateSubtreeKey(run.automation_id, run.is_test) }
+    }
+
+    const testCtx = await resolveTestRunContext(req, user)
+    if (!testCtx) {
         res.status(400).json({ success: false, error: "Job state requires an active run context" })
         return null
     }
-    const run = await db().run_history_records.findFirst({
-        where: { id: runId, automation: { organization_id: user.organizationId } },
-        select: { automation_id: true, is_test: true, automation: { select: { project_id: true } } }
-    })
-    if (!run) {
-        res.status(404).json({ success: false, error: "Run not found" })
+    const sessionId = req.headers["x-terse-session-id"] as string | undefined
+    if (!sessionId) {
+        res.status(400).json({ success: false, error: "Job state requires a test session (X-Terse-Session-Id)" })
         return null
     }
-    return { projectId: run.automation.project_id, runId, subtreeKey: stateSubtreeKey(run.automation_id, run.is_test) }
+    const { runId, agentId } = await getOrCreateSessionTestRun(sessionId, user, testCtx)
+    return { projectId: testCtx.projectId, runId, subtreeKey: stateSubtreeKey(agentId, true) }
 }
 
 function resolveStateKeyPath(subtreeKey: string, key: string): string | null {
@@ -43,7 +54,7 @@ export async function handleStateGet(req: Request, res: Response) {
     const scope = await resolveStateScope(req, res)
     if (!scope) return
 
-    const parsed = stateGetSchema.safeParse(req.body)
+    const parsed = sdkStateGetRequestSchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ success: false, error: "key (non-empty string) is required" })
     const rel = resolveStateKeyPath(scope.subtreeKey, parsed.data.key)
     if (!rel) return res.status(400).json({ success: false, error: "A valid state key is required" })
@@ -51,7 +62,8 @@ export async function handleStateGet(req: Request, res: Response) {
     const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId, scope.runId)
     try {
         const content = await fs.read(rel)
-        return res.json({ content: content ?? null })
+        const response: SdkStateGetResponse = { content: content ?? null }
+        return res.json(response)
     } finally {
         await fs.dispose().catch(() => {})
     }
@@ -61,7 +73,7 @@ export async function handleStatePut(req: Request, res: Response) {
     const scope = await resolveStateScope(req, res)
     if (!scope) return
 
-    const parsed = statePutSchema.safeParse(req.body)
+    const parsed = sdkStatePutRequestSchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ success: false, error: "key (non-empty string) and content (string) are required" })
     const rel = resolveStateKeyPath(scope.subtreeKey, parsed.data.key)
     if (!rel) return res.status(400).json({ success: false, error: "A valid state key is required" })

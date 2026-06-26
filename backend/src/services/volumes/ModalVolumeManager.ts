@@ -1,9 +1,9 @@
-import { App as ModalApp, Image as ModalImage, Volume as ModalVolume, NotFoundError } from "modal"
+import { Volume as ModalVolume, NotFoundError } from "modal"
 
 import logger from "../../common/logger"
 import { shellQuote } from "../../common/shellEscape"
 import { ModalSandboxService, SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
-import { Sandbox, SandboxVolume } from "../sandboxProvider/SandboxService"
+import { Sandbox } from "../sandboxProvider/SandboxService"
 import { MEMORY_MOUNT_PATH, SDK_SANDBOX_APP_NAME, projectVolumeName, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
 
 import { VolumeManager } from "./VolumeManager"
@@ -13,14 +13,14 @@ const VOLUME_OPS_IMAGE = "debian:bookworm-slim"
 
 /** Modal volume manager: owns all Modal-specific volume RPCs, the ephemeral accessor sandbox, and the
  *  attach-to-live-runner optimization. Borrows generic sandbox/image primitives from the sandbox provider. */
-export class ModalVolumeManager implements VolumeManager {
+export class ModalVolumeManager implements VolumeManager<ModalVolume> {
     constructor(private readonly provider: ModalSandboxService) {}
 
     private get modal() {
         return this.provider.modalClient
     }
 
-    async getOrCreateProjectVolume(projectId: string): Promise<SandboxVolume> {
+    async getOrCreateProjectVolume(projectId: string): Promise<ModalVolume> {
         return this.ensureVolume(projectVolumeName(projectId))
     }
 
@@ -44,15 +44,15 @@ export class ModalVolumeManager implements VolumeManager {
         const app = await this.provider.getOrCreateApp(SDK_SANDBOX_APP_NAME)
         const volume = await this.ensureVolume(projectVolumeName(projectId))
         const image = this.provider.getImageFromRegistry(VOLUME_OPS_IMAGE)
-        const sb = await this.modal.sandboxes.create(app as ModalApp, image as ModalImage, {
+        const sb = await this.modal.sandboxes.create(app, image, {
             ...SANDBOX_DEFAULT_OPTIONS,
-            volumes: { [MEMORY_MOUNT_PATH]: volume as ModalVolume }
+            volumes: { [MEMORY_MOUNT_PATH]: volume }
         })
         logger.info("Modal volume: attached fs via ephemeral sandbox", { projectId, mountPath: MEMORY_MOUNT_PATH, sandboxId: sb.sandboxId })
         return new ModalVolumeFs(sb, MEMORY_MOUNT_PATH, sb)
     }
 
-    private async ensureVolume(name: string): Promise<SandboxVolume> {
+    private async ensureVolume(name: string): Promise<ModalVolume> {
         // Modal's high-level volumes.fromName() cannot request a filesystem version, so we call the
         // control-plane VolumeGetOrCreate RPC directly to force Volumes v2 (required so `sync` can commit
         // memory writes from a JS-driven sandbox). This uses SDK-internal surface (cpClient + the proto

@@ -4,10 +4,12 @@ import type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
+    SdkStateGetRequest,
+    SdkStatePutRequest,
     WebhookJobChallengeResponse,
     WebhookJobTriggerResponse
 } from "terse-types"
-import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, stripZodJsonSchemaMetadata, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
+import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, sdkStateGetResponseSchema, stripZodJsonSchemaMetadata, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
@@ -94,7 +96,17 @@ import { z } from "zod"
 import { claimAgentApprovalHandling, getJobContext, releaseAgentApprovalHandling, runWithJobContext } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
-import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type SDKTrigger, type StateAccessor, type StateDefinition, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
+import {
+    type InferEvents,
+    InferStructuredOutput,
+    type InferToolApprovals,
+    type SDKTrigger,
+    type StateAccessor,
+    type StateDefinition,
+    type TypedSkill,
+    type TypedTrigger,
+    createSDKTrigger
+} from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -135,7 +147,19 @@ export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOpti
 
 // Re-export SDK-specific types
 export { createSDKTrigger, registerEventTransform } from "./types.js"
-export type { InferEvent, InferEvents, InferStructuredOutput, InferToolApproval, InferToolApprovals, SDKTrigger, StateAccessor, StateDefinition, ToolboxEntry, TypedSkill, TypedTrigger } from "./types.js"
+export type {
+    InferEvent,
+    InferEvents,
+    InferStructuredOutput,
+    InferToolApproval,
+    InferToolApprovals,
+    SDKTrigger,
+    StateAccessor,
+    StateDefinition,
+    ToolboxEntry,
+    TypedSkill,
+    TypedTrigger
+} from "./types.js"
 
 // Re-export shared types for consumer convenience
 export {
@@ -321,21 +345,20 @@ async function stateGet(key: string): Promise<string | null> {
     const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_GET}`, {
         method: "POST",
         headers: buildSdkRequestHeaders(),
-        body: JSON.stringify({ key })
+        body: JSON.stringify({ key } satisfies SdkStateGetRequest)
     })
     if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
         throw new Error(`Failed to read state "${key}": ${data.error ?? res.statusText}`)
     }
-    const data = (await res.json()) as { content: string | null }
-    return data.content
+    return sdkStateGetResponseSchema.parse(await res.json()).content
 }
 
 async function statePut(key: string, content: string): Promise<void> {
     const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_PUT}`, {
         method: "POST",
         headers: buildSdkRequestHeaders(),
-        body: JSON.stringify({ key, content })
+        body: JSON.stringify({ key, content } satisfies SdkStatePutRequest)
     })
     if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as Record<string, unknown>

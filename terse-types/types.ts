@@ -986,6 +986,22 @@ export const sdkToolExecuteRequestSchema = z.object({
 })
 export type SdkToolExecuteRequest = z.infer<typeof sdkToolExecuteRequestSchema>
 
+export const sdkStateGetRequestSchema = z.object({
+    key: z.string().min(1)
+})
+export type SdkStateGetRequest = z.infer<typeof sdkStateGetRequestSchema>
+
+export const sdkStatePutRequestSchema = z.object({
+    key: z.string().min(1),
+    content: z.string()
+})
+export type SdkStatePutRequest = z.infer<typeof sdkStatePutRequestSchema>
+
+export const sdkStateGetResponseSchema = z.object({
+    content: z.string().nullable()
+})
+export type SdkStateGetResponse = z.infer<typeof sdkStateGetResponseSchema>
+
 export const sdkRunTriggerEventResponseSchema = z.object({
     event: serializedEventSchema,
     agentName: z.string(),
