@@ -3,8 +3,8 @@ import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, 
 import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
 
-import { withJournalVolume } from "./journalVolume"
 import { Sandbox, SandboxApp, SandboxImage, SandboxService } from "./SandboxService"
+import { withJournalVolume } from "./journalVolume"
 
 export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     idleTimeoutMs: 5 * 60 * 1000,
