@@ -149,7 +149,8 @@ export async function listAllRunHistory(organizationId: string, params: GetRunHi
         actions: mapActions(runRecord.actions),
         status: convertPrismaRunHistoryStatusToShared(runRecord.status),
         isManuallyTriggered: runRecord.is_manually_triggered,
-        isTest: runRecord.is_test
+        isTest: runRecord.is_test,
+        triggeredByUserId: runRecord.triggered_by_user_id ?? null
     }))
     return { items, total }
 }
@@ -179,7 +180,8 @@ export async function listRunHistoryForAgent(agentId: string, organizationId: st
         actions: mapActions(runRecord.actions),
         status: convertPrismaRunHistoryStatusToShared(runRecord.status),
         isManuallyTriggered: runRecord.is_manually_triggered,
-        isTest: runRecord.is_test
+        isTest: runRecord.is_test,
+        triggeredByUserId: runRecord.triggered_by_user_id ?? null
     }))
     return { items, total }
 }

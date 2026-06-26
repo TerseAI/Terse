@@ -12,6 +12,7 @@ import { formatTimestamp } from "@/utils/time"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
 import RunTypeBadge from "./RunTypeBadge"
+import TriggeredBy from "./TriggeredBy"
 
 interface RunHistoryRowProps {
     run: RunHistoryRecordWithAgent
@@ -65,8 +66,13 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                 </div>
             </div>
 
-            {/* Run type */}
-            <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} className="hidden sm:inline-flex text-[10px]" />
+            {/* Run type + who triggered */}
+            {(run.isTest || run.isManuallyTriggered) && (
+                <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                    <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} className="text-[10px]" />
+                    {run.triggeredByUserId && <TriggeredBy userId={run.triggeredByUserId} showLabel={false} className="text-[10px]" />}
+                </div>
+            )}
 
             {/* Write actions count */}
             {writeActions.length > 0 && (

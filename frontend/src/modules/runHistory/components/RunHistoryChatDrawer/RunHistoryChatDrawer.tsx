@@ -51,6 +51,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
     const filtered = runs[currentRunIndex].filtered
     const isTest = runs[currentRunIndex].isTest
     const isManuallyTriggered = runs[currentRunIndex].isManuallyTriggered
+    const triggeredByUserId = runs[currentRunIndex].triggeredByUserId
 
     useEffect(() => {
         setIsTriggerPayloadOpen(false)
@@ -104,6 +105,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                         filtered={isFiltered || filtered}
                                         isTest={isTest}
                                         isManuallyTriggered={isManuallyTriggered}
+                                        triggeredByUserId={triggeredByUserId}
                                         runs={runs}
                                         currentRunIndex={currentRunIndex}
                                         onNavigate={onNavigate}

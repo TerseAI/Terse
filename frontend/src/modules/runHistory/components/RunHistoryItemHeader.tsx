@@ -4,6 +4,7 @@ import type { RunHistoryRecord } from "terse-types"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
 
 import RunTypeBadge from "./RunTypeBadge"
+import TriggeredBy from "./TriggeredBy"
 
 type Props = {
     run: RunHistoryRecord
@@ -62,6 +63,7 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                         <>
                             <span className="flex-shrink-0 text-muted-foreground/40">·</span>
                             <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} />
+                            {run.triggeredByUserId && <TriggeredBy userId={run.triggeredByUserId} showLabel={false} className="text-xs" />}
                         </>
                     )}
                 </div>

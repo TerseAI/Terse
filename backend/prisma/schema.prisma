@@ -815,6 +815,8 @@ model run_history_records {
   has_approval_request  Boolean                  @default(false)
   // Whether this run was produced by `terse test` (hidden from run history by default)
   is_test               Boolean                  @default(false)
+  // WorkOS user id of the human who triggered this run (only set for test/manual runs; resolved to display info at view time)
+  triggered_by_user_id  String?
   // SDK skill configs (SkillConfigData[]) persisted at run time so correction agents can reconstruct tools
   sdk_skills            Json?
   created_at            DateTime                 @default(now())

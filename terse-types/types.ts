@@ -365,7 +365,8 @@ export const runHistoryRecordSchema = z.object({
     actions: z.array(runHistoryActionBaseSchema).optional(),
     status: runHistoryStatusSchema,
     isManuallyTriggered: z.boolean(),
-    isTest: z.boolean().optional()
+    isTest: z.boolean().optional(),
+    triggeredByUserId: z.string().nullish()
 })
 export type RunHistoryRecord = z.infer<typeof runHistoryRecordSchema>
 

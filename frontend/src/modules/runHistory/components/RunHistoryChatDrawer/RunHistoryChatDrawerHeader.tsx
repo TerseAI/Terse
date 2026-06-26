@@ -8,6 +8,7 @@ import { IconForIntegration } from "@/modules/agents/components/Integration"
 
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
 import RunTypeBadge from "../RunTypeBadge"
+import TriggeredBy from "../TriggeredBy"
 
 type Props = {
     trigger: RunHistoryTrigger
@@ -18,6 +19,7 @@ type Props = {
     filtered: boolean
     isTest?: boolean
     isManuallyTriggered?: boolean
+    triggeredByUserId?: string | null
     runs?: RunHistoryRecord[]
     currentRunIndex?: number
     onNavigate?: (runId: string) => void
@@ -34,6 +36,7 @@ export default function RunHistoryChatDrawerHeader({
     status,
     isTest,
     isManuallyTriggered,
+    triggeredByUserId,
     runs,
     currentRunIndex,
     onNavigate,
@@ -56,7 +59,7 @@ export default function RunHistoryChatDrawerHeader({
     }
 
     return (
-        <div className="shrink-0 px-4 pt-4 pb-3">
+        <div className="shrink-0 px-4 pt-4 pb-3 space-y-2">
             <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -74,9 +77,7 @@ export default function RunHistoryChatDrawerHeader({
                     </div>
                     {trigger.subheader && <p className="mt-1 text-sm leading-5 text-muted-foreground break-words">{trigger.subheader}</p>}
                 </div>
-
-                <div className="flex flex-shrink-0 items-center gap-1.5">
-                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} className="text-[11px]" />
+                <div className="flex flex-shrink-0 items-center gap-2">
                     <RunHistoryStatusBadge status={status} />
                     {hasRunNavigation && (
                         <div className="ml-1 flex items-center rounded-md border border-border/60">
@@ -94,6 +95,12 @@ export default function RunHistoryChatDrawerHeader({
                     </Button>
                 </div>
             </div>
+            {(isTest || isManuallyTriggered) && (
+                <div className="flex items-center gap-2">
+                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} className="text-[11px]" />
+                    <TriggeredBy userId={triggeredByUserId} />
+                </div>
+            )}
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
                 <CopyCommandButton command={`terse replay ${runId}`} title="Copy. Then run in your project's terminal" />

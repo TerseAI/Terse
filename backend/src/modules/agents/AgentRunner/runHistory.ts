@@ -15,8 +15,15 @@ export type RunTrigger = RunHistoryTrigger
 export type CompletedRunStatus = typeof RunHistoryStatus.SUCCESS | typeof RunHistoryStatus.FAILED
 const PENDING_APPROVALS_INVALIDATION_KEY = pendingApprovalsKey()[0]
 
-export async function createRunRecord(params: { agentId: string; trigger: RunTrigger; serializedTriggerEvent?: SerializedEvent; isManuallyTriggered?: boolean; isTest?: boolean }): Promise<string> {
-    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered, isTest } = params
+export async function createRunRecord(params: {
+    agentId: string
+    trigger: RunTrigger
+    serializedTriggerEvent?: SerializedEvent
+    isManuallyTriggered?: boolean
+    isTest?: boolean
+    triggeredByUserId?: string
+}): Promise<string> {
+    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered, isTest, triggeredByUserId } = params
     const prisma = db()
     const record = await prisma.run_history_records.create({
         data: {
@@ -30,6 +37,7 @@ export async function createRunRecord(params: { agentId: string; trigger: RunTri
             trigger_payload: serializedTriggerEvent ? JSON.stringify(serializedTriggerEvent as Prisma.InputJsonValue) : Prisma.DbNull,
             is_manually_triggered: isManuallyTriggered ?? false,
             is_test: isTest ?? false,
+            triggered_by_user_id: triggeredByUserId ?? null,
             filtered: false,
             decision_action: "processed", // placeholder until we decide after filtering
             decision_reason: "",

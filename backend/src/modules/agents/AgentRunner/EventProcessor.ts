@@ -185,7 +185,8 @@ export class EventProcessor {
             trigger,
             serializedTriggerEvent: this.inputEvent.getSerializedEvent(),
             isManuallyTriggered: this.isManuallyTriggered,
-            isTest: this.isTest
+            isTest: this.isTest,
+            triggeredByUserId: this.isManuallyTriggered || this.isTest ? this.user.id : undefined
         })
         emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
         emitCacheInvalidationWithKey(this.user.organizationId, "recentAgents")
