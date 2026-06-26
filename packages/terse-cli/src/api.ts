@@ -167,7 +167,7 @@ export async function fetchRunChatHistory(runId: string, apiKey: string): Promis
     return fetchWithAuth<RunChatHistory>(buildRoute(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, { runId }), apiKey)
 }
 
-export async function startTestRun(params: { projectId: string; jobName: string; event: SerializedEvent; forceLocal?: boolean }, apiKey: string): Promise<SdkTestRunStartResponse> {
+export async function startTestRun(params: { projectId: string; jobName: string; event: SerializedEvent; forceLocal?: boolean; isTest?: boolean }, apiKey: string): Promise<SdkTestRunStartResponse> {
     return fetchWithAuth<SdkTestRunStartResponse>(ApiRoutes.SDK.TEST_RUN, apiKey, params, "POST")
 }
 

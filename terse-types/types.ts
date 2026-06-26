@@ -1007,7 +1007,8 @@ export const sdkTestRunStartRequestSchema = z.object({
     projectId: z.string().min(1),
     jobName: z.string().min(1),
     event: serializedEventSchema,
-    forceLocal: z.boolean().optional()
+    forceLocal: z.boolean().optional(),
+    isTest: z.boolean().optional()
 })
 export type SdkTestRunStartRequest = z.infer<typeof sdkTestRunStartRequestSchema>
 

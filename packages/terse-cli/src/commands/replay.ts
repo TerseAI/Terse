@@ -24,10 +24,12 @@ export async function replay(runId: string, provider: LanguageProvider = resolve
 
     const { job } = await loadJob(provider, runHistoryRecord.agentName)
 
-    if (runHistoryRecord.isTest) {
-        console.log(chalk.magenta("  🧪 Replaying a test run — the replay runs as a test run (excluded from reporting, no notifications)."))
+    if (runHistoryRecord.isTest === false) {
+        console.log(chalk.yellow("Replaying a production run."))
+    } else {
+        console.log(chalk.magenta("Replaying a test run."))
     }
 
     const projectId = readProjectConfigOrBail().projectId
-    await runLocalTestJob(provider, job, runHistoryRecord.event, { projectId, apiKey, forceLocal: true, verbose: true })
+    await runLocalTestJob(provider, job, runHistoryRecord.event, { projectId, apiKey, forceLocal: true, isTest: runHistoryRecord.isTest, verbose: true })
 }

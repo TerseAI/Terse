@@ -13,12 +13,13 @@ export async function runLocalTestJob(
         projectId: string
         apiKey: string
         forceLocal?: boolean
+        isTest?: boolean
         verbose?: boolean
         entryFile?: string
         pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
     }
 ): Promise<void> {
-    const { runId, local } = await startTestRun({ projectId: opts.projectId, jobName: job.name, event, forceLocal: opts.forceLocal }, opts.apiKey)
+    const { runId, local } = await startTestRun({ projectId: opts.projectId, jobName: job.name, event, forceLocal: opts.forceLocal, isTest: opts.isTest }, opts.apiKey)
 
     if (!local) {
         console.log(chalk.cyan(`  Dispatched test event to your self-hosted data plane (run ${runId}). Watch it in the dashboard.`))

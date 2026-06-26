@@ -27,7 +27,7 @@ export async function handleSdkTestRunStart(req: Request, res: Response) {
 
         const agentId = await ensureTestAutomation(user, projectId, parsed.data.jobName)
         const synthetic = new SyntheticTriggerRuntime(parsed.data.event.data)
-        const processor = new EventProcessor(synthetic, user, { isManuallyTriggered: true, isTest: true, localDataPlane })
+        const processor = new EventProcessor(synthetic, user, { isManuallyTriggered: true, isTest: parsed.data.isTest ?? true, localDataPlane })
         const { runId } = await processor.triggerSingleAgent(agentId)
 
         const response: SdkTestRunStartResponse = { runId, local: localDataPlane }
@@ -49,7 +49,7 @@ export async function handleSdkTestRunFinalize(req: Request, res: Response) {
     if (!parsed.success) return res.status(400).json({ success: false, error: "status must be 'success' or 'failed'" })
 
     const run = await db().run_history_records.findFirst({
-        where: { id: runId, is_test: true, automation: { organization_id: user.organizationId } },
+        where: { id: runId, automation: { organization_id: user.organizationId } },
         select: { id: true, automation_id: true }
     })
     if (!run) return res.status(404).json({ success: false, error: "Test run not found" })
