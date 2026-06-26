@@ -11,7 +11,7 @@ let volumeManagerSingleton: VolumeManager | null = null
 /** The volume manager for the active sandbox provider (Modal in cloud, local disk for self-host). */
 export function getVolumeManager(): VolumeManager {
     if (!volumeManagerSingleton) {
-        volumeManagerSingleton = settings.modal ? new ModalVolumeManager(getSandboxProvider() as ModalSandboxService) : new LocalVolumeManager()
+        volumeManagerSingleton = settings.modal ? new ModalVolumeManager(new ModalSandboxService()) : new LocalVolumeManager()
     }
     return volumeManagerSingleton
 }
