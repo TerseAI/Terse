@@ -1,4 +1,3 @@
-import { createLocalWorld } from "@workflow/world-local"
 import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
@@ -7,6 +6,8 @@ import { TerseJobContext } from "terse-sdk/dist/context"
 import { SerializedEvent } from "terse-types"
 import { getRun, start } from "workflow/api"
 import { setWorld } from "workflow/runtime"
+
+import { createTerseWorld } from "../../terseWorld.js"
 
 import { transformJobSource } from "./jobMacro.js"
 import { TerseWorkflowBuilder } from "./terseWorkflowBuilder.js"
@@ -28,7 +29,7 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     // the sources untouched.
     const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, "src", out).build())
 
-    const world = createLocalWorld({ dataDir: path.join(cwd, ".terse", "data"), recoverActiveRuns: true })
+    const world = createTerseWorld()
     setWorld(world)
 
     const require = createRequire(import.meta.url)

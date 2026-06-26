@@ -126,6 +126,43 @@ export class SchedulerClient {
         }
     }
 
+    async createDelayedJob(jobId: string, delaySeconds: number, url: string, payload: Record<string, unknown>): Promise<ScheduledJob> {
+        const schedule = cronExpressionForDelay(delaySeconds)
+        try {
+            const job: Job = {
+                name: this.getJobPath(jobId),
+                schedule,
+                timeZone: "UTC",
+                httpTarget: {
+                    uri: url,
+                    httpMethod: "POST",
+                    headers: {
+                        Authorization: `Bearer ${new CronJobIntegrationManager().config.secret}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: Buffer.from(JSON.stringify(payload))
+                }
+            }
+
+            const request: CreateJobRequest = {
+                parent: this.getParentPath(),
+                job: job
+            }
+
+            const [response] = await this.client.createJob(request)
+            logger.info("Delayed scheduler job created", { jobId, jobName: response.name, delaySeconds })
+            return this.transformJob(response)
+        } catch (error) {
+            if (isSchedulerJobAlreadyExistsError(error)) {
+                logger.info("Delayed scheduler job already exists; treating create as idempotent", { jobId, delaySeconds })
+                const existing = await this.get(jobId)
+                return existing ?? { id: jobId, schedule, url, state: ScheduledJobState.ENABLED }
+            }
+            logger.error("Failed to create delayed scheduler job", { error, jobId })
+            throw error
+        }
+    }
+
     async list(pageSize?: number, pageToken?: string): Promise<{ jobs: ScheduledJob[]; nextPageToken?: string }> {
         try {
             const request: ListJobsRequest = {
@@ -226,4 +263,30 @@ export class SchedulerClient {
 
 export function createSchedulerClient(): SchedulerClient {
     return new SchedulerClient()
+}
+
+export const SUSPENSION_JOB_PREFIX = "terse-suspend-"
+
+// Keyed by run + the engine's idempotency key so distinct waits get distinct jobs while replay
+// passes for the same wait collapse onto the same job id (createDelayedJob then no-ops the repeat).
+export function suspensionJobId(runId: string, idempotencyKey?: string): string {
+    const base = `${SUSPENSION_JOB_PREFIX}${runId}`
+    if (!idempotencyKey) return base
+    return `${base}-${sanitizeJobIdSegment(idempotencyKey)}`
+}
+
+function sanitizeJobIdSegment(value: string): string {
+    return value.replace(/[^a-zA-Z0-9_-]/g, "_")
+}
+
+function cronExpressionForDelay(delaySeconds: number): string {
+    const target = new Date(Date.now() + delaySeconds * 1000)
+    return `${target.getUTCMinutes()} ${target.getUTCHours()} ${target.getUTCDate()} ${target.getUTCMonth() + 1} *`
+}
+
+function isSchedulerJobAlreadyExistsError(error: unknown): boolean {
+    if (!error) return false
+    const anyError = error as { code?: number; message?: string }
+    if (anyError.code === 6) return true
+    return typeof anyError.message === "string" && anyError.message.includes("ALREADY_EXISTS")
 }

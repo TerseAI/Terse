@@ -536,6 +536,9 @@ importers:
       '@workflow/builders':
         specifier: 5.0.0-beta.19
         version: 5.0.0-beta.19(@opentelemetry/api@1.9.1)(@swc/helpers@0.5.20)(ws@8.21.0)
+      '@workflow/world':
+        specifier: 'beta: 5.0.0-beta.12'
+        version: 5.0.0-beta.12(zod@4.3.6)
       '@workflow/world-local':
         specifier: 5.0.0-beta.19
         version: 5.0.0-beta.19(@opentelemetry/api@1.9.1)
@@ -4233,6 +4236,11 @@ packages:
 
   '@workflow/world@5.0.0-beta.11':
     resolution: {integrity: sha512-kRrqYr9YaEScpgd3NxmP1nIp31hqmGmL/VX+Er1CTpqeQBkcXGf+zuxhNVmHstYcVMWZ2+Vs+ek/7GkhnLZL6g==}
+    peerDependencies:
+      zod: 4.3.6
+
+  '@workflow/world@5.0.0-beta.12':
+    resolution: {integrity: sha512-BRQp7xLLZGVFa9ONRVw8FWqeJ92QLlvyUwo2O94wm3cIqIobp+734SVFiGOCicfSwxcpAksKqTJHykv9y+Y0+Q==}
     peerDependencies:
       zod: 4.3.6
 
@@ -11708,7 +11716,7 @@ snapshots:
       commander: 8.3.0
       minimatch: 9.0.9
       piscina: 4.9.3
-      semver: 7.7.4
+      semver: 7.8.5
       slash: 3.0.0
       source-map: 0.7.6
       tinyglobby: 0.2.17
@@ -12499,6 +12507,11 @@ snapshots:
       ulid: 3.0.2
       zod: 4.3.6
 
+  '@workflow/world@5.0.0-beta.12(zod@4.3.6)':
+    dependencies:
+      ulid: 3.0.2
+      zod: 4.3.6
+
   '@workos-inc/node@8.11.0': {}
 
   '@workos-inc/widgets@1.10.1(@radix-ui/themes@3.3.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tanstack/react-query@5.96.1(react@19.2.4))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(swr@2.4.1(react@19.2.4))':
@@ -12781,7 +12794,7 @@ snapshots:
   binary-version-check@6.1.0:
     dependencies:
       binary-version: 7.1.0
-      semver: 7.7.4
+      semver: 7.8.5
       semver-truncate: 3.0.0
 
   binary-version@7.1.0:
@@ -15938,7 +15951,7 @@ snapshots:
 
   semver-truncate@3.0.0:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.5
 
   semver@6.3.1: {}
 

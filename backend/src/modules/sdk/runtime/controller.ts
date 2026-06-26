@@ -1,11 +1,20 @@
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { BillingError, CreditGateDeniedError, SdkListenStreamEvent, sdkListenQuerySchema } from "terse-types"
+import { ApiRoutes, BillingError, CreditGateDeniedError, SdkListenStreamEvent, buildRoute, sdkListenQuerySchema } from "terse-types"
 import { SkillConfigData } from "terse-types/Configs"
-import { SdkAgentRunResponseBody, SdkAgentStreamEvent, UserSession, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
+import {
+    SdkAgentRunResponseBody,
+    SdkAgentStreamEvent,
+    SdkJobSuspendResponseBody,
+    UserSession,
+    sdkAgentRunRequestBodySchema,
+    sdkApprovalDecisionRequestBodySchema,
+    sdkJobSuspendRequestBodySchema
+} from "terse-types/types"
 import { z } from "zod"
 
 import logger from "../../../common/logger"
+import { createSchedulerClient, suspensionJobId } from "../../../common/schedulerClient"
 import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
 import { finalizeRunFailure } from "../../../loaders/socket"
@@ -18,6 +27,7 @@ import { CancelReason } from "../../../modules/agents/cancellation/RunCancellati
 import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellation/runCancellationEffects"
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
+import { settings } from "../../../settings"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
 
 const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({ prompt: z.string().min(1) })
@@ -358,4 +368,55 @@ export async function handleSessionEvents(req: Request, res: Response) {
     res.on("error", teardown)
 
     safeWrite(`data: ${JSON.stringify({ type: "session_started", sessionId })}\n\n`)
+}
+
+export async function handleJobSuspension(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
+
+    const parsed = sdkJobSuspendRequestBodySchema.safeParse(req.body)
+    if (!parsed.success) {
+        return res.status(400).json({ success: false, error: "Invalid request body", details: parsed.error.issues.map(i => i.message) })
+    }
+
+    // Suspension is backed by Cloud Scheduler. Self-hosted deployments without GCP/Cloud Scheduler
+    // configured cannot park the delayed delivery, so fail loudly rather than silently dropping it.
+    if (!settings.gcp || !settings.cloudScheduler) {
+        return res.status(501).json({
+            success: false,
+            error: "Job suspension is unavailable on this deployment because Cloud Scheduler is not configured."
+        })
+    }
+
+    const { runId, name, delaySeconds, idempotencyKey } = parsed.data
+    try {
+        const resumeUrl = `${settings.urls.backend}${buildRoute(ApiRoutes.SDK.RESUME, {})}`
+        await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey })
+
+        const response: SdkJobSuspendResponseBody = { success: true }
+        return res.status(200).json(response)
+    } catch (error) {
+        logger.error("Failed to suspend job", { error, runId })
+        return res.status(500).json({ success: false, error: extractErrorMessage(error) })
+    }
+}
+
+const sdkJobResumeRequestBodySchema = z.object({ runId: z.string().min(1), idempotencyKey: z.string().min(1).optional() })
+
+export async function handleJobResumption(req: Request, res: Response) {
+    const parsed = sdkJobResumeRequestBodySchema.safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ success: false, error: "Invalid request body" })
+
+    if (!settings.gcp || !settings.cloudScheduler) {
+        return res.status(501).json({ success: false, error: "Job resumption is unavailable on this deployment because Cloud Scheduler is not configured." })
+    }
+
+    const { runId, idempotencyKey } = parsed.data
+    try {
+        await createSchedulerClient().delete(suspensionJobId(runId, idempotencyKey))
+        return res.status(200).json({ success: true })
+    } catch (error) {
+        logger.error("Failed to delete suspension scheduler job", { error, runId })
+        return res.status(500).json({ success: false, error: extractErrorMessage(error) })
+    }
 }

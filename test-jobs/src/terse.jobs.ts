@@ -1,4 +1,4 @@
-import { createJob, generateText, jobStep } from "terse-sdk"
+import { createJob, generateText, jobStep, sleep } from "terse-sdk"
 import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
@@ -32,6 +32,8 @@ createJob({
             channelId: SlackChannel.AllTerseInc.channelId,
             message: response.joke
         })
+
+        await sleep("30s")
 
         // throw new Error("test error")
 

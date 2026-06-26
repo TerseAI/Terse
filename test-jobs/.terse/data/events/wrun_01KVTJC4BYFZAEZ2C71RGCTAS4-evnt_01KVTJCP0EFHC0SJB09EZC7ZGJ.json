@@ -1,0 +1,11 @@
+{
+  "eventType": "step_started",
+  "specVersion": 5,
+  "correlationId": "step_01KVTJC4C472FY8VJVHATVWPTK",
+  "eventData": {
+    "stepName": "step//terse-sdk@0.1.54//TerseAgent.executeTool"
+  },
+  "runId": "wrun_01KVTJC4BYFZAEZ2C71RGCTAS4",
+  "eventId": "evnt_01KVTJCP0EFHC0SJB09EZC7ZGJ",
+  "createdAt": "2026-06-23T15:43:11.374Z"
+}

@@ -89,6 +89,7 @@ import type {
     WorkOSUserTrigger as _RawWorkOSUserTrigger,
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
+import { sleep as workflowSleep } from "workflow"
 import { z } from "zod"
 
 import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
@@ -632,6 +633,10 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
 export async function jobStep<I extends object, T>(input: I, fn: (input: I) => Promise<T>): Promise<T> {
     "use step"
     return await fn(input)
+}
+
+export function sleep(duration: string | number | Date): Promise<void> {
+    return workflowSleep(duration as any)
 }
 
 export enum EventType {

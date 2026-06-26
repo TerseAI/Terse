@@ -1,0 +1,15 @@
+{
+  "eventType": "step_completed",
+  "specVersion": 5,
+  "correlationId": "step_01KVZ8S0F3FJG019X8NK1FE5E6",
+  "eventData": {
+    "stepName": "step//terse-sdk@0.1.54//TerseAgent.executeTool",
+    "result": {
+      "__type": "Uint8Array",
+      "data": "ZGV2bFt7InN1Y2Nlc3MiOjEsIm1lc3NhZ2VfdHMiOjIsImNoYW5uZWwiOjMsInRocmVhZF90cyI6Miwic3VtbWFyeSI6NCwiaGFzX2Jsb2NrcyI6NSwiYWN0aW9ucyI6Nn0sdHJ1ZSwiMTc4MjM4NzA5My42NjQyOTkiLCIjYWxsLXRlcnNlLWluYyIsInRleHQgbWVzc2FnZSBzZW50IHRvICNhbGwtdGVyc2UtaW5jOiBcIldoeSBkb2Vzbid0IEpvbiBTbm93IGV2ZXIgdXNlIFR3aXR0ZXI/IEJlY2F1c2UgaGUgb25seSBoYXMgb25lIGZvbGxvd2VyLCBhbmQgaXQncyBhIGRpcmV3b2xmIHdobyBrZWUuLi5cIiIsZmFsc2UsWzddLHsiYWN0aW9uIjo4LCJpbnRlZ3JhdGlvbiI6OSwidGFyZ2V0IjozLCJkZXRhaWxzIjoxMCwidXJsIjoxMSwidHlwZSI6MTJ9LCJTZW50IFNsYWNrIG1lc3NhZ2UiLCJzbGFjayIsIlNlbnQgbWVzc2FnZSB0byAjYWxsLXRlcnNlLWluYzogXCJXaHkgZG9lc24ndCBKb24gU25vdyBldmVyIHVzZSBUd2l0dGVyPyBCZWNhdXNlIGhlIG9ubHkgaGFzIG9uZSBmb2xsb3dlciwgYW5kIGl0J3MgYSBkaXJld29sZiB3aG8ga2VlLi4uXCIiLCJodHRwczovL3RlcnNlaW5jLnNsYWNrLmNvbS9hcmNoaXZlcy9DMDlERUwwQVVFNS9wMTc4MjM4NzA5MzY2NDI5OSIsImNyZWF0ZSJd"
+    }
+  },
+  "runId": "wrun_01KVZ8S0EXW56KSQYW6G3A1GVN",
+  "eventId": "evnt_01KVZ8SC8WJTXN6EYJQ1CYJVDT",
+  "createdAt": "2026-06-25T11:31:33.788Z"
+}
