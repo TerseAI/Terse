@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import logger from "../common/logger"
-import { getIntegrationRegistry, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
+import { type IntegrationManagers, getIntegrationRegistry } from "../integrations/abstract/IntegrationRegistry"
 
 import { getSecretManagerClient } from "./secretManager"
 import { SecretManagerClient } from "./secretManager/SecretManagerClient"

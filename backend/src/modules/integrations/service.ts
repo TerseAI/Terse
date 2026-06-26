@@ -114,5 +114,7 @@ export async function listActiveIntegrationsForOrganization(organizationId: stri
     const hasInstancesResults = await Promise.all(
         getIntegrationRegistry().map(integration => integrationHasInstances(integration as Integration<IntegrationInstance, unknown, IntegrationDetails, unknown>, organizationId))
     )
-    return getIntegrationRegistry().filter((_, index) => hasInstancesResults[index]).map(integration => integration.integrationType)
+    return getIntegrationRegistry()
+        .filter((_, index) => hasInstancesResults[index])
+        .map(integration => integration.integrationType)
 }
