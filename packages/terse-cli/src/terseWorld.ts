@@ -9,8 +9,12 @@ import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
 
 export type TerseWorld = LocalWorld
 
+// Waits shorter than this stay in-process: tearing down and respawning a sandbox
+// costs more than just waiting, so only longer waits hand off to Terse.
+const SUSPEND_THRESHOLD_SECONDS = Number(process.env.TERSE_SUSPEND_THRESHOLD_SECONDS) || 30
+
 export function createTerseWorld(): TerseWorld {
-    const dataDir = path.join(process.cwd(), ".terse", "data")
+    const dataDir = process.env.WORKFLOW_LOCAL_DATA_DIR ?? path.join(process.cwd(), ".terse", "data")
     const base = createLocalWorld({ dataDir })
     const baseQueue: Queue["queue"] = base.queue.bind(base)
 
@@ -25,7 +29,7 @@ export function createTerseWorld(): TerseWorld {
 
 function terseQueue(baseQueue: Queue["queue"]): Queue["queue"] {
     return (name: ValidQueueName, message: QueuePayload, opts?: QueueOptions) => {
-        if (opts?.delaySeconds && opts.delaySeconds > 0) {
+        if (opts?.delaySeconds && opts.delaySeconds > SUSPEND_THRESHOLD_SECONDS) {
             return scheduleTerseTimer(name, message, opts).then(() => ({ messageId: null }))
         }
         return baseQueue(name, message, opts)
