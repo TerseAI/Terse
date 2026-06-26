@@ -47,12 +47,24 @@ function buildIntegrationTuple() {
 
 export type IntegrationManagers = ReturnType<typeof buildIntegrationTuple>
 
-let registry: readonly IntegrationWithInstallation[] | null = null
+export class IntegrationRegistry {
+    private static instance: IntegrationRegistry
+    private registry: readonly IntegrationWithInstallation[] | null = null
 
-// Only include integrations that have necessary secrets provided.
-export function getIntegrationRegistry(): readonly IntegrationWithInstallation[] {
-    if (!registry) {
-        registry = buildIntegrationTuple().filter(m => m.isAvailable)
+    private constructor() {}
+
+    public static getInstance(): IntegrationRegistry {
+        if (!IntegrationRegistry.instance) {
+            IntegrationRegistry.instance = new IntegrationRegistry()
+        }
+        return IntegrationRegistry.instance
     }
-    return registry
+
+    // Only include integrations that have necessary secrets provided.
+    public all(): readonly IntegrationWithInstallation[] {
+        if (!this.registry) {
+            this.registry = buildIntegrationTuple().filter(m => m.isAvailable)
+        }
+        return this.registry
+    }
 }

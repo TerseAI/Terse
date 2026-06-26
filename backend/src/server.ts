@@ -6,13 +6,13 @@ import { analytics } from "./common/analytics"
 import { buildCorsAllowedOrigins } from "./common/corsOrigins"
 import logger from "./common/logger"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
-import { closeQueues } from "./loaders/bullmq"
+import { BullMq } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
 import { setupLLMAnalytics } from "./modules/agents/openaiInstance"
 import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
-import { closeTaskQueuePubSub } from "./tasks/abstract/redisTaskQueue"
+import { TaskQueueEmitter } from "./tasks/abstract/redisTaskQueue"
 
 // MARK: ASYNC INITIALIZATION
 // Bootstrap async dependencies before the Express app is built.
@@ -94,8 +94,8 @@ async function gracefulShutdown(signal: string) {
         }
 
         try {
-            await closeTaskQueuePubSub()
-            await closeQueues()
+            await TaskQueueEmitter.getInstance().close()
+            await BullMq.getInstance().close()
             logger.info("✅ Redis queues + pub/sub closed")
         } catch (error) {
             logger.error("Redis shutdown failed", { error })

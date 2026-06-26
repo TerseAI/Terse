@@ -11,16 +11,16 @@ import { RunHistoryStatus } from "terse-types"
 
 import logger from "./common/logger"
 import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
-import { closeQueues, createWorkerConnection, getQueue } from "./loaders/bullmq"
+import { BullMq } from "./loaders/bullmq"
 import { db } from "./loaders/prisma"
 import { RedisNamespace } from "./loaders/redisNamespace"
-import { closeWorkerSocketEmitter, getWorkerSocket, initWorkerSocketEmitter } from "./loaders/workerSocket"
+import { WorkerSocketEmitter } from "./loaders/workerSocket"
 import { markRunFailed } from "./modules/agents/AgentRunner/runHistory"
 import { runReviewAllAgents } from "./modules/agents/review/controller"
 import { runClearOldSecretVersions, runTokenRefresh } from "./modules/maintenance/controller"
 import { runCleanupSdkImages } from "./modules/sdk/maintenance/controller"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
-import { closeTaskQueuePubSub } from "./tasks/abstract/redisTaskQueue"
+import { TaskQueueEmitter } from "./tasks/abstract/redisTaskQueue"
 import { handleRunExecution } from "./tasks/handlers/runExecutionHandler"
 import { MaintenanceJob, upsertMaintenanceSchedulers } from "./tasks/queues/maintenanceQueue"
 import { QueueName } from "./tasks/queues/queueNames"
@@ -38,7 +38,7 @@ function startWorker<T>(name: string, processor: (data: T) => Promise<void> | vo
             await processor(job.data)
         },
         {
-            connection: createWorkerConnection(),
+            connection: BullMq.getInstance().createWorkerConnection(),
             prefix: RedisNamespace.bullmq,
             concurrency: opts.concurrency ?? 10,
             ...(opts.maxStalledCount !== undefined ? { maxStalledCount: opts.maxStalledCount } : {}),
@@ -98,7 +98,7 @@ function startMaintenanceWorker(): void {
         async job => {
             await runMaintenanceJob(job.name)
         },
-        { connection: createWorkerConnection(), prefix: RedisNamespace.bullmq, concurrency: 1 }
+        { connection: BullMq.getInstance().createWorkerConnection(), prefix: RedisNamespace.bullmq, concurrency: 1 }
     )
     worker.on("failed", (job, error) => logger.error(`[worker:${QueueName.Maintenance}] job failed`, { job: job?.name, error }))
     worker.on("error", error => logger.error(`[worker:${QueueName.Maintenance}] worker error`, { error }))
@@ -147,7 +147,7 @@ async function reconcileOrphanedRuns(): Promise<void> {
         return
     }
 
-    const queue = getQueue(QueueName.SdkRunExecution)
+    const queue = BullMq.getInstance().getQueue(QueueName.SdkRunExecution)
     const liveStates = new Set(["active", "waiting", "delayed", "prioritized", "waiting-children"])
     let failed = 0
     for (const run of stale) {
@@ -170,8 +170,8 @@ async function main(): Promise<void> {
 
     // Run execution streams via Socket.IO; wire the emit-only adapter and the getter the run/cache
     // services read through, before any run job can be picked up.
-    await initWorkerSocketEmitter()
-    registerSocketGetter(getWorkerSocket)
+    await WorkerSocketEmitter.getInstance().init()
+    registerSocketGetter(() => WorkerSocketEmitter.getInstance().getSocket())
 
     registerWorkers()
     await reconcileSchedules()
@@ -200,9 +200,9 @@ async function gracefulShutdown(signal: string): Promise<void> {
         await Promise.allSettled(workers.map(worker => worker.close()))
         logger.info("✅ Workers drained")
 
-        await closeQueues()
-        await closeTaskQueuePubSub()
-        await closeWorkerSocketEmitter()
+        await BullMq.getInstance().close()
+        await TaskQueueEmitter.getInstance().close()
+        await WorkerSocketEmitter.getInstance().close()
         logger.info("✅ Redis connections closed")
 
         try {

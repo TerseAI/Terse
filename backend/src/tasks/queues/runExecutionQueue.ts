@@ -6,7 +6,7 @@
  * `run-<runId>` and we never auto-retry a side-effecting run (attempts: 1), so an at-least-once
  * enqueue can't spawn two Modal sandboxes or double-bill.
  */
-import { getQueue } from "../../loaders/bullmq"
+import { BullMq } from "../../loaders/bullmq"
 
 import { QueueName } from "./queueNames"
 
@@ -24,10 +24,12 @@ export function runExecutionJobId(runId: string): string {
 }
 
 export async function enqueueRunExecution(data: RunExecutionJobData): Promise<void> {
-    await getQueue(QueueName.SdkRunExecution).add("start", data, {
-        jobId: runExecutionJobId(data.runId),
-        attempts: 1,
-        removeOnComplete: { age: 86_400, count: 1000 },
-        removeOnFail: { age: 604_800 }
-    })
+    await BullMq.getInstance()
+        .getQueue(QueueName.SdkRunExecution)
+        .add("start", data, {
+            jobId: runExecutionJobId(data.runId),
+            attempts: 1,
+            removeOnComplete: { age: 86_400, count: 1000 },
+            removeOnFail: { age: 604_800 }
+        })
 }

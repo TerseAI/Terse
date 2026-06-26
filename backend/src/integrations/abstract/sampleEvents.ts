@@ -5,7 +5,7 @@ import logger from "../../common/logger"
 import { fetchWebhookSampleEvents } from "../../common/webhookSampleEvents"
 import { validateUserOwnsIntegration } from "../../modules/agents/controller"
 
-import { getIntegrationRegistry } from "./IntegrationRegistry"
+import { IntegrationRegistry } from "./IntegrationRegistry"
 
 export type FetchSampleEventsOptions = {
     integrationId: string
@@ -35,7 +35,9 @@ export async function fetchSampleEvents(opts: FetchSampleEventsOptions): Promise
         return fetchWebhookSampleEvents({ jobName, projectId, organizationId })
     }
 
-    const manager = getIntegrationRegistry().find(m => m.integrationType === integrationType)
+    const manager = IntegrationRegistry.getInstance()
+        .all()
+        .find(m => m.integrationType === integrationType)
     if (!manager || !manager.getSampleEvents) {
         logger.warn("[fetchSampleEvents] Integration does not support sample events", { integrationType })
         throw new Error(`Integration ${integrationType} does not support sample events`)

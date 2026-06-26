@@ -9,21 +9,33 @@ import { Task, TaskListener, TaskQueue, Unsubscribe, WaitForOptions } from "./ta
 type MqMessage = Record<string, unknown> & { topic: string }
 type MqListener = (message: MqMessage, done: () => void) => void
 
-let sharedEmitter: ReturnType<typeof MQEmitterRedis> | null = null
+export class TaskQueueEmitter {
+    private static instance: TaskQueueEmitter
+    private emitter: ReturnType<typeof MQEmitterRedis> | null = null
 
-function getEmitter(): ReturnType<typeof MQEmitterRedis> {
-    if (!sharedEmitter) {
-        sharedEmitter = MQEmitterRedis({ connectionString: redis.url })
+    private constructor() {}
+
+    public static getInstance(): TaskQueueEmitter {
+        if (!TaskQueueEmitter.instance) {
+            TaskQueueEmitter.instance = new TaskQueueEmitter()
+        }
+        return TaskQueueEmitter.instance
     }
-    return sharedEmitter
-}
 
-/** Close the shared emitter (both Redis connections). Call on graceful shutdown. */
-export async function closeTaskQueuePubSub(): Promise<void> {
-    if (!sharedEmitter) return
-    const emitter = sharedEmitter
-    sharedEmitter = null
-    await new Promise<void>(resolve => emitter.close(() => resolve()))
+    public getEmitter(): ReturnType<typeof MQEmitterRedis> {
+        if (!this.emitter) {
+            this.emitter = MQEmitterRedis({ connectionString: redis.url })
+        }
+        return this.emitter
+    }
+
+    /** Close the shared emitter (both Redis connections). Call on graceful shutdown. */
+    public async close(): Promise<void> {
+        if (!this.emitter) return
+        const emitter = this.emitter
+        this.emitter = null
+        await new Promise<void>(resolve => emitter.close(() => resolve()))
+    }
 }
 
 export class RedisTaskQueue<T extends Task> implements TaskQueue<T> {
@@ -36,11 +48,13 @@ export class RedisTaskQueue<T extends Task> implements TaskQueue<T> {
     }
 
     emit(task: T): void {
-        getEmitter().emit({ topic: this.topic(task.taskName), payload: task }, error => {
-            if (error) {
-                logger.error("RedisTaskQueue emit failed — signal dropped (Redis unavailable)", { error, taskName: task.taskName })
-            }
-        })
+        TaskQueueEmitter.getInstance()
+            .getEmitter()
+            .emit({ topic: this.topic(task.taskName), payload: task }, error => {
+                if (error) {
+                    logger.error("RedisTaskQueue emit failed — signal dropped (Redis unavailable)", { error, taskName: task.taskName })
+                }
+            })
     }
 
     addListener(listener: TaskListener<T>): Unsubscribe {
@@ -52,14 +66,14 @@ export class RedisTaskQueue<T extends Task> implements TaskQueue<T> {
             }
         }
         this.wrapped.set(listener, mqListener)
-        getEmitter().on(this.topic(listener.taskName), mqListener)
+        TaskQueueEmitter.getInstance().getEmitter().on(this.topic(listener.taskName), mqListener)
         return () => this.removeListener(listener)
     }
 
     removeListener(listener: TaskListener<T>): void {
         const mqListener = this.wrapped.get(listener)
         if (mqListener) {
-            getEmitter().removeListener(this.topic(listener.taskName), mqListener)
+            TaskQueueEmitter.getInstance().getEmitter().removeListener(this.topic(listener.taskName), mqListener)
             this.wrapped.delete(listener)
         }
     }

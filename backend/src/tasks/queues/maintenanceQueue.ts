@@ -3,7 +3,7 @@
  * Cloud Scheduler jobs), so the worker declares them as static BullMQ Job Schedulers on boot.
  * upsert is idempotent, so they self-heal a wiped Redis like the user cron schedulers.
  */
-import { getQueue } from "../../loaders/bullmq"
+import { BullMq } from "../../loaders/bullmq"
 
 import { QueueName } from "./queueNames"
 
@@ -26,7 +26,7 @@ const MAINTENANCE_SCHEDULES: Record<MaintenanceJob, string> = {
 
 /** Declare/refresh the static maintenance schedulers. Throws if Redis is unavailable. */
 export async function upsertMaintenanceSchedulers(): Promise<void> {
-    const queue = getQueue(QueueName.Maintenance)
+    const queue = BullMq.getInstance().getQueue(QueueName.Maintenance)
     for (const job of Object.values(MaintenanceJob)) {
         await queue.upsertJobScheduler(`maintenance-${job}`, { pattern: MAINTENANCE_SCHEDULES[job], tz: "UTC" }, { name: job })
     }

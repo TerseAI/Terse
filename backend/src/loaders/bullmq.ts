@@ -32,66 +32,77 @@ function attachConnectionLogging(connection: IORedis, label: string): IORedis {
     return connection
 }
 
-let producerConnection: IORedis | null = null
+export class BullMq {
+    private static instance: BullMq
+    private producerConnection: IORedis | null = null
+    private queues = new Map<string, Queue>()
 
-/**
- * Shared producer connection for enqueueing jobs. Fails fast (throws) when Redis is down.
- * Reused across all producer-side Queue instances.
- */
-export function getProducerConnection(): IORedis {
-    if (!producerConnection) {
-        producerConnection = attachConnectionLogging(
+    private constructor() {}
+
+    public static getInstance(): BullMq {
+        if (!BullMq.instance) {
+            BullMq.instance = new BullMq()
+        }
+        return BullMq.instance
+    }
+
+    /**
+     * Shared producer connection for enqueueing jobs. Fails fast (throws) when Redis is down.
+     * Reused across all producer-side Queue instances.
+     */
+    public getProducerConnection(): IORedis {
+        if (!this.producerConnection) {
+            this.producerConnection = attachConnectionLogging(
+                new IORedis(redis.url, {
+                    maxRetriesPerRequest: 3
+                }),
+                "bullmq-producer"
+            )
+        }
+        return this.producerConnection
+    }
+
+    /**
+     * A connection that retries forever (suitable for Workers and pub/sub) so it resumes after a
+     * Redis blip rather than throwing. Each consumer should own its own connection.
+     */
+    public createQueueRedisConnection(label: string): IORedis {
+        return attachConnectionLogging(
             new IORedis(redis.url, {
-                maxRetriesPerRequest: 3
+                maxRetriesPerRequest: null
             }),
-            "bullmq-producer"
+            label
         )
     }
-    return producerConnection
-}
 
-/**
- * A connection that retries forever (suitable for Workers and pub/sub) so it resumes after a
- * Redis blip rather than throwing. Each consumer should own its own connection.
- */
-export function createQueueRedisConnection(label: string): IORedis {
-    return attachConnectionLogging(
-        new IORedis(redis.url, {
-            maxRetriesPerRequest: null
-        }),
-        label
-    )
-}
-
-/**
- * A dedicated connection for a Worker. BullMQ duplicates internally for blocking ops.
- */
-export function createWorkerConnection(): IORedis {
-    return createQueueRedisConnection("bullmq-worker")
-}
-
-const queues = new Map<string, Queue>()
-
-/**
- * Memoized producer-side Queue handle (one per queue name), sharing the producer connection.
- */
-export function getQueue(name: string): Queue {
-    let queue = queues.get(name)
-    if (!queue) {
-        queue = new Queue(name, { connection: getProducerConnection(), prefix: RedisNamespace.bullmq })
-        queues.set(name, queue)
+    /**
+     * A dedicated connection for a Worker. BullMQ duplicates internally for blocking ops.
+     */
+    public createWorkerConnection(): IORedis {
+        return this.createQueueRedisConnection("bullmq-worker")
     }
-    return queue
-}
 
-/**
- * Close all producer-side queues and the shared connection. Call on graceful shutdown.
- */
-export async function closeQueues(): Promise<void> {
-    await Promise.allSettled([...queues.values()].map(queue => queue.close()))
-    queues.clear()
-    if (producerConnection) {
-        await producerConnection.quit().catch(() => {})
-        producerConnection = null
+    /**
+     * Memoized producer-side Queue handle (one per queue name), sharing the producer connection.
+     */
+    public getQueue(name: string): Queue {
+        let queue = this.queues.get(name)
+        if (!queue) {
+            queue = new Queue(name, { connection: this.getProducerConnection(), prefix: RedisNamespace.bullmq })
+            this.queues.set(name, queue)
+        }
+        return queue
+    }
+
+    /**
+     * Close all producer-side queues and the shared connection. Call on graceful shutdown.
+     */
+    public async close(): Promise<void> {
+        await Promise.allSettled([...this.queues.values()].map(queue => queue.close()))
+        this.queues.clear()
+        if (this.producerConnection) {
+            await this.producerConnection.quit().catch(() => {})
+            this.producerConnection = null
+        }
     }
 }

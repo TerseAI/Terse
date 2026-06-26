@@ -1,4 +1,4 @@
-import { getQueue } from "../../loaders/bullmq"
+import { BullMq } from "../../loaders/bullmq"
 
 import { QueueName } from "./queueNames"
 
@@ -14,10 +14,12 @@ export function scheduleJobId(inputId: string): string {
 
 /** Create or update the recurring scheduler for a time trigger. Throws if Redis is unavailable. */
 export async function upsertScheduleTrigger(inputId: string, cronExpression: string): Promise<void> {
-    await getQueue(QueueName.Schedule).upsertJobScheduler(scheduleJobId(inputId), { pattern: cronExpression, tz: "UTC" }, { name: SCHEDULE_JOB_NAME, data: { inputId } satisfies ScheduleJobData })
+    await BullMq.getInstance()
+        .getQueue(QueueName.Schedule)
+        .upsertJobScheduler(scheduleJobId(inputId), { pattern: cronExpression, tz: "UTC" }, { name: SCHEDULE_JOB_NAME, data: { inputId } satisfies ScheduleJobData })
 }
 
 /** Remove the recurring scheduler for a time trigger. Throws if Redis is unavailable. */
 export async function removeScheduleTrigger(inputId: string): Promise<void> {
-    await getQueue(QueueName.Schedule).removeJobScheduler(scheduleJobId(inputId))
+    await BullMq.getInstance().getQueue(QueueName.Schedule).removeJobScheduler(scheduleJobId(inputId))
 }

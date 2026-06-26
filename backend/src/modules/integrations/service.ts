@@ -4,7 +4,7 @@ import { OAuthInstallationDetails } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { Integration, isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
-import { getIntegrationRegistry } from "../../integrations/abstract/IntegrationRegistry"
+import { IntegrationRegistry } from "../../integrations/abstract/IntegrationRegistry"
 import { decodeOAuthStateToken } from "../../modules/auth/helpers/oauth"
 
 import { MissingIntegrationOptionsError } from "./errors"
@@ -33,7 +33,9 @@ export class IntegrationInstallationUnsupportedError extends Error {
 export { MissingIntegrationOptionsError } from "./errors"
 
 function findIntegration(integrationType: string) {
-    return getIntegrationRegistry().find(instance => instance.integrationType === integrationType)
+    return IntegrationRegistry.getInstance()
+        .all()
+        .find(instance => instance.integrationType === integrationType)
 }
 
 export function decodeOptionalStatePayload(stateToken: string | undefined, fallbackIntegrationType: string, userId: string | undefined): Record<string, string> | undefined {
@@ -85,14 +87,16 @@ function parseInstallationOptionsOrThrow<T extends IntegrationType>(integration:
 
 export async function listIntegrationsForOrganization(organizationId: string): Promise<IntegrationWithStatus[]> {
     return Promise.all(
-        getIntegrationRegistry().map(async integration => {
-            const cliDisplayState = await integration.getCliDisplayStateForOrganization(organizationId)
-            return {
-                integrationType: integration.integrationType,
-                isActive: cliDisplayState.status === "connected",
-                cliDisplayState
-            }
-        })
+        IntegrationRegistry.getInstance()
+            .all()
+            .map(async integration => {
+                const cliDisplayState = await integration.getCliDisplayStateForOrganization(organizationId)
+                return {
+                    integrationType: integration.integrationType,
+                    isActive: cliDisplayState.status === "connected",
+                    cliDisplayState
+                }
+            })
     )
 }
 
@@ -112,9 +116,12 @@ async function integrationHasInstances(integration: Integration<IntegrationInsta
 
 export async function listActiveIntegrationsForOrganization(organizationId: string): Promise<IntegrationType[]> {
     const hasInstancesResults = await Promise.all(
-        getIntegrationRegistry().map(integration => integrationHasInstances(integration as Integration<IntegrationInstance, unknown, IntegrationDetails, unknown>, organizationId))
+        IntegrationRegistry.getInstance()
+            .all()
+            .map(integration => integrationHasInstances(integration as Integration<IntegrationInstance, unknown, IntegrationDetails, unknown>, organizationId))
     )
-    return getIntegrationRegistry()
+    return IntegrationRegistry.getInstance()
+        .all()
         .filter((_, index) => hasInstancesResults[index])
         .map(integration => integration.integrationType)
 }
