@@ -392,7 +392,7 @@ export function __buildJobStateAccessor<TStates extends readonly StateDefinition
         },
         set: async (key: string, value: unknown) => {
             const schema = schemaFor(key)
-            const parsed = schema.parse(value)
+            const parsed = schema.safeParse(value)
             await statePut(key, JSON.stringify(parsed))
             return parsed
         }
