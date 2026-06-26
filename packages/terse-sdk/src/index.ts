@@ -9,7 +9,15 @@ import type {
     WebhookJobChallengeResponse,
     WebhookJobTriggerResponse
 } from "terse-types"
-import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, sdkStateGetResponseSchema, stripZodJsonSchemaMetadata, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
+import {
+    ApiRoutes,
+    IntegrationType,
+    sdkAgentRunRequestBodySchema,
+    sdkStateGetResponseSchema,
+    stripZodJsonSchemaMetadata,
+    webhookJobChallengeRequestSchema,
+    webhookJobTriggerRequestSchema
+} from "terse-types"
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
@@ -377,11 +385,16 @@ export function __buildJobStateAccessor<TStates extends readonly StateDefinition
         get: async (key: string) => {
             const schema = schemaFor(key)
             const raw = await stateGet(key)
-            return raw === null ? undefined : schema.parse(JSON.parse(raw))
+            if (raw !== null) return schema.parse(JSON.parse(raw))
+            // No stored value: materialize a schema default if one exists, else undefined.
+            const defaulted = schema.safeParse(undefined)
+            return defaulted.success ? defaulted.data : undefined
         },
         set: async (key: string, value: unknown) => {
             const schema = schemaFor(key)
-            await statePut(key, JSON.stringify(schema.parse(value)))
+            const parsed = schema.parse(value)
+            await statePut(key, JSON.stringify(parsed))
+            return parsed
         }
     } as StateAccessor<TStates>
 }

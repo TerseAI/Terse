@@ -40,7 +40,12 @@ type CreateJobParameters = {
 
 ## Typed state: `states` + `state.get`/`state.set`
 
-`states` declares persistent state on the job as a list of `{ key, value }`, where `value` is a Zod schema. Both `filter` and `onTrigger` receive a `state` object as their second argument. `state.get(key)` and `state.set(key, value)` are narrowed to the declared keys, with each value typed and validated against that key's schema. `get` returns `undefined` when a key has never been set.
+`states` declares persistent state on the job as a list of `{ key, value }`, where `value` is a Zod schema. Both `filter` and `onTrigger` receive a `state` object as their second argument. `state.get(key)` and `state.set(key, value)` are narrowed to the declared keys, with each value typed and validated against that key's schema.
+
+Two type details worth knowing:
+
+- `get` returns `T | undefined` for a key that may be unset. Give the schema a default (`z.number().default(0)`) and that key's `get` is typed `T` with no `undefined`.
+- `set` returns the value it wrote, so you can use it directly instead of reading the key back.
 
 State is stored as JSON in the project volume, in a namespace the agent cannot read or write. Validation runs in the SDK.
 
@@ -54,13 +59,13 @@ createJob({
     name: "track-account",
     triggers: [/* ... */],
     states: [
-        { key: "profile", value: Profile },
-        { key: "seenCount", value: z.number() },
+        { key: "profile", value: Profile },                 // no default
+        { key: "seenCount", value: z.number().default(0) }, // default → never undefined
     ],
     onTrigger: async (event, state) => {
-        const profile = await state.get("profile")        // Profile | undefined
-        const count = (await state.get("seenCount")) ?? 0  // number | undefined
-        await state.set("seenCount", count + 1)            // only `number` accepted
+        const profile = await state.get("profile")   // Profile | undefined
+        const count = await state.get("seenCount")   // number (default applied)
+        const next = await state.set("seenCount", count + 1) // returns the written number
         // state.set("seenCount", "x")  // type error
         // state.get("nope")            // key not declared
     },

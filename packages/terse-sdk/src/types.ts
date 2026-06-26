@@ -64,11 +64,19 @@ export type StateDefinition<K extends string = string, S extends z.ZodType = z.Z
     value: S
 }
 
-type StateValues<TStates extends readonly StateDefinition[]> = {
+// A key whose schema carries a `.default(...)` can never read back as undefined; one without a default can
+// (it may have been never set). `get` reflects that per key; `set` returns the value it just wrote.
+type Read<S extends z.ZodType> = S extends z.ZodDefault<z.ZodTypeAny> ? z.infer<S> : z.infer<S> | undefined
+
+type StateReads<TStates extends readonly StateDefinition[]> = {
+    [S in TStates[number] as S["key"]]: Read<S["value"]>
+}
+
+type StateWrites<TStates extends readonly StateDefinition[]> = {
     [S in TStates[number] as S["key"]]: z.infer<S["value"]>
 }
 
 export type StateAccessor<TStates extends readonly StateDefinition[]> = {
-    get<K extends keyof StateValues<TStates> & string>(key: K): Promise<StateValues<TStates>[K] | undefined>
-    set<K extends keyof StateValues<TStates> & string>(key: K, value: StateValues<TStates>[K]): Promise<void>
+    get<K extends keyof StateReads<TStates> & string>(key: K): Promise<StateReads<TStates>[K]>
+    set<K extends keyof StateWrites<TStates> & string>(key: K, value: StateWrites<TStates>[K]): Promise<StateWrites<TStates>[K]>
 }

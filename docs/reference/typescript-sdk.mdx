@@ -99,7 +99,12 @@ createJob({
 
 ## Job state
 
-Declare persistent state with `states`, a list of `{ key, value }` where `value` is a Zod schema. `filter` and `onTrigger` receive a `state` object as their second argument. `state.get(key)` and `state.set(key, value)` are narrowed to the declared keys, with each value typed and validated against that key's schema. `get` returns `undefined` for a key that was never set.
+Declare persistent state with `states`, a list of `{ key, value }` where `value` is a Zod schema. `filter` and `onTrigger` receive a `state` object as their second argument. `state.get(key)` and `state.set(key, value)` are narrowed to the declared keys, with each value typed and validated against that key's schema.
+
+Two type details worth knowing:
+
+- `get` returns `T | undefined` for a key that may be unset. Give the schema a default (`z.number().default(0)`) and that key's `get` is typed `T` with no `undefined`.
+- `set` returns the value it wrote, so you can use it directly instead of reading the key back.
 
 State is stored as JSON in the project volume, in a namespace the agent cannot read or write. It is separate from the agent's memory.
 
@@ -113,12 +118,12 @@ createJob({
     name: "track-account",
     triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
     states: [
-        { key: "profile", value: Profile },
-        { key: "seenCount", value: z.number() }
+        { key: "profile", value: Profile },                 // no default
+        { key: "seenCount", value: z.number().default(0) }  // default → never undefined
     ],
     onTrigger: async (event, state) => {
-        const count = (await state.get("seenCount")) ?? 0
-        await state.set("seenCount", count + 1)
+        const count = await state.get("seenCount")   // number (default applied)
+        await state.set("seenCount", count + 1)      // returns the written number
     }
 })
 ```
