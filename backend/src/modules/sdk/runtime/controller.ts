@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { BillingError, CreditGateDeniedError, RunHistoryStatus, SdkListenStreamEvent, sdkListenQuerySchema } from "terse-types"
+import { BillingError, CreditGateDeniedError, SdkListenStreamEvent, sdkListenQuerySchema } from "terse-types"
 import { SkillConfigData } from "terse-types/Configs"
 import { SdkAgentRunResponseBody, SdkAgentStreamEvent, UserSession, sdkAgentRunRequestBodySchema, sdkApprovalDecisionRequestBodySchema } from "terse-types/types"
 import { z } from "zod"
@@ -8,9 +8,9 @@ import { z } from "zod"
 import logger from "../../../common/logger"
 import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
-import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../../loaders/socket"
+import { finalizeRunFailure } from "../../../loaders/socket"
 import { SdkAgentRunner } from "../../../modules/agents/AgentRunner/SdkAgentRunner"
-import { appendRunAction, finalizeRunStatus, markRunFailed, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
+import { appendRunAction, markRunFailed, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
 import { onListenForwardedEvent } from "../../../modules/agents/ListenBus"
 import { emitSessionEvent, onSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { classifyAgentError } from "../../../modules/agents/agentErrorUtils"
@@ -19,8 +19,6 @@ import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellat
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
-import { mintTestRunRecord, resolveTestRunContext } from "../testRunContext"
-import { finalizeSessionTestRun, getOrCreateSessionTestRun } from "../testRunSession"
 
 const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({ prompt: z.string().min(1) })
 
@@ -34,37 +32,15 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
         return res.status(400).json(response)
     }
 
-    const sessionId = req.headers["x-terse-session-id"] as string | undefined
     const headerRunId = req.headers["x-terse-run-id"] as string | undefined
-    const productionRunContext = headerRunId ? await resolveProductionRunContext(headerRunId, user) : null
-    if (headerRunId && !productionRunContext) return res.status(404).json({ success: false, error: "Run not found" })
+    if (!headerRunId) return res.status(400).json({ success: false, error: "X-Terse-Run-Id header is required" })
+    const runContext = await resolveRunContext(headerRunId, user)
+    if (!runContext) return res.status(404).json({ success: false, error: "Run not found" })
 
-    let runContext: ResolvedRunContext
-    if (productionRunContext) {
-        runContext = {
-            runId: productionRunContext.runId,
-            agentId: productionRunContext.agentId,
-            organizationId: productionRunContext.organizationId,
-            isTest: false,
-            recorded: true,
-            sessionBound: false
-        }
-    } else {
-        const testCtx = await resolveTestRunContext(req, user)
-        if (testCtx && user.organizationId) {
-            const { runId, agentId } = sessionId ? await getOrCreateSessionTestRun(sessionId, user, testCtx) : await mintTestRunRecord(user, testCtx)
-            emitCacheInvalidationWithWildcard(user.organizationId, "runHistory", agentId)
-            emitCacheInvalidationWithKey(user.organizationId, "recentAgents")
-            runContext = { runId, agentId, organizationId: user.organizationId, isTest: true, recorded: true, sessionBound: !!sessionId }
-        } else {
-            runContext = { runId: crypto.randomUUID(), agentId: "", organizationId: user.organizationId ?? "", isTest: true, recorded: false, sessionBound: false }
-        }
-    }
-
-    const { runId, agentId, organizationId: orgId, isTest, recorded, sessionBound } = runContext
+    const { runId, agentId, organizationId: orgId, isTest } = runContext
     const isProductionRun = !isTest
     const { data } = parsed
-    const { send } = initSseStream(req, res, recorded ? { runId, organizationId: orgId } : null)
+    const { send } = initSseStream(req, res, { runId, organizationId: orgId })
 
     try {
         const billingForRunner = billingServiceProxyForOrganization(orgId, user.id)
@@ -101,7 +77,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             if (decision.hardReject) {
                 if (isProductionRun) {
                     await markRunCancelledAndInvalidate(runId, agentId, orgId, user.id, CancelReason.HARD_REJECT)
-                } else if (recorded) {
+                } else {
                     await markRunFailed(runId, "Run rejected at approval gate", "agent")
                 }
                 hardRejected = true
@@ -117,21 +93,11 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             return
         }
 
-        const succeeded = finishSseStream(res, send, result, sdkRunner)
-        // Production success is finalized by SdkJobExecutionService after the sandbox returns. Session-bound
-        // test runs are finalized when the SSE session closes (they may span more calls). A non-session test
-        // run is a single call, so finalize it here.
-        if (isTest && recorded) {
-            if (!sessionBound) {
-                await finalizeRunStatus(runId, succeeded ? RunHistoryStatus.SUCCESS : RunHistoryStatus.FAILED)
-            } else if (!succeeded) {
-                await markRunFailed(runId, sdkRunner.getToolFailureSummary(), "agent")
-            }
-        }
+        finishSseStream(res, send, result, sdkRunner)
     } catch (error) {
         if (isProductionRun) {
             await finalizeFailedProductionRun(runId, orgId, user, error)
-        } else if (recorded) {
+        } else {
             await markRunFailed(runId, extractErrorMessage(error), "agent")
         }
         if (error instanceof CreditGateDeniedError) {
@@ -152,7 +118,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 }
 
-type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean; recorded: boolean; sessionBound: boolean }
+type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean }
 
 async function finalizeFailedProductionRun(runId: string, organizationId: string, user: UserSession, error: unknown): Promise<void> {
     try {
@@ -167,17 +133,17 @@ async function finalizeFailedProductionRun(runId: string, organizationId: string
     }
 }
 
-async function resolveProductionRunContext(headerRunId: string, user: UserSession): Promise<{ runId: string; agentId: string; organizationId: string } | null> {
+async function resolveRunContext(headerRunId: string, user: UserSession): Promise<ResolvedRunContext | null> {
     if (!user.organizationId) return null
     const runRecord = await db().run_history_records.findFirst({
         where: { id: headerRunId, automation: { organization_id: user.organizationId } },
-        select: { id: true, automation_id: true, automation: { select: { organization_id: true } } }
+        select: { id: true, automation_id: true, is_test: true, automation: { select: { organization_id: true } } }
     })
     if (!runRecord?.automation.organization_id) {
         logger.warn("[sdk/agent-run] Rejecting cross-tenant x-terse-run-id header", { requestedRunId: headerRunId, userId: user.id, organizationId: user.organizationId })
         return null
     }
-    return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id }
+    return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id, isTest: runRecord.is_test }
 }
 
 export async function handleSdkApprovalDecision(req: Request, res: Response) {
@@ -385,7 +351,6 @@ export async function handleSessionEvents(req: Request, res: Response) {
         closed = true
         clearInterval(heartbeat)
         unsubscribe()
-        void finalizeSessionTestRun(sessionId)
         void slot.release().catch(error => logger.warn("[sdkSession] slot.release failed", { error, sessionId, userId: user.id }))
         try {
             res.end()

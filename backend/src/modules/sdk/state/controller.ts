@@ -5,8 +5,6 @@ import { db } from "../../../loaders/prisma"
 import { resolveMemoryVolumePath } from "../../../services/memory/memoryPaths"
 import { stateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { getVolumeManager } from "../../../services/volumes"
-import { resolveTestRunContext } from "../testRunContext"
-import { getOrCreateSessionTestRun } from "../testRunSession"
 
 type StateScope = { projectId: string; runId: string; subtreeKey: string }
 
@@ -18,30 +16,19 @@ async function resolveStateScope(req: Request, res: Response): Promise<StateScop
     }
 
     const headerRunId = (req.headers["x-terse-run-id"] as string | undefined)?.trim()
-    if (headerRunId) {
-        const run = await db().run_history_records.findFirst({
-            where: { id: headerRunId, automation: { organization_id: user.organizationId } },
-            select: { id: true, automation_id: true, is_test: true, automation: { select: { project_id: true } } }
-        })
-        if (!run) {
-            res.status(404).json({ success: false, error: "Run not found" })
-            return null
-        }
-        return { projectId: run.automation.project_id, runId: run.id, subtreeKey: stateSubtreeKey(run.automation_id, run.is_test) }
-    }
-
-    const testCtx = await resolveTestRunContext(req, user)
-    if (!testCtx) {
-        res.status(400).json({ success: false, error: "Job state requires an active run context" })
+    if (!headerRunId) {
+        res.status(400).json({ success: false, error: "Job state requires an active run context (X-Terse-Run-Id)" })
         return null
     }
-    const sessionId = req.headers["x-terse-session-id"] as string | undefined
-    if (!sessionId) {
-        res.status(400).json({ success: false, error: "Job state requires a test session (X-Terse-Session-Id)" })
+    const run = await db().run_history_records.findFirst({
+        where: { id: headerRunId, automation: { organization_id: user.organizationId } },
+        select: { id: true, automation_id: true, is_test: true, automation: { select: { project_id: true } } }
+    })
+    if (!run) {
+        res.status(404).json({ success: false, error: "Run not found" })
         return null
     }
-    const { runId, agentId } = await getOrCreateSessionTestRun(sessionId, user, testCtx)
-    return { projectId: testCtx.projectId, runId, subtreeKey: stateSubtreeKey(agentId, true) }
+    return { projectId: run.automation.project_id, runId: run.id, subtreeKey: stateSubtreeKey(run.automation_id, run.is_test) }
 }
 
 function resolveStateKeyPath(subtreeKey: string, key: string): string | null {

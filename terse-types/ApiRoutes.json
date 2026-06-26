@@ -148,6 +148,8 @@
         "TOOL_EXECUTE": "/sdk/tool-execute",
         "TOOL_DEFINITIONS": "/sdk/tool-definitions",
         "RUN_TRIGGER_EVENT": "/sdk/runs/:runId/trigger-event",
+        "TEST_RUN": "/sdk/test-run",
+        "TEST_RUN_FINALIZE": "/sdk/test-run/:runId/finalize",
         "AGENT_RUN": "/sdk/agent-run",
         "MEMORY_LIST": "/sdk/memory/list",
         "MEMORY_GET": "/sdk/memory/get",

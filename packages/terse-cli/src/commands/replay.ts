@@ -3,9 +3,10 @@ import chalk from "chalk"
 import { readApiKeyOrBail, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
 import { loadJob } from "../loadJob.js"
-import { readProjectConfig } from "../projectConfig.js"
+import { readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
+import { runLocalTestJob } from "../runLocalTestJob.js"
 
 export async function replay(runId: string, provider: LanguageProvider = resolveProvider()): Promise<void> {
     const apiKey = readApiKeyOrBail()
@@ -27,5 +28,6 @@ export async function replay(runId: string, provider: LanguageProvider = resolve
         console.log(chalk.magenta("  🧪 Replaying a test run — the replay runs as a test run (excluded from reporting, no notifications)."))
     }
 
-    await provider.executeJob(job, null, runHistoryRecord.event, { verbose: true, projectId: readProjectConfig()?.projectId })
+    const projectId = readProjectConfigOrBail().projectId
+    await runLocalTestJob(provider, job, runHistoryRecord.event, { projectId, apiKey, forceLocal: true, verbose: true })
 }

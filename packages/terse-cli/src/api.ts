@@ -2,7 +2,7 @@ import dotenv from "dotenv"
 import fs from "node:fs"
 import path from "node:path"
 import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema } from "terse-types"
-import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
+import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SdkTestRunStartResponse, SerializedEvent } from "terse-types"
 
 import { CliError, ErrorCode } from "./cliError.js"
 import { BACKEND_URL } from "./config.js"
@@ -165,6 +165,14 @@ export type RunChatHistory = {
 
 export async function fetchRunChatHistory(runId: string, apiKey: string): Promise<RunChatHistory> {
     return fetchWithAuth<RunChatHistory>(buildRoute(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, { runId }), apiKey)
+}
+
+export async function startTestRun(params: { projectId: string; jobName: string; event: SerializedEvent; forceLocal?: boolean }, apiKey: string): Promise<SdkTestRunStartResponse> {
+    return fetchWithAuth<SdkTestRunStartResponse>(ApiRoutes.SDK.TEST_RUN, apiKey, params, "POST")
+}
+
+export async function finalizeTestRun(runId: string, status: "success" | "failed", apiKey: string, error?: string): Promise<void> {
+    await fetchWithAuth(buildRoute(ApiRoutes.SDK.TEST_RUN_FINALIZE, { runId }), apiKey, { status, error }, "POST")
 }
 
 export async function resolveEventFromRunId(runId: string | null, apiKey: string): Promise<SdkRunTriggerEventResponse | undefined> {

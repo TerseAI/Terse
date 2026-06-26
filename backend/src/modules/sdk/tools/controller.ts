@@ -1,7 +1,7 @@
 import { FunctionTool, type RunContext, Tool, tool } from "@openai/agents"
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { RunHistoryStatus, ToolDefinition } from "terse-types"
+import { ToolDefinition } from "terse-types"
 import { UserSession } from "terse-types/types"
 import { sdkToolExecuteRequestSchema } from "terse-types/types"
 import { z } from "zod"
@@ -11,7 +11,6 @@ import { extractErrorMessage, randomString } from "../../../common/strings"
 import { Session } from "../../../express"
 import { db } from "../../../loaders/prisma"
 import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
-import { finalizeRunStatus, markRunFailed } from "../../../modules/agents/AgentRunner/runHistory"
 import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import {
     type DeterministicToolCallRunContext,
@@ -21,8 +20,6 @@ import {
     persistDeterministicToolCallStart
 } from "../../../modules/agents/toolCallHistory"
 import { OutputFactory } from "../../../outputs/abstract/OutputFactory"
-import { mintTestRunRecord, resolveTestRunContext } from "../testRunContext"
-import { getOrCreateSessionTestRun } from "../testRunSession"
 
 type SdkFunctionTool = FunctionTool<SessionWithTracking<Session>, z.ZodObject<any>, unknown>
 type SdkToolDescriptor = {
@@ -99,7 +96,7 @@ function normalizeInvokedToolResult(rawResult: unknown): unknown {
     return rawResult
 }
 
-async function resolvePersistedRunContext(runIdHeader: string | undefined, user: UserSession): Promise<DeterministicToolCallRunContext | null> {
+async function resolveRunContext(runIdHeader: string | undefined, user: UserSession): Promise<DeterministicToolCallRunContext | null> {
     const runId = runIdHeader?.trim()
     if (!runId || !user.organizationId) return null
 
@@ -116,17 +113,6 @@ async function resolvePersistedRunContext(runIdHeader: string | undefined, user:
     return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id }
 }
 
-type TestToolRun = { context: DeterministicToolCallRunContext; sessionBound: boolean }
-
-async function resolveTestRunForTools(req: Request, user: UserSession, sessionId: string | undefined): Promise<TestToolRun | null> {
-    const testCtx = await resolveTestRunContext(req, user)
-    if (!testCtx || !user.organizationId) return null
-    // Reuse the session's single is_test run so repeated toolbox calls in one `terse test` share one run
-    // (and one memory subtree) instead of each minting its own. Session close finalizes it.
-    const { runId, agentId } = sessionId ? await getOrCreateSessionTestRun(sessionId, user, testCtx) : await mintTestRunRecord(user, testCtx)
-    return { context: { runId, agentId, organizationId: user.organizationId }, sessionBound: !!sessionId }
-}
-
 export async function handleToolExecute(req: Request, res: Response) {
     const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
@@ -137,12 +123,7 @@ export async function handleToolExecute(req: Request, res: Response) {
     if (!toolDescriptor) return res.status(404).json({ success: false, error: `Tool "${toolName}" not found` })
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
-    const persistedRunContext = await resolvePersistedRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
-    // A `terse test` deterministic call carries project/job headers (no run-id): bind it to the session's
-    // single is_test run so it records and resolves memory exactly like the agent path, instead of minting
-    // a fresh run per call. A session-bound run is finalized on session close; a non-session one here.
-    const testRun = persistedRunContext ? null : await resolveTestRunForTools(req, user, sessionId)
-    const runContext = persistedRunContext ?? testRun?.context ?? null
+    const runContext = await resolveRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
     const effectiveRunId = runContext?.runId ?? crypto.randomUUID()
     const effectiveAgentId = runContext?.agentId ?? "sdk-tool-execute"
     const toolParams = params ?? {}
@@ -175,9 +156,6 @@ export async function handleToolExecute(req: Request, res: Response) {
         if (runContext) {
             await persistDeterministicToolCallComplete(runContext, toolDescriptor, toolName, result, callId)
         }
-        if (testRun && !testRun.sessionBound) {
-            await finalizeRunStatus(testRun.context.runId, RunHistoryStatus.SUCCESS)
-        }
 
         if (sessionId) {
             emitSessionEvent(sessionId, { type: "tool_call_completed", toolCallCompleted: JSON.stringify({ tool: toolName, status: "completed" }) })
@@ -195,9 +173,6 @@ export async function handleToolExecute(req: Request, res: Response) {
 
         if (runContext) {
             await persistDeterministicToolCallFailure(runContext, toolName, message, callId)
-        }
-        if (testRun) {
-            await markRunFailed(testRun.context.runId, message, "agent")
         }
 
         if (sessionId) {

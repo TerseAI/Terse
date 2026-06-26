@@ -37,11 +37,15 @@ export class EventProcessor {
     private inputEvent: TriggerRuntime
     private user: UserSession
     private isManuallyTriggered: boolean
+    private isTest: boolean
+    private localDataPlane: boolean
 
-    constructor(inputEvent: TriggerRuntime, user: UserSession, options?: { isManuallyTriggered?: boolean }) {
+    constructor(inputEvent: TriggerRuntime, user: UserSession, options?: { isManuallyTriggered?: boolean; isTest?: boolean; localDataPlane?: boolean }) {
         this.inputEvent = inputEvent
         this.user = user
         this.isManuallyTriggered = options?.isManuallyTriggered ?? false
+        this.isTest = options?.isTest ?? false
+        this.localDataPlane = options?.localDataPlane ?? false
     }
 
     async process(): Promise<ProcessorResult[]> {
@@ -180,7 +184,8 @@ export class EventProcessor {
             agentId: agent.id,
             trigger,
             serializedTriggerEvent: this.inputEvent.getSerializedEvent(),
-            isManuallyTriggered: this.isManuallyTriggered
+            isManuallyTriggered: this.isManuallyTriggered,
+            isTest: this.isTest
         })
         emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
         emitCacheInvalidationWithKey(this.user.organizationId, "recentAgents")
@@ -217,6 +222,10 @@ export class EventProcessor {
 
     private async processAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         logger.info(`Processing agent: ${agent.name} (${agent.id})`)
+
+        if (this.localDataPlane) {
+            return new ProcessorResult(true, "Local run registered (CLI is the data plane)", agent, existingRunId ?? null)
+        }
 
         // Send event to terse listen listeners
         try {
