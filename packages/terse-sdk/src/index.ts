@@ -375,28 +375,31 @@ async function statePut(key: string, content: string): Promise<void> {
 }
 
 export function __buildJobStateAccessor<TStates extends readonly StateDefinition[]>(states: TStates): StateAccessor<TStates> {
-    const schemas = new Map<string, z.ZodType>(states.map(s => [s.key, s.value]))
+    const schemas = new Map(states.map(s => [s.key, s.value] as const))
     const schemaFor = (key: string): z.ZodType => {
         const schema = schemas.get(key)
         if (!schema) throw new Error(`Unknown state key "${key}". Declare it in the job's \`states\`.`)
         return schema
     }
-    return {
-        get: async (key: string) => {
+    const accessor: StateAccessorImpl = {
+        async get(key) {
             const schema = schemaFor(key)
             const raw = await stateGet(key)
             if (raw !== null) return schema.parse(JSON.parse(raw))
-            // No stored value: materialize a schema default if one exists, else undefined.
-            const defaulted = schema.safeParse(undefined)
-            return defaulted.success ? defaulted.data : undefined
+            return schema.safeParse(undefined).data
         },
-        set: async (key: string, value: unknown) => {
+        async set(key, value) {
             const schema = schemaFor(key)
             const parsed = schema.safeParse(value)
-            await statePut(key, JSON.stringify(parsed))
-            return parsed
+            if (!parsed.success) {
+                throw new Error(`Invalid value for state "${key}": ${parsed.error.issues.map(issue => `${issue.path.join(".") || "<root>"}: ${issue.message}`).join("; ")}`)
+            }
+            await statePut(key, JSON.stringify(parsed.data))
+            return parsed.data
         }
-    } as StateAccessor<TStates>
+    }
+    // TS can't correlate a dynamic string key to its schema's type (microsoft/TypeScript#30581), so we assert the per-key shape here.
+    return accessor as StateAccessor<TStates>
 }
 
 export class Terse {
@@ -833,4 +836,9 @@ function parseToolCallCompleted(raw: string): { tool?: string; status?: string }
     } catch {
         return null
     }
+}
+
+type StateAccessorImpl = {
+    get(key: string): Promise<unknown>
+    set(key: string, value: unknown): Promise<unknown>
 }
