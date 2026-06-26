@@ -45,7 +45,7 @@ export function listenForRunCancellation(runId: string, organizationId: string, 
             if (task.organizationId !== organizationId) {
                 return
             }
-            if (task.runId !== undefined && task.runId !== runId) {
+            if (task.runId != null && task.runId !== runId) {
                 return
             }
 

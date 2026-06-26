@@ -4,7 +4,7 @@ import { LinearTrigger } from "terse-types"
 
 import logger from "../../common/logger"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { getIntegrationRegistry } from "../../integrations/abstract/IntegrationRegistry"
 import { LinearTriggerRuntime } from "../../integrations/linear/integration"
 import { db } from "../../loaders/prisma"
 import { HydrationContext, Hydrator, Identifiable } from "../Hydrator"
@@ -58,7 +58,7 @@ export class LinearEventHydrator extends Hydrator<LinearTriggerRuntime> {
             return null
         }
 
-        const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === IntegrationType.LINEAR)
+        const manager = getIntegrationRegistry().find(m => m.integrationType === IntegrationType.LINEAR)
         if (!manager || !isOAuthIntegrationInstallation(manager)) {
             return null
         }

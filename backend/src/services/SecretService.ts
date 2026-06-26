@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import logger from "../common/logger"
-import { INTEGRATION_REGISTRY, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
+import { getIntegrationRegistry, type IntegrationManagers } from "../integrations/abstract/IntegrationRegistry"
 
 import { getSecretManagerClient } from "./secretManager"
 import { SecretManagerClient } from "./secretManager/SecretManagerClient"
@@ -151,7 +151,7 @@ export class SecretService {
     }
 
     private schemaFor(integrationType: IntegrationKey): z.ZodObject {
-        const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === integrationType)
+        const manager = getIntegrationRegistry().find(m => m.integrationType === integrationType)
         if (!manager || !("secretSchema" in manager) || !manager.secretSchema) {
             throw new Error(`No secret schema registered for integration type: ${integrationType}`)
         }

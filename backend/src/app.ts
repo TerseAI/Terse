@@ -9,7 +9,7 @@ import { IntegrationType } from "terse-types/Integrations"
 import { isCorsOriginAllowed } from "./common/corsOrigins"
 import logger from "./common/logger"
 import { handleWorkOSWebhook } from "./ee/services/authProvider/workosWebhook"
-import { INTEGRATION_REGISTRY } from "./integrations/abstract/IntegrationRegistry"
+import { getIntegrationRegistry } from "./integrations/abstract/IntegrationRegistry"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
 import { httpAccessLog } from "./middlewares/httpAccessLog"
 import agentsRouter from "./modules/agents/routes"
@@ -67,7 +67,7 @@ const LARGE_BODY_LIMIT = "10mb"
 const DEFAULT_BODY_LIMIT = "1mb"
 
 function isIntegrationAvailable(type: IntegrationType): boolean {
-    return INTEGRATION_REGISTRY.some(m => m.integrationType === type)
+    return getIntegrationRegistry().some(m => m.integrationType === type)
 }
 
 export function createApp(options: CreateAppOptions) {

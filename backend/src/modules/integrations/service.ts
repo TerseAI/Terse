@@ -4,7 +4,7 @@ import { OAuthInstallationDetails } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { Integration, isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { getIntegrationRegistry } from "../../integrations/abstract/IntegrationRegistry"
 import { decodeOAuthStateToken } from "../../modules/auth/helpers/oauth"
 
 import { MissingIntegrationOptionsError } from "./errors"
@@ -33,7 +33,7 @@ export class IntegrationInstallationUnsupportedError extends Error {
 export { MissingIntegrationOptionsError } from "./errors"
 
 function findIntegration(integrationType: string) {
-    return INTEGRATION_REGISTRY.find(instance => instance.integrationType === integrationType)
+    return getIntegrationRegistry().find(instance => instance.integrationType === integrationType)
 }
 
 export function decodeOptionalStatePayload(stateToken: string | undefined, fallbackIntegrationType: string, userId: string | undefined): Record<string, string> | undefined {
@@ -85,7 +85,7 @@ function parseInstallationOptionsOrThrow<T extends IntegrationType>(integration:
 
 export async function listIntegrationsForOrganization(organizationId: string): Promise<IntegrationWithStatus[]> {
     return Promise.all(
-        INTEGRATION_REGISTRY.map(async integration => {
+        getIntegrationRegistry().map(async integration => {
             const cliDisplayState = await integration.getCliDisplayStateForOrganization(organizationId)
             return {
                 integrationType: integration.integrationType,
@@ -112,7 +112,7 @@ async function integrationHasInstances(integration: Integration<IntegrationInsta
 
 export async function listActiveIntegrationsForOrganization(organizationId: string): Promise<IntegrationType[]> {
     const hasInstancesResults = await Promise.all(
-        INTEGRATION_REGISTRY.map(integration => integrationHasInstances(integration as Integration<IntegrationInstance, unknown, IntegrationDetails, unknown>, organizationId))
+        getIntegrationRegistry().map(integration => integrationHasInstances(integration as Integration<IntegrationInstance, unknown, IntegrationDetails, unknown>, organizationId))
     )
-    return INTEGRATION_REGISTRY.filter((_, index) => hasInstancesResults[index]).map(integration => integration.integrationType)
+    return getIntegrationRegistry().filter((_, index) => hasInstancesResults[index]).map(integration => integration.integrationType)
 }

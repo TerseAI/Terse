@@ -35,14 +35,14 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
     if (!user) {
         logger.error("Run execution: user not found; failing run", { runId, userId, orgId })
         await markRunFailed(runId, "User not found for run execution", "agent")
-        return
+        throw new Error("User not found for run execution")
     }
 
     const agent = await loadAgentForExecution(agentId, orgId)
     if (!agent) {
         logger.error("Run execution: agent not found; failing run", { runId, agentId, orgId })
         await finalizeRunFailure(runId, classifyAgentError(new Error("Agent not found for run execution")), user, { id: agentId } as AgentWithRelations)
-        return
+        throw new Error("Agent not found for run execution")
     }
 
     try {

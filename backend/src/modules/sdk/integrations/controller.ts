@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 
 import logger from "../../../common/logger"
 import { isFormIntegrationInstallation, isOAuthIntegrationInstallation } from "../../../integrations/abstract/Integration"
-import { INTEGRATION_REGISTRY } from "../../../integrations/abstract/IntegrationRegistry"
+import { getIntegrationRegistry } from "../../../integrations/abstract/IntegrationRegistry"
 
 export async function handleSdkIntegrationFields(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -10,7 +10,7 @@ export async function handleSdkIntegrationFields(req: Request, res: Response) {
         return
     }
     const { integrationType } = req.params
-    const integration = INTEGRATION_REGISTRY.find(i => i.integrationType === integrationType)
+    const integration = getIntegrationRegistry().find(i => i.integrationType === integrationType)
     if (!integration) {
         res.status(404).json({ error: `Integration '${integrationType}' not found` })
         return
@@ -32,7 +32,7 @@ export async function handleSdkIntegrationFormSubmit(req: Request, res: Response
         return
     }
     const { integrationType } = req.params
-    const integration = INTEGRATION_REGISTRY.find(i => i.integrationType === integrationType)
+    const integration = getIntegrationRegistry().find(i => i.integrationType === integrationType)
     if (!integration) {
         res.status(404).json({ error: `Integration '${integrationType}' not found` })
         return

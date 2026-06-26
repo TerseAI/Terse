@@ -3,7 +3,7 @@ import { IntegrationType } from "terse-types/Integrations"
 import logger from "../../common/logger"
 import { GoogleSecretManagerClient } from "../../ee/services/secretManager/GoogleSecretManagerClient"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { getIntegrationRegistry } from "../../integrations/abstract/IntegrationRegistry"
 import { settings } from "../../settings"
 
 interface TokenRefreshSummary {
@@ -15,7 +15,7 @@ interface TokenRefreshSummary {
 export async function runTokenRefresh(): Promise<TokenRefreshSummary> {
     const results: TokenRefreshSummary["results"] = []
 
-    for (const integrationManager of INTEGRATION_REGISTRY) {
+    for (const integrationManager of getIntegrationRegistry()) {
         if (!isOAuthIntegrationInstallation(integrationManager)) continue
 
         const integrationType = integrationManager.integrationType

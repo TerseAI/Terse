@@ -2,7 +2,7 @@ import express, { Router } from "express"
 import { ApiRoutes } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
 
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { getIntegrationRegistry } from "../../integrations/abstract/IntegrationRegistry"
 import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
@@ -22,7 +22,7 @@ router.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID, limit, userAuth, handleManua
 router.post(ApiRoutes.SCHEDULE.TRIGGER_WITH_EVENT, limit, userAuth, handleTriggerWithEvent)
 
 // Webhook callbacks — bespoke auth (raw body for webmonitor, token for webhook trigger)
-if (INTEGRATION_REGISTRY.some(m => m.integrationType === IntegrationType.WEBMONITOR)) {
+if (getIntegrationRegistry().some(m => m.integrationType === IntegrationType.WEBMONITOR)) {
     router.use(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, rateLimit(RateLimitKind.WebhookByIp), express.raw({ type: "application/json", limit: LARGE_BODY_LIMIT }))
     router.post(ApiRoutes.WEBHOOKS.WEBMONITOR_BY_INPUT_ID, rateLimit(RateLimitKind.WebhookByIp), handleWebMonitorWebhook)
 }
