@@ -30,11 +30,7 @@ export default function RunTypeBadge({ isTest, isManuallyTriggered, replayOfRunI
                         onOpenOriginal(replayOfRunId)
                     }}
                     title="Replay of an earlier run — open the original"
-                    className={cn(
-                        base,
-                        "transition-colors hover:bg-replay/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-replay/40 focus-visible:ring-offset-1",
-                        className
-                    )}
+                    className={cn(base, "transition-colors hover:bg-replay/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-replay/40 focus-visible:ring-offset-1", className)}
                 >
                     {label}
                 </button>
