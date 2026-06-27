@@ -33,9 +33,9 @@ createJob({
             message: response.joke
         })
 
-        console.log("OMG WE ARE ABOUT TO SLEEP FOR 30 SECONDS")
+        console.log("OMG WE ARE ABOUT TO SLEEP FOR 1 HOUR")
 
-        await sleep("1m")
+        await sleep("1h")
 
         console.log("OMG WE ARE AWAKE FROM THE SLEEP")
 
