@@ -21,13 +21,7 @@ export function getDurableRuntime(cwd = process.cwd()): Promise<DurableRuntime> 
 async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     const out = path.join(cwd, ".terse", "wf")
 
-    // Macro pass (in place): rewrite each createJob's onTrigger into a hoisted
-    // "use workflow" function directly in the user's source, build, then restore
-    // the originals. The build discovers the injected workflows straight from the
-    // user's module — no generated dispatcher, no runtime registry, no realm
-    // boundary to cross. Restore always runs (finally) so a build error leaves
-    // the sources untouched.
-    const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, "src", out).build())
+    const workflowFnByJob = isPrebuilt(out) ? loadWorkflowArtifacts(out) : await buildWorkflowArtifacts(cwd)
 
     const world = createTerseWorld()
     setWorld(world)
@@ -86,6 +80,23 @@ function lookupWorkflowId(manifest: any, fnName: string): string | undefined {
         if (fn?.workflowId) return fn.workflowId
     }
     return undefined
+}
+
+const JOBS_MAP_FILE = "jobs.json"
+
+export async function buildWorkflowArtifacts(cwd: string): Promise<Map<string, { fnName: string; file: string }>> {
+    const out = path.join(cwd, ".terse", "wf")
+    const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, "src", out).build())
+    fs.writeFileSync(path.join(out, JOBS_MAP_FILE), JSON.stringify([...workflowFnByJob]))
+    return workflowFnByJob
+}
+
+function isPrebuilt(out: string): boolean {
+    return fs.existsSync(path.join(out, JOBS_MAP_FILE)) && fs.existsSync(path.join(out, "manifest.json"))
+}
+
+function loadWorkflowArtifacts(out: string): Map<string, { fnName: string; file: string }> {
+    return new Map(JSON.parse(fs.readFileSync(path.join(out, JOBS_MAP_FILE), "utf8")))
 }
 
 // Transform every createJob source file in place, run `build`, then restore the

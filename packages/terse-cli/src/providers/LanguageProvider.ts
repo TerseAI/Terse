@@ -30,6 +30,7 @@ export interface LanguageProvider {
     renderGeneratedCode(input: CodegenInput): string
     typecheck(): Promise<void>
     loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>>
+    prebuild(): Promise<void>
     executeJob(
         job: CreateJobParameters,
         runId: string | null,

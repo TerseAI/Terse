@@ -19,7 +19,7 @@ import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
 
-import { getDurableRuntime } from "./durableRuntime.js"
+import { buildWorkflowArtifacts, getDurableRuntime } from "./durableRuntime.js"
 import { prepareTemplateContext } from "./prepareCodegenData.js"
 import { readRunStatus, resolveWorkflowRunId, rewindFailedRun } from "./rewindRun.js"
 import { renderGeneratedCode } from "./templateEngine.js"
@@ -41,7 +41,7 @@ class TypeScriptProvider implements LanguageProvider {
     readonly entryFile = "src/terse.jobs.ts"
     readonly generatedCodePath = "src/terse.generated.ts"
     readonly deployExclusions = {
-        dirs: new Set(["node_modules", ".git", "dist", ".next", ".turbo"]),
+        dirs: new Set(["node_modules", ".git", "dist", ".next", ".turbo", ".terse"]),
         files: new Set([".env", ".DS_Store"])
     }
 
@@ -159,6 +159,10 @@ class TypeScriptProvider implements LanguageProvider {
         }
 
         return registry
+    }
+
+    async prebuild(): Promise<void> {
+        await buildWorkflowArtifacts(process.cwd())
     }
 
     async executeJob(
