@@ -3,8 +3,9 @@ import { MemoryCommand, MemoryCreateCommand, MemoryDeleteCommand, MemoryInsertCo
 import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
 import { MEMORY_ROOT, resolveMemoryVolumePath } from "../../../services/memory/memoryPaths"
-import { testMemorySubtreeKey } from "../../../services/sdkSandboxLayerKeys"
-import { VolumeFs, getVolumeManager } from "../../../services/volumes"
+import { memorySubtreeKey, replayMemorySubtreeKey } from "../../../services/sdkSandboxLayerKeys"
+import { VolumeFs, VolumeManagerProvider } from "../../../services/volumes"
+import { settings } from "../../../settings"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 export const memoryTool = defineSessionTool({
@@ -20,7 +21,7 @@ export const memoryTool = defineSessionTool({
         const { projectId, subtreeKey, isTest } = await resolveMemoryScope(runId)
         const command = input.command
         logger.info("SDK memory tool: command", { runId, projectId, subtreeKey, isTest, op: command.op, path: "path" in command ? (command.path ?? undefined) : undefined })
-        const fs = await getVolumeManager().openProjectVolumeFs(projectId, runId)
+        const fs = await VolumeManagerProvider.getInstance().openProjectVolumeFs(projectId, runId)
         try {
             const result = await runMemoryCommand(fs, subtreeKey, command)
             return { success: true, result }
@@ -33,13 +34,12 @@ export const memoryTool = defineSessionTool({
 async function resolveMemoryScope(runId: string): Promise<{ projectId: string; subtreeKey: string; isTest: boolean }> {
     const run = await db().run_history_records.findUnique({
         where: { id: runId },
-        select: { automation_id: true, is_test: true, automation: { select: { project_id: true } } }
+        select: { automation_id: true, is_test: true, replay_of_run_id: true, automation: { select: { project_id: true } } }
     })
     if (!run) {
         throw new Error("memory tool: no project linked for this run. Memory requires a project (link one with `terse init` or run a deployed job).")
     }
-    // Test runs write to a sibling subtree so they can never read or clobber the deployed agent's memory.
-    const subtreeKey = run.is_test ? testMemorySubtreeKey(run.automation_id) : run.automation_id
+    const subtreeKey = settings.modal && run.replay_of_run_id ? replayMemorySubtreeKey(runId) : memorySubtreeKey(run.automation_id, run.is_test)
     return { projectId: run.automation.project_id, subtreeKey, isTest: run.is_test }
 }
 

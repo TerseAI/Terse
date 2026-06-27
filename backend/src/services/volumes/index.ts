@@ -1,19 +1,20 @@
 import { settings } from "../../settings"
-import { getSandboxProvider } from "../sandboxProvider"
-import { ModalSandboxService } from "../sandboxProvider/ModalSandboxService"
 
 import { LocalVolumeManager } from "./LocalVolumeManager"
-import { ModalVolumeManager } from "./ModalVolumeManager"
+import { PostgresVolumeManager } from "./PostgresVolumeManager"
 import { VolumeManager } from "./VolumeManager"
 
-let volumeManagerSingleton: VolumeManager | null = null
+/** Memory + state store: Postgres in the cloud, local disk for self-host. */
+export class VolumeManagerProvider {
+    private static instance: VolumeManager
+    private constructor() {}
 
-/** The volume manager for the active sandbox provider (Modal in cloud, local disk for self-host). */
-export function getVolumeManager(): VolumeManager {
-    if (!volumeManagerSingleton) {
-        volumeManagerSingleton = settings.modal ? new ModalVolumeManager(new ModalSandboxService()) : new LocalVolumeManager()
+    public static getInstance(): VolumeManager {
+        if (!VolumeManagerProvider.instance) {
+            VolumeManagerProvider.instance = settings.modal ? new PostgresVolumeManager() : new LocalVolumeManager()
+        }
+        return VolumeManagerProvider.instance
     }
-    return volumeManagerSingleton
 }
 
 export type { VolumeManager } from "./VolumeManager"

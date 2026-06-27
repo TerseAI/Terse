@@ -8,6 +8,7 @@ import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 import { formatTimestamp } from "@/utils/time"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
@@ -22,6 +23,7 @@ interface RunHistoryRowProps {
 
 export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps) {
     const navigate = useNavigate()
+    const openRun = useOpenRunDeepLink()
     const title = run.trigger.title || run.trigger.source
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
 
@@ -67,9 +69,9 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
             </div>
 
             {/* Run type + who triggered */}
-            {(run.isTest || run.isManuallyTriggered) && (
+            {(run.isTest || run.isManuallyTriggered || run.replayOfRunId) && (
                 <div className="hidden shrink-0 items-center gap-2 sm:flex">
-                    <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} className="text-[10px]" />
+                    <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} replayOfRunId={run.replayOfRunId} onOpenOriginal={openRun} className="text-[10px]" />
                     {run.triggeredByUserId && <TriggeredBy userId={run.triggeredByUserId} showLabel={false} className="text-[10px]" />}
                 </div>
             )}

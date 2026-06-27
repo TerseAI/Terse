@@ -366,7 +366,8 @@ export const runHistoryRecordSchema = z.object({
     status: runHistoryStatusSchema,
     isManuallyTriggered: z.boolean(),
     isTest: z.boolean().optional(),
-    triggeredByUserId: z.string().nullish()
+    triggeredByUserId: z.string().nullish(),
+    replayOfRunId: z.string().nullish()
 })
 export type RunHistoryRecord = z.infer<typeof runHistoryRecordSchema>
 
@@ -1008,7 +1009,8 @@ export const sdkTestRunStartRequestSchema = z.object({
     jobName: z.string().min(1),
     event: serializedEventSchema,
     forceLocal: z.boolean().optional(),
-    isTest: z.boolean().optional()
+    isTest: z.boolean().optional(),
+    replayOfRunId: z.string().optional()
 })
 export type SdkTestRunStartRequest = z.infer<typeof sdkTestRunStartRequestSchema>
 

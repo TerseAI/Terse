@@ -5,7 +5,7 @@ import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
 import { resolveMemoryVolumePath } from "../../../services/memory/memoryPaths"
 import { testMemorySubtreeKey } from "../../../services/sdkSandboxLayerKeys"
-import { VolumeFs, getVolumeManager } from "../../../services/volumes"
+import { VolumeFs, VolumeManagerProvider } from "../../../services/volumes"
 import { userOwnsProject } from "../testRunContext"
 
 // Memory is partitioned per automation (one subtree per job within the project volume), so the routes
@@ -47,7 +47,7 @@ export async function handleMemoryList(req: Request, res: Response) {
     const scope = await resolveMemoryScope(req, res)
     if (!scope) return
 
-    const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId)
+    const fs = await VolumeManagerProvider.getInstance().openProjectVolumeFs(scope.projectId)
     try {
         const files = await listSubtree(fs, scope.subtreeKey)
         const response: SdkMemoryListResponse = { job: scope.jobName, files }
@@ -67,7 +67,7 @@ export async function handleMemoryGet(req: Request, res: Response) {
     const rel = resolveMemoryVolumePath({ subtreeKey: scope.subtreeKey, inputPath: req.body?.path, source: "relative" })
     if (rel === null || rel === scope.subtreeKey) return res.status(400).json({ success: false, error: "A valid file path is required" })
 
-    const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId)
+    const fs = await VolumeManagerProvider.getInstance().openProjectVolumeFs(scope.projectId)
     try {
         const content = await fs.read(rel)
         if (content === null) return res.status(404).json({ success: false, error: `${req.body?.path} not found` })
@@ -87,7 +87,7 @@ export async function handleMemoryPut(req: Request, res: Response) {
     const content = req.body?.content
     if (typeof content !== "string") return res.status(400).json({ success: false, error: "content (string) is required" })
 
-    const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId)
+    const fs = await VolumeManagerProvider.getInstance().openProjectVolumeFs(scope.projectId)
     try {
         await fs.write(rel, content)
         await fs.sync()
@@ -105,7 +105,7 @@ export async function handleMemoryDelete(req: Request, res: Response) {
     const rel = resolveMemoryVolumePath({ subtreeKey: scope.subtreeKey, inputPath: req.body?.path, source: "relative" })
     if (rel === null || rel === scope.subtreeKey) return res.status(400).json({ success: false, error: "A valid file path is required" })
 
-    const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId)
+    const fs = await VolumeManagerProvider.getInstance().openProjectVolumeFs(scope.projectId)
     try {
         const stat = await fs.stat(rel)
         if (!stat) return res.status(404).json({ success: false, error: `${req.body?.path} not found` })

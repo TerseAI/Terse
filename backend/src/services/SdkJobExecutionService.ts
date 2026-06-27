@@ -21,8 +21,7 @@ import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
-import { MEMORY_MOUNT_PATH, SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
-import { getVolumeManager } from "./volumes"
+import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 interface SdkJobExecutionParams {
     runId: string
@@ -274,9 +273,7 @@ export class SdkJobExecutionService {
         const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
         const image = await sandboxService.getImageFromId(source.imageId)
         const uniqueName = runtimeSandboxUniqueName(projectId, runId)
-        const volume = await getVolumeManager().getOrCreateProjectVolume(projectId)
-        logger.info("SDK sandbox: mounting project memory volume", { projectId, runId, mountPath: MEMORY_MOUNT_PATH, uniqueName })
-        return sandboxService.getOrCreateSandbox(app, image, uniqueName, { ...SANDBOX_DEFAULT_OPTIONS, volumes: { [MEMORY_MOUNT_PATH]: volume } })
+        return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

@@ -22,8 +22,9 @@ export async function createRunRecord(params: {
     isManuallyTriggered?: boolean
     isTest?: boolean
     triggeredByUserId?: string
+    replayOfRunId?: string
 }): Promise<string> {
-    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered, isTest, triggeredByUserId } = params
+    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered, isTest, triggeredByUserId, replayOfRunId } = params
     const prisma = db()
     const record = await prisma.run_history_records.create({
         data: {
@@ -38,6 +39,7 @@ export async function createRunRecord(params: {
             is_manually_triggered: isManuallyTriggered ?? false,
             is_test: isTest ?? false,
             triggered_by_user_id: triggeredByUserId ?? null,
+            replay_of_run_id: replayOfRunId ?? null,
             filtered: false,
             decision_action: "processed", // placeholder until we decide after filtering
             decision_reason: "",

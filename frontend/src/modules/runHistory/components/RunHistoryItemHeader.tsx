@@ -2,6 +2,7 @@ import { Copy, ExternalLink } from "lucide-react"
 import type { RunHistoryRecord } from "terse-types"
 
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
 import RunTypeBadge from "./RunTypeBadge"
 import TriggeredBy from "./TriggeredBy"
@@ -13,6 +14,7 @@ type Props = {
 }
 
 export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }: Props) {
+    const openRun = useOpenRunDeepLink()
     const title = run.trigger.title || run.trigger.source
 
     return (
@@ -59,10 +61,10 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                         </>
                     )}
                     <span className="flex-shrink-0">{formattedTimestamp}</span>
-                    {(run.isTest || run.isManuallyTriggered) && (
+                    {(run.isTest || run.isManuallyTriggered || run.replayOfRunId) && (
                         <>
                             <span className="flex-shrink-0 text-muted-foreground/40">·</span>
-                            <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} />
+                            <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} replayOfRunId={run.replayOfRunId} onOpenOriginal={openRun} />
                             {run.triggeredByUserId && <TriggeredBy userId={run.triggeredByUserId} showLabel={false} className="text-xs" />}
                         </>
                     )}

@@ -31,5 +31,5 @@ export async function replay(runId: string, provider: LanguageProvider = resolve
     }
 
     const projectId = readProjectConfigOrBail().projectId
-    await runLocalTestJob(provider, job, runHistoryRecord.event, { projectId, apiKey, forceLocal: true, isTest: runHistoryRecord.isTest, verbose: true })
+    await runLocalTestJob(provider, job, runHistoryRecord.event, { projectId, apiKey, forceLocal: true, isTest: runHistoryRecord.isTest, replayOfRunId: runId, verbose: true })
 }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { CopyCommandButton } from "@/components/ui/copy-command-button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
 import RunTypeBadge from "../RunTypeBadge"
@@ -20,6 +21,7 @@ type Props = {
     isTest?: boolean
     isManuallyTriggered?: boolean
     triggeredByUserId?: string | null
+    replayOfRunId?: string | null
     runs?: RunHistoryRecord[]
     currentRunIndex?: number
     onNavigate?: (runId: string) => void
@@ -37,6 +39,7 @@ export default function RunHistoryChatDrawerHeader({
     isTest,
     isManuallyTriggered,
     triggeredByUserId,
+    replayOfRunId,
     runs,
     currentRunIndex,
     onNavigate,
@@ -46,6 +49,7 @@ export default function RunHistoryChatDrawerHeader({
     isTriggerPayloadOpen = false,
     onToggleTriggerPayload
 }: Props) {
+    const openRun = useOpenRunDeepLink()
     const hasRunNavigation = runs !== undefined && currentRunIndex !== undefined
     const canGoPrevious = hasRunNavigation && currentRunIndex > 0
     const canGoNext = hasRunNavigation && currentRunIndex < runs.length - 1
@@ -95,9 +99,9 @@ export default function RunHistoryChatDrawerHeader({
                     </Button>
                 </div>
             </div>
-            {(isTest || isManuallyTriggered) && (
+            {(isTest || isManuallyTriggered || replayOfRunId) && (
                 <div className="flex items-center gap-2">
-                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} className="text-[11px]" />
+                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} replayOfRunId={replayOfRunId} onOpenOriginal={openRun} className="text-[11px]" />
                     <TriggeredBy userId={triggeredByUserId} />
                 </div>
             )}

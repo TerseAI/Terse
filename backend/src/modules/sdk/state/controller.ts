@@ -3,8 +3,9 @@ import { SdkStateGetResponse, sdkStateGetRequestSchema, sdkStatePutRequestSchema
 
 import { db } from "../../../loaders/prisma"
 import { resolveMemoryVolumePath } from "../../../services/memory/memoryPaths"
-import { stateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
-import { getVolumeManager } from "../../../services/volumes"
+import { replayStateSubtreeKey, stateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
+import { VolumeManagerProvider } from "../../../services/volumes"
+import { settings } from "../../../settings"
 
 type StateScope = { projectId: string; runId: string; subtreeKey: string }
 
@@ -22,13 +23,14 @@ async function resolveStateScope(req: Request, res: Response): Promise<StateScop
     }
     const run = await db().run_history_records.findFirst({
         where: { id: headerRunId, automation: { organization_id: user.organizationId } },
-        select: { id: true, automation_id: true, is_test: true, automation: { select: { project_id: true } } }
+        select: { id: true, automation_id: true, is_test: true, replay_of_run_id: true, automation: { select: { project_id: true } } }
     })
     if (!run) {
         res.status(404).json({ success: false, error: "Run not found" })
         return null
     }
-    return { projectId: run.automation.project_id, runId: run.id, subtreeKey: stateSubtreeKey(run.automation_id, run.is_test) }
+    const subtreeKey = settings.modal && run.replay_of_run_id ? replayStateSubtreeKey(run.id) : stateSubtreeKey(run.automation_id, run.is_test)
+    return { projectId: run.automation.project_id, runId: run.id, subtreeKey }
 }
 
 function resolveStateKeyPath(subtreeKey: string, key: string): string | null {
@@ -46,7 +48,7 @@ export async function handleStateGet(req: Request, res: Response) {
     const rel = resolveStateKeyPath(scope.subtreeKey, parsed.data.key)
     if (!rel) return res.status(400).json({ success: false, error: "A valid state key is required" })
 
-    const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId, scope.runId)
+    const fs = await VolumeManagerProvider.getInstance().openProjectVolumeFs(scope.projectId, scope.runId)
     try {
         const content = await fs.read(rel)
         const response: SdkStateGetResponse = { content: content ?? null }
@@ -65,7 +67,7 @@ export async function handleStatePut(req: Request, res: Response) {
     const rel = resolveStateKeyPath(scope.subtreeKey, parsed.data.key)
     if (!rel) return res.status(400).json({ success: false, error: "A valid state key is required" })
 
-    const fs = await getVolumeManager().openProjectVolumeFs(scope.projectId, scope.runId)
+    const fs = await VolumeManagerProvider.getInstance().openProjectVolumeFs(scope.projectId, scope.runId)
     try {
         await fs.write(rel, parsed.data.content)
         await fs.sync()

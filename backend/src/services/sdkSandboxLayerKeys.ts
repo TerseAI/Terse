@@ -1,7 +1,3 @@
-/**
- * Compute keys for sandbox layers, which respect constraints from sandbox provider regarding name shape
- * and provide stable reuse.
- */
 import crypto from "crypto"
 
 function hexHead(s: string, maxLen: number): string {
@@ -37,18 +33,10 @@ export function runtimeSandboxUniqueName(projectId: string, runId: string): stri
 
 export const SDK_SANDBOX_APP_NAME = "terse-sdk-sandbox"
 
-/** Mount point for the per-project memory volume inside executing runtime sandboxes. */
-export const MEMORY_MOUNT_PATH = "/mnt/memory"
-
-/** Name of the per-project persistent volume (Modal Volume / local dir). */
 export function projectVolumeName(projectId: string): string {
     return `mem-${projectId}`
 }
 
-/**
- * Memory subtree (within the project volume) for an automation's `terse test` runs. Kept separate from the
- * automation's production subtree (= its id) so a test can never read or overwrite deployed memory.
- */
 export function testMemorySubtreeKey(automationId: string): string {
     return `test-${automationId}`
 }
@@ -56,4 +44,16 @@ export function testMemorySubtreeKey(automationId: string): string {
 /** State subtree for a job's typed `states`, a sibling of the agent's memory subtree so the memory tool can't reach it. */
 export function stateSubtreeKey(automationId: string, isTest: boolean): string {
     return isTest ? `state-test-${automationId}` : `state-${automationId}`
+}
+
+export function memorySubtreeKey(automationId: string, isTest: boolean): string {
+    return isTest ? testMemorySubtreeKey(automationId) : automationId
+}
+
+export function replayMemorySubtreeKey(replayRunId: string): string {
+    return `replay-${replayRunId}`
+}
+
+export function replayStateSubtreeKey(replayRunId: string): string {
+    return `state-replay-${replayRunId}`
 }
