@@ -45,10 +45,8 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
     }
 
     async restoreDirectory(sandbox: ModalSandbox, path: string, imageId: string): Promise<void> {
-        logger.info("RESUME: mountImage start", { path, imageId })
         const image = await this.modal.images.fromId(imageId)
         await sandbox.mountImage(path, image)
-        logger.info("RESUME: mountImage done", { path, imageId })
     }
 
     async getOrCreateApp(name: string): Promise<SandboxApp> {

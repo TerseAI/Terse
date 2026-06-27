@@ -220,14 +220,11 @@ export class SdkJobExecutionService {
 
         const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
         if (restoreImageId) {
-            logger.info("RESUME: restoring journal into sandbox", { runId, restoreImageId, path: runJournalDir(runId) })
             await sandboxService.restoreDirectory(sb, runJournalDir(runId), restoreImageId)
-            logger.info("RESUME: journal restored", { runId })
         }
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
         const result = restoreImageId ? await executor.resume(executorContext) : await executor.execute(executorContext)
-        if (restoreImageId) logger.info("RESUME: terse resume command exited", { runId, exitCode: result.exitCode })
         return result
     }
 
@@ -469,55 +466,36 @@ export class SdkJobExecutionService {
 // resulting image id, which rides the scheduler payload to the resume call. Returns
 // undefined when the run has no live sandbox (nothing to snapshot).
 export async function snapshotRunJournalForSuspend(runId: string): Promise<string | undefined> {
-    logger.info("SUSPEND: snapshotRunJournalForSuspend start", { runId })
     const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { project_deploy_id: true } })
-    if (!run?.project_deploy_id) {
-        logger.warn("SUSPEND: no run/project_deploy_id", { runId, foundRun: !!run, projectDeployId: run?.project_deploy_id })
-        return undefined
-    }
+    if (!run?.project_deploy_id) return undefined
 
     const deploy = await db().project_deploys.findUnique({ where: { id: run.project_deploy_id }, select: { sdk_source_image_id: true } })
-    if (!deploy?.sdk_source_image_id) {
-        logger.warn("SUSPEND: no deploy/sdk_source_image_id", { runId, projectDeployId: run.project_deploy_id })
-        return undefined
-    }
+    if (!deploy?.sdk_source_image_id) return undefined
 
     const source = await db().sdk_source_images.findUnique({
         where: { id: deploy.sdk_source_image_id },
         select: { organization_id: true, source_hash: true, dependency_image: { select: { dependency_hash: true } } }
     })
-    if (!source) {
-        logger.warn("SUSPEND: source image not found", { runId, sourceImageId: deploy.sdk_source_image_id })
-        return undefined
-    }
+    if (!source) return undefined
 
     const sourceLayerKey = computeSourceLayerKey({ organizationId: source.organization_id, dependencyHash: source.dependency_image.dependency_hash, sourceHash: source.source_hash })
     const provider = getSandboxProvider()
     const app = await provider.getOrCreateApp("terse-sdk-sandbox")
-    const uniqueName = runtimeSandboxUniqueName(sourceLayerKey)
-    logger.info("SUSPEND: looking up live sandbox", { runId, sourceLayerKey, uniqueName })
-    const sandbox = await provider.getLiveSandbox(app, uniqueName)
-    if (!sandbox) {
-        logger.warn("SUSPEND: no live sandbox found to snapshot", { runId, uniqueName })
-        return undefined
-    }
+    const sandbox = await provider.getLiveSandbox(app, runtimeSandboxUniqueName(sourceLayerKey))
+    if (!sandbox) return undefined
 
-    logger.info("SUSPEND: snapshotting journal dir", { runId, path: runJournalDir(runId) })
-    const imageId = await provider.snapshotDirectory(sandbox, runJournalDir(runId))
-    logger.info("SUSPEND: snapshot complete", { runId, imageId })
-    return imageId
+    return provider.snapshotDirectory(sandbox, runJournalDir(runId))
 }
 
 export async function resumeSdkRun(runId: string, restoreImageId?: string): Promise<void> {
-    logger.info("RESUME: resumeSdkRun start", { runId, hasRestoreImageId: !!restoreImageId })
     if (!restoreImageId) {
-        logger.warn("RESUME: missing snapshot image, cannot resume", { runId })
+        logger.warn("resumeSdkRun: missing snapshot image, cannot resume", { runId })
         return
     }
 
     const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation_id: true } })
     if (!run) {
-        logger.warn("RESUME: run not found", { runId })
+        logger.warn("resumeSdkRun: run not found", { runId })
         return
     }
 
@@ -532,17 +510,16 @@ export async function resumeSdkRun(runId: string, restoreImageId?: string): Prom
         }
     })
     if (!agent) {
-        logger.warn("RESUME: agent not found", { runId, agentId: run.automation_id })
+        logger.warn("resumeSdkRun: agent not found", { runId, agentId: run.automation_id })
         return
     }
 
     const user = await resolveUserInOrg(agent.user_id, agent.organization_id)
     if (!user) {
-        logger.warn("RESUME: user not resolved", { runId, userId: agent.user_id })
+        logger.warn("resumeSdkRun: user not resolved", { runId, userId: agent.user_id })
         return
     }
 
-    logger.info("RESUME: launching sandbox (restore + terse resume)", { runId, agentId: agent.id, restoreImageId })
     await new SdkJobExecutionService().execute({
         runId,
         agent,
@@ -552,5 +529,4 @@ export async function resumeSdkRun(runId: string, restoreImageId?: string): Prom
         jobName: agent.name,
         restoreImageId
     })
-    logger.info("RESUME: resume execute() returned", { runId })
 }
