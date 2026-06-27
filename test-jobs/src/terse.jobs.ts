@@ -33,7 +33,11 @@ createJob({
             message: response.joke
         })
 
-        await sleep("30s")
+        console.log("OMG WE ARE ABOUT TO SLEEP FOR 30 SECONDS")
+
+        await sleep("1m")
+
+        console.log("OMG WE ARE AWAKE FROM THE SLEEP")
 
         // throw new Error("test error")
 

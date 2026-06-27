@@ -208,7 +208,7 @@ class TypeScriptProvider implements LanguageProvider {
             detail: "Please set it in your environment variables."
         })
 
-        const dataDir = path.join(process.cwd(), ".terse", "data")
+        const dataDir = process.env.WORKFLOW_LOCAL_DATA_DIR ?? path.join(process.cwd(), ".terse", "data")
         const workflowRunId = resolveWorkflowRunId(dataDir, runId)
         const status = readRunStatus(dataDir, workflowRunId)
 

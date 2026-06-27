@@ -19,7 +19,8 @@ import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
 import { finalizeRunFailure } from "../../../loaders/socket"
 import { SdkAgentRunner } from "../../../modules/agents/AgentRunner/SdkAgentRunner"
-import { appendRunAction, markRunSuspended, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
+import { appendRunAction, claimSuspendedRun, markRunSuspended, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
+import { resumeSdkRun, snapshotRunJournalForSuspend } from "../../../services/SdkJobExecutionService"
 import { onListenForwardedEvent } from "../../../modules/agents/ListenBus"
 import { emitSessionEvent, onSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { classifyAgentError } from "../../../modules/agents/agentErrorUtils"
@@ -389,10 +390,13 @@ export async function handleJobSuspension(req: Request, res: Response) {
     }
 
     const { runId, name, delaySeconds, idempotencyKey } = parsed.data
+    logger.info("SUSPEND: /suspend hit", { runId, delaySeconds, idempotencyKey })
     try {
         const resumeUrl = `${settings.urls.backend}${buildRoute(ApiRoutes.SDK.RESUME, {})}`
-        await markRunSuspended(runId)
-        await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey })
+        const imageId = await snapshotRunJournalForSuspend(runId)
+        const marked = await markRunSuspended(runId)
+        logger.info("SUSPEND: snapshot + mark result", { runId, hasImageId: !!imageId, marked })
+        await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey, imageId })
 
         const response: SdkJobSuspendResponseBody = { success: true }
         return res.status(200).json(response)
@@ -402,22 +406,37 @@ export async function handleJobSuspension(req: Request, res: Response) {
     }
 }
 
-const sdkJobResumeRequestBodySchema = z.object({ runId: z.string().min(1), idempotencyKey: z.string().min(1).optional() })
+const sdkJobResumeRequestBodySchema = z.object({ runId: z.string().min(1), idempotencyKey: z.string().min(1).optional(), imageId: z.string().min(1).optional() })
 
 export async function handleJobResumption(req: Request, res: Response) {
+    logger.info("RESUME: /resume hit", { body: req.body })
     const parsed = sdkJobResumeRequestBodySchema.safeParse(req.body)
-    if (!parsed.success) return res.status(400).json({ success: false, error: "Invalid request body" })
+    if (!parsed.success) {
+        logger.warn("RESUME: invalid request body", { body: req.body })
+        return res.status(400).json({ success: false, error: "Invalid request body" })
+    }
 
     if (!settings.gcp || !settings.cloudScheduler) {
         return res.status(501).json({ success: false, error: "Job resumption is unavailable on this deployment because Cloud Scheduler is not configured." })
     }
 
-    const { runId, idempotencyKey } = parsed.data
+    const { runId, idempotencyKey, imageId } = parsed.data
+    logger.info("RESUME: parsed payload", { runId, idempotencyKey, hasImageId: !!imageId })
     try {
         await createSchedulerClient().delete(suspensionJobId(runId, idempotencyKey))
-        return res.status(200).json({ success: true })
+        logger.info("RESUME: deleted suspension cron job", { runId })
     } catch (error) {
-        logger.error("Failed to delete suspension scheduler job", { error, runId })
-        return res.status(500).json({ success: false, error: extractErrorMessage(error) })
+        logger.warn("RESUME: failed to delete suspension cron job (continuing)", { error, runId })
     }
+
+    const claimed = await claimSuspendedRun(runId)
+    logger.info("RESUME: claim suspended->in_progress", { runId, claimed })
+    if (!claimed) {
+        logger.warn("RESUME: run not in suspended state, nothing to resume", { runId })
+        return res.status(200).json({ success: true })
+    }
+
+    logger.info("RESUME: dispatching resumeSdkRun", { runId, hasImageId: !!imageId })
+    void resumeSdkRun(runId, imageId).catch(error => logger.error("RESUME: resumeSdkRun threw", { error, runId }))
+    return res.status(200).json({ success: true })
 }

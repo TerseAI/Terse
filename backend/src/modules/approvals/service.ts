@@ -30,6 +30,7 @@ function mapRunStatusToApprovalStatus(status: PrismaRunHistoryStatus): ApprovalR
         case PrismaRunHistoryStatus.awaiting_approval:
             return "pending"
         case PrismaRunHistoryStatus.in_progress:
+        case PrismaRunHistoryStatus.suspended:
             return "in_progress"
         case PrismaRunHistoryStatus.success:
         case PrismaRunHistoryStatus.failed:

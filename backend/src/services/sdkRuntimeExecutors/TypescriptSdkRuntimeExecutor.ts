@@ -96,20 +96,26 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
+        await this.ensureCliAvailable(context)
         const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
         const runCmd = `cd ${context.projectDir} && ${cliBin} run ${context.escapeShellArg(context.jobName)} --no-verbose`
+        return context.runSandboxCommandStreaming("terse run", runCmd)
+    }
 
-        if (context.usesPrebuiltImage) {
-            return context.runSandboxCommandStreaming("terse run", runCmd)
-        }
+    async resume(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
+        await this.ensureCliAvailable(context)
+        const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
+        const resumeCmd = `cd ${context.projectDir} && ${cliBin} resume --run-id ${context.escapeShellArg(context.runId)} --no-verbose`
+        return context.runSandboxCommandStreaming("terse resume", resumeCmd)
+    }
 
+    private async ensureCliAvailable(context: SdkRuntimeExecutorContext): Promise<void> {
+        if (context.usesPrebuiltImage) return
         await context.ensureSandboxCommand("npm install", `cd ${context.projectDir} && npm install --omit=dev --no-fund`)
         await context.ensureSandboxCommand(
             "npm install terse-cli",
             `mkdir -p ${context.escapeShellArg(context.cliCachePath)} && npm install -g --prefix ${context.escapeShellArg(context.cliCachePath)} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund`
         )
-
-        return context.runSandboxCommandStreaming("terse run", runCmd)
     }
 
     private detectPackageManager(archive: SdkProjectArchive): "npm" | "pnpm" {

@@ -11,11 +11,15 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     imageExists(imageId: string): Promise<boolean>
 
     getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<S>
+    getLiveSandbox(app: SandboxApp, uniqueName: string): Promise<S | null>
 
     getProjectPath(sandbox: S): string
     getDependencyCachePath(sandbox: S, runtime: string): string
     getCliCachePath(sandbox: S): string
     getScratchPath(sandbox: S, filename: string): string
+
+    snapshotDirectory(sandbox: S, path: string): Promise<string>
+    restoreDirectory(sandbox: S, path: string, imageId: string): Promise<void>
 }
 
 export interface SandboxApp {

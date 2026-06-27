@@ -4,7 +4,6 @@ import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
 
 import { Sandbox, SandboxApp, SandboxImage, SandboxService } from "./SandboxService"
-import { withJournalVolume } from "./journalVolume"
 
 export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     idleTimeoutMs: 5 * 60 * 1000,
@@ -38,6 +37,18 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
     getScratchPath(_sandbox: ModalSandbox, filename: string): string {
         // Each Modal sandbox has its own isolated filesystem, so /tmp is per-sandbox.
         return `/tmp/${filename}`
+    }
+
+    async snapshotDirectory(sandbox: ModalSandbox, path: string): Promise<string> {
+        const image = await sandbox.snapshotDirectory(path)
+        return image.imageId
+    }
+
+    async restoreDirectory(sandbox: ModalSandbox, path: string, imageId: string): Promise<void> {
+        logger.info("RESUME: mountImage start", { path, imageId })
+        const image = await this.modal.images.fromId(imageId)
+        await sandbox.mountImage(path, image)
+        logger.info("RESUME: mountImage done", { path, imageId })
     }
 
     async getOrCreateApp(name: string): Promise<SandboxApp> {
@@ -111,6 +122,21 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         }
 
         return this.createSandboxWithRetries(app, image, name, params, opStart)
+    }
+
+    async getLiveSandbox(app: SandboxApp, uniqueName: string): Promise<ModalSandbox | null> {
+        if (!app.name) {
+            throw new Error("App name is required")
+        }
+        // Plain fromName, NOT lookupLiveSandbox: the latter terminates sandboxes that fail its
+        // warm-pool liveness probe. The target is actively running the job (blocked on /suspend),
+        // so we only want its handle to snapshot — never to recycle a live run.
+        try {
+            return await this.modal.sandboxes.fromName(app.name, `${app.name}__${uniqueName}`)
+        } catch (error) {
+            if (error instanceof NotFoundError) return null
+            throw error
+        }
     }
 
     private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<ModalSandbox | null> {
@@ -226,8 +252,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             attempt
         })
 
-        const createParams = await withJournalVolume(this.modal, params)
-        const sandbox = await this.modal.sandboxes.create(appRef, imageRef, createParams)
+        const sandbox = await this.modal.sandboxes.create(appRef, imageRef, { ...params, name })
 
         logger.info("Modal sandbox: created new", {
             app: app.name,

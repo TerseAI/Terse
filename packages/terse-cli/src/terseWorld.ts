@@ -30,16 +30,16 @@ export function createTerseWorld(): TerseWorld {
 function terseQueue(baseQueue: Queue["queue"]): Queue["queue"] {
     return (name: ValidQueueName, message: QueuePayload, opts?: QueueOptions) => {
         if (opts?.delaySeconds && opts.delaySeconds > SUSPEND_THRESHOLD_SECONDS) {
-            return scheduleTerseTimer(name, message, opts).then(() => ({ messageId: null }))
+            return scheduleTerseTimer(name, opts).then(() => ({ messageId: null }))
         }
         return baseQueue(name, message, opts)
     }
 }
 
-async function scheduleTerseTimer(name: ValidQueueName, message: QueuePayload, opts: QueueOptions): Promise<{ messageId: null }> {
-    const runId = extractRunId(message)
+async function scheduleTerseTimer(name: ValidQueueName, opts: QueueOptions): Promise<{ messageId: null }> {
+    const runId = process.env.TERSE_RUN_ID
     if (!runId) {
-        throw new Error(`Cannot suspend a delayed queue message without a run id (queue "${name}").`)
+        throw new Error(`Cannot suspend: TERSE_RUN_ID is not set (queue "${name}").`)
     }
 
     const delaySeconds = opts.delaySeconds
@@ -57,10 +57,4 @@ async function scheduleTerseTimer(name: ValidQueueName, message: QueuePayload, o
     await fetchWithAuth<SdkJobSuspendResponseBody>(ApiRoutes.SDK.SUSPEND, apiKey, body, "POST")
 
     return { messageId: null }
-}
-
-function extractRunId(message: QueuePayload): string | undefined {
-    if ("runId" in message && typeof message.runId === "string") return message.runId
-    if ("workflowRunId" in message && typeof message.workflowRunId === "string") return message.workflowRunId
-    return undefined
 }

@@ -109,6 +109,20 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         logger.info("#LocalSandbox created", { uniqueName, workingDir, durationMs: Date.now() - t0 })
         return new LocalSandbox(uniqueName, workingDir)
     }
+
+    // Durable run suspension is gated on Cloud Scheduler (see the SDK suspend/resume routes),
+    // which self-host does not run, so these snapshot/restore hooks are never reached here.
+    async getLiveSandbox(_app: SandboxApp, _uniqueName: string): Promise<LocalSandbox | null> {
+        throw new Error("LocalSandboxService does not support durable run suspension")
+    }
+
+    async snapshotDirectory(_sandbox: LocalSandbox, _path: string): Promise<string> {
+        throw new Error("LocalSandboxService does not support directory snapshots")
+    }
+
+    async restoreDirectory(_sandbox: LocalSandbox, _path: string, _imageId: string): Promise<void> {
+        throw new Error("LocalSandboxService does not support directory snapshots")
+    }
 }
 
 // ─────────────── helpers (bottom) ───────────────
