@@ -1,5 +1,5 @@
 import logger from "../../common/logger"
-import { testMemorySubtreeKey } from "../sdkSandboxLayerKeys"
+import { memorySubtreeKey, stateSubtreeKey } from "../sdkSandboxLayerKeys"
 import { VolumeManagerProvider } from "../volumes"
 
 export async function purgeAutomationsMemory(projectId: string, automationIds: string[]): Promise<void> {
@@ -8,8 +8,10 @@ export async function purgeAutomationsMemory(projectId: string, automationIds: s
         const fs = await VolumeManagerProvider.getInstance().openProjectVolumeFs(projectId)
         try {
             for (const automationId of automationIds) {
-                await fs.remove(automationId) // production subtree
-                await fs.remove(testMemorySubtreeKey(automationId)) // `terse test` subtree
+                for (const isTest of [false, true]) {
+                    await fs.remove(memorySubtreeKey(automationId, isTest))
+                    await fs.remove(stateSubtreeKey(automationId, isTest))
+                }
             }
             await fs.sync()
         } finally {
