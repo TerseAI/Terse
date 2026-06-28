@@ -40,7 +40,11 @@ export class WorkerSocketEmitter {
     }
 
     public async close(): Promise<void> {
-        if (this.io) this.io.close()
+        try {
+            await this.io?.close()
+        } catch (error) {
+            logger.warn("Worker Socket.IO close failed (emit-only server)", { error })
+        }
         await Promise.allSettled([this.pub?.quit(), this.sub?.quit()])
         this.io = null
         this.pub = null

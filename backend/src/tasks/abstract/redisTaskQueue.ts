@@ -1,3 +1,5 @@
+import { EventEmitter } from "node:events"
+
 import MQEmitterRedis from "mqemitter-redis"
 
 import logger from "../../common/logger"
@@ -24,7 +26,9 @@ export class TaskQueueEmitter {
 
     public getEmitter(): ReturnType<typeof MQEmitterRedis> {
         if (!this.emitter) {
-            this.emitter = MQEmitterRedis({ connectionString: redis.url })
+            const emitter = MQEmitterRedis({ connectionString: redis.url }) as ReturnType<typeof MQEmitterRedis> & { state: EventEmitter }
+            emitter.state.on("error", (error: Error) => logger.error("RedisTaskQueue pub/sub connection error (Redis unavailable)", { error }))
+            this.emitter = emitter
         }
         return this.emitter
     }

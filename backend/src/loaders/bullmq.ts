@@ -88,7 +88,14 @@ export class BullMq {
     public getQueue(name: string): Queue {
         let queue = this.queues.get(name)
         if (!queue) {
-            queue = new Queue(name, { connection: this.getProducerConnection(), prefix: RedisNamespace.bullmq })
+            queue = new Queue(name, {
+                connection: this.getProducerConnection(),
+                prefix: RedisNamespace.bullmq,
+                defaultJobOptions: {
+                    removeOnComplete: { age: 86_400, count: 1000 },
+                    removeOnFail: { age: 604_800, count: 5000 }
+                }
+            })
             this.queues.set(name, queue)
         }
         return queue
