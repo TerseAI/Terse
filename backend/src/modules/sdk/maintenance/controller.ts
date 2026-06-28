@@ -3,6 +3,7 @@ import { Request, Response } from "express"
 import logger from "../../../common/logger"
 import { deleteExpiredApiTokens } from "../../../modules/auth/helpers/apiTokens"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
+import { sweepExpiredMemorySnapshots } from "../../../services/memory/memorySnapshots"
 
 function parseOptionalNumber(value: unknown): number | undefined {
     if (value === undefined || value === null || value === "") return undefined
@@ -26,14 +27,21 @@ export async function cleanupSdkImages(req: Request, res: Response) {
             return 0
         })
 
+        const memorySweep = await sweepExpiredMemorySnapshots().catch(error => {
+            logger.error("Failed to sweep expired memory snapshots", { error })
+            return { deletedSnapshots: 0, deletedBlobs: 0 }
+        })
+
         logger.info("SDK image cleanup cron job completed", {
             deletedSourceImages: result.deletedSourceImages,
             deletedDependencyImages: result.deletedDependencyImages,
             deletedExpiredTokens,
+            deletedMemorySnapshots: memorySweep.deletedSnapshots,
+            deletedMemoryBlobs: memorySweep.deletedBlobs,
             failures: result.failures.length
         })
 
-        return res.json({ message: "SDK image cleanup completed", ...result, deletedExpiredTokens })
+        return res.json({ message: "SDK image cleanup completed", ...result, deletedExpiredTokens, ...memorySweep })
     } catch (error) {
         logger.error("Error in SDK image cleanup cron job", { error })
         return res.status(500).json({ error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" })

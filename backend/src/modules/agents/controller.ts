@@ -16,6 +16,7 @@ import { getMonitor } from "../../integrations/webMonitor/integration"
 import { db } from "../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../loaders/socket"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
+import { purgeAutomationsMemory } from "../../services/memory/memoryPurge"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../../types/prisma"
 import { getUserNotificationSettings } from "../notifications/settings/repository"
@@ -559,6 +560,9 @@ export async function deleteAgent(req: Request, res: Response) {
         // no matching automation, which is already handled downstream.
         await tearDownAgentTriggers(existingAgent)
 
+        // Purge this agent's persistent memory subtree from the project volume (best-effort).
+        await purgeAutomationsMemory(existingAgent.project_id, [agentId])
+
         // Invalidate recent agents cache
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
 
@@ -639,6 +643,7 @@ async function transformAgentToFrontendFormat(agent: AgentWithRelations & Partia
         toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
         createdByUserId: agent.user_id,
         updatedAt: agent.updated_at.toISOString(),
+        deployedAt: agent.deployed_at ? agent.deployed_at.toISOString() : null,
         metadata: agent.project
             ? {
                   remoteServerUrl: agent.project.remote_server_url ?? null,

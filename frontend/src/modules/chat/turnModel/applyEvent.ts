@@ -180,7 +180,12 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
                 name: event.tool_name,
                 status: "completed"
             }))
-            unit.name = event.tool_name
+            // The completion event can carry "unknown" when the canonical tool-result lacks the name;
+            // don't let that clobber the real name already set by the ToolCall event (else the display
+            // resolver finds no config and shows a generic "Done").
+            if (event.tool_name && event.tool_name !== "unknown") {
+                unit.name = event.tool_name
+            }
             unit.integration = event.integration
             unit.result = event.result
             unit.changedItems = event.changed_items

@@ -8,9 +8,12 @@ import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 import { formatTimestamp } from "@/utils/time"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
+import RunTypeBadge from "./RunTypeBadge"
+import TriggeredBy from "./TriggeredBy"
 
 interface RunHistoryRowProps {
     run: RunHistoryRecordWithAgent
@@ -20,6 +23,7 @@ interface RunHistoryRowProps {
 
 export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps) {
     const navigate = useNavigate()
+    const openRun = useOpenRunDeepLink()
     const title = run.trigger.title || run.trigger.source
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
 
@@ -64,10 +68,17 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                 </div>
             </div>
 
+            {/* Run type + who triggered */}
+            {(run.isTest || run.isManuallyTriggered || run.replayOfRunId) && (
+                <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                    <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} replayOfRunId={run.replayOfRunId} onOpenOriginal={openRun} className="text-[10px]" />
+                    {run.triggeredByUserId && <TriggeredBy userId={run.triggeredByUserId} showLabel={false} className="text-[10px]" />}
+                </div>
+            )}
+
             {/* Write actions count */}
             {writeActions.length > 0 && (
                 <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
-                    {run.isManuallyTriggered && <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-success shrink-0">Manual</span>}
                     <Zap className="w-3 h-3" />
                     <span>
                         {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}

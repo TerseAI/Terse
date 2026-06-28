@@ -7,6 +7,7 @@ import jobServerRouter from "./job-server/routes"
 import runTriggerRouter from "./run-trigger/routes"
 import runtimeRouter from "./runtime/routes"
 import sampleEventsRouter from "./sample-events/routes"
+import testRunRouter from "./test-run/routes"
 import toolsRouter from "./tools/routes"
 
 // Aggregates all sub-routers under /sdk/ — mounted at "/sdk" from server.ts.
@@ -21,5 +22,6 @@ router.use(integrationsRouter)
 router.use(jobServerRouter)
 router.use(runTriggerRouter)
 router.use(sampleEventsRouter)
+router.use(testRunRouter)
 
 export default router

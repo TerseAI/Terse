@@ -10,7 +10,7 @@ import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
 import { finalizeRunFailure } from "../../../loaders/socket"
 import { SdkAgentRunner } from "../../../modules/agents/AgentRunner/SdkAgentRunner"
-import { appendRunAction, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
+import { appendRunAction, markRunFailed, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
 import { onListenForwardedEvent } from "../../../modules/agents/ListenBus"
 import { emitSessionEvent, onSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { classifyAgentError } from "../../../modules/agents/agentErrorUtils"
@@ -33,16 +33,16 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 
     const headerRunId = req.headers["x-terse-run-id"] as string | undefined
-    const productionRunContext = headerRunId ? await resolveProductionRunContext(headerRunId, user) : null
-    if (headerRunId && !productionRunContext) return res.status(404).json({ success: false, error: "Run not found" })
+    if (!headerRunId) return res.status(400).json({ success: false, error: "X-Terse-Run-Id header is required" })
+    const runContext = await resolveRunContext(headerRunId, user)
+    if (!runContext) return res.status(404).json({ success: false, error: "Run not found" })
 
+    const { runId, agentId, organizationId: orgId, isTest } = runContext
+    const isProductionRun = !isTest
     const { data } = parsed
-    const { send, sandboxRunId } = initSseStream(req, res, productionRunContext?.organizationId)
-    const isProductionRun = !!sandboxRunId
-    const orgId = productionRunContext?.organizationId ?? user.organizationId
+    const { send } = initSseStream(req, res, { runId, organizationId: orgId })
 
     try {
-        const runId = isProductionRun ? sandboxRunId : crypto.randomUUID()
         const billingForRunner = billingServiceProxyForOrganization(orgId, user.id)
         const sdkRunner = createSdkRunner({
             runId,
@@ -75,8 +75,10 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
             }
             const decision = await waitForApprovalDecision(runId, stepId, orgId)
             if (decision.hardReject) {
-                if (isProductionRun && productionRunContext) {
-                    await markRunCancelledAndInvalidate(runId, productionRunContext.agentId, productionRunContext.organizationId, user.id, CancelReason.HARD_REJECT)
+                if (isProductionRun) {
+                    await markRunCancelledAndInvalidate(runId, agentId, orgId, user.id, CancelReason.HARD_REJECT)
+                } else {
+                    await markRunFailed(runId, "Run rejected at approval gate", "agent")
                 }
                 hardRejected = true
                 break
@@ -93,7 +95,11 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
 
         finishSseStream(res, send, result, sdkRunner)
     } catch (error) {
-        if (isProductionRun && sandboxRunId) await finalizeFailedProductionRun(sandboxRunId, orgId, user, error)
+        if (isProductionRun) {
+            await finalizeFailedProductionRun(runId, orgId, user, error)
+        } else {
+            await markRunFailed(runId, extractErrorMessage(error), "agent")
+        }
         if (error instanceof CreditGateDeniedError) {
             send({ type: "error", message: error.message })
             send({ type: "done" })
@@ -112,6 +118,8 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 }
 
+type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean }
+
 async function finalizeFailedProductionRun(runId: string, organizationId: string, user: UserSession, error: unknown): Promise<void> {
     try {
         const record = await db().run_history_records.findFirst({
@@ -125,17 +133,17 @@ async function finalizeFailedProductionRun(runId: string, organizationId: string
     }
 }
 
-async function resolveProductionRunContext(headerRunId: string, user: UserSession): Promise<{ runId: string; agentId: string; organizationId: string } | null> {
+async function resolveRunContext(headerRunId: string, user: UserSession): Promise<ResolvedRunContext | null> {
     if (!user.organizationId) return null
     const runRecord = await db().run_history_records.findFirst({
         where: { id: headerRunId, automation: { organization_id: user.organizationId } },
-        select: { id: true, automation_id: true, automation: { select: { organization_id: true } } }
+        select: { id: true, automation_id: true, is_test: true, automation: { select: { organization_id: true } } }
     })
     if (!runRecord?.automation.organization_id) {
         logger.warn("[sdk/agent-run] Rejecting cross-tenant x-terse-run-id header", { requestedRunId: headerRunId, userId: user.id, organizationId: user.organizationId })
         return null
     }
-    return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id }
+    return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id, isTest: runRecord.is_test }
 }
 
 export async function handleSdkApprovalDecision(req: Request, res: Response) {
@@ -167,45 +175,44 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
     return res.status(200).json({ success: true })
 }
 
-function initSseStream(
-    req: Request,
-    res: Response,
-    verifiedOrganizationId: string | undefined
-): { send: (event: SdkAgentStreamEvent) => void; sessionId: string | undefined; sandboxRunId: string | undefined } {
+function initSseStream(req: Request, res: Response, run: { runId: string; organizationId: string } | null): { send: (event: SdkAgentStreamEvent) => void; sessionId: string | undefined } {
     res.setHeader("Content-Type", "text/event-stream")
     res.setHeader("Cache-Control", "no-cache")
     res.setHeader("Connection", "keep-alive")
     res.flushHeaders()
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
-    const sandboxRunId = verifiedOrganizationId ? (req.headers["x-terse-run-id"] as string | undefined) : undefined
 
     const send = (event: SdkAgentStreamEvent) => {
         res.write(`data: ${JSON.stringify(event)}\n\n`)
         if (sessionId) emitSessionEvent(sessionId, event)
-        if (sandboxRunId && verifiedOrganizationId && event.type === "action") {
-            void appendRunAction(sandboxRunId, event.action, verifiedOrganizationId).catch(err => {
-                logger.warn("Failed to append run action for sandbox run", { error: err, runId: sandboxRunId })
+        if (run && event.type === "action") {
+            void appendRunAction(run.runId, event.action, run.organizationId).catch(err => {
+                logger.warn("Failed to append run action", { error: err, runId: run.runId })
             })
         }
     }
 
-    return { send, sessionId, sandboxRunId }
+    return { send, sessionId }
 }
 
 type SdkAgentRunnerResult = Awaited<ReturnType<SdkAgentRunner["run"]>>
 
-function finishSseStream(res: Response, send: (event: SdkAgentStreamEvent) => void, { loopResult }: SdkAgentRunnerResult, sdkRunner: SdkAgentRunner): void {
+/** Sends terminal stream events and returns whether the run completed successfully (no tool failures). */
+function finishSseStream(res: Response, send: (event: SdkAgentStreamEvent) => void, { loopResult }: SdkAgentRunnerResult, sdkRunner: SdkAgentRunner): boolean {
+    let succeeded = false
     if (loopResult.status === "completed") {
         if (loopResult.endedWithToolFailure || sdkRunner.hasToolFailures()) {
             send({ type: "error", message: sdkRunner.getToolFailureSummary() })
         } else {
+            succeeded = true
             const finalOutput = SdkAgentRunner.getFinalOutput(loopResult.result)
             if (finalOutput) send({ type: "final_output", finalOutput })
         }
     }
     send({ type: "done" })
     res.end()
+    return succeeded
 }
 
 function createSdkRunner(params: {

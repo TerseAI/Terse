@@ -10,6 +10,7 @@ import { tearDownAgentTriggers } from "../../modules/agents/controller"
 import { createProjectScopedToken } from "../../modules/auth/helpers/apiTokens"
 import { SecretService } from "../../services/SecretService"
 import { getAuthProvider } from "../../services/authProvider"
+import { purgeProjectMemory } from "../../services/memory/memoryPurge"
 
 import {
     DeployRow,
@@ -90,6 +91,9 @@ export async function deleteProjectForOrganization(projectId: string, organizati
     } catch (error) {
         logger.error("Project secret cleanup scheduling failed after project delete", { error, projectId })
     }
+
+    // Purge all persistent memory for this project (best-effort).
+    await purgeProjectMemory(projectId)
 
     emitCacheInvalidationWithKey(organizationId, "agents")
     emitCacheInvalidationWithKey(organizationId, "recentAgents")

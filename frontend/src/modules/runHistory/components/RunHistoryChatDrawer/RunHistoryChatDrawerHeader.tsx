@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button"
 import { CopyCommandButton } from "@/components/ui/copy-command-button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
+import RunTypeBadge from "../RunTypeBadge"
+import TriggeredBy from "../TriggeredBy"
 
 type Props = {
     trigger: RunHistoryTrigger
@@ -15,6 +18,10 @@ type Props = {
     totalEvents?: number
     status: RunHistoryStatus
     filtered: boolean
+    isTest?: boolean
+    isManuallyTriggered?: boolean
+    triggeredByUserId?: string | null
+    replayOfRunId?: string | null
     runs?: RunHistoryRecord[]
     currentRunIndex?: number
     onNavigate?: (runId: string) => void
@@ -29,6 +36,10 @@ export default function RunHistoryChatDrawerHeader({
     trigger,
     runId,
     status,
+    isTest,
+    isManuallyTriggered,
+    triggeredByUserId,
+    replayOfRunId,
     runs,
     currentRunIndex,
     onNavigate,
@@ -38,6 +49,7 @@ export default function RunHistoryChatDrawerHeader({
     isTriggerPayloadOpen = false,
     onToggleTriggerPayload
 }: Props) {
+    const openRun = useOpenRunDeepLink()
     const hasRunNavigation = runs !== undefined && currentRunIndex !== undefined
     const canGoPrevious = hasRunNavigation && currentRunIndex > 0
     const canGoNext = hasRunNavigation && currentRunIndex < runs.length - 1
@@ -51,7 +63,7 @@ export default function RunHistoryChatDrawerHeader({
     }
 
     return (
-        <div className="shrink-0 px-4 pt-4 pb-3">
+        <div className="shrink-0 px-4 pt-4 pb-3 space-y-2">
             <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -69,8 +81,7 @@ export default function RunHistoryChatDrawerHeader({
                     </div>
                     {trigger.subheader && <p className="mt-1 text-sm leading-5 text-muted-foreground break-words">{trigger.subheader}</p>}
                 </div>
-
-                <div className="flex flex-shrink-0 items-center gap-1">
+                <div className="flex flex-shrink-0 items-center gap-2">
                     <RunHistoryStatusBadge status={status} />
                     {hasRunNavigation && (
                         <div className="ml-1 flex items-center rounded-md border border-border/60">
@@ -88,6 +99,12 @@ export default function RunHistoryChatDrawerHeader({
                     </Button>
                 </div>
             </div>
+            {(isTest || isManuallyTriggered || replayOfRunId) && (
+                <div className="flex items-center gap-2">
+                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} replayOfRunId={replayOfRunId} onOpenOriginal={openRun} className="text-[11px]" />
+                    <TriggeredBy userId={triggeredByUserId} />
+                </div>
+            )}
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
                 <CopyCommandButton command={`terse replay ${runId}`} title="Copy. Then run in your project's terminal" />

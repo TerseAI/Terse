@@ -8,7 +8,7 @@ import { Readable } from "node:stream"
 import logger from "../../common/logger"
 
 import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, WriteStream } from "./SandboxService"
-import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, unregisterSandbox } from "./localSandboxLifecycle"
+import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, terminateSandboxDirProcesses, unregisterSandbox } from "./localSandboxLifecycle"
 
 const SANDBOX_ROOT = "/data/sandbox"
 const IMAGES_DIR = path.join(SANDBOX_ROOT, "images")
@@ -16,6 +16,7 @@ const SANDBOXES_DIR = path.join(SANDBOX_ROOT, "sandboxes")
 const FAKE_APP_ID = "local-app"
 // "Registry images" don't exist locally — we just mark them as a fresh starting point.
 const REGISTRY_IMAGE_MARKER = "__registry__"
+const IMAGE_MARKER_FILE = ".terse-image-id"
 
 /**
  * Local sandbox provider for self-host. Each sandbox is a working directory on
@@ -93,7 +94,20 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         const t0 = Date.now()
         logger.info("#LocalSandbox getOrCreate begin", { uniqueName, imageId: image.imageId })
         const workingDir = path.join(SANDBOXES_DIR, uniqueName)
-        await fs.rm(workingDir, { recursive: true, force: true })
+
+        if (existsSync(workingDir)) {
+            const existingImageId = await fs
+                .readFile(path.join(workingDir, IMAGE_MARKER_FILE), "utf8")
+                .then(s => s.trim())
+                .catch(() => null)
+            if (existingImageId === image.imageId) {
+                logger.info("#LocalSandbox reused existing", { uniqueName, workingDir, imageId: image.imageId, durationMs: Date.now() - t0 })
+                return new LocalSandbox(uniqueName, workingDir)
+            }
+            logger.info("#LocalSandbox image changed, terminating before recreate", { uniqueName, existingImageId, imageId: image.imageId })
+            await this.terminateSandbox(_app, uniqueName)
+        }
+
         await fs.mkdir(workingDir, { recursive: true })
 
         if (image.imageId !== REGISTRY_IMAGE_MARKER) {
@@ -106,8 +120,28 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
             await fs.cp(imagePath, workingDir, { recursive: true })
         }
 
+        await fs.writeFile(path.join(workingDir, IMAGE_MARKER_FILE), image.imageId)
+
         logger.info("#LocalSandbox created", { uniqueName, workingDir, durationMs: Date.now() - t0 })
         return new LocalSandbox(uniqueName, workingDir)
+    }
+
+    async terminateSandbox(_app: SandboxApp, uniqueName: string): Promise<void> {
+        const workingDir = path.join(SANDBOXES_DIR, uniqueName)
+        if (!existsSync(workingDir)) return
+
+        try {
+            const killed = await terminateSandboxDirProcesses(workingDir)
+            await fs.rm(workingDir, { recursive: true, force: true })
+            logger.info("#LocalSandbox terminated", { uniqueName, killed })
+        } catch (error) {
+            logger.warn("#LocalSandbox terminate failed, continuing", { uniqueName, errorMessage: error instanceof Error ? error.message : String(error) })
+        }
+    }
+
+    async getExistingSandbox(_app: SandboxApp, uniqueName: string): Promise<LocalSandbox | null> {
+        const workingDir = path.join(SANDBOXES_DIR, uniqueName)
+        return existsSync(workingDir) ? new LocalSandbox(uniqueName, workingDir) : null
     }
 }
 

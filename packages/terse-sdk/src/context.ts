@@ -4,6 +4,8 @@ export type TerseJobContext = {
     sessionId: string
     runId: string | null
     apiBaseUrl: string
+    projectId?: string
+    jobName?: string
 }
 
 // AsyncLocalStorage tracks context per *instance*. If multiple copies of this

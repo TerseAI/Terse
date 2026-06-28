@@ -75,10 +75,16 @@ export function parseGetRunHistoryParams(query: Record<string, unknown>): GetRun
         const pageSize = parseInt(String(query.pageSize), 10)
         if (!isNaN(pageSize) && pageSize > 0) params.pageSize = pageSize
     }
+    if (query.includeTest !== undefined) {
+        const raw = String(query.includeTest).trim().toLowerCase()
+        params.includeTest = raw === "true" || raw === "1"
+    }
     return params
 }
 
 function applyFilters(where: RunHistoryWhere, params: GetRunHistoryParams, includeAgentSearch: boolean): RunHistoryWhere {
+    // `terse test` runs are hidden from run history unless explicitly requested.
+    if (!params.includeTest) where.is_test = false
     if (params.start || params.end) {
         const startDate = parseDate(params.start)
         const endDate = parseDate(params.end)
@@ -142,7 +148,10 @@ export async function listAllRunHistory(organizationId: string, params: GetRunHi
         },
         actions: mapActions(runRecord.actions),
         status: convertPrismaRunHistoryStatusToShared(runRecord.status),
-        isManuallyTriggered: runRecord.is_manually_triggered
+        isManuallyTriggered: runRecord.is_manually_triggered,
+        isTest: runRecord.is_test,
+        triggeredByUserId: runRecord.triggered_by_user_id ?? null,
+        replayOfRunId: runRecord.replay_of_run_id ?? null
     }))
     return { items, total }
 }
@@ -171,7 +180,10 @@ export async function listRunHistoryForAgent(agentId: string, organizationId: st
         },
         actions: mapActions(runRecord.actions),
         status: convertPrismaRunHistoryStatusToShared(runRecord.status),
-        isManuallyTriggered: runRecord.is_manually_triggered
+        isManuallyTriggered: runRecord.is_manually_triggered,
+        isTest: runRecord.is_test,
+        triggeredByUserId: runRecord.triggered_by_user_id ?? null,
+        replayOfRunId: runRecord.replay_of_run_id ?? null
     }))
     return { items, total }
 }
@@ -217,7 +229,8 @@ export async function fetchChatHistoryForRun(runId: string, organizationId: stri
         status: runRecord.status,
         triggerEvent,
         triggerEventType,
-        isTriggerEventTruncated
+        isTriggerEventTruncated,
+        isTest: runRecord.is_test
     }
 }
 

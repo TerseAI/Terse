@@ -13,7 +13,7 @@ import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkDependencyImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
-import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, runtimeSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import { computeSourceLayerKey, dependencyBuildSandboxUniqueName, sourceImageBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
@@ -329,7 +329,6 @@ export class SdkSandboxImageService {
                 imageId: created.image_id,
                 duration: this.elapsed(buildStarted)
             })
-            await this.prewarmRuntimeSandbox(sandboxImageId, sourceLayerKey)
             return created
         } catch (error) {
             if (isUniqueConstraintError(error)) {
@@ -424,31 +423,6 @@ export class SdkSandboxImageService {
         const image = await sb.snapshotFilesystem()
 
         return image.imageId
-    }
-
-    private async prewarmRuntimeSandbox(modalSourceImageId: string, sourceLayerKey: string): Promise<void> {
-        const sandboxService = getSandboxProvider()
-        const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
-        const image = await sandboxService.getImageFromId(modalSourceImageId)
-        const uniqueName = runtimeSandboxUniqueName(sourceLayerKey)
-        const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
-
-        const proc = await sb.exec(["true"], { stdout: "pipe", stderr: "pipe" })
-        const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
-        const exitCode = await proc.wait()
-
-        if (exitCode !== 0) {
-            logger.error("SDK runtime sandbox prewarm failed", {
-                sourceLayerKey,
-                modalSourceImageId,
-                exitCode,
-                stderr: stderr.trim().slice(0, 500),
-                stdout: stdout.trim().slice(0, 200)
-            })
-            throw new Error(`SDK runtime sandbox prewarm failed with exit code ${exitCode}`)
-        }
-
-        logger.info("SDK runtime sandbox prewarm completed", { sourceLayerKey, modalSourceImageId })
     }
 
     private async deleteImage(imageId: string): Promise<void> {

@@ -27,6 +27,9 @@ type Props = {
     selectedStatuses: Set<RunHistoryStatus>
     onToggleStatus: (status: RunHistoryStatus) => void
 
+    includeTest: boolean
+    onToggleIncludeTest: () => void
+
     runsPerPageValue: number
     onRunsPerPageChange: (value: number) => void
 
@@ -47,6 +50,8 @@ export default function RunHistoryToolBar({
     onDateRangeChange,
     selectedStatuses,
     onToggleStatus,
+    includeTest,
+    onToggleIncludeTest,
     runsPerPageValue,
     onRunsPerPageChange,
     currentPage,
@@ -78,6 +83,8 @@ export default function RunHistoryToolBar({
                     <StatusFilter
                         selectedStatuses={selectedStatuses}
                         onToggleStatus={onToggleStatus}
+                        includeTest={includeTest}
+                        onToggleIncludeTest={onToggleIncludeTest}
                         open={isStatusOpen}
                         onOpenChange={open => {
                             setIsStatusOpen(open)
