@@ -6,8 +6,10 @@ import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
 import { getLocalHoistMarker } from "../cliVersion.js"
 import { loadJob } from "../loadJob.js"
+import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
+import { runLocalTestJob } from "../runLocalTestJob.js"
 
 export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string, verbose?: boolean): Promise<void> {
     const hoistMarker = getLocalHoistMarker()
@@ -57,13 +59,23 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
                 detail: error instanceof Error ? error.message : String(error)
             })
         }
-    } else {
+    } else if (runId) {
         const resolvedEvent = await resolveEventFromRunId(runId, apiKey)
         if (!resolvedEvent) {
             throw new CliError("run_trigger_event_missing", "Could not resolve event from run ID.")
         }
         parsedEvent = resolvedEvent.event
+    } else {
+        throw new CliError("missing_event", "Provide --event <json> or --event-file <path>.", {
+            detail: "Usage: terse run --event-file ./event.json\nTip:   Use `terse test` to interactively pick a sample event."
+        })
     }
 
-    await provider.executeJob(job, runId, parsedEvent, { entryFile, verbose })
+    if (runId) {
+        await provider.executeJob(job, runId, parsedEvent, { entryFile, verbose, projectId: readProjectConfig()?.projectId })
+        return
+    }
+
+    const projectId = readProjectConfigOrBail().projectId
+    await runLocalTestJob(provider, job, parsedEvent, { projectId, apiKey, verbose, entryFile })
 }

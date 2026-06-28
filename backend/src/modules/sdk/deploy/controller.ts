@@ -17,6 +17,7 @@ import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "../../../modules/agents/controller"
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
+import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
@@ -190,7 +191,8 @@ async function updateExistingAutomation(
     return prisma.$transaction(async tx => {
         await tx.automation_inputs.deleteMany({ where: { automation_id: automationId } })
         await tx.automation_outputs.deleteMany({ where: { automation_id: automationId } })
-        await tx.automations.update({ where: { id: automationId }, data: { name: jobName, is_active: true } })
+        // deployed_at promotes a draft (test-created) automation into a real deployed job.
+        await tx.automations.update({ where: { id: automationId }, data: { name: jobName, is_active: true, deployed_at: new Date() } })
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
         await seedSdkNotificationSettings(tx, automationId)
 
@@ -215,7 +217,7 @@ async function createNewAutomation(
 ): Promise<AgentWithTriggerRelations> {
     return prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
-            data: { user_id: userId, organization_id: organizationId, name: jobName, is_active: true, require_approval: false, project_id: projectId }
+            data: { user_id: userId, organization_id: organizationId, name: jobName, is_active: true, require_approval: false, project_id: projectId, deployed_at: new Date() }
         })
 
         await tx.automation_prompts.create({ data: { automation_id: newAgent.id, content: "[SDK]" } })
@@ -254,8 +256,10 @@ async function createTriggersForAutomation(tx: PrismaTransaction, automationId: 
 }
 
 async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizationId: string, deployedNames: Set<string>, projectId: string): Promise<{ id: string; name: string }[]> {
+    // Only previously-deployed automations are candidates for stale cleanup. Drafts (deployed_at null,
+    // created by `terse test`) are left untouched so an unrelated deploy doesn't delete them or their memory.
     const sdkAutomations = await prisma.automations.findMany({
-        where: { organization_id: organizationId, project_id: projectId },
+        where: { organization_id: organizationId, project_id: projectId, deployed_at: { not: null } },
         select: { id: true, name: true }
     })
 
@@ -274,6 +278,8 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
     }
 
     await prisma.automations.deleteMany({ where: { id: { in: staleIds }, organization_id: organizationId } })
+
+    await purgeAutomationsMemory(projectId, staleIds)
 
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithKey(organizationId, "agents")

@@ -1,5 +1,6 @@
 import { IntegrationType } from "terse-types"
 import type { ConfigData, SerializedEvent, Trigger } from "terse-types"
+import type { z } from "zod"
 
 import { getEventTransform } from "./context.js"
 
@@ -53,3 +54,29 @@ export type TypedSkill<TToolName extends string = never> = ConfigData & {
 
 export type InferToolApproval<T> = T extends TypedSkill<infer TToolName> ? TToolName : never
 export type InferToolApprovals<T extends readonly unknown[]> = InferToolApproval<T[number]>
+
+// ---------------------------------------------------------------------------
+// State – typed per-job key/value store, narrowed to the declared `states` keys
+// ---------------------------------------------------------------------------
+
+export type StateDefinition<K extends string = string, S extends z.ZodType = z.ZodType> = {
+    key: K
+    value: S
+}
+
+// A key whose schema carries a `.default(...)` can never read back as undefined; one without a default can
+// (it may have been never set). `get` reflects that per key; `set` returns the value it just wrote.
+type Read<S extends z.ZodType> = S extends z.ZodDefault<z.ZodTypeAny> ? z.infer<S> : z.infer<S> | undefined
+
+type StateReads<TStates extends readonly StateDefinition[]> = {
+    [S in TStates[number] as S["key"]]: Read<S["value"]>
+}
+
+type StateWrites<TStates extends readonly StateDefinition[]> = {
+    [S in TStates[number] as S["key"]]: z.infer<S["value"]>
+}
+
+export type StateAccessor<TStates extends readonly StateDefinition[]> = {
+    get<K extends keyof StateReads<TStates> & string>(key: K): Promise<StateReads<TStates>[K]>
+    set<K extends keyof StateWrites<TStates> & string>(key: K, value: StateWrites<TStates>[K]): Promise<StateWrites<TStates>[K]>
+}

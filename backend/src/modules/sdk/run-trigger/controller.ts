@@ -30,7 +30,7 @@ export async function handleSdkRunTriggerEvent(req: Request, res: Response) {
 export async function fetchEventFromRunId(runId: string, organizationId: string): Promise<SdkRunTriggerEventResponse | null> {
     const runRecord = await db().run_history_records.findFirst({
         where: { id: runId, automation: { organization_id: organizationId } },
-        select: { trigger_payload: true, automation: { select: { name: true } } }
+        select: { trigger_payload: true, is_test: true, automation: { select: { name: true } } }
     })
 
     if (!runRecord) return null
@@ -38,5 +38,5 @@ export async function fetchEventFromRunId(runId: string, organizationId: string)
     const event = parseSerializedTriggerPayload(runRecord.trigger_payload)
     if (!event) return null
 
-    return { event, agentName: runRecord.automation.name }
+    return { event, agentName: runRecord.automation.name, isTest: runRecord.is_test }
 }

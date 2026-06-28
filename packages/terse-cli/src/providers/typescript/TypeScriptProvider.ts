@@ -5,7 +5,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
-import { __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "terse-sdk"
+import { __buildJobStateAccessor, __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
@@ -166,6 +166,7 @@ class TypeScriptProvider implements LanguageProvider {
         opts?: {
             verbose?: boolean
             entryFile?: string
+            projectId?: string
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
@@ -239,10 +240,11 @@ class TypeScriptProvider implements LanguageProvider {
         })
         const closeSession = session.close
 
-        await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL }, async () => {
+        await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL, projectId: opts?.projectId, jobName: job.name }, async () => {
             try {
+                const state = __buildJobStateAccessor(job.states ?? [])
                 if (job.filter) {
-                    const shouldRun = await job.filter(serializedEventRuntime)
+                    const shouldRun = await job.filter(serializedEventRuntime, state)
                     if (!shouldRun) {
                         console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
                         return
@@ -252,7 +254,7 @@ class TypeScriptProvider implements LanguageProvider {
                 if (isVerbose) {
                     console.log(chalk.cyan(`  Job "${job.name}" started`))
                 }
-                await job.onTrigger(serializedEventRuntime)
+                await job.onTrigger(serializedEventRuntime, state)
             } catch (error) {
                 throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {
                     detail: formatErrorDetail(error)

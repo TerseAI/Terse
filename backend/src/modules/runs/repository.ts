@@ -34,7 +34,8 @@ export async function findRunRecordForChat(runId: string, organizationId: string
             timestamp: true,
             updated_at: true,
             status: true,
-            trigger_payload: true
+            trigger_payload: true,
+            is_test: true
         }
     })
 }

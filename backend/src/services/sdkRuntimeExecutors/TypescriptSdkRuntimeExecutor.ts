@@ -80,7 +80,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
         if (packageManager === "pnpm") {
             const pnpmVersion = this.detectPnpmVersion(context.archive)
-            await context.ensureSandboxCommand("install pnpm", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund >/dev/null`)
+            // --force: overwrite any pre-existing pnpm shim (e.g. corepack's at
+            // /usr/local/bin/pnpm in the self-host image), which npm otherwise EEXISTs on.
+            await context.ensureSandboxCommand("install pnpm", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`)
         }
         const installCommand = localTarballs
             ? buildLocalDependencyInstallCommand(packageManager, context.templateDir, context.escapeShellArg)

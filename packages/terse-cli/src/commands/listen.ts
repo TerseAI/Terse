@@ -8,6 +8,7 @@ import { loadJob } from "../loadJob.js"
 import { readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
+import { runLocalTestJob } from "../runLocalTestJob.js"
 
 export async function listen(jobName?: string, opts?: ListenOpts): Promise<void> {
     const provider = opts?.provider ?? resolveProvider()
@@ -32,7 +33,7 @@ export async function listen(jobName?: string, opts?: ListenOpts): Promise<void>
                 const eventLabel = event.event.display?.title || `${event.event.integrationType} / ${event.event.eventType}`
                 console.log(`  ${chalk.green("→")} ${chalk.cyan(localJob.name)} ${chalk.dim("←")} ${eventLabel}`)
                 try {
-                    await provider.executeJob(localJob, null, event.event, { verbose })
+                    await runLocalTestJob(provider, localJob, event.event, { projectId: projectConfig.projectId, apiKey, forceLocal: true, verbose })
                 } catch (error) {
                     const detail = error instanceof Error ? error.message : String(error)
                     console.log(chalk.red(`  ✗ ${localJob.name} failed: ${detail}`))

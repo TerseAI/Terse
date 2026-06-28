@@ -9,6 +9,9 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finali
 import { NotificationManager } from "../../../modules/notifications/Notification"
 import { billingServiceProxyForOrganization, startBillingRun } from "../../../services/BillingService"
 import { WebhookJobExecutionService } from "../../../services/WebhookJobExecutionService"
+import { captureRunSnapshot, restoreRunSnapshotInto } from "../../../services/memory/memorySnapshots"
+import { replayMemorySubtreeKey, replayStateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
+import { settings } from "../../../settings"
 import { enqueueRunExecution } from "../../../tasks/queues/runExecutionQueue"
 import { AgentWithRelations, Agent as PrismaAgent } from "../../../types/prisma"
 import { emitListenForwardedEvent } from "../ListenBus"
@@ -37,11 +40,17 @@ export class EventProcessor {
     private inputEvent: TriggerRuntime
     private user: UserSession
     private isManuallyTriggered: boolean
+    private isTest: boolean
+    private localDataPlane: boolean
+    private replayOfRunId?: string
 
-    constructor(inputEvent: TriggerRuntime, user: UserSession, options?: { isManuallyTriggered?: boolean }) {
+    constructor(inputEvent: TriggerRuntime, user: UserSession, options?: { isManuallyTriggered?: boolean; isTest?: boolean; localDataPlane?: boolean; replayOfRunId?: string }) {
         this.inputEvent = inputEvent
         this.user = user
         this.isManuallyTriggered = options?.isManuallyTriggered ?? false
+        this.isTest = options?.isTest ?? false
+        this.localDataPlane = options?.localDataPlane ?? false
+        this.replayOfRunId = options?.replayOfRunId
     }
 
     async process(): Promise<ProcessorResult[]> {
@@ -180,8 +189,21 @@ export class EventProcessor {
             agentId: agent.id,
             trigger,
             serializedTriggerEvent: this.inputEvent.getSerializedEvent(),
-            isManuallyTriggered: this.isManuallyTriggered
+            isManuallyTriggered: this.isManuallyTriggered,
+            isTest: this.isTest,
+            triggeredByUserId: this.isManuallyTriggered || this.isTest ? this.user.id : undefined,
+            replayOfRunId: this.replayOfRunId
         })
+        if (settings.modal && this.replayOfRunId) {
+            await restoreRunSnapshotInto({
+                originalRunId: this.replayOfRunId,
+                projectId: agent.project.id,
+                targetMemorySubtreeKey: replayMemorySubtreeKey(runId),
+                targetStateSubtreeKey: replayStateSubtreeKey(runId)
+            })
+        } else if (settings.modal) {
+            await captureRunSnapshot({ runId, projectId: agent.project.id, automationId: agent.id, isTest: this.isTest })
+        }
         emitCacheInvalidationWithWildcard(this.user.organizationId, "runHistory", agent.id)
         emitCacheInvalidationWithKey(this.user.organizationId, "recentAgents")
         return runId
@@ -217,6 +239,10 @@ export class EventProcessor {
 
     private async processAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
         logger.info(`Processing agent: ${agent.name} (${agent.id})`)
+
+        if (this.localDataPlane) {
+            return new ProcessorResult(true, "Local run registered (CLI is the data plane)", agent, existingRunId ?? null)
+        }
 
         // Send event to terse listen listeners
         try {

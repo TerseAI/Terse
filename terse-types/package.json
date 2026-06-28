@@ -1,6 +1,6 @@
 {
     "name": "terse-types",
-    "version": "0.0.52",
+    "version": "0.0.53",
     "type": "module",
     "description": "Shared Terse TypeScript types, enums, constants, and helpers.",
     "main": "./dist/index.js",
@@ -45,13 +45,16 @@
     "bugs": {
         "url": "https://github.com/TerseAI/Terse/issues"
     },
+    "peerDependencies": {
+        "zod": "^4.2.0"
+    },
     "devDependencies": {
         "tsc-esm-fix": "^3.1.2",
         "tsx": "^4.21.0",
-        "typescript": "^5.8.3"
+        "typescript": "^5.8.3",
+        "zod": "^4.3.6"
     },
     "dependencies": {
-        "@slack/web-api": "^7.15.0",
-        "zod": "4.3.6"
+        "@slack/web-api": "^7.15.0"
     }
 }

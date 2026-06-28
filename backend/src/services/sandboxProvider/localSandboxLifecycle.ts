@@ -55,6 +55,32 @@ export async function clearPidFile(workingDir: string): Promise<void> {
     await fs.rm(pidFile, { force: true })
 }
 
+export async function terminateSandboxDirProcesses(workingDir: string): Promise<number> {
+    const pidFile = path.join(workingDir, PID_FILE_NAME)
+    if (!existsSync(pidFile)) return 0
+
+    const content = await fs.readFile(pidFile, "utf8").catch(() => "")
+    const pids = content
+        .split("\n")
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(Number)
+        .filter(n => Number.isFinite(n) && n > 0)
+
+    let killed = 0
+    for (const pid of pids) {
+        try {
+            process.kill(pid, "SIGTERM")
+            killed++
+        } catch {
+            // Process already dead or PID recycled out of our reach — fine.
+        }
+    }
+
+    await fs.rm(pidFile, { force: true }).catch(() => {})
+    return killed
+}
+
 /**
  * Walk all sandbox working directories and SIGTERM any PIDs recorded in their
  * `.terse-pids` file that are still alive. Call once at startup, before any new
@@ -68,27 +94,7 @@ export async function sweepOrphanedSandboxProcesses(sandboxesDir: string): Promi
 
     for (const entry of entries) {
         if (!entry.isDirectory()) continue
-        const pidFile = path.join(sandboxesDir, entry.name, PID_FILE_NAME)
-        if (!existsSync(pidFile)) continue
-
-        const content = await fs.readFile(pidFile, "utf8").catch(() => "")
-        const pids = content
-            .split("\n")
-            .map(s => s.trim())
-            .filter(Boolean)
-            .map(Number)
-            .filter(n => Number.isFinite(n) && n > 0)
-
-        for (const pid of pids) {
-            try {
-                process.kill(pid, "SIGTERM")
-                killed++
-            } catch {
-                // Process already dead or PID recycled out of our reach — fine.
-            }
-        }
-
-        await fs.rm(pidFile, { force: true }).catch(() => {})
+        killed += await terminateSandboxDirProcesses(path.join(sandboxesDir, entry.name))
     }
 
     if (killed > 0) {

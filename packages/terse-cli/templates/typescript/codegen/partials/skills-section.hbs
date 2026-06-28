@@ -92,4 +92,8 @@ export const Skills = {
     imageEdit(): TypedSkill<"image_edit"> {
         return new ImageEditConfig()
     },
+    /** Memory — built-in persistent memory the agent reads and writes under /memories, scoped to this job and surviving across runs. */
+    memory(): TypedSkill<"memory"> {
+        return new MemoryConfig()
+    },
 }

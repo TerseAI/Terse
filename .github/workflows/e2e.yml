@@ -160,6 +160,24 @@ jobs:
               working-directory: packages/ci-test-fixture
               run: pnpm typecheck
 
+            - name: "[setup] Create ephemeral Terse project for the fixture"
+              id: create_project
+              working-directory: packages/ci-test-fixture
+              run: |
+                  set -euo pipefail
+                  response=$(curl -sS -X POST "${TERSE_BACKEND_URL}/sdk/projects" \
+                      -H "Authorization: Bearer ${TERSE_API_KEY}" \
+                      -H "Content-Type: application/json" \
+                      -d "{\"name\":\"ci-test-fixture-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\"}")
+                  project_id=$(echo "$response" | jq -r '.projectId // empty')
+                  if [[ -z "$project_id" ]]; then
+                      echo "::error::Failed to create Terse project: $response"
+                      exit 1
+                  fi
+                  echo "project_id=${project_id}" >> "$GITHUB_OUTPUT"
+                  printf '{\n  "projectId": "%s",\n  "name": "ci-test-fixture"\n}\n' "$project_id" > terse.config.json
+                  echo "Created ephemeral project ${project_id}"
+
             - name: "[run] Execute CI test fixture"
               working-directory: packages/ci-test-fixture
               env:
@@ -167,6 +185,13 @@ jobs:
               run: terse run "Tell me a joke" --event-file ./src/sample-webhook-event.json
 
             # ── Cleanup ───────────────────────────────────────────────────────────
+
+            - name: "[cleanup] Delete ephemeral Terse project"
+              if: always() && steps.create_project.outputs.project_id != ''
+              run: |
+                  curl -sS -X DELETE "${TERSE_BACKEND_URL}/projects/${{ steps.create_project.outputs.project_id }}" \
+                      -H "Authorization: Bearer ${TERSE_API_KEY}" \
+                      -o /dev/null -w "Deleted ephemeral project (HTTP %{http_code})\n" || true
 
             - name: Upload logs on failure
               if: failure()

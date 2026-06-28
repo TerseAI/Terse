@@ -10,9 +10,10 @@ type UseAllRunHistoryParams = {
     searchQuery?: string
     dateRange?: { from: Date | undefined; to: Date | undefined }
     selectedStatuses: Set<RunHistoryStatus>
+    includeTest?: boolean
 }
 
-export function useAllRunHistory({ page = 1, pageSize = 20, searchQuery = "", dateRange = { from: undefined, to: undefined }, selectedStatuses }: UseAllRunHistoryParams) {
+export function useAllRunHistory({ page = 1, pageSize = 20, searchQuery = "", dateRange = { from: undefined, to: undefined }, selectedStatuses, includeTest = false }: UseAllRunHistoryParams) {
     // Convert date range to ISO strings
     const toLocalStartISOString = (d?: Date) => {
         if (!d) return undefined
@@ -31,7 +32,8 @@ export function useAllRunHistory({ page = 1, pageSize = 20, searchQuery = "", da
         q: searchQuery.trim() || undefined,
         start: toLocalStartISOString(dateRange.from),
         end: toLocalEndISOString(dateRange.to ?? dateRange.from),
-        status: Array.from(selectedStatuses).sort()
+        status: Array.from(selectedStatuses).sort(),
+        includeTest: includeTest || undefined
     }
 
     const key = allRunHistoryKey(params)

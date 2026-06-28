@@ -11,9 +11,10 @@ type UseRunHistoryParams = {
     searchQuery?: string
     dateRange?: { from: Date | undefined; to: Date | undefined }
     selectedStatuses: Set<RunHistoryStatus>
+    includeTest?: boolean
 }
 
-export function useRunHistory({ agentId, page = 1, pageSize = 10, searchQuery = "", dateRange = { from: undefined, to: undefined }, selectedStatuses }: UseRunHistoryParams) {
+export function useRunHistory({ agentId, page = 1, pageSize = 10, searchQuery = "", dateRange = { from: undefined, to: undefined }, selectedStatuses, includeTest = false }: UseRunHistoryParams) {
     // Convert date range to ISO strings
     const toLocalStartISOString = (d?: Date) => {
         if (!d) return undefined
@@ -32,7 +33,8 @@ export function useRunHistory({ agentId, page = 1, pageSize = 10, searchQuery = 
         q: searchQuery.trim() || undefined,
         start: toLocalStartISOString(dateRange.from),
         end: toLocalEndISOString(dateRange.to ?? dateRange.from),
-        status: Array.from(selectedStatuses).sort()
+        status: Array.from(selectedStatuses).sort(),
+        includeTest: includeTest || undefined
     }
 
     if (!agentId) {

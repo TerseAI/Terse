@@ -21,7 +21,7 @@ import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
-import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 interface SdkJobExecutionParams {
     runId: string
@@ -96,6 +96,7 @@ export class SdkJobExecutionService {
                 jobName,
                 sandboxService: getSandboxProvider(),
                 runId,
+                projectId: agent.project.id,
                 agentId: agent.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
@@ -129,6 +130,7 @@ export class SdkJobExecutionService {
                     logger.warn("Failed to delete sandbox API token", { error: err, tokenId: sandboxTokenId })
                 })
             }
+            await this.terminateRunSandbox(agent.project.id, runId)
         }
     }
 
@@ -205,13 +207,14 @@ export class SdkJobExecutionService {
         sandboxService: SandboxService
         runId: string
         agentId: string
+        projectId: string
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
         cliVersion: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion } = params
 
-        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
+        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId)
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         const result = await executor.execute(executorContext)
         return result
@@ -251,15 +254,25 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string): Promise<Sandbox> {
+    private async terminateRunSandbox(projectId: string, runId: string): Promise<void> {
+        try {
+            const sandboxService = getSandboxProvider()
+            const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
+            await sandboxService.terminateSandbox(app, runtimeSandboxUniqueName(projectId, runId))
+        } catch (error) {
+            logger.warn("SDK sandbox: failed to terminate run sandbox", { projectId, runId, error })
+        }
+    }
+
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string, runId: string): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
         }
 
-        const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
+        const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
         const image = await sandboxService.getImageFromId(source.imageId)
-        const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey)
+        const uniqueName = runtimeSandboxUniqueName(projectId, runId)
         return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
     }
 

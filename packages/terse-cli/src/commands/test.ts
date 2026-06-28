@@ -13,9 +13,10 @@ import { CliError } from "../cliError.js"
 import { isNonInteractive } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 import { loadJob } from "../loadJob.js"
-import { readProjectConfig } from "../projectConfig.js"
+import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
+import { runLocalTestJob } from "../runLocalTestJob.js"
 
 export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     if (isNonInteractive()) {
@@ -62,11 +63,14 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
 
     const event = await chooseSampleEvent(candidates, apiKey)
 
+    const projectId = readProjectConfigOrBail().projectId
     const runSpinner = createSpinner()
     const runSpinnerMessage = `Running ${formatEventLabel(event)}`
     runSpinner.start(runSpinnerMessage)
     try {
-        await provider.executeJob(job, null, event, {
+        await runLocalTestJob(provider, job, event, {
+            projectId,
+            apiKey,
             verbose: !!verbose,
             entryFile,
             pauseUiAround: async fn => {
@@ -171,7 +175,9 @@ export async function testRun(opts: TestRunOpts): Promise<void> {
         event = parseEventJson(rawJson)
     }
 
-    await provider.executeJob(job, null, event, { verbose: !!opts.verbose, entryFile: opts.entryFile })
+    const apiKey = readApiKeyOrBail()
+    const projectId = readProjectConfigOrBail().projectId
+    await runLocalTestJob(provider, job, event, { projectId, apiKey, verbose: !!opts.verbose, entryFile: opts.entryFile })
 }
 
 async function resolveEventById(provider: LanguageProvider, id: string, jobNameHint: string | undefined, entryFile: string | undefined): Promise<SerializedEvent> {

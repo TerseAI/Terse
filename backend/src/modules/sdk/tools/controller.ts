@@ -96,7 +96,7 @@ function normalizeInvokedToolResult(rawResult: unknown): unknown {
     return rawResult
 }
 
-async function resolvePersistedRunContext(runIdHeader: string | undefined, user: UserSession): Promise<DeterministicToolCallRunContext | null> {
+async function resolveRunContext(runIdHeader: string | undefined, user: UserSession): Promise<DeterministicToolCallRunContext | null> {
     const runId = runIdHeader?.trim()
     if (!runId || !user.organizationId) return null
 
@@ -123,9 +123,9 @@ export async function handleToolExecute(req: Request, res: Response) {
     if (!toolDescriptor) return res.status(404).json({ success: false, error: `Tool "${toolName}" not found` })
 
     const sessionId = req.headers["x-terse-session-id"] as string | undefined
-    const persistedRunContext = await resolvePersistedRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
-    const effectiveRunId = persistedRunContext?.runId ?? crypto.randomUUID()
-    const effectiveAgentId = persistedRunContext?.agentId ?? "sdk-tool-execute"
+    const runContext = await resolveRunContext(req.headers["x-terse-run-id"] as string | undefined, user)
+    const effectiveRunId = runContext?.runId ?? crypto.randomUUID()
+    const effectiveAgentId = runContext?.agentId ?? "sdk-tool-execute"
     const toolParams = params ?? {}
     const callId = `sdk-tool-${randomString(15)}`
 
@@ -134,8 +134,8 @@ export async function handleToolExecute(req: Request, res: Response) {
         emitSessionEvent(sessionId, { type: "tool_call_started", toolCallStarted: toolName })
     }
 
-    if (persistedRunContext) {
-        await persistDeterministicToolCallStart(persistedRunContext, toolName, toolParams, callId)
+    if (runContext) {
+        await persistDeterministicToolCallStart(runContext, toolName, toolParams, callId)
     }
 
     const runContextPayload = {
@@ -153,8 +153,8 @@ export async function handleToolExecute(req: Request, res: Response) {
         const result = normalizeInvokedToolResult(rawResult)
         const actions = extractRunHistoryActions(result)
 
-        if (persistedRunContext) {
-            await persistDeterministicToolCallComplete(persistedRunContext, toolDescriptor, toolName, result, callId)
+        if (runContext) {
+            await persistDeterministicToolCallComplete(runContext, toolDescriptor, toolName, result, callId)
         }
 
         if (sessionId) {
@@ -171,8 +171,8 @@ export async function handleToolExecute(req: Request, res: Response) {
         const message = extractErrorMessage(err)
         logger.error("[sdk/tool-execute] Tool execution failed", { toolName, error: message })
 
-        if (persistedRunContext) {
-            await persistDeterministicToolCallFailure(persistedRunContext, toolName, message, callId)
+        if (runContext) {
+            await persistDeterministicToolCallFailure(runContext, toolName, message, callId)
         }
 
         if (sessionId) {
