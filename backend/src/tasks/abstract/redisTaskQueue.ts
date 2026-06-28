@@ -1,6 +1,5 @@
-import { EventEmitter } from "node:events"
-
 import MQEmitterRedis from "mqemitter-redis"
+import { EventEmitter } from "node:events"
 
 import logger from "../../common/logger"
 import { RedisNamespace } from "../../loaders/redisNamespace"
