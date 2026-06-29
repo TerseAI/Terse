@@ -594,10 +594,16 @@ importers:
 
   packages/terse-sdk:
     dependencies:
+      ms:
+        specifier: 2.1.3
+        version: 2.1.3
       terse-types:
         specifier: workspace:*
         version: link:../../terse-types
     devDependencies:
+      '@types/ms':
+        specifier: ^2.1.0
+        version: 2.1.0
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.15

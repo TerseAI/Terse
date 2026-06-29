@@ -1,3 +1,4 @@
+import ms from "ms"
 import type {
     RunHistoryAction,
     SdkAgentRunRequestBody,
@@ -744,7 +745,20 @@ export async function jobStep<I extends object, T>(input: I, fn: (input: I) => P
 }
 
 export function sleep(duration: string | number | Date): Promise<void> {
+    // Locally (`terse test`, no TERSE_RUN_ID) there is no suspend machinery — calling
+    // the durable sleep would try to schedule a backend resume and throw. Skip the wait
+    // and note what production would have done instead.
+    if (!process.env.TERSE_RUN_ID && Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
+        console.log(`[terse] Skipping sleep locally — in production this run would suspend and resume after ${describeDuration(duration)}.`)
+        return Promise.resolve()
+    }
     return workflowSleep(duration as any)
+}
+
+function describeDuration(duration: string | number | Date): string {
+    if (typeof duration === "string") return duration
+    if (duration instanceof Date) return ms(Math.max(0, duration.getTime() - Date.now()), { long: true })
+    return ms(duration, { long: true })
 }
 
 export enum EventType {
