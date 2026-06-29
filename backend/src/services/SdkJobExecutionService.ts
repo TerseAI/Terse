@@ -24,7 +24,7 @@ import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
 import { runJournalDir } from "./sandboxProvider/runJournal"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
-import { computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 interface SdkJobExecutionParams {
     runId: string
@@ -101,6 +101,7 @@ export class SdkJobExecutionService {
                 jobName,
                 sandboxService: getSandboxProvider(),
                 runId,
+                projectId: agent.project.id,
                 agentId: agent.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
@@ -135,6 +136,7 @@ export class SdkJobExecutionService {
                     logger.warn("Failed to delete sandbox API token", { error: err, tokenId: sandboxTokenId })
                 })
             }
+            await this.terminateRunSandbox(agent.project.id, runId)
         }
     }
 
@@ -211,14 +213,15 @@ export class SdkJobExecutionService {
         sandboxService: SandboxService
         runId: string
         agentId: string
+        projectId: string
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
         cliVersion: string
         restoreImageId?: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId } = params
 
-        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId)
+        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId)
         if (restoreImageId) {
             await sandboxService.restoreDirectory(sb, runJournalDir(runId), restoreImageId)
         }
@@ -262,15 +265,25 @@ export class SdkJobExecutionService {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string): Promise<Sandbox> {
+    private async terminateRunSandbox(projectId: string, runId: string): Promise<void> {
+        try {
+            const sandboxService = getSandboxProvider()
+            const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
+            await sandboxService.terminateSandbox(app, runtimeSandboxUniqueName(projectId, runId))
+        } catch (error) {
+            logger.warn("SDK sandbox: failed to terminate run sandbox", { projectId, runId, error })
+        }
+    }
+
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string, runId: string): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
         }
 
-        const app = await sandboxService.getOrCreateApp("terse-sdk-sandbox")
+        const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
         const image = await sandboxService.getImageFromId(source.imageId)
-        const uniqueName = runtimeSandboxUniqueName(source.sourceLayerKey)
+        const uniqueName = runtimeSandboxUniqueName(projectId, runId)
         return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
     }
 
@@ -481,7 +494,7 @@ export async function snapshotRunJournalForSuspend(runId: string): Promise<strin
     const sourceLayerKey = computeSourceLayerKey({ organizationId: source.organization_id, dependencyHash: source.dependency_image.dependency_hash, sourceHash: source.source_hash })
     const provider = getSandboxProvider()
     const app = await provider.getOrCreateApp("terse-sdk-sandbox")
-    const sandbox = await provider.getLiveSandbox(app, runtimeSandboxUniqueName(sourceLayerKey))
+    const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(sourceLayerKey, runId))
     if (!sandbox) return undefined
 
     return provider.snapshotDirectory(sandbox, runJournalDir(runId))

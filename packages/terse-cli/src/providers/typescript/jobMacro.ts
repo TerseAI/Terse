@@ -22,14 +22,24 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
             const obj = node.arguments[0]
             const nameProp = obj.properties.find(p => isProp(p, "name"))
             const onTrigger = obj.properties.find(p => isProp(p, "onTrigger"))
+            const statesProp = obj.properties.find(p => isProp(p, "states"))
             const jobName = nameProp && ts.isStringLiteralLike(nameProp.initializer) ? nameProp.initializer.text : undefined
             const fn = onTrigger?.initializer
 
             if (jobName && fn && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) {
                 const fnName = `terseWf_${Buffer.from(jobName).toString("hex")}`
                 const param = fn.parameters.length ? fn.parameters[0].name.getText(sf) : "event"
+                const stateParam = fn.parameters.length > 1 ? fn.parameters[1].name.getText(sf) : "state"
+                const statesText = statesProp ? statesProp.initializer.getText(sf) : "[]"
                 const body = ts.isBlock(fn.body) ? fn.body.getText(sf).slice(1, -1) : `\n  return ${fn.body.getText(sf)}\n`
-                hoisted.push(`async function ${fnName}(__rawEvent) {\n` + `  "use workflow"\n` + `  const ${param} = createSDKTrigger(__rawEvent)\n` + body + `}`)
+                hoisted.push(
+                    `async function ${fnName}(__rawEvent) {\n` +
+                        `  "use workflow"\n` +
+                        `  const ${param} = createSDKTrigger(__rawEvent)\n` +
+                        `  const ${stateParam} = __buildJobStateAccessor(${statesText})\n` +
+                        body +
+                        `}`
+                )
                 edits.push({ start: onTrigger!.getStart(sf), end: onTrigger!.getEnd(), text: `onTrigger: ${fnName}` })
                 jobs.push({ name: jobName, fnName })
             }
@@ -46,7 +56,7 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
     const lastImportEnd = imports.length ? imports[imports.length - 1].getEnd() : 0
     edits.push({ start: lastImportEnd, end: lastImportEnd, text: `\n\n// terse: each onTrigger is hoisted into a durable workflow\n${hoisted.join("\n\n")}\n` })
 
-    const importEdit = createSDKTriggerImportEdit(ts, sf, imports, lastImportEnd)
+    const importEdit = sdkImportEdit(ts, sf, imports, lastImportEnd, ["createSDKTrigger", "__buildJobStateAccessor"])
     if (importEdit) edits.push(importEdit)
 
     let code = source
@@ -54,18 +64,19 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
     return { code, jobs }
 }
 
-// Adds `createSDKTrigger` to an existing `terse-sdk` named import, or a fresh import
-// line if there is none. Returns null when it is already imported.
-function createSDKTriggerImportEdit(ts: typeof TS, sf: TS.SourceFile, imports: TS.ImportDeclaration[], lastImportEnd: number): { start: number; end: number; text: string } | null {
+// Adds the given names to an existing `terse-sdk` named import, or a fresh import
+// line if there is none. Returns null when all names are already imported.
+function sdkImportEdit(ts: typeof TS, sf: TS.SourceFile, imports: TS.ImportDeclaration[], lastImportEnd: number, names: string[]): { start: number; end: number; text: string } | null {
     const sdkImport = imports.find(i => ts.isStringLiteralLike(i.moduleSpecifier) && i.moduleSpecifier.text === "terse-sdk")
     const named = sdkImport?.importClause?.namedBindings
     if (sdkImport && named && ts.isNamedImports(named)) {
-        if (named.elements.some(el => el.name.text === "createSDKTrigger")) return null
+        const missing = names.filter(n => !named.elements.some(el => el.name.text === n))
+        if (missing.length === 0) return null
         const lastElement = named.elements[named.elements.length - 1]
         if (lastElement) {
             const pos = lastElement.getEnd()
-            return { start: pos, end: pos, text: ", createSDKTrigger" }
+            return { start: pos, end: pos, text: `, ${missing.join(", ")}` }
         }
     }
-    return { start: lastImportEnd, end: lastImportEnd, text: `\nimport { createSDKTrigger } from "terse-sdk"` }
+    return { start: lastImportEnd, end: lastImportEnd, text: `\nimport { ${names.join(", ")} } from "terse-sdk"` }
 }

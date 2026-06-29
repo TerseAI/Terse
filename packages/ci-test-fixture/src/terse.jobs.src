@@ -1,4 +1,4 @@
-import { createJob, TerseAgent, type WebhookTrigger } from "terse-sdk"
+import { createJob, generateText, type WebhookTrigger } from "terse-sdk"
 
 import { Triggers } from "./terse.generated"
 
@@ -9,7 +9,6 @@ createJob({
     name: "Tell me a joke",
     triggers: [Triggers.webhook.onRequest()],
     onTrigger: async (_event: WebhookTrigger) => {
-        const agent = TerseAgent.create({ prompt: "You tell short, clean jokes." })
-        await agent.runAndWait("Tell me a funny joke")
+        await generateText({ prompt: "Tell me a short, clean, funny joke." })
     }
 })

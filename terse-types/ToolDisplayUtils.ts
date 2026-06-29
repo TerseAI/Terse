@@ -1,3 +1,5 @@
+import type { MemoryCommand } from "./Tools"
+
 /**
  * The phases a tool call can be in for display purposes.
  */
@@ -30,6 +32,34 @@ function safeParseResult(result?: string): Record<string, unknown> | undefined {
         return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : undefined
     } catch {
         return undefined
+    }
+}
+
+function memoryCommand(params?: Record<string, unknown>): MemoryCommand | undefined {
+    const command = params?.command
+    return command && typeof command === "object" && "op" in command ? (command as MemoryCommand) : undefined
+}
+
+function memoryTarget(command: MemoryCommand): string | undefined {
+    return command.op === "rename" ? command.old_path : (command.path ?? undefined)
+}
+
+function memoryLabel(command: MemoryCommand | undefined, done: boolean): string {
+    if (!command) return done ? "Updated memory" : "Accessing memory"
+    const target = memoryTarget(command)
+    const suffix = target ? ` ${truncate(target, 40)}` : ""
+    switch (command.op) {
+        case "view":
+            return (done ? "Read memory" : "Reading memory") + suffix
+        case "create":
+            return (done ? "Saved memory" : "Saving memory") + suffix
+        case "str_replace":
+        case "insert":
+            return (done ? "Updated memory" : "Updating memory") + suffix
+        case "delete":
+            return (done ? "Deleted memory" : "Deleting memory") + suffix
+        case "rename":
+            return done ? "Renamed memory file" : "Reorganizing memory"
     }
 }
 
@@ -741,6 +771,11 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const prompt = params?.prompt as string | undefined
             return prompt ? `Image edited: "${truncate(prompt)}"` : "Image edited"
         }
+    },
+    memory: {
+        preparing: "Checking memory",
+        executing: params => memoryLabel(memoryCommand(params), false),
+        complete: params => memoryLabel(memoryCommand(params), true)
     },
 
     // ===================

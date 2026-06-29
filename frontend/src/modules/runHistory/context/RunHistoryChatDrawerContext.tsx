@@ -93,3 +93,20 @@ export function useRunHistoryChatDrawer() {
     if (!ctx) throw new Error("useRunHistoryChatDrawer must be used within RunHistoryChatDrawerProvider")
     return ctx
 }
+
+export function useOpenRunDeepLink() {
+    const [, setSearchParams] = useSearchParams()
+    return useCallback(
+        (runId: string) => {
+            setSearchParams(
+                prev => {
+                    const next = new URLSearchParams(prev)
+                    next.set(RUN_ID_PARAM, runId)
+                    return next
+                },
+                { replace: true }
+            )
+        },
+        [setSearchParams]
+    )
+}

@@ -1,8 +1,8 @@
-export interface SandboxService<I extends SandboxImage = SandboxImage, S extends Sandbox = Sandbox> {
+export interface SandboxService<I extends SandboxImage = SandboxImage, S extends Sandbox = Sandbox, A extends SandboxApp = SandboxApp> {
     // True when the provider runs jobs in isolated containers (Modal/Docker/etc). False for in-memory.
     readonly supportsContainerizedRunners: boolean
 
-    getOrCreateApp(name: string): Promise<SandboxApp>
+    getOrCreateApp(name: string): Promise<A>
 
     getImageFromRegistry(registry: string): I
     getImageFromId(imageId: string): Promise<I>
@@ -10,8 +10,13 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
 
     imageExists(imageId: string): Promise<boolean>
 
-    getOrCreateSandbox(app: SandboxApp, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<S>
-    getLiveSandbox(app: SandboxApp, uniqueName: string): Promise<S | null>
+    getOrCreateSandbox(app: A, image: I, uniqueName: string, params?: SandboxCreateParams): Promise<S>
+
+    // Best-effort: terminate a sandbox by its unique name if one is live. No-op if absent.
+    terminateSandbox(app: A, uniqueName: string): Promise<void>
+
+    // Return a live sandbox by its unique name, or null if none is live. Does not create.
+    getExistingSandbox(app: A, uniqueName: string): Promise<S | null>
 
     getProjectPath(sandbox: S): string
     getDependencyCachePath(sandbox: S, runtime: string): string
@@ -83,7 +88,12 @@ type SandboxCreateParams = {
     cidrAllowlist?: string[]
     proxy?: SandboxProxy
     secrets?: Secret[]
+    /** Mount points (absolute path -> volume handle from a VolumeManager). */
+    volumes?: Record<string, SandboxVolume>
 }
+
+/** Opaque per-provider volume handle (Modal Volume / local dir marker). */
+export type SandboxVolume = unknown
 
 interface SandboxProxy {
     proxyId?: string

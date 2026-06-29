@@ -1,6 +1,6 @@
 ---
 title: "Overview"
-description: "Terse is a code-first AI workflow platform for developers and coding agents."
+description: "Terse is the AI workflow platform for coding agents."
 icon: "house"
 ---
 
@@ -26,8 +26,10 @@ A Terse workflow is a single TypeScript file. Triggers come from your generated 
 The job below watches a repo for new pull requests, posts a deterministic Slack message announcing the PR, then threads a Block Kit summary under it:
 
 ```ts
-import { GithubPRTrigger, generateText, createJob } from "terse-sdk"
+import { GithubPRTrigger, createJob, generateText } from "terse-sdk"
+
 import { Repos, Skills, SlackChannel, Triggers, toolbox } from "../terse.generated"
+
 // ^^ Generated based on your workspace
 
 createJob({

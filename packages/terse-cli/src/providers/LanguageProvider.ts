@@ -38,6 +38,7 @@ export interface LanguageProvider {
         opts?: {
             verbose?: boolean
             entryFile?: string
+            projectId?: string
             /**
              * Wraps interactive prompts (e.g. tool-approval confirms) so the
              * caller can pause any outer UI it owns (clack spinners, etc.)

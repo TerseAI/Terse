@@ -46,6 +46,7 @@ export default function ActivityPage() {
         new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.CANCELLED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL, RunHistoryStatus.SUSPENDED])
     )
     const [searchQuery, setSearchQuery] = useState("")
+    const [includeTest, setIncludeTest] = useState(false)
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
 
     const { runs, total, isLoading } = useAllRunHistory({
@@ -53,7 +54,8 @@ export default function ActivityPage() {
         pageSize: runsPerPage,
         searchQuery,
         dateRange,
-        selectedStatuses
+        selectedStatuses,
+        includeTest
     })
     const { openDrawer } = useRunHistoryChatDrawer()
 
@@ -75,6 +77,11 @@ export default function ActivityPage() {
         setCurrentPage(1)
     }
 
+    const toggleIncludeTest = () => {
+        setIncludeTest(prev => !prev)
+        setCurrentPage(1)
+    }
+
     const handleRunsPerPageChange = (value: number) => {
         setRunsPerPage(value)
         setCurrentPage(1)
@@ -87,7 +94,7 @@ export default function ActivityPage() {
         })
     }
 
-    const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length
+    const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length || includeTest
 
     const startIndex = (currentPage - 1) * runsPerPage
 
@@ -112,7 +119,7 @@ export default function ActivityPage() {
                                 setCurrentPage(1)
                             }}
                         />
-                        <StatusFilter selectedStatuses={selectedStatuses} onToggleStatus={toggleStatus} />
+                        <StatusFilter selectedStatuses={selectedStatuses} onToggleStatus={toggleStatus} includeTest={includeTest} onToggleIncludeTest={toggleIncludeTest} />
                     </div>
                 </div>
 

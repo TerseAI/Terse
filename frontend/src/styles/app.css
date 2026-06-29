@@ -53,6 +53,7 @@
     --color-success: var(--success);
     --color-danger: var(--danger);
     --color-warning: var(--warning);
+    --color-replay: var(--replay);
     --color-chart-6: var(--chart-6);
     --color-chart-7: var(--chart-7);
     --color-chart-8: var(--chart-8);
@@ -80,6 +81,7 @@
     --accent-primary: oklch(0.52 0.14 155);
     --accent-secondary: oklch(0.55 0.12 145);
     --accent-tertiary: oklch(0.55 0.15 30);
+    --replay: oklch(0.55 0.15 300);
     --destructive: oklch(0.55 0.22 25);
     --border: #ddd5cb;
     --input: #ddd5cb;
@@ -150,6 +152,7 @@
     --accent-primary: oklch(0.65 0.16 155);
     --accent-secondary: oklch(0.65 0.12 145);
     --accent-tertiary: oklch(0.65 0.15 30);
+    --replay: oklch(0.65 0.15 300);
     --destructive: oklch(0.6 0.22 25);
     --border: #3d3730;
     --input: #3d3730;

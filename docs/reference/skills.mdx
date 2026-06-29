@@ -6,7 +6,7 @@ icon: "wrench"
 
 Skills define what integrations your workflow can interact with. Each skill exposes a set of tools that the agent can call (via agentic loops) or that you can call deterministically (via `agent.tools.*`).
 
-In TypeScript, `terse generate` writes a single `Skills` object in `src/terse.generated.ts`. Import it and call the nested factory for the integration you want (for example `Skills.github({ repos: [...] })`). Built-in capabilities like `Skills.web()` and `Skills.imageEdit()` are documented in their sections below.
+In TypeScript, `terse generate` writes a single `Skills` object in `src/terse.generated.ts`. Import it and call the nested factory for the integration you want (for example `Skills.github({ repos: [...] })`). Built-in capabilities like `Skills.web()`, `Skills.imageEdit()`, and `Skills.memory()` are documented in their sections below.
 
 ## GitHub
 
@@ -210,11 +210,17 @@ Web search and research tools available to all workflows.
 skills: [Skills.web()]
 ```
 
-| Tool           | Description                             | Access |
-| -------------- | --------------------------------------- | ------ |
-| `web_search`   | Search the web                          | Read   |
-| `web_extract`  | Extract and process web page content    | Read   |
-| `web_research` | Research and synthesize web information | Read   |
+Pass `allowedDomains` to restrict the agent to a whitelist of sites. When set, `web_search` results and `web_extract` page fetches are limited to those domains and their subdomains; requests to any other domain are blocked.
+
+```ts
+skills: [Skills.web({ allowedDomains: ["example.com", "docs.acme.com"] })]
+```
+
+| Tool           | Description                             | Access | Respects `allowedDomains` |
+| -------------- | --------------------------------------- | ------ | ------------------------- |
+| `web_search`   | Search the web                          | Read   | Yes                       |
+| `web_extract`  | Extract and process web page content    | Read   | Yes                       |
+| `web_research` | Research and synthesize web information | Read   | No (not domain-limited)   |
 
 ## Image Edit (built-in)
 
@@ -227,3 +233,33 @@ skills: [Skills.imageEdit()]
 | Tool         | Description                | Access |
 | ------------ | -------------------------- | ------ |
 | `image_edit` | Edit and manipulate images | Write  |
+
+## Memory (built-in)
+
+Gives a job a persistent `/memories` directory it can read and write across runs. With the skill added, the agent checks `/memories` before starting and records progress, context, and learnings as it works, so later runs pick up where earlier ones left off.
+
+```ts
+skills: [Skills.memory()]
+```
+
+| Tool     | Description                                                                                     | Access |
+| -------- | ----------------------------------------------------------------------------------------------- | ------ |
+| `memory` | Read, write, edit, and organize files under `/memories` (`view`, `create`, `str_replace`, `insert`, `delete`, `rename`) | Write  |
+
+### What persists between runs
+
+Only files under `/memories` carry over. Every run otherwise starts fresh from your deployed code, so anything written elsewhere in the run is discarded. Anything the agent saves to `/memories` is still there on the next run.
+
+### How memory is organized
+
+- **Per project** — each project has its own isolated memory. Jobs in different projects never share memory.
+- **Per job** — within a project, every job gets its own private space; one job cannot see another job's memory.
+- **Scoped to `/memories`** — all paths stay inside the `/memories` directory.
+
+Cleanup is automatic: deleting a job removes that job's memory, and deleting a project removes all memory for the project.
+
+`terse test` runs against a separate, isolated test memory, so local testing never touches what your deployed job has saved.
+
+### Inspecting memory
+
+Use the [`terse memory`](/reference/cli#memory) commands to list, read, write, and delete a job's memory files from the terminal. Add `--test` to any of them to target the isolated `terse test` memory instead of production.

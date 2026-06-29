@@ -69,10 +69,11 @@ Duplicate `name` values throw an error when the second job registers. At most **
 
 | Field       | Type                                     | Description                                                                                       |
 | ----------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `name`      | `string`                                 | Unique workflow identifier. Used to match workflows across deploys and in `terse test`.           |
-| `triggers`  | typed trigger array                      | One or more triggers that start the workflow.                                                     |
-| `filter`    | `(event) => boolean \| Promise<boolean>` | Optional function to skip the run for specific events. See [filtering events](#filtering-events). |
-| `onTrigger` | `(event) => Promise<void>`               | The workflow handler. Called once per trigger event.                                              |
+| `name`      | `string`                                        | Unique workflow identifier. Used to match workflows across deploys and in `terse test`.           |
+| `triggers`  | typed trigger array                             | One or more triggers that start the workflow.                                                     |
+| `states`    | `{ key, value }[]`                              | Optional typed persistent state. `value` is a Zod schema. See [job state](#job-state).            |
+| `filter`    | `(event, state) => boolean \| Promise<boolean>` | Optional function to skip the run for specific events. See [filtering events](#filtering-events).  |
+| `onTrigger` | `(event, state) => Promise<void>`               | The workflow handler. Called once per trigger event.                                              |
 
 To point the SDK at a self-hosted control plane, set `TERSE_BACKEND_URL` (it defaults to `https://api.useterse.ai`). To route execution to a self-hosted data plane, set `remoteServerUrl` in `terse.config.json` instead.
 
@@ -92,6 +93,37 @@ createJob({
             skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] }), Skills.slack({ channel: SlackChannel.Engineering })]
         })
         // workflow logic using agent and event
+    }
+})
+```
+
+## Job state
+
+Declare persistent state with `states`, a list of `{ key, value }` where `value` is a Zod schema. `filter` and `onTrigger` receive a `state` object as their second argument. `state.get(key)` and `state.set(key, value)` are narrowed to the declared keys, with each value typed and validated against that key's schema.
+
+Two type details worth knowing:
+
+- `get` returns `T | undefined` for a key that may be unset. Give the schema a default (`z.number().default(0)`) and that key's `get` is typed `T` with no `undefined`.
+- `set` returns the value it wrote, so you can use it directly instead of reading the key back.
+
+State is stored as JSON in the project volume, in a namespace the agent cannot read or write. It is separate from the agent's memory.
+
+```ts
+import { createJob } from "terse-sdk"
+import { z } from "zod"
+
+const Profile = z.object({ name: z.string(), tier: z.enum(["free", "pro"]) })
+
+createJob({
+    name: "track-account",
+    triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
+    states: [
+        { key: "profile", value: Profile },                 // no default
+        { key: "seenCount", value: z.number().default(0) }  // default → never undefined
+    ],
+    onTrigger: async (event, state) => {
+        const count = await state.get("seenCount")   // number (default applied)
+        await state.set("seenCount", count + 1)      // returns the written number
     }
 })
 ```

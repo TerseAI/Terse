@@ -64,6 +64,7 @@ export type GetRunHistoryParams = {
     status?: RunHistoryStatus[]
     page?: number
     pageSize?: number
+    includeTest?: boolean
 }
 
 export type GetRunHistoryResponse = {

@@ -9,6 +9,7 @@ import {
     ImageEditConfig,
     LaunchDarklyConfig,
     LinearOutputConfig,
+    MemoryConfig,
     NotionConfig,
     PosthogConfig,
     SlackOutputConfig,
@@ -33,6 +34,7 @@ import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { SnowflakeSkillOutput } from "../snowflake/SnowflakeSkillOutput"
 import { ImageEditOutput } from "../terse/ImageEditOutput"
+import { MemoryOutput } from "../terse/MemoryOutput"
 import { WebOutput } from "../terse/WebOutput"
 import { WorkOSOutput } from "../workos/WorkOSOutput"
 
@@ -59,7 +61,8 @@ export class OutputFactory {
             [OutputConfigType.DATADOG, () => new DatadogSkillOutput()],
             [OutputConfigType.LAUNCHDARKLY, () => new LaunchDarklySkillOutput()],
             [OutputConfigType.WORKOS, () => new WorkOSOutput()],
-            [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()]
+            [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()],
+            [OutputConfigType.MEMORY, () => new MemoryOutput()]
         ]
         if (settings.tavily.apiKey) entries.push([OutputConfigType.WEB, () => new WebOutput()])
         if (settings.gemini.apiKey) entries.push([OutputConfigType.IMAGE_EDIT, () => new ImageEditOutput()])
@@ -118,6 +121,9 @@ export class OutputFactory {
                 break
             case OutputConfigType.IMAGE_EDIT:
                 ;(output as Output<ImageEditConfig>).configs = configs as ImageEditConfig[]
+                break
+            case OutputConfigType.MEMORY:
+                ;(output as Output<MemoryConfig>).configs = configs as MemoryConfig[]
                 break
             case OutputConfigType.SNOWFLAKE:
                 ;(output as Output<SnowflakeOutputConfig>).configs = configs as SnowflakeOutputConfig[]

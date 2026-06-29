@@ -239,6 +239,9 @@ model projects {
   signing_secret    String?
   remote_server_url String?
 
+  // Per-project override (days) for memory snapshot retention. Null = global default. Not yet exposed.
+  snapshot_retention_days Int?
+
   automations automations[]
   deploys     project_deploys[]
   api_tokens  api_tokens[]
@@ -248,16 +251,19 @@ model projects {
 
 // Automation tables
 model automations {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   user_id              String
   organization_id      String
   name                 String
-  is_active            Boolean  @default(true)
-  improvements_enabled Boolean  @default(true)
-  require_approval     Boolean  @default(false)
-  consecutive_failures Int      @default(0)
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
+  is_active            Boolean   @default(true)
+  improvements_enabled Boolean   @default(true)
+  require_approval     Boolean   @default(false)
+  consecutive_failures Int       @default(0)
+  // Set when the job is first deployed. Null = draft automation created by `terse test`, not yet deployed
+  // (inert: no triggers, is_active false, excluded from stale-deploy cleanup, badged "not deployed").
+  deployed_at          DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
 
   prompt                     automation_prompts?
   inputs                     automation_inputs[]
@@ -734,6 +740,7 @@ enum OutputConfigType {
   GMAIL_DRAFT
   WEB
   IMAGE_EDIT
+  MEMORY
   ATTIO
   GITHUB
   POSTHOG
@@ -810,6 +817,12 @@ model run_history_records {
   status                RunHistoryStatus
   // Whether this run ever involved a tool approval request (persists after approval is processed)
   has_approval_request  Boolean                  @default(false)
+  // Whether this run was produced by `terse test` (hidden from run history by default)
+  is_test               Boolean                  @default(false)
+  // WorkOS user id of the human who triggered this run (only set for test/manual runs; resolved to display info at view time)
+  triggered_by_user_id  String?
+  // Set when this run is a replay of another run; its memory/state are restored from that run's pre-run snapshot into an isolated namespace
+  replay_of_run_id      String?
   // SDK skill configs (SkillConfigData[]) persisted at run time so correction agents can reconstruct tools
   sdk_skills            Json?
   created_at            DateTime                 @default(now())
@@ -829,6 +842,53 @@ model run_history_records {
   @@index([timestamp])
   @@index([automation_id, timestamp]) // Composite index for user filtering + time range queries
   @@index([has_approval_request, automation_id, timestamp]) // For pending approvals endpoint
+  @@index([is_test])
+}
+
+model memory_blobs {
+  hash       String   @id
+  content    String
+  size_bytes Int
+  created_at DateTime @default(now())
+}
+
+model memory_entries {
+  id          String   @id @default(cuid())
+  project_id  String
+  subtree_key String
+  path        String
+  blob_hash   String
+  size_bytes  Int
+  updated_at  DateTime @updatedAt
+
+  @@unique([project_id, subtree_key, path])
+}
+
+model memory_snapshots {
+  id            String   @id @default(cuid())
+  run_id        String   @unique
+  project_id    String
+  automation_id String
+  is_test       Boolean
+  created_at    DateTime @default(now())
+  expires_at    DateTime
+
+  entries memory_snapshot_entries[]
+
+  @@index([expires_at])
+  @@index([project_id])
+}
+
+model memory_snapshot_entries {
+  id          String @id @default(cuid())
+  snapshot_id String
+  subtree_key String
+  path        String
+  blob_hash   String
+
+  snapshot memory_snapshots @relation(fields: [snapshot_id], references: [id], onDelete: Cascade)
+
+  @@index([snapshot_id])
 }
 
 model run_history_actions {

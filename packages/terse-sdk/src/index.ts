@@ -4,10 +4,20 @@ import type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
+    SdkStateGetRequest,
+    SdkStatePutRequest,
     WebhookJobChallengeResponse,
     WebhookJobTriggerResponse
 } from "terse-types"
-import { ApiRoutes, IntegrationType, sdkAgentRunRequestBodySchema, stripZodJsonSchemaMetadata, webhookJobChallengeRequestSchema, webhookJobTriggerRequestSchema } from "terse-types"
+import {
+    ApiRoutes,
+    IntegrationType,
+    sdkAgentRunRequestBodySchema,
+    sdkStateGetResponseSchema,
+    stripZodJsonSchemaMetadata,
+    webhookJobChallengeRequestSchema,
+    webhookJobTriggerRequestSchema
+} from "terse-types"
 // Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
 // so users get the correct type when annotating onTrigger/filter callback parameters.
 import type {
@@ -95,7 +105,17 @@ import { z } from "zod"
 import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { openSessionStream } from "./sessionStream.js"
-import { type InferEvents, InferStructuredOutput, type InferToolApprovals, type SDKTrigger, type TypedSkill, type TypedTrigger, createSDKTrigger } from "./types.js"
+import {
+    type InferEvents,
+    InferStructuredOutput,
+    type InferToolApprovals,
+    type SDKTrigger,
+    type StateAccessor,
+    type StateDefinition,
+    type TypedSkill,
+    type TypedTrigger,
+    createSDKTrigger
+} from "./types.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -105,6 +125,44 @@ function resolveTerseBackendUrl(): string {
 
 function resolveApiBaseUrl(): string {
     return resolveTerseBackendUrl()
+}
+
+function buildSdkRequestHeaders(): Record<string, string> {
+    const apiKey = process.env.TERSE_API_KEY
+    if (!apiKey) {
+        throw new Error("TERSE_API_KEY environment variable is not set.")
+    }
+    const headers: Record<string, string> = {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "text/event-stream"
+    }
+    const { sessionId, runId, projectId, jobName } = await resolveRunIdentity()
+    if (sessionId) headers["X-Terse-Session-Id"] = sessionId
+    if (runId) headers["X-Terse-Run-Id"] = runId
+    if (projectId) headers["X-Terse-Project-Id"] = projectId
+    if (jobName) headers["X-Terse-Job-Name"] = jobName
+    return headers
+}
+
+// Run/session identity comes from the run's seeded attributes, looked up by
+// the workflow runtime's run id (which is NOT the Terse run id — that's a
+// separate value seeded as an attribute at dispatch). Outside a durable run
+// there is no identity to resolve; the run-id header falls back to env.
+async function resolveRunIdentity(): Promise<{ sessionId?: string; runId?: string; projectId?: string; jobName?: string }> {
+    try {
+        // Dynamic imports keep `workflow` / `workflow/runtime` (which transitively
+        // pull node:fs etc.) out of the barrel's static graph, so they never land
+        // in the workflow bundle. This only runs inside a step, where Node is allowed.
+        const { getWorkflowMetadata } = await import("workflow")
+        const { getWorld } = await import("workflow/runtime")
+        const workflowRunId = getWorkflowMetadata().workflowRunId
+        const world = await getWorld()
+        const { attributes } = await world.runs.get(workflowRunId)
+        return { sessionId: attributes?.sessionId, runId: attributes?.runId, projectId: attributes?.projectId, jobName: attributes?.jobName }
+    } catch {
+        return {}
+    }
 }
 
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
@@ -117,7 +175,19 @@ export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOpti
 
 // Re-export SDK-specific types
 export { createSDKTrigger, registerEventTransform } from "./types.js"
-export type { InferEvent, InferEvents, InferStructuredOutput, InferToolApproval, InferToolApprovals, SDKTrigger, ToolboxEntry, TypedSkill, TypedTrigger } from "./types.js"
+export type {
+    InferEvent,
+    InferEvents,
+    InferStructuredOutput,
+    InferToolApproval,
+    InferToolApprovals,
+    SDKTrigger,
+    StateAccessor,
+    StateDefinition,
+    ToolboxEntry,
+    TypedSkill,
+    TypedTrigger
+} from "./types.js"
 
 // Re-export shared types for consumer convenience
 export {
@@ -140,6 +210,7 @@ export {
     LinearEventType,
     LinearInputConfig,
     LinearOutputConfig,
+    MemoryConfig,
     NotionConfig,
     PosthogConfig,
     SlackConfig,
@@ -246,15 +317,16 @@ export { RunHistoryAction, RunHistoryDecision, RunHistoryRecord, RunHistoryStatu
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[]> = {
+export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[], TStates extends readonly StateDefinition[] = readonly StateDefinition[]> = {
     name: string
     triggers: [...TTriggers]
-    filter?: (event: InferEvents<TTriggers>) => boolean | Promise<boolean>
-    onTrigger: (event: InferEvents<TTriggers>) => Promise<void>
+    states?: [...TStates]
+    filter?: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => boolean | Promise<boolean>
+    onTrigger: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => Promise<void>
     remoteServerUrl?: string
 }
 
-export function createJob<TTriggers extends readonly TypedTrigger[]>(params: CreateJobParameters<TTriggers>) {
+export function createJob<TTriggers extends readonly TypedTrigger[], const TStates extends readonly StateDefinition[] = readonly []>(params: CreateJobParameters<TTriggers, TStates>) {
     const currentJobs = fetchRegisteredJobs()
     if (currentJobs.has(params.name)) {
         throw new Error(`Job "${params.name}" is registered twice on this Terse instance.`)
@@ -295,6 +367,59 @@ export function fetchRegisteredJobs(): Map<string, CreateJobParameters> {
 export function __resetRegisteredTerseInstances(): void {
     const g = globalThis as GlobalWithInstances
     g[TERSE_INSTANCES_KEY] = new Map<string, CreateJobParameters>()
+}
+
+async function stateGet(key: string): Promise<string | null> {
+    const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_GET}`, {
+        method: "POST",
+        headers: buildSdkRequestHeaders(),
+        body: JSON.stringify({ key } satisfies SdkStateGetRequest)
+    })
+    if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+        throw new Error(`Failed to read state "${key}": ${data.error ?? res.statusText}`)
+    }
+    return sdkStateGetResponseSchema.parse(await res.json()).content
+}
+
+async function statePut(key: string, content: string): Promise<void> {
+    const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_PUT}`, {
+        method: "POST",
+        headers: buildSdkRequestHeaders(),
+        body: JSON.stringify({ key, content } satisfies SdkStatePutRequest)
+    })
+    if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+        throw new Error(`Failed to write state "${key}": ${data.error ?? res.statusText}`)
+    }
+}
+
+export function __buildJobStateAccessor<TStates extends readonly StateDefinition[]>(states: TStates): StateAccessor<TStates> {
+    const schemas = new Map(states.map(s => [s.key, s.value] as const))
+    const schemaFor = (key: string): z.ZodType => {
+        const schema = schemas.get(key)
+        if (!schema) throw new Error(`Unknown state key "${key}". Declare it in the job's \`states\`.`)
+        return schema
+    }
+    const accessor: StateAccessorImpl = {
+        async get(key) {
+            const schema = schemaFor(key)
+            const raw = await stateGet(key)
+            if (raw !== null) return schema.parse(JSON.parse(raw))
+            return schema.safeParse(undefined).data
+        },
+        async set(key, value) {
+            const schema = schemaFor(key)
+            const parsed = schema.safeParse(value)
+            if (!parsed.success) {
+                throw new Error(`Invalid value for state "${key}": ${parsed.error.issues.map(issue => `${issue.path.join(".") || "<root>"}: ${issue.message}`).join("; ")}`)
+            }
+            await statePut(key, JSON.stringify(parsed.data))
+            return parsed.data
+        }
+    }
+    // TS can't correlate a dynamic string key to its schema's type (microsoft/TypeScript#30581), so we assert the per-key shape here.
+    return accessor as StateAccessor<TStates>
 }
 
 export class Terse {
@@ -367,14 +492,15 @@ export class Terse {
 
         try {
             const inputEvent = createSDKTrigger(event)
+            const state = __buildJobStateAccessor(job.states ?? [])
 
             if (job.filter) {
-                const shouldRun = await job.filter(inputEvent)
+                const shouldRun = await job.filter(inputEvent, state)
                 if (!shouldRun) {
                     return { status: "ok" as const, filtered: true }
                 }
             }
-            await job.onTrigger(inputEvent)
+            await job.onTrigger(inputEvent, state)
 
             return { status: "ok" as const }
         } catch (error) {
@@ -434,7 +560,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         try {
             const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
                 method: "POST",
-                headers: await TerseAgent.buildHeaders(),
+                headers: buildSdkRequestHeaders(),
                 body: JSON.stringify(requestBody)
             })
 
@@ -460,7 +586,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         "use step"
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
             method: "POST",
-            headers: await TerseAgent.buildHeaders(),
+            headers: buildSdkRequestHeaders(),
             body: JSON.stringify(params satisfies SdkApprovalDecisionRequestBody)
         })
 
@@ -519,7 +645,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         "use step"
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
-            headers: await TerseAgent.buildHeaders(),
+            headers: buildSdkRequestHeaders(),
             body: JSON.stringify({ toolName, params })
         })
         const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
@@ -539,31 +665,11 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             "Content-Type": "application/json",
             Accept: "text/event-stream"
         }
-        const { sessionId, runId } = await TerseAgent.resolveRunIdentity()
+        const { sessionId, runId } = await resolveRunIdentity()
         if (sessionId) headers["X-Terse-Session-Id"] = sessionId
         const runIdHeader = runId ?? process.env.TERSE_RUN_ID
         if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
         return headers
-    }
-
-    // Run/session identity comes from the run's seeded attributes, looked up by
-    // the workflow runtime's run id (which is NOT the Terse run id — that's a
-    // separate value seeded as an attribute at dispatch). Outside a durable run
-    // there is no identity to resolve; the run-id header falls back to env.
-    private static async resolveRunIdentity(): Promise<{ sessionId?: string; runId?: string }> {
-        try {
-            // Dynamic imports keep `workflow` / `workflow/runtime` (which transitively
-            // pull node:fs etc.) out of the barrel's static graph, so they never land
-            // in the workflow bundle. This only runs inside a step, where Node is allowed.
-            const { getWorkflowMetadata } = await import("workflow")
-            const { getWorld } = await import("workflow/runtime")
-            const workflowRunId = getWorkflowMetadata().workflowRunId
-            const world = await getWorld()
-            const { attributes } = await world.runs.get(workflowRunId)
-            return { sessionId: attributes?.sessionId, runId: attributes?.runId }
-        } catch {
-            return {}
-        }
     }
 
     private async *consumeSseStream(res: Response): AsyncGenerator<TerseAgentResult> {
@@ -799,4 +905,9 @@ function parseToolCallCompleted(raw: string): { tool?: string; status?: string }
     } catch {
         return null
     }
+}
+
+type StateAccessorImpl = {
+    get(key: string): Promise<unknown>
+    set(key: string, value: unknown): Promise<unknown>
 }

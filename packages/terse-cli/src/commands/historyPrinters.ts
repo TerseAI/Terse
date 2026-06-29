@@ -18,7 +18,8 @@ export function printRuns(jobName: string, agentId: string, items: RunWithEvents
     for (const run of items) {
         const ts = new Date(run.timestamp).toISOString()
         const triggerSource = run.trigger.title ?? run.trigger.source
-        console.log(`  ${formatStatus(run.status)} ${chalk.dim(ts)} ${chalk.bold(run.id)}`)
+        const testMarker = run.isTest ? ` ${chalk.magenta("🧪 TEST RUN")}` : ""
+        console.log(`  ${formatStatus(run.status)} ${chalk.dim(ts)} ${chalk.bold(run.id)}${testMarker}`)
         console.log(`    trigger:  ${run.trigger.integration} — ${triggerSource}`)
         if (run.trigger.subheader) console.log(chalk.dim(`              ${run.trigger.subheader}`))
         console.log(`    decision: ${run.decision.action}${run.decision.reasoning ? ` — ${truncate(run.decision.reasoning, 200)}` : ""}`)
@@ -56,6 +57,7 @@ function formatTriggerEventForRun(run: RunWithEvents): string | null {
 
 export function printRunChat(runId: string, chat: RunChatHistory): void {
     console.log(chalk.cyan(`\n  Run: ${runId}`))
+    if (chat.isTest) console.log(chalk.magenta(`  🧪 TEST RUN`))
     console.log(chalk.dim(`  ${chat.startTimestamp} → ${chat.endTimestamp}  status=${chat.status}\n`))
 
     if (chat.triggerEvent) {

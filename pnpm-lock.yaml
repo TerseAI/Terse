@@ -616,9 +616,6 @@ importers:
       '@slack/web-api':
         specifier: ^7.15.0
         version: 7.15.0
-      zod:
-        specifier: 4.3.6
-        version: 4.3.6
     devDependencies:
       tsc-esm-fix:
         specifier: ^3.1.2
@@ -629,6 +626,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
   test-jobs:
     dependencies:

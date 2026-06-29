@@ -4,17 +4,68 @@ import { IntegrationType } from "terse-types"
 
 import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
-import { unrestricted } from "../abstract/acl"
+import { ToolACLValidationResult, ToolACLValidator, denyToolACL, unrestricted } from "../abstract/acl"
 
 import { webExtractTool } from "./tools/webExtractTool"
 import { webResearchTool } from "./tools/webResearchTool"
 import { webSearchTool } from "./tools/webSearchTool"
 
+// Parses a URL or bare domain to its lowercase hostname (sans a leading "www."), via the WHATWG URL parser. Null when unparseable.
+function toHostname(value: string): string | null {
+    const trimmed = value.trim()
+    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+    try {
+        return new URL(withScheme).hostname.toLowerCase().replace(/^www\./, "")
+    } catch {
+        return null
+    }
+}
+
+// True when `value`'s host equals an allowed domain or is a subdomain of one.
+function isAllowed(value: string, allowedDomains: readonly string[]): boolean {
+    const host = toHostname(value)
+    return (
+        !!host &&
+        allowedDomains.some(domain => {
+            const allowed = toHostname(domain)
+            return !!allowed && (host === allowed || host.endsWith(`.${allowed}`))
+        })
+    )
+}
+
+// The union of allowed domains across the Web configs. Empty means no whitelist is active (unrestricted).
+function collectAllowedDomains(configs: WebConfig[]): string[] {
+    return Array.from(new Set(configs.flatMap(c => c.allowedDomains ?? [])))
+}
+
+function denyOffenders(values: readonly string[], allowedDomains: readonly string[], label: string): ToolACLValidationResult {
+    const offenders = values.filter(value => !isAllowed(value, allowedDomains))
+    if (offenders.length === 0) return { ok: true }
+    return denyToolACL(`${label} not in allowed domains (${offenders.join(", ")}). Allowed: ${allowedDomains.join(", ")}.`)
+}
+
+const validateWebExtract: ToolACLValidator<"web_extract", WebConfig> = ({ args, configs }) => {
+    const allowedDomains = collectAllowedDomains(configs)
+    if (allowedDomains.length === 0) return { ok: true }
+    const urls = Array.isArray(args.urls) ? args.urls : [args.urls]
+    return denyOffenders(urls, allowedDomains, "web_extract URLs")
+}
+
+const validateWebSearch: ToolACLValidator<"web_search", WebConfig> = ({ args, configs }) => {
+    const allowedDomains = collectAllowedDomains(configs)
+    if (allowedDomains.length === 0) return { ok: true }
+    const includeDomains = args.include_domains ?? []
+    if (includeDomains.length === 0) {
+        return denyToolACL(`web_search must set include_domains to a subset of the allowed domains: ${allowedDomains.join(", ")}.`)
+    }
+    return denyOffenders(includeDomains, allowedDomains, "web_search include_domains")
+}
+
 export class WebOutput extends Output<WebConfig> {
     constructor() {
         super(OutputConfigType.WEB, [
-            { tool: webSearchTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Web Search", validateACL: unrestricted },
-            { tool: webExtractTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Extract Page", validateACL: unrestricted },
+            { tool: webSearchTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Web Search", validateACL: validateWebSearch },
+            { tool: webExtractTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Extract Page", validateACL: validateWebExtract },
             { tool: webResearchTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Research", validateACL: unrestricted }
         ])
     }
@@ -23,7 +74,16 @@ export class WebOutput extends Output<WebConfig> {
 
     async addOutputToAgent(_tx: PrismaTransaction, _agentOutputId: string, _output: WebConfig): Promise<void> {}
 
-    protected getSystemInstructionsForConfigs(_configs: WebConfig[]): string {
-        return ""
+    protected getSystemInstructionsForConfigs(configs: WebConfig[]): string {
+        const allowedDomains = Array.from(new Set(configs.flatMap(c => c.allowedDomains ?? [])))
+        if (allowedDomains.length === 0) {
+            return ""
+        }
+        const domainList = allowedDomains.join(", ")
+        return [
+            `Web access is restricted to these domains (and their subdomains): ${domainList}.`,
+            `Only call web_extract on URLs within those domains, and always pass include_domains to web_search restricted to them.`,
+            `Requests to other domains will be blocked.`
+        ].join(" ")
     }
 }

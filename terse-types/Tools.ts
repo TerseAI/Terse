@@ -2111,9 +2111,79 @@ export const webSearchTool = defineTool({
         search_depth: z.enum(["basic", "advanced"]).nullable().describe("'basic' is faster, 'advanced' is more thorough (default 'basic')"),
         include_answer: z.boolean().nullable().describe("Include an LLM-generated answer summarizing the results (default false)"),
         topic: z.enum(["general", "news"]).nullable().describe("'news' for recent news articles, 'general' for all web content (default 'general')"),
-        time_range: z.enum(["day", "week", "month", "year"]).nullable().describe("Filter results by recency")
+        time_range: z.enum(["day", "week", "month", "year"]).nullable().describe("Filter results by recency"),
+        include_domains: z.array(z.string()).nullable().describe("Restrict results to these domains (e.g. ['example.com']). Required when web access is limited to an allowed list of domains.")
     }),
     outputSchema: webSearchOutputSchema
+})
+
+export const memoryViewCommandSchema = z.object({
+    op: z.literal("view"),
+    path: z.string().nullable().optional().describe("Path under /memories to view; omit to list the memory root"),
+    view_range: z.array(z.number().int()).nullable().optional().describe("Optional [startLine, endLine] (1-indexed) to view a slice of a file")
+})
+
+export const memoryCreateCommandSchema = z.object({
+    op: z.literal("create"),
+    path: z.string().describe("Path under /memories to create (e.g. '/memories/notes.md')"),
+    file_text: z.string().nullable().optional().describe("Full file contents; defaults to empty")
+})
+
+export const memoryStrReplaceCommandSchema = z.object({
+    op: z.literal("str_replace"),
+    path: z.string().describe("Path under /memories to edit"),
+    old_str: z.string().describe("Exact text to replace (must appear verbatim exactly once)"),
+    new_str: z.string().nullable().optional().describe("Replacement text; omit to delete the matched text")
+})
+
+export const memoryInsertCommandSchema = z.object({
+    op: z.literal("insert"),
+    path: z.string().describe("Path under /memories to edit"),
+    insert_line: z.number().int().describe("Line number after which to insert (0 = beginning of file)"),
+    insert_text: z.string().nullable().optional().describe("Text to insert; defaults to empty")
+})
+
+export const memoryDeleteCommandSchema = z.object({
+    op: z.literal("delete"),
+    path: z.string().describe("Path under /memories to delete")
+})
+
+export const memoryRenameCommandSchema = z.object({
+    op: z.literal("rename"),
+    old_path: z.string().describe("Source path under /memories"),
+    new_path: z.string().describe("Destination path under /memories")
+})
+
+export const memoryCommandSchema = z.discriminatedUnion("op", [
+    memoryViewCommandSchema,
+    memoryCreateCommandSchema,
+    memoryStrReplaceCommandSchema,
+    memoryInsertCommandSchema,
+    memoryDeleteCommandSchema,
+    memoryRenameCommandSchema
+])
+
+export const memoryInputSchema = z.object({
+    command: memoryCommandSchema.describe("The memory operation to perform and its arguments")
+})
+
+export type MemoryViewCommand = z.infer<typeof memoryViewCommandSchema>
+export type MemoryCreateCommand = z.infer<typeof memoryCreateCommandSchema>
+export type MemoryStrReplaceCommand = z.infer<typeof memoryStrReplaceCommandSchema>
+export type MemoryInsertCommand = z.infer<typeof memoryInsertCommandSchema>
+export type MemoryDeleteCommand = z.infer<typeof memoryDeleteCommandSchema>
+export type MemoryRenameCommand = z.infer<typeof memoryRenameCommandSchema>
+export type MemoryCommand = z.infer<typeof memoryCommandSchema>
+export type MemoryInput = z.infer<typeof memoryInputSchema>
+
+export const memoryOutputSchema = toolOutputBaseSchema.extend({
+    result: z.string()
+})
+
+export const memoryTool = defineTool({
+    name: "memory",
+    inputSchema: memoryInputSchema,
+    outputSchema: memoryOutputSchema
 })
 
 export const ToolDefinitions = {
@@ -2168,7 +2238,8 @@ export const ToolDefinitions = {
     [webSearchTool.name]: webSearchTool,
     [webExtractTool.name]: webExtractTool,
     [webResearchTool.name]: webResearchTool,
-    [imageEditTool.name]: imageEditTool
+    [imageEditTool.name]: imageEditTool,
+    [memoryTool.name]: memoryTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

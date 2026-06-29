@@ -23,6 +23,14 @@ export class NotificationManager {
         this.agent = agent
     }
 
+    private async isTestRun(runId: string): Promise<boolean> {
+        const record = await db().run_history_records.findUnique({
+            where: { id: runId },
+            select: { is_test: true }
+        })
+        return record?.is_test ?? false
+    }
+
     private async isNotificationPermitted(runActionType: RunHistoryActionType): Promise<boolean> {
         const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
             where: {
@@ -85,6 +93,11 @@ export class NotificationManager {
             return
         }
 
+        if (await this.isTestRun(runId)) {
+            logger.debug(`Run ${runId} is a test run. Skipping approval notification.`)
+            return
+        }
+
         const isPermitted = await this.isNotificationPermitted(RunHistoryActionType.approve)
         if (!isPermitted) {
             return
@@ -118,6 +131,11 @@ export class NotificationManager {
     }
 
     async notifyRunFailure(runId: string, errorMessage: string) {
+        if (await this.isTestRun(runId)) {
+            logger.debug(`Run ${runId} is a test run. Skipping failure notification and auto-pause.`)
+            return
+        }
+
         // Record the failure (and possibly auto-pause) regardless of notification
         // permissions — the pause must trigger even if the user opted out of emails.
         let failureState

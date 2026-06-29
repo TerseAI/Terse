@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, ChevronDown, Clock, Filter as FilterIcon, Loader2, PauseCircle, XCircle } from "lucide-react"
+import { Ban, CheckCircle2, ChevronDown, Clock, Filter as FilterIcon, FlaskConical, Loader2, PauseCircle, XCircle } from "lucide-react"
 import { RunHistoryStatus } from "terse-types"
 
 import StatusBadge from "@/components/StatusBadge"
@@ -9,11 +9,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 type StatusFilterProps = {
     selectedStatuses: Set<RunHistoryStatus>
     onToggleStatus: (status: RunHistoryStatus) => void
+    includeTest: boolean
+    onToggleIncludeTest: () => void
     open?: boolean
     onOpenChange?: (open: boolean) => void
 }
 
-function StatusFilter({ selectedStatuses, onToggleStatus, open, onOpenChange }: StatusFilterProps) {
+function StatusFilter({ selectedStatuses, onToggleStatus, includeTest, onToggleIncludeTest, open, onOpenChange }: StatusFilterProps) {
     return (
         <Popover open={open} onOpenChange={onOpenChange}>
             <PopoverTrigger asChild>
@@ -53,6 +55,10 @@ function StatusFilter({ selectedStatuses, onToggleStatus, open, onOpenChange }: 
                     <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.SUSPENDED)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.SUSPENDED)} />
                         <StatusBadge text="Suspended" icon={PauseCircle} status="warning" iconClassName="w-16 h-16" />
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <Checkbox checked={includeTest} onCheckedChange={onToggleIncludeTest} />
+                        <StatusBadge text="Test Runs" icon={FlaskConical} iconClassName="w-16 h-16" />
                     </label>
                 </fieldset>
             </PopoverContent>

@@ -76,7 +76,7 @@ Improve an existing Terse SDK job. The skill:
 
 ## What is Terse?
 
-Terse is an automation platform where developers build background AI agents in TypeScript. Each agent reacts to events from integrated services (GitHub, Slack, Linear, Notion, Gmail, and more) and takes actions using an AI-powered agent runner.
+Terse is the AI workflow platform for coding agents. Workflows run in TypeScript, react to events from integrated services (GitHub, Slack, Linear, Notion, Gmail, and more), and take actions using an AI-powered agent runner.
 
 Jobs are typically defined in `src/terse.jobs.ts` using `createJob()`, tested with `terse replay` or `terse test list|show|run`, and deployed with `terse deploy`.
 

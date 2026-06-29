@@ -2,7 +2,7 @@ import dotenv from "dotenv"
 import fs from "node:fs"
 import path from "node:path"
 import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema } from "terse-types"
-import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SerializedEvent } from "terse-types"
+import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SdkTestRunStartResponse, SerializedEvent } from "terse-types"
 
 import { CliError, ErrorCode } from "./cliError.js"
 import { BACKEND_URL } from "./config.js"
@@ -144,6 +144,7 @@ export async function fetchRunHistory(agentId: string, apiKey: string, params: G
     if (params.status?.length) usp.set("status", params.status.join(","))
     if (params.page) usp.set("page", String(params.page))
     if (params.pageSize) usp.set("pageSize", String(params.pageSize))
+    if (params.includeTest) usp.set("includeTest", "true")
 
     const base = buildRoute(ApiRoutes.RUN_HISTORY.BY_AGENT_ID, { agentId })
     const url = usp.toString() ? `${base}?${usp.toString()}` : base
@@ -159,10 +160,22 @@ export type RunChatHistory = {
     triggerEvent: string | null
     triggerEventType: string | null
     isTriggerEventTruncated: boolean
+    isTest?: boolean
 }
 
 export async function fetchRunChatHistory(runId: string, apiKey: string): Promise<RunChatHistory> {
     return fetchWithAuth<RunChatHistory>(buildRoute(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID, { runId }), apiKey)
+}
+
+export async function startTestRun(
+    params: { projectId: string; jobName: string; event: SerializedEvent; forceLocal?: boolean; isTest?: boolean; replayOfRunId?: string },
+    apiKey: string
+): Promise<SdkTestRunStartResponse> {
+    return fetchWithAuth<SdkTestRunStartResponse>(ApiRoutes.SDK.TEST_RUN, apiKey, params, "POST")
+}
+
+export async function finalizeTestRun(runId: string, status: "success" | "failed", apiKey: string, error?: string): Promise<void> {
+    await fetchWithAuth(buildRoute(ApiRoutes.SDK.TEST_RUN_FINALIZE, { runId }), apiKey, { status, error }, "POST")
 }
 
 export async function resolveEventFromRunId(runId: string | null, apiKey: string): Promise<SdkRunTriggerEventResponse | undefined> {

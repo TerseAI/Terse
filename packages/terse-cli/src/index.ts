@@ -20,6 +20,7 @@ import { applyImprovement, listImprovements } from "./commands/improvements.js"
 import { init } from "./commands/init.js"
 import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateWait } from "./commands/integrate.js"
 import { listen } from "./commands/listen.js"
+import { memoryGet, memoryList, memoryPut, memoryRemove } from "./commands/memory.js"
 import { replay } from "./commands/replay.js"
 import { resume } from "./commands/resume.js"
 import { run } from "./commands/run.js"
@@ -41,7 +42,7 @@ function syncJsonErrorOutput(command: Command): void {
     setErrorOutputJson(Boolean(json))
 }
 
-program.name("terse").description("The Terse CLI — create and manage Terse projects").version(getCliVersion())
+program.name("terse").description("The CLI for Terse, the AI workflow platform for coding agents").version(getCliVersion())
 program.hook("preAction", (_thisCommand, actionCommand) => {
     syncJsonErrorOutput(actionCommand)
 })
@@ -342,6 +343,68 @@ secretsCommand
         await secretsImport(file, { overwrite: opts.overwrite })
     })
 
+const memoryCommand = program
+    .command("memory")
+    .description("Inspect and manage a job's persistent agent memory")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse memory list --job my-job
+  $ terse memory get notes.md --job my-job --out ./notes.md
+  $ printf '%s' "new contents" | terse memory put notes.md --job my-job
+  $ terse memory put notes.md --job my-job --file ./notes.md
+  $ terse memory rm notes.md --job my-job --yes
+`
+    )
+
+memoryCommand
+    .command("list")
+    .description("List memory files for a job")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` memory instead of production")
+    .option("--json", "Emit JSON")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (opts: JsonEntryFileOpts & { job?: string; test?: boolean }) => {
+        await memoryList({ job: opts.job, test: opts.test, json: opts.json, entryFile: opts.entryFile })
+    })
+
+memoryCommand
+    .command("get")
+    .description("Read a memory file (to stdout, or to a local file with --out)")
+    .argument("<path>", "Memory file path (relative to the job's memory root)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` memory instead of production")
+    .option("--out <file>", "Write the contents to a local file instead of stdout")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (path: string, opts: EntryFileOpts & { job?: string; test?: boolean; out?: string }) => {
+        await memoryGet(path, { job: opts.job, test: opts.test, out: opts.out, entryFile: opts.entryFile })
+    })
+
+memoryCommand
+    .command("put")
+    .description("Create or replace a memory file (from --file or stdin)")
+    .argument("<path>", "Memory file path (relative to the job's memory root)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` memory instead of production")
+    .option("--file <path>", "Local file to upload (otherwise reads stdin)")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (path: string, opts: EntryFileOpts & { job?: string; test?: boolean; file?: string }) => {
+        await memoryPut(path, { job: opts.job, test: opts.test, file: opts.file, entryFile: opts.entryFile })
+    })
+
+memoryCommand
+    .command("rm")
+    .description("Delete a memory file")
+    .argument("<path>", "Memory file path (relative to the job's memory root)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` memory instead of production")
+    .option("--yes", "Confirm deletion")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (path: string, opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
+        await memoryRemove(path, { job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
+    })
+
 program
     .command("generate")
     .description("Autogenerate context from your connected workspaces")
@@ -414,6 +477,7 @@ program
     .option("--triggers", "Also fetch the input trigger event JSON for each run (cheap, recommended for /improve)")
     .option("--events", "Also fetch the full model event stream for each run (heavy, includes trigger event)")
     .option("--run-id <id>", "Show full chat events for a single run instead of a list")
+    .option("--include-test", "Include runs from `terse test` (hidden by default)")
     .action(
         async (
             jobName: string | undefined,
@@ -428,6 +492,7 @@ program
                 triggers?: boolean
                 events?: boolean
                 runId?: string
+                includeTest?: boolean
             }
         ) => {
             await history(jobName, opts)

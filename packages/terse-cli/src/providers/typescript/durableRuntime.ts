@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
-import { createSDKTrigger, fetchRegisteredJobs } from "terse-sdk"
+import { __buildJobStateAccessor, createSDKTrigger, fetchRegisteredJobs } from "terse-sdk"
 import { TerseJobContext } from "terse-sdk/dist/context"
 import { SerializedEvent } from "terse-types"
 import { getRun, start } from "workflow/api"
@@ -55,12 +55,22 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             if (!workflowId) throw new Error(`No durable workflow was built for job "${jobName}".`)
 
             const job = fetchRegisteredJobs().get(jobName)
-            if (job?.filter && !(await job.filter(createSDKTrigger(event)))) return { status: "ok", filtered: true }
+            if (!job) throw new Error(`No job was registered with name "${jobName}".`)
+
+            const state = __buildJobStateAccessor(job.states ?? [])
+            if (job?.filter && !(await job.filter(createSDKTrigger(event), state))) return { status: "ok", filtered: true }
 
             process.env.TERSE_BACKEND_URL ??= ctx.apiBaseUrl
             const attributes: Record<string, string> = { sessionId: ctx.sessionId }
-            if (ctx.runId) attributes.runId = ctx.runId
-            const run = await start({ workflowId }, [event], { attributes })
+            if (ctx.runId) {
+                attributes.runId = ctx.runId
+            } else {
+                attributes.runId = process.env.TERSE_RUN_ID ?? ""
+            }
+            if (ctx.jobName) attributes.jobName = ctx.jobName
+            if (ctx.projectId) attributes.projectId = ctx.projectId
+
+            const run = await start({ workflowId }, [event, job.states], { attributes })
             return await run.returnValue
         },
         resumeRun: workflowRunId => getRun(workflowRunId).returnValue,

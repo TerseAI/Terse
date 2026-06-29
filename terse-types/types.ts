@@ -345,6 +345,10 @@ export type TriggerPayload = {
     isTriggerEventTruncated: boolean
 }
 
+export type SdkMemoryFileEntry = { path: string; isDirectory: boolean; sizeBytes: number }
+export type SdkMemoryListResponse = { job: string; files: SdkMemoryFileEntry[] }
+export type SdkMemoryGetResponse = { path: string; content: string }
+
 export const runHistoryDecisionSchema = z.object({
     action: runHistoryDecisionActionSchema,
     reasoning: z.string()
@@ -360,7 +364,10 @@ export const runHistoryRecordSchema = z.object({
     decision: runHistoryDecisionSchema,
     actions: z.array(runHistoryActionBaseSchema).optional(),
     status: runHistoryStatusSchema,
-    isManuallyTriggered: z.boolean()
+    isManuallyTriggered: z.boolean(),
+    isTest: z.boolean().optional(),
+    triggeredByUserId: z.string().nullish(),
+    replayOfRunId: z.string().nullish()
 })
 export type RunHistoryRecord = z.infer<typeof runHistoryRecordSchema>
 
@@ -394,7 +401,8 @@ export const agentSchema = z.object({
     notificationSettings: agentNotificationSettingsSchema.nullable(),
     toolApprovals: z.array(z.string()).nullable(),
     updatedAt: z.string().nullable(),
-    metadata: jobMetadataSchema.nullable()
+    metadata: jobMetadataSchema.nullable(),
+    deployedAt: z.string().nullable().optional()
 })
 export type Agent = z.infer<typeof agentSchema>
 
@@ -995,9 +1003,49 @@ export const sdkToolExecuteRequestSchema = z.object({
 })
 export type SdkToolExecuteRequest = z.infer<typeof sdkToolExecuteRequestSchema>
 
+export const sdkStateGetRequestSchema = z.object({
+    key: z.string().min(1)
+})
+export type SdkStateGetRequest = z.infer<typeof sdkStateGetRequestSchema>
+
+export const sdkStatePutRequestSchema = z.object({
+    key: z.string().min(1),
+    content: z.string()
+})
+export type SdkStatePutRequest = z.infer<typeof sdkStatePutRequestSchema>
+
+export const sdkStateGetResponseSchema = z.object({
+    content: z.string().nullable()
+})
+export type SdkStateGetResponse = z.infer<typeof sdkStateGetResponseSchema>
+
+export const sdkTestRunStartRequestSchema = z.object({
+    projectId: z.string().min(1),
+    jobName: z.string().min(1),
+    event: serializedEventSchema,
+    forceLocal: z.boolean().optional(),
+    isTest: z.boolean().optional(),
+    replayOfRunId: z.string().optional()
+})
+export type SdkTestRunStartRequest = z.infer<typeof sdkTestRunStartRequestSchema>
+
+export const sdkTestRunStartResponseSchema = z.object({
+    runId: z.string(),
+    /** true: the local CLI must drive the run via /sdk/*. false: it was dispatched to the self-hosted webhook. */
+    local: z.boolean()
+})
+export type SdkTestRunStartResponse = z.infer<typeof sdkTestRunStartResponseSchema>
+
+export const sdkTestRunFinalizeRequestSchema = z.object({
+    status: z.enum(["success", "failed"]),
+    error: z.string().optional()
+})
+export type SdkTestRunFinalizeRequest = z.infer<typeof sdkTestRunFinalizeRequestSchema>
+
 export const sdkRunTriggerEventResponseSchema = z.object({
     event: serializedEventSchema,
-    agentName: z.string()
+    agentName: z.string(),
+    isTest: z.boolean().optional()
 })
 export type SdkRunTriggerEventResponse = z.infer<typeof sdkRunTriggerEventResponseSchema>
 

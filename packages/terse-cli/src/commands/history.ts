@@ -103,6 +103,7 @@ function buildParams(options: HistoryOptions): GetRunHistoryParams {
     if (options.since) params.start = options.since
     if (options.until) params.end = options.until
     if (options.page && options.page > 0) params.page = options.page
+    if (options.includeTest) params.includeTest = true
 
     if (options.limit && options.limit > 0) {
         params.pageSize = Math.min(options.limit, MAX_PAGE_SIZE)
@@ -132,4 +133,5 @@ export type HistoryOptions = {
     triggers?: boolean
     events?: boolean
     runId?: string
+    includeTest?: boolean
 }
