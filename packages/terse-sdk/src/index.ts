@@ -127,7 +127,7 @@ function resolveApiBaseUrl(): string {
     return resolveTerseBackendUrl()
 }
 
-function buildSdkRequestHeaders(): Record<string, string> {
+async function buildSdkRequestHeaders(): Promise<Record<string, string>> {
     const apiKey = process.env.TERSE_API_KEY
     if (!apiKey) {
         throw new Error("TERSE_API_KEY environment variable is not set.")
@@ -372,7 +372,7 @@ export function __resetRegisteredTerseInstances(): void {
 async function stateGet(key: string): Promise<string | null> {
     const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_GET}`, {
         method: "POST",
-        headers: buildSdkRequestHeaders(),
+        headers: await buildSdkRequestHeaders(),
         body: JSON.stringify({ key } satisfies SdkStateGetRequest)
     })
     if (!res.ok) {
@@ -385,7 +385,7 @@ async function stateGet(key: string): Promise<string | null> {
 async function statePut(key: string, content: string): Promise<void> {
     const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_PUT}`, {
         method: "POST",
-        headers: buildSdkRequestHeaders(),
+        headers: await buildSdkRequestHeaders(),
         body: JSON.stringify({ key, content } satisfies SdkStatePutRequest)
     })
     if (!res.ok) {
@@ -560,7 +560,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         try {
             const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
                 method: "POST",
-                headers: buildSdkRequestHeaders(),
+                headers: await buildSdkRequestHeaders(),
                 body: JSON.stringify(requestBody)
             })
 
@@ -586,7 +586,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         "use step"
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
             method: "POST",
-            headers: buildSdkRequestHeaders(),
+            headers: await buildSdkRequestHeaders(),
             body: JSON.stringify(params satisfies SdkApprovalDecisionRequestBody)
         })
 
@@ -645,7 +645,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         "use step"
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
-            headers: buildSdkRequestHeaders(),
+            headers: await buildSdkRequestHeaders(),
             body: JSON.stringify({ toolName, params })
         })
         const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
