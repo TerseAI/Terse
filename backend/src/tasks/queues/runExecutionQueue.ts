@@ -7,6 +7,7 @@
  * enqueue can't spawn two Modal sandboxes or double-bill.
  */
 import { BullMq } from "../../loaders/bullmq"
+import { JobExecutionKind } from "../../services/jobExecutors/types"
 
 import { QueueName } from "./queueNames"
 
@@ -16,6 +17,7 @@ export interface RunExecutionJobData {
     orgId: string
     userId: string
     jobName: string
+    kind: JobExecutionKind
 }
 
 // BullMQ custom job ids cannot contain ":".

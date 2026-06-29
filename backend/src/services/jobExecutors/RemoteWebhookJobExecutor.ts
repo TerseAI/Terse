@@ -1,34 +1,36 @@
-import { SerializedEvent } from "terse-types"
 import type { ChatSnippet, WebhookFailureStage } from "terse-types/ModelEvents"
-import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { SdkJobServerCheckStep, UserSession, webhookJobTriggerResponseSchema } from "terse-types/types"
+import { SdkJobServerCheckStep, webhookJobTriggerResponseSchema } from "terse-types/types"
 
-import logger from "../common/logger"
-import { safeFetch } from "../common/safeFetch"
-import { extractErrorMessage } from "../common/strings"
-import { buildSignatureHeaders } from "../common/webhookHmac"
-import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../loaders/socket"
-import { finalizeRunStatus, markRunSkipped } from "../modules/agents/AgentRunner/runHistory"
-import { classifyAgentError } from "../modules/agents/agentErrorUtils"
-import { emitAndPersistSnippetEvent } from "../modules/agents/systemEvents/emitAndPersistSnippetEvent"
-import { AgentWithRelations } from "../types/prisma"
+import logger from "../../common/logger"
+import { safeFetch } from "../../common/safeFetch"
+import { extractErrorMessage } from "../../common/strings"
+import { parseSerializedTriggerPayload } from "../../common/triggerPayload"
+import { buildSignatureHeaders } from "../../common/webhookHmac"
+import { db } from "../../loaders/prisma"
+import { emitAndPersistSnippetEvent } from "../../modules/agents/systemEvents/emitAndPersistSnippetEvent"
+import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from "../webhookJobHandshakeChallenge"
 
-import { WEBHOOK_JOB_FETCH_TIMEOUT_MS, runWebhookJobHandshakeChallenge } from "./webhookJobHandshakeChallenge"
+import { JobExecutionContext, JobExecutionKind, JobExecutor, RunOutcome } from "./types"
 
-interface WebhookJobExecutionParams {
-    remoteServerUrl: string
-    runId: string
-    agent: AgentWithRelations
-    orgId: string
-    user: UserSession
-    event: SerializedEvent
-    jobName: string
-    signingSecret: string
-}
+export class RemoteWebhookJobExecutor implements JobExecutor {
+    readonly kind: JobExecutionKind = "remote-webhook"
 
-export class WebhookJobExecutionService {
-    async execute(params: WebhookJobExecutionParams): Promise<void> {
-        const { remoteServerUrl, runId, agent, orgId, user, event, jobName, signingSecret } = params
+    async execute(context: JobExecutionContext): Promise<RunOutcome> {
+        const { runId, agent, orgId, jobName } = context
+
+        const remoteServerUrl = agent.project.remote_server_url
+        const signingSecret = agent.project.signing_secret
+        if (!remoteServerUrl || !signingSecret) {
+            const reason = !remoteServerUrl ? `Webhook agent "${agent.name}" is missing remote_server_url` : `Webhook agent "${agent.name}" is missing signing_secret`
+            return { status: "failed", cause: new Error(reason) }
+        }
+
+        // Re-load the event from the persisted run record so the queue payload stays ids-only.
+        const runRecord = await db().run_history_records.findUnique({ where: { id: runId }, select: { trigger_payload: true } })
+        const event = parseSerializedTriggerPayload(runRecord?.trigger_payload ?? null)
+        if (!event) {
+            return { status: "failed", cause: new Error(`Webhook agent "${agent.name}" has no trigger payload to deliver`) }
+        }
 
         // Tracks the most recently entered stage so the unhandled-error catch block at the bottom
         // can attribute thrown exceptions to the right stage in the run-history snippet.
@@ -51,7 +53,6 @@ export class WebhookJobExecutionService {
                     step: challenge.step,
                     httpStatus: challenge.httpStatus
                 })
-                await finalizeRunFailure(runId, classifyAgentError(new Error(challenge.message)), user, agent)
                 logger.error("Webhook job: handshake failed", {
                     runId,
                     agentId: agent.id,
@@ -59,7 +60,7 @@ export class WebhookJobExecutionService {
                     step: challenge.step,
                     httpStatus: challenge.httpStatus
                 })
-                return
+                return { status: "failed", cause: new Error(challenge.message) }
             }
 
             currentStage = "delivery"
@@ -100,9 +101,8 @@ export class WebhookJobExecutionService {
                     triggerUrl: knownTriggerUrl,
                     httpStatus: deliverResponse.status
                 })
-                await finalizeRunFailure(runId, classifyAgentError(new Error(failureMessage)), user, agent)
                 logger.error("Webhook job: delivery 3xx (redirect refused)", { runId, agentId: agent.id, status: deliverResponse.status })
-                return
+                return { status: "failed", cause: new Error(failureMessage) }
             }
 
             if (!deliverResponse.ok) {
@@ -119,9 +119,8 @@ export class WebhookJobExecutionService {
                     triggerUrl: knownTriggerUrl,
                     httpStatus: deliverResponse.status
                 })
-                await finalizeRunFailure(runId, classifyAgentError(new Error(failureMessage)), user, agent)
                 logger.error("Webhook job: delivery non-2xx", { runId, agentId: agent.id, status: deliverResponse.status })
-                return
+                return { status: "failed", cause: new Error(failureMessage) }
             }
 
             // Consume the body and check for filter-skip. Do not mark SUCCESS here — self-hosted jobs run via
@@ -137,48 +136,29 @@ export class WebhookJobExecutionService {
             const filtered = triggerResponse.success && triggerResponse.data.filtered === true
 
             if (filtered) {
-                await markRunSkipped(runId, "Job filter excluded this event")
                 logger.info("Webhook job: trigger delivered but job filter skipped the run", { runId, agentId: agent.id, jobName })
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
-                return
-            } else {
-                logger.info("Webhook job: trigger delivered; awaiting SDK agent run for completion", { runId, agentId: agent.id, jobName })
+                return { status: "skipped", reason: "Job filter excluded this event" }
             }
 
-            await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
-            emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
+            logger.info("Webhook job: trigger delivered; awaiting SDK agent run for completion", { runId, agentId: agent.id, jobName })
+            return { status: "success" }
         } catch (error) {
             const errorMessage = error instanceof Error && error.name === "AbortError" ? "Webhook request timed out" : extractErrorMessage(error)
 
             logger.error("Webhook job execution failed", { error, runId, agentId: agent.id, stage: currentStage })
 
-            try {
-                await emitWebhookFailureSnippet({
-                    runId,
-                    orgId,
-                    agentId: agent.id,
-                    stage: currentStage,
-                    message: errorMessage,
-                    triggerUrl: knownTriggerUrl
-                })
-                await finalizeRunFailure(runId, classifyAgentError(error), user, agent)
-            } catch (e) {
-                logger.error("Failed to mark webhook run as failed", { error: e, runId })
-            }
+            await emitWebhookFailureSnippet({
+                runId,
+                orgId,
+                agentId: agent.id,
+                stage: currentStage,
+                message: errorMessage,
+                triggerUrl: knownTriggerUrl
+            })
+
+            return { status: "failed", cause: error }
         }
     }
-}
-
-interface EmitWebhookFailureSnippetInput {
-    runId: string
-    orgId: string
-    agentId: string
-    stage: WebhookFailureStage
-    message: string
-    triggerUrl: string
-    step?: SdkJobServerCheckStep
-    httpStatus?: number
-    bodySnippet?: string
 }
 
 async function emitWebhookFailureSnippet(input: EmitWebhookFailureSnippetInput): Promise<void> {
@@ -207,4 +187,16 @@ async function emitWebhookFailureSnippet(input: EmitWebhookFailureSnippetInput):
             error
         })
     }
+}
+
+interface EmitWebhookFailureSnippetInput {
+    runId: string
+    orgId: string
+    agentId: string
+    stage: WebhookFailureStage
+    message: string
+    triggerUrl: string
+    step?: SdkJobServerCheckStep
+    httpStatus?: number
+    bodySnippet?: string
 }

@@ -7,8 +7,7 @@ import { TriggerRuntime } from "../../../integrations/abstract/TriggerRuntime"
 import { db } from "../../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../../loaders/socket"
 import { NotificationManager } from "../../../modules/notifications/Notification"
-import { billingServiceProxyForOrganization, startBillingRun } from "../../../services/BillingService"
-import { WebhookJobExecutionService } from "../../../services/WebhookJobExecutionService"
+import { resolveJobExecutionKind } from "../../../services/jobExecutors/resolveJobExecutionKind"
 import { captureRunSnapshot, restoreRunSnapshotInto } from "../../../services/memory/memorySnapshots"
 import { replayMemorySubtreeKey, replayStateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { settings } from "../../../settings"
@@ -270,90 +269,24 @@ export class EventProcessor {
         }
 
         const activeDeploy = await getActiveDeployForProject(agent.project.id)
-
-        // SDK agents with a remote_server_url trigger the user's own infrastructure via webhook
-        if (agent.project.remote_server_url) {
-            return this.processWebhookAgent(agent, existingRunId)
-        }
-
-        // SDK agents run in a Modal sandbox instead of the normal agent pipeline
-        if (activeDeploy?.sdk_source_image_id) {
-            return this.processSdkAgent(agent, existingRunId)
-        } else {
-            logger.error("Unknown agent source", { agentId: agent.id, agentName: agent.name })
-            throw new Error("Unknown agent source")
-        }
-    }
-
-    private async processSdkAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
+        const kind = resolveJobExecutionKind(agent, activeDeploy)
         const runId = existingRunId ?? (await this.createRunForAgent(agent))
 
-        try {
-            logger.info(`Starting SDK sandbox execution for agent "${agent.name}"`, { runId, agentId: agent.id })
-
-            const billingForRunner = billingServiceProxyForOrganization(this.user.organizationId, this.user.id)
-            await startBillingRun(billingForRunner, { organizationId: this.user.organizationId, runId })
-        } catch (error) {
-            logger.error(`SDK sandbox failed to start for agent "${agent.name}"`, { error, runId, agentId: agent.id })
-            await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
-            return new ProcessorResult(false, error instanceof Error ? error.message : "SDK job failed to start", agent, runId)
-        }
-
-        // Durable dispatch: enqueue the run
         try {
             await enqueueRunExecution({
                 runId,
                 agentId: agent.id,
                 orgId: this.user.organizationId,
                 userId: agent.user_id,
-                jobName: agent.name
+                jobName: agent.name,
+                kind
             })
         } catch (error) {
-            logger.error(`Failed to enqueue SDK run execution for agent "${agent.name}"`, { error, runId, agentId: agent.id })
+            logger.error(`Failed to enqueue run execution for agent "${agent.name}"`, { error, runId, agentId: agent.id })
             await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
-            return new ProcessorResult(false, "Failed to enqueue SDK run execution", agent, runId)
+            return new ProcessorResult(false, "Failed to enqueue run execution", agent, runId)
         }
 
-        return new ProcessorResult(true, "SDK job execution enqueued", agent, runId)
-    }
-
-    private async processWebhookAgent(agent: AgentWithRelations, existingRunId?: string): Promise<ProcessorResult> {
-        const runId = existingRunId ?? (await this.createRunForAgent(agent))
-
-        const event = this.inputEvent.getSerializedEvent()
-
-        const remoteServerUrl = agent.project.remote_server_url
-        const signingSecret = agent.project.signing_secret
-        if (!remoteServerUrl || !signingSecret) {
-            const reason = !remoteServerUrl ? `Webhook agent "${agent.name}" is missing remote_server_url` : `Webhook agent "${agent.name}" is missing signing_secret`
-            await finalizeRunFailure(runId, classifyAgentError(new Error(reason)), this.user, agent)
-            return new ProcessorResult(false, reason, agent, runId)
-        }
-
-        logger.info(`Starting webhook job execution for agent "${agent.name}"`, { runId, agentId: agent.id, remoteServerUrl })
-
-        // Fire-and-forget: webhook execution runs asynchronously
-        const service = new WebhookJobExecutionService()
-        void service
-            .execute({
-                remoteServerUrl,
-                runId,
-                agent,
-                orgId: this.user.organizationId,
-                user: this.user,
-                event,
-                jobName: agent.name,
-                signingSecret
-            })
-            .catch(async error => {
-                logger.error(`Webhook job execution failed for agent "${agent.name}"`, {
-                    error,
-                    runId,
-                    agentId: agent.id
-                })
-                await finalizeRunFailure(runId, classifyAgentError(error), this.user, agent)
-            })
-
-        return new ProcessorResult(true, "Webhook job execution started", agent, runId)
+        return new ProcessorResult(true, "Run execution enqueued", agent, runId)
     }
 }

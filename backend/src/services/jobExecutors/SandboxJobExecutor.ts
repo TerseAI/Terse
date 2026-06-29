@@ -1,36 +1,23 @@
-import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { UserSession } from "terse-types/types"
+import logger from "../../common/logger"
+import { getActiveDeployForProject } from "../../common/projectHelper"
+import { shellQuote } from "../../common/shellEscape"
+import { db } from "../../loaders/prisma"
+import { StreamEventEmitter } from "../../modules/agents/AgentRunner/StreamProcessor"
+import { attachProjectDeployToRun } from "../../modules/agents/AgentRunner/runHistory"
+import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../../modules/agents/systemEvents/processOutputSystemEvent"
+import { createSandboxToken } from "../../modules/auth/helpers/apiTokens"
+import { settings } from "../../settings"
+import { AgentWithRelations } from "../../types/prisma"
+import { getSocketIO } from "../CacheInvalidationService"
+import { SecretService } from "../SecretService"
+import { getSandboxProvider } from "../sandboxProvider"
+import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
+import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
+import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
+import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "../sdkRuntimeExecutors/types"
+import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
 
-import logger from "../common/logger"
-import { getActiveDeployForProject } from "../common/projectHelper"
-import { shellQuote } from "../common/shellEscape"
-import { db } from "../loaders/prisma"
-import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../loaders/socket"
-import { StreamEventEmitter } from "../modules/agents/AgentRunner/StreamProcessor"
-import { attachProjectDeployToRun, finalizeRunStatus } from "../modules/agents/AgentRunner/runHistory"
-import { classifyAgentError } from "../modules/agents/agentErrorUtils"
-import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../modules/agents/systemEvents/processOutputSystemEvent"
-import { createSandboxToken } from "../modules/auth/helpers/apiTokens"
-import { settings } from "../settings"
-import { AgentWithRelations } from "../types/prisma"
-
-import { getSocketIO } from "./CacheInvalidationService"
-import { SecretService } from "./SecretService"
-import { getSandboxProvider } from "./sandboxProvider"
-import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
-import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
-import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
-import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
-
-interface SdkJobExecutionParams {
-    runId: string
-    agent: AgentWithRelations
-    orgId: string
-    userId: string
-    user: UserSession
-    jobName: string
-}
+import { JobExecutionContext, JobExecutionKind, JobExecutor, RunOutcome } from "./types"
 
 type SdkSourceImageRecord = {
     recordId: string
@@ -41,7 +28,9 @@ type SdkSourceImageRecord = {
     cliVersion: string
 }
 
-export class SdkJobExecutionService {
+export class SandboxJobExecutor implements JobExecutor {
+    readonly kind: JobExecutionKind = "sandbox"
+
     private emitter: StreamEventEmitter | null = null
 
     private elapsed(startMs: number): string {
@@ -55,15 +44,14 @@ export class SdkJobExecutionService {
         this.emitter.emit({ type: "NaturalStop", id: `${responseId}-stop`, response_id: responseId, timestamp: now }, now)
     }
 
-    async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { runId, agent, userId, user, jobName } = params
+    async execute(context: JobExecutionContext): Promise<RunOutcome> {
+        const { runId, agent, orgId, userId, user, jobName } = context
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
 
         let sandboxApiKey: string | undefined
         let sandboxTokenId: string | undefined
-        const orgId = params.orgId
 
         try {
             const sourceImage = await this.resolveSourceImage({ agent, runId })
@@ -103,17 +91,16 @@ export class SdkJobExecutionService {
                 cliVersion: sourceImage.cliVersion
             })
 
+            logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
+
             if (result.exitCode === 0) {
-                await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
                 logger.info("SDK sandbox: terse run completed", { runId, agentId: agent.id, runtime: executor.runtime })
-            } else {
-                const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
-                await finalizeRunFailure(runId, classifyAgentError(new Error(errorMsg)), user, agent)
-                logger.error("SDK sandbox: terse run failed", { runId, agentId: agent.id, exitCode: result.exitCode, runtime: executor.runtime })
+                return { status: "success" }
             }
 
-            logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
+            const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
+            logger.error("SDK sandbox: terse run failed", { runId, agentId: agent.id, exitCode: result.exitCode, runtime: executor.runtime })
+            return { status: "failed", cause: new Error(errorMsg) }
         } catch (error) {
             logger.error("SDK job execution failed", {
                 error,
@@ -122,7 +109,7 @@ export class SdkJobExecutionService {
                 totalDuration: this.elapsed(executionStart)
             })
 
-            await finalizeRunFailure(runId, classifyAgentError(error), user, agent)
+            return { status: "failed", cause: error }
         } finally {
             this.emitSandboxNaturalStop()
             if (sandboxTokenId) {
