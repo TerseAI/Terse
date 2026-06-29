@@ -280,7 +280,10 @@ function sanitizeJobIdSegment(value: string): string {
 }
 
 function cronExpressionForDelay(delaySeconds: number): string {
+    // Round up so the cron fires at/after resumeAt, never early (early fire re-suspends and re-arms a year out).
     const target = new Date(Date.now() + delaySeconds * 1000)
+    target.setUTCSeconds(0, 0)
+    target.setUTCMinutes(target.getUTCMinutes() + 1)
     return `${target.getUTCMinutes()} ${target.getUTCHours()} ${target.getUTCDate()} ${target.getUTCMonth() + 1} *`
 }
 

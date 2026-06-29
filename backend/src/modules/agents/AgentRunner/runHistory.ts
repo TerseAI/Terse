@@ -7,7 +7,7 @@ import { type SkillConfigData, skillConfigDataSchema } from "terse-types/Configs
 import logger from "../../../common/logger"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../../common/typeConverters"
 import { db } from "../../../loaders/prisma"
-import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../../services/CacheInvalidationService"
 import { CancelReason } from "../cancellation/RunCancellationTaskQueue"
 
 export type RunTrigger = RunHistoryTrigger
@@ -196,6 +196,7 @@ export async function markRunSuspended(runId: string): Promise<boolean> {
         where: { id: runId, status: RunHistoryStatus.IN_PROGRESS },
         data: { status: RunHistoryStatus.SUSPENDED }
     })
+    if (result.count > 0) await emitRunHistoryInvalidation(runId)
     return result.count > 0
 }
 
@@ -207,7 +208,16 @@ export async function claimSuspendedRun(runId: string): Promise<boolean> {
         where: { id: runId, status: RunHistoryStatus.SUSPENDED },
         data: { status: RunHistoryStatus.IN_PROGRESS }
     })
+    if (result.count > 0) await emitRunHistoryInvalidation(runId)
     return result.count > 0
+}
+
+async function emitRunHistoryInvalidation(runId: string): Promise<void> {
+    const run = await db().run_history_records.findUnique({
+        where: { id: runId },
+        select: { automation_id: true, automation: { select: { organization_id: true } } }
+    })
+    if (run?.automation?.organization_id) emitCacheInvalidationWithWildcard(run.automation.organization_id, "runHistory", run.automation_id)
 }
 
 export type FailureStage = "filter" | "agent"
