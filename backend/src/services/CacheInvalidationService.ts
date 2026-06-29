@@ -5,18 +5,39 @@ import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 import logger from "../common/logger"
 
 type SocketGetter = () => Server | null
-let getSocket: SocketGetter | null = null
+
+class SocketRegistry {
+    private static instance: SocketRegistry
+    private getter: SocketGetter | null = null
+
+    private constructor() {}
+
+    public static getInstance(): SocketRegistry {
+        if (!SocketRegistry.instance) {
+            SocketRegistry.instance = new SocketRegistry()
+        }
+        return SocketRegistry.instance
+    }
+
+    public register(getter: SocketGetter): void {
+        this.getter = getter
+    }
+
+    public current(): Server | null {
+        return this.getter?.() ?? null
+    }
+}
 
 export function registerSocketGetter(getter: SocketGetter): void {
-    getSocket = getter
+    SocketRegistry.getInstance().register(getter)
 }
 
 export function getSocketIO(): Server | null {
-    return getSocket?.() ?? null
+    return SocketRegistry.getInstance().current()
 }
 
 export function emitCacheInvalidationWithKey(organizationId: string, key: string): void {
-    const io = getSocket?.()
+    const io = SocketRegistry.getInstance().current()
     if (!io) {
         logger.warn("Socket.IO server not initialized")
         return
@@ -25,7 +46,7 @@ export function emitCacheInvalidationWithKey(organizationId: string, key: string
 }
 
 export function emitCacheInvalidationWithWildcard(organizationId: string, key: string, id: string): void {
-    const io = getSocket?.()
+    const io = SocketRegistry.getInstance().current()
     if (!io) {
         logger.warn("Socket.IO server not initialized")
         return

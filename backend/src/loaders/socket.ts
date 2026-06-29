@@ -21,7 +21,7 @@ import { appendRunHistoryErrorSystemEvent } from "../modules/agents/systemEvents
 import { NotificationManager } from "../modules/notifications/Notification"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { billingServiceProxyForOrganization } from "../services/BillingService"
-import { invalidateRunAndChatHistory } from "../services/CacheInvalidationService"
+import { getSocketIO, invalidateRunAndChatHistory } from "../services/CacheInvalidationService"
 import { getAuthProvider } from "../services/authProvider"
 import { redis } from "../settings"
 import { Agent, AgentWithRelations } from "../types/prisma"
@@ -391,26 +391,7 @@ export function getRealtimeSocket(): Server | null {
     return io
 }
 
-export function emitCacheInvalidationWithKey(organizationId: string, key: string) {
-    if (!io) {
-        logger.warn("Socket.IO server not initialized")
-        return
-    }
-    io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, {
-        key
-    })
-}
-
-export function emitCacheInvalidationWithWildcard(organizationId: string, key: string, id: string) {
-    if (!io) {
-        logger.warn("Socket.IO server not initialized")
-        return
-    }
-    io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, {
-        key,
-        id
-    })
-}
+export { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../services/CacheInvalidationService"
 
 async function notifyRunFailure(notificationManager: NotificationManager, runId: string, failureReason: string, agentId: string, userId: string): Promise<void> {
     try {
@@ -459,7 +440,8 @@ async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedE
 
         await appendRunHistoryErrorSystemEvent(runId, classified)
 
-        if (io && organizationId) {
+        const socket = getSocketIO()
+        if (socket && organizationId) {
             const runErrorEvent = buildRunErrorEvent(classified)
             const runHistoryModelEvent: RunHistoryModelEvent = {
                 ...runErrorEvent,
@@ -470,7 +452,7 @@ async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedE
                 agentId,
                 runHistoryModelEvent
             }
-            io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
+            socket.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
         }
 
         if (organizationId) {
