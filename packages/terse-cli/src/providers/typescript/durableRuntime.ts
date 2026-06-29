@@ -70,7 +70,7 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             if (ctx.jobName) attributes.jobName = ctx.jobName
             if (ctx.projectId) attributes.projectId = ctx.projectId
 
-            const run = await start({ workflowId }, [event, job.states], { attributes })
+            const run = await start({ workflowId }, [event], { attributes })
             return await run.returnValue
         },
         resumeRun: workflowRunId => getRun(workflowRunId).returnValue,

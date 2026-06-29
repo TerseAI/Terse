@@ -479,22 +479,13 @@ export class SdkJobExecutionService {
 // resulting image id, which rides the scheduler payload to the resume call. Returns
 // undefined when the run has no live sandbox (nothing to snapshot).
 export async function snapshotRunJournalForSuspend(runId: string): Promise<string | undefined> {
-    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { project_deploy_id: true } })
-    if (!run?.project_deploy_id) return undefined
+    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
+    const projectId = run?.automation?.project_id
+    if (!projectId) return undefined
 
-    const deploy = await db().project_deploys.findUnique({ where: { id: run.project_deploy_id }, select: { sdk_source_image_id: true } })
-    if (!deploy?.sdk_source_image_id) return undefined
-
-    const source = await db().sdk_source_images.findUnique({
-        where: { id: deploy.sdk_source_image_id },
-        select: { organization_id: true, source_hash: true, dependency_image: { select: { dependency_hash: true } } }
-    })
-    if (!source) return undefined
-
-    const sourceLayerKey = computeSourceLayerKey({ organizationId: source.organization_id, dependencyHash: source.dependency_image.dependency_hash, sourceHash: source.source_hash })
     const provider = getSandboxProvider()
     const app = await provider.getOrCreateApp("terse-sdk-sandbox")
-    const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(sourceLayerKey, runId))
+    const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
     if (!sandbox) return undefined
 
     return provider.snapshotDirectory(sandbox, runJournalDir(runId))

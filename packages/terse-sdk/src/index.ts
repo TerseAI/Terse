@@ -370,6 +370,7 @@ export function __resetRegisteredTerseInstances(): void {
 }
 
 async function stateGet(key: string): Promise<string | null> {
+    "use step"
     const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_GET}`, {
         method: "POST",
         headers: await buildSdkRequestHeaders(),
@@ -383,6 +384,7 @@ async function stateGet(key: string): Promise<string | null> {
 }
 
 async function statePut(key: string, content: string): Promise<void> {
+    "use step"
     const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_PUT}`, {
         method: "POST",
         headers: await buildSdkRequestHeaders(),
