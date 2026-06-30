@@ -739,9 +739,12 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
     return await agent.runAndWait(params.prompt)
 }
 
-export async function jobStep<I extends object, T>(input: I, fn: (input: I) => Promise<T>): Promise<T> {
-    "use step"
-    return await fn(input)
+export function jobStep<I extends z.ZodType, O>(opts: { input: z.infer<I>; inputSchema: I; outputSchema?: z.ZodType<O>; run: (input: z.infer<I>) => Promise<O> }): Promise<O>
+export function jobStep<O>(opts: { outputSchema?: z.ZodType<O>; run: () => Promise<O> }): Promise<O>
+export async function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
+    const input = opts.inputSchema ? opts.inputSchema.parse(opts.input) : undefined
+    const result = await opts.run(input)
+    return opts.outputSchema ? opts.outputSchema.parse(result) : result
 }
 
 export function sleep(duration: string | number | Date): Promise<void> {
