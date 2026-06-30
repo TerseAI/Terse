@@ -115,7 +115,7 @@ function isBuildFresh(out: string, cwd: string): boolean {
 function sourcesHash(cwd: string): string {
     const hash = crypto.createHash("sha256")
     for (const file of findSourceFiles(path.join(cwd, "src")).sort()) {
-        hash.update(file)
+        hash.update(path.relative(cwd, file))
         hash.update(fs.readFileSync(file))
     }
     return hash.digest("hex")
