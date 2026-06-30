@@ -25,29 +25,25 @@ createJob({
         // (a Zod schema) forces a structured response: `response` is typed
         // `{ joke: string }`.
 
-        // console.log("OMG WE ARE ABOUT TO GENERATE TEXT")
+        jobStep({}, async _ => {
+            console.log("OMG WE ARE ABOUT TO SLEEP FOR 1 MINUTE")
+        })
+
         const response = await generateText({
             prompt: "Tell me a joke about Game Of thrones",
             skills: [],
             outputSchema: z.object({ joke: z.string() })
         })
 
-        // console.log("OMG WE ARE ABOUT TO SEND MESSAGE")
         await toolbox.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,
             message: response.joke
         })
 
-        // console.log("OMG WE ARE ABOUT TO SLEEP FOR 1 MINUTE")
         const runCount = await state.get("runCount")
         await state.set("runCount", runCount + 1)
-        // console.log("Run count: ", runCount)
 
         await sleep("1m")
-
-        // console.log("OMG WE ARE AWAKE FROM THE SLEEP")
-
-        // throw new Error("test error")
 
         await toolbox.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,

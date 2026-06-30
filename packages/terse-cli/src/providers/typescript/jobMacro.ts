@@ -91,7 +91,9 @@ function rewriteJobStepsOnce(ts: typeof TS, source: string, fileName: string): s
         if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "jobStep" && node.arguments.length >= 2) {
             const [inputArg, fnArg] = node.arguments
             if (ts.isArrowFunction(fnArg) || ts.isFunctionExpression(fnArg)) {
-                edits.push({ start: node.getStart(sf), end: node.getEnd(), text: `(${stepFunctionText(ts, sf, fnArg)})(${inputArg.getText(sf)})` })
+                const call = `(${stepFunctionText(ts, sf, fnArg)})(${inputArg.getText(sf)})`
+                const text = ts.isExpressionStatement(node.parent) ? `;${call}` : call
+                edits.push({ start: node.getStart(sf), end: node.getEnd(), text })
                 return
             }
         }
