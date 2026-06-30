@@ -26,6 +26,7 @@ overrides:
   '@grpc/grpc-js': '>=1.14.4 <1.15.0'
   react-router: '>=7.15.0 <7.16.0'
   react-router-dom: '>=7.15.0 <7.16.0'
+  zod: 4.3.6
 
 importers:
 
@@ -227,7 +228,7 @@ importers:
         specifier: '>=8.21.0'
         version: 8.21.0
       zod:
-        specifier: ^4.3.6
+        specifier: 4.3.6
         version: 4.3.6
     devDependencies:
       '@types/adm-zip':
@@ -441,7 +442,7 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       zod:
-        specifier: ^4.1.12
+        specifier: 4.3.6
         version: 4.3.6
     devDependencies:
       '@eslint/js':
@@ -499,7 +500,7 @@ importers:
         specifier: workspace:*
         version: link:../terse-sdk
       zod:
-        specifier: ^4.3.6
+        specifier: 4.3.6
         version: 4.3.6
     devDependencies:
       typescript:
@@ -579,7 +580,7 @@ importers:
         specifier: 5.0.0-beta.19
         version: 5.0.0-beta.19(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3(@swc/helpers@0.5.20))(chokidar@5.0.0))(@swc/core@1.15.3(@swc/helpers@0.5.20))(@swc/helpers@0.5.20)(typescript@5.8.3)(ws@8.21.0)
       zod:
-        specifier: ^4.3.6
+        specifier: 4.3.6
         version: 4.3.6
     devDependencies:
       '@types/luxon':
@@ -614,7 +615,7 @@ importers:
         specifier: 5.0.0-beta.19
         version: 5.0.0-beta.19(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3(@swc/helpers@0.5.20))(chokidar@5.0.0))(@swc/core@1.15.3(@swc/helpers@0.5.20))(@swc/helpers@0.5.20)(typescript@5.8.3)(ws@8.21.0)
       zod:
-        specifier: ^4.3.6
+        specifier: 4.3.6
         version: 4.3.6
 
   terse-types:
@@ -633,7 +634,7 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       zod:
-        specifier: ^4.3.6
+        specifier: 4.3.6
         version: 4.3.6
 
   test-jobs:
@@ -645,7 +646,7 @@ importers:
         specifier: 5.0.0-beta.19
         version: 5.0.0-beta.19(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3(@swc/helpers@0.5.20))(chokidar@5.0.0))(@swc/core@1.15.3(@swc/helpers@0.5.20))(@swc/helpers@0.5.20)(typescript@5.8.3)(ws@8.21.0)
       zod:
-        specifier: ^4.3.6
+        specifier: 4.3.6
         version: 4.3.6
     devDependencies:
       typescript:
@@ -658,25 +659,25 @@ packages:
     resolution: {integrity: sha512-bUWOzrzR0gJKJO/PLGMR4uH2dqEgqGhrsCV+sSpk4KtOEnUQlfjZI/F7BFlqSvVpFbjdgYRRLysAeEZpJ6S1lg==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: 4.3.6
 
   '@ai-sdk/gateway@3.0.104':
     resolution: {integrity: sha512-ZKX5n74io8VIRlhIMSLWVlvT3sXC8Z7cZ9GHuWBWZDVi96+62AIsWuLGvMfcBA1STYuSoDrp6rIziZmvrTq0TA==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: 4.3.6
 
   '@ai-sdk/openai@3.0.53':
     resolution: {integrity: sha512-Wld+Rbc05KaUn08uBt06eEuwcgalcIFtIl32Yp+GxuZXUQwOb6YeAuq+C6da4ch6BurFoqEaLemJVwjBb7x+PQ==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: 4.3.6
 
   '@ai-sdk/provider-utils@4.0.23':
     resolution: {integrity: sha512-z8GlDaCmRSDlqkMF2f4/RFgWxdarvIbyuk+m6WXT1LYgsnGiXRJGTD2Z1+SDl3LqtFuRtGX1aghYvQLoHL/9pg==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: 4.3.6
 
   '@ai-sdk/provider@3.0.8':
     resolution: {integrity: sha512-oGMAgGoQdBXbZqNG0Ze56CHjDZ1IDYOwGYxYjO5KLSlz5HiNQ9udIXsPZ61VWaHGZ5XW/jyjmr6t2xz2jGVwbQ==}
@@ -686,7 +687,7 @@ packages:
     resolution: {integrity: sha512-PzQhR715td/m1UaaN5hHXjYB8Gl2lF9UVhrrGrZeysiF6Rb74Wc9GCB8hzLdzmQtBd1qe89F9OptgB9Za1Ib5w==}
     hasBin: true
     peerDependencies:
-      zod: ^3.25.0 || ^4.0.0
+      zod: 4.3.6
     peerDependenciesMeta:
       zod:
         optional: true
@@ -1757,7 +1758,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': ^1.1.16
-      zod: ^3.25.32 || ^4.2.0
+      zod: 4.3.6
       zod-to-json-schema: ^3.x
     peerDependenciesMeta:
       zod-to-json-schema:
@@ -1776,7 +1777,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
-      zod: ^3.25 || ^4.0
+      zod: 4.3.6
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -2020,7 +2021,7 @@ packages:
   '@openai/agents-core@0.8.5':
     resolution: {integrity: sha512-qs9mmN+D+UmqEZo3qrvhhIIXIOgSvJPic0v4a+ruq+eYgcQMk3PY8lLcsdQwJit6zf2Wyfv1q2cX5m3jzWZpKw==}
     peerDependencies:
-      zod: ^4.0.0
+      zod: 4.3.6
     peerDependenciesMeta:
       zod:
         optional: true
@@ -2033,7 +2034,7 @@ packages:
       '@openai/codex-sdk': '>=0.86.0'
       ai: ^6.0.0
       ws: '>=8.21.0'
-      zod: ^4.0.0
+      zod: 4.3.6
     peerDependenciesMeta:
       '@ai-sdk/provider':
         optional: true
@@ -2045,17 +2046,17 @@ packages:
   '@openai/agents-openai@0.8.5':
     resolution: {integrity: sha512-cGYmyiVy8ecgf2Vch0L/ekeNo3xuZsuWnRsxyv+w9ai9dgxUifdEQ6G3dtsjMLtmXVHRVGoO7mVBr+tKcilntw==}
     peerDependencies:
-      zod: ^4.0.0
+      zod: 4.3.6
 
   '@openai/agents-realtime@0.8.5':
     resolution: {integrity: sha512-JqKVsR33OvKtTxRp5Ylhw8WfNvJ49ZIhlhMZlSVKqwR2Ks6JuxqFJ0zM9p7JIbTQDSlAZnmnZJv1qlItaildiQ==}
     peerDependencies:
-      zod: ^4.0.0
+      zod: 4.3.6
 
   '@openai/agents@0.8.5':
     resolution: {integrity: sha512-OFA7XVV1qXE8lzatvQj080KdSArt8utBExFXRfD5B/R7KT0D+AVaKwg6nLoW3Gxb30vRkIUQf+MaW/Wz+gO3Yg==}
     peerDependencies:
-      zod: ^4.0.0
+      zod: 4.3.6
 
   '@opentelemetry/api-logs@0.208.0':
     resolution: {integrity: sha512-CjruKY9V6NMssL/T1kAFgzosF1v9o6oeN+aX5JB/C/xPNtmgIJqcXHG7fA82Ou1zCpWGl4lROQUKwUNE1pMCyg==}
@@ -4352,7 +4353,7 @@ packages:
     resolution: {integrity: sha512-2HqCJuO+1V2aV7vfYs5LFEUfxbkGX+5oa54q/gCCTL7KLTdbxcCu5D7TdLA5kwsrs3Szgjah9q6D9tpjHM3hUQ==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: 4.3.6
 
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
@@ -6686,7 +6687,7 @@ packages:
     hasBin: true
     peerDependencies:
       ws: '>=8.21.0'
-      zod: ^3.25 || ^4.0
+      zod: 4.3.6
     peerDependenciesMeta:
       ws:
         optional: true
@@ -8116,10 +8117,7 @@ packages:
   zod-to-json-schema@3.25.2:
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
-      zod: ^3.25.28 || ^4
-
-  zod@4.1.11:
-    resolution: {integrity: sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==}
+      zod: 4.3.6
 
   zod@4.3.6:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
@@ -12219,12 +12217,12 @@ snapshots:
       async-listen: 3.0.0
       open: 8.4.0
       xdg-app-paths: 5.1.0
-      zod: 4.1.11
+      zod: 4.3.6
 
   '@vercel/cli-config@0.2.0':
     dependencies:
       xdg-app-paths: 5.5.1
-      zod: 4.1.11
+      zod: 4.3.6
 
   '@vercel/cli-exec@1.0.0':
     dependencies:
@@ -16835,8 +16833,6 @@ snapshots:
     dependencies:
       zod: 4.3.6
     optional: true
-
-  zod@4.1.11: {}
 
   zod@4.3.6: {}
 
