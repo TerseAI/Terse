@@ -74,15 +74,21 @@ function extractJobSteps(ts: typeof TS, source: string, fileName: string): { cod
     const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
     const stepDefs: StepDef[] = []
     const edits: Array<{ start: number; end: number; text: string }> = []
+    const isProp = (p: TS.ObjectLiteralElementLike, key: string): p is TS.PropertyAssignment => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === key
     let counter = 0
 
     const visit = (node: TS.Node): void => {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "jobStep" && node.arguments.length >= 2) {
-            const [inputArg, fnArg] = node.arguments
-            if (ts.isArrowFunction(fnArg) || ts.isFunctionExpression(fnArg)) {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "jobStep" && node.arguments.length > 0 && ts.isObjectLiteralExpression(node.arguments[0])) {
+            const obj = node.arguments[0]
+            const inputProp = obj.properties.find(p => isProp(p, "input"))
+            const inputSchemaProp = obj.properties.find(p => isProp(p, "inputSchema"))
+            const outputSchemaProp = obj.properties.find(p => isProp(p, "outputSchema"))
+            const run = obj.properties.find(p => isProp(p, "run"))?.initializer
+
+            if (run && (ts.isArrowFunction(run) || ts.isFunctionExpression(run))) {
                 const name = `terseStep_${counter++}`
-                stepDefs.push({ name, def: stepFunctionText(ts, sf, name, fnArg) })
-                edits.push({ start: node.getStart(sf), end: node.getEnd(), text: `${name}(${inputArg.getText(sf)})` })
+                stepDefs.push({ name, def: stepFunctionText(ts, sf, name, run, inputSchemaProp?.initializer, outputSchemaProp?.initializer) })
+                edits.push({ start: node.getStart(sf), end: node.getEnd(), text: `${name}(${inputProp ? inputProp.initializer.getText(sf) : ""})` })
                 return
             }
         }
@@ -96,11 +102,19 @@ function extractJobSteps(ts: typeof TS, source: string, fileName: string): { cod
     return { code, stepDefs }
 }
 
-function stepFunctionText(ts: typeof TS, sf: TS.SourceFile, name: string, fn: TS.ArrowFunction | TS.FunctionExpression): string {
-    const asyncKw = fn.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) ? "async " : ""
-    const params = fn.parameters.map(p => p.getText(sf)).join(", ")
-    const body = ts.isBlock(fn.body) ? fn.body.getText(sf).slice(1, -1) : `\n  return ${fn.body.getText(sf)}\n`
-    return `export ${asyncKw}function ${name}(${params}) {\n  "use step"\n${body}}`
+function stepFunctionText(ts: typeof TS, sf: TS.SourceFile, name: string, run: TS.ArrowFunction | TS.FunctionExpression, inputSchema: TS.Expression | undefined, outputSchema: TS.Expression | undefined): string {
+    const param = inputSchema ? "__terseArgs" : ""
+    const parseInput = inputSchema ? `  const __terseInput = (${inputSchema.getText(sf)}).parse(__terseArgs)\n` : ""
+    const callRun = inputSchema ? `(${run.getText(sf)})(__terseInput)` : `(${run.getText(sf)})()`
+    const validated = outputSchema ? `(${outputSchema.getText(sf)}).parse(__terseResult)` : `__terseResult`
+    return (
+        `export async function ${name}(${param}) {\n` +
+        `  "use step"\n` +
+        parseInput +
+        `  const __terseResult = await ${callRun}\n` +
+        `  return ${validated}\n` +
+        `}`
+    )
 }
 
 function buildStepsModule(ts: typeof TS, sf: TS.SourceFile, imports: TS.ImportDeclaration[], stepDefs: StepDef[]): string {
