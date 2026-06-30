@@ -10,7 +10,7 @@ Create a new Terse SDK job based on: **$ARGUMENTS**
 
 ## Reference docs
 
-The bundled [sdk-reference.md](reference/sdk-reference.md) is a quick offline cheat sheet, but Terse evolves fast. Always pull the live docs before writing non-trivial code:
+The bundled [sdk-reference.md](../../reference/sdk-reference.md) covers the common path offline. Terse evolves fast, so pull the live docs whenever you reach past what the reference covers or aren't sure it's current:
 
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse deploy`, and friends.
@@ -19,7 +19,7 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 ## Steps
 
-**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](../../reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
 
 `src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it before choosing triggers or skills. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
@@ -136,17 +136,12 @@ Reserve bare `terse test` for manual sessions with a TTY.
 
 ### 7. Final check
 
-Verify:
-- Imports reference actual exports from `terse-sdk` and `./terse.generated`
-- The job lives in `src/terse.jobs.ts` unless the repo intentionally uses a custom or legacy entry file
-- The job `name` is unique and descriptive
-- Predictable actions use `toolbox`, not `generateText` prompts
-- Agentic steps use `generateText`; `TerseAgent.create()` appears only when streaming or agent reuse is actually needed
-- `skills` lists the integrations the model needs during the `generateText` run
-- The event type in `onTrigger` matches the trigger type
-- Triggers (`Triggers.<integration>.…`), skills (`Skills.<integration>(…)`), resource constants, and tool calls all exist in `src/terse.generated.ts`
-- Agent prompts include full event context via `event.formatForAgentRunner()`
-- Verification uses `terse test list/show/run` when the agent is not in an interactive terminal
+Verify the things that are easy to get wrong:
+- Every `Triggers.<integration>.…`, `Skills.<integration>(…)`, resource constant, and tool call exists in `src/terse.generated.ts`. Inventing constants that aren't there is the most common failure.
+- Known calls use `toolbox`; only steps that need judgment use `generateText`. `TerseAgent.create()` appears only when streaming or reusing an agent.
+- `skills` lists every integration the model must call during a `generateText` run.
+- Agent prompts include full event context via `event.formatForAgentRunner()`.
+- Imports resolve to real exports from `terse-sdk` and `./terse.generated`.
 
 ### 8. Ask before deploying
 
