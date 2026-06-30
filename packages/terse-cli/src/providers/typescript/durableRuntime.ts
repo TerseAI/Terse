@@ -1,3 +1,4 @@
+import crypto from "node:crypto"
 import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
@@ -21,7 +22,7 @@ export function getDurableRuntime(cwd = process.cwd()): Promise<DurableRuntime> 
 async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     const out = path.join(cwd, ".terse", "wf")
 
-    const workflowFnByJob = isPrebuilt(out) ? loadWorkflowArtifacts(out) : await buildWorkflowArtifacts(cwd)
+    const workflowFnByJob = isBuildFresh(out, cwd) ? loadWorkflowArtifacts(out) : await buildWorkflowArtifacts(cwd)
 
     const world = createTerseWorld()
     setWorld(world)
@@ -96,41 +97,71 @@ const JOBS_MAP_FILE = "jobs.json"
 
 export async function buildWorkflowArtifacts(cwd: string): Promise<Map<string, { fnName: string; file: string }>> {
     const out = path.join(cwd, ".terse", "wf")
-    const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, "src", out).build())
+    const scanDir = path.join(".terse", "macro")
+    const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, scanDir, out).build())
     fs.writeFileSync(path.join(out, JOBS_MAP_FILE), JSON.stringify([...workflowFnByJob]))
+    fs.writeFileSync(path.join(out, SOURCES_HASH_FILE), sourcesHash(cwd))
     return workflowFnByJob
 }
 
-function isPrebuilt(out: string): boolean {
-    return fs.existsSync(path.join(out, JOBS_MAP_FILE)) && fs.existsSync(path.join(out, "manifest.json"))
+const SOURCES_HASH_FILE = "sources.hash"
+
+function isBuildFresh(out: string, cwd: string): boolean {
+    const hashFile = path.join(out, SOURCES_HASH_FILE)
+    if (!fs.existsSync(path.join(out, JOBS_MAP_FILE)) || !fs.existsSync(path.join(out, "manifest.json")) || !fs.existsSync(hashFile)) return false
+    return fs.readFileSync(hashFile, "utf8") === sourcesHash(cwd)
+}
+
+function sourcesHash(cwd: string): string {
+    const hash = crypto.createHash("sha256")
+    for (const file of findSourceFiles(path.join(cwd, "src")).sort()) {
+        hash.update(file)
+        hash.update(fs.readFileSync(file))
+    }
+    return hash.digest("hex")
+}
+
+function findSourceFiles(dir: string): string[] {
+    if (!fs.existsSync(dir)) return []
+    const out: string[] = []
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+            if (entry.name !== "node_modules") out.push(...findSourceFiles(p))
+        } else if (/\.(ts|tsx|mts|cts)$/.test(entry.name)) {
+            out.push(p)
+        }
+    }
+    return out
 }
 
 function loadWorkflowArtifacts(out: string): Map<string, { fnName: string; file: string }> {
     return new Map(JSON.parse(fs.readFileSync(path.join(out, JOBS_MAP_FILE), "utf8")))
 }
 
-// Transform every createJob source file in place, run `build`, then restore the
-// originals (always — via finally). Returns the job-name -> workflow-fn map.
+// Macro-transform into a copied dir so the user's `src` is never touched.
 async function withMacroedSources(cwd: string, build: () => Promise<void>): Promise<Map<string, { fnName: string; file: string }>> {
     const ts = loadTypescript(cwd)
-    const backups = new Map<string, string>()
+    const macroDir = path.join(cwd, ".terse", "macro")
     const workflowFnByJob = new Map<string, { fnName: string; file: string }>()
 
-    try {
-        for (const file of findJobFiles(path.join(cwd, "src"))) {
-            const original = fs.readFileSync(file, "utf8")
-            const { code, jobs } = transformJobSource(ts, original, file)
-            if (jobs.length === 0) continue
-            backups.set(file, original)
-            fs.writeFileSync(file, code)
-            for (const job of jobs) workflowFnByJob.set(job.name, { fnName: job.fnName, file: path.relative(cwd, file) })
-        }
-        await build()
-    } finally {
-        for (const [file, original] of backups) fs.writeFileSync(file, original)
+    fs.rmSync(macroDir, { recursive: true, force: true })
+    fs.cpSync(path.join(cwd, "src"), macroDir, { recursive: true })
+
+    for (const file of findJobFiles(macroDir)) {
+        const { code, stepsCode, jobs } = transformJobSource(ts, fs.readFileSync(file, "utf8"), file)
+        if (jobs.length === 0) continue
+        fs.writeFileSync(file, code)
+        if (stepsCode) fs.writeFileSync(stepsFilePath(file), stepsCode)
+        for (const job of jobs) workflowFnByJob.set(job.name, { fnName: job.fnName, file: path.relative(cwd, file) })
     }
+    await build()
 
     return workflowFnByJob
+}
+
+function stepsFilePath(file: string): string {
+    return file.replace(/\.(ts|tsx|mts|cts)$/, ".__terse.steps.$1")
 }
 
 function findJobFiles(dir: string): string[] {
