@@ -3,6 +3,8 @@ import type TS from "typescript"
 export type MacroJob = { name: string; fnName: string }
 export type MacroResult = { code: string; jobs: MacroJob[] }
 
+// MARK: Rewrite job sources
+
 // Rewrites each `createJob({ onTrigger })` so `onTrigger` becomes a hoisted
 // `"use workflow"` function — turning the user's handler into a durable workflow
 // without them writing any directive ("createJob adds use workflow for them").
@@ -10,7 +12,8 @@ export type MacroResult = { code: string; jobs: MacroJob[] }
 // the type users already see. Returns the rewritten source plus a job-name ->
 // workflow-fn-name map the caller uses to resolve workflowIds from the manifest.
 export function transformJobSource(ts: typeof TS, source: string, fileName: string): MacroResult {
-    const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const withSteps = rewriteJobSteps(ts, source, fileName)
+    const sf = ts.createSourceFile(fileName, withSteps, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
     const jobs: MacroJob[] = []
     const hoisted: string[] = []
     const edits: Array<{ start: number; end: number; text: string }> = []
@@ -48,7 +51,7 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
     }
     visit(sf)
 
-    if (jobs.length === 0) return { code: source, jobs }
+    if (jobs.length === 0) return { code: withSteps, jobs }
 
     // Inject after the last import's AST end (correct for multi-line imports — a
     // line-based scan would splice into the middle of a `import {\n ... \n} from`).
@@ -59,9 +62,54 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
     const importEdit = sdkImportEdit(ts, sf, imports, lastImportEnd, ["createSDKTrigger", "__buildJobStateAccessor"])
     if (importEdit) edits.push(importEdit)
 
-    let code = source
+    let code = withSteps
     for (const e of edits.sort((a, b) => b.start - a.start)) code = code.slice(0, e.start) + e.text + code.slice(e.end)
     return { code, jobs }
+}
+
+// MARK: Rewrite job steps
+
+// `jobStep(input, fn)` can't run fn as a durable step directly: fn would be a
+// serialized step argument, and closures aren't serializable. Rewrite each call so
+// fn becomes an inline `"use step"` function (its body compiled into the step bundle,
+// its closure vars captured by the compiler) invoked with the input alone. Looped so
+// nested jobStep calls are rewritten once the enclosing one is.
+function rewriteJobSteps(ts: typeof TS, source: string, fileName: string): string {
+    let code = source
+    while (true) {
+        const next = rewriteJobStepsOnce(ts, code, fileName)
+        if (next === code) return code
+        code = next
+    }
+}
+
+function rewriteJobStepsOnce(ts: typeof TS, source: string, fileName: string): string {
+    const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const edits: Array<{ start: number; end: number; text: string }> = []
+
+    const visit = (node: TS.Node): void => {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "jobStep" && node.arguments.length >= 2) {
+            const [inputArg, fnArg] = node.arguments
+            if (ts.isArrowFunction(fnArg) || ts.isFunctionExpression(fnArg)) {
+                edits.push({ start: node.getStart(sf), end: node.getEnd(), text: `(${stepFunctionText(ts, sf, fnArg)})(${inputArg.getText(sf)})` })
+                return
+            }
+        }
+        ts.forEachChild(node, visit)
+    }
+    visit(sf)
+
+    if (edits.length === 0) return source
+    let code = source
+    for (const e of edits.sort((a, b) => b.start - a.start)) code = code.slice(0, e.start) + e.text + code.slice(e.end)
+    return code
+}
+
+function stepFunctionText(ts: typeof TS, sf: TS.SourceFile, fn: TS.ArrowFunction | TS.FunctionExpression): string {
+    const asyncKw = fn.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) ? "async " : ""
+    const params = fn.parameters.map(p => p.getText(sf)).join(", ")
+    const body = ts.isBlock(fn.body) ? fn.body.getText(sf).slice(1, -1) : `\n  return ${fn.body.getText(sf)}\n`
+    return `${asyncKw}(${params}) => {\n  "use step"\n${body}}`
 }
 
 // Adds the given names to an existing `terse-sdk` named import, or a fresh import
