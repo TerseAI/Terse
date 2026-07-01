@@ -11,6 +11,7 @@ import { slackListChannelsTool } from "./tools/listChannels"
 import { slackListUsersTool } from "./tools/listUsers"
 import { slackReadConversationTool, validateSlackReadConversation } from "./tools/readConversation"
 import { slackSendMessageTool, validateSlackSendMessage } from "./tools/sendMessage"
+import { slackToggleReactionTool, validateSlackToggleReaction } from "./tools/toggleReaction"
 
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
@@ -18,7 +19,8 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             { tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message", validateACL: validateSlackSendMessage },
             { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users", validateACL: unrestricted },
             { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels", validateACL: unrestricted },
-            { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation }
+            { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation },
+            { tool: slackToggleReactionTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Toggle reaction", validateACL: validateSlackToggleReaction }
         ])
     }
 
@@ -91,6 +93,12 @@ const SLACK_OUTPUT_INSTRUCTIONS = `
 TOOLS:
 - slack_send_message: Send messages to Slack channels or DMs. Use channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM via conversations.open; you can still discover IDs with slack_list_channels. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
 - slack_list_users: List workspace users (id and name). Use to resolve user IDs to names when needed.
+- slack_toggle_reaction: Add or remove an emoji reaction on a specific message (action: add | remove). Use it to acknowledge a triggering message without sending a full reply.
+
+ACKNOWLEDGING WORK (reactions):
+- When a Slack message triggers this job and you will do work before replying, add an "eyes" reaction to the triggering message so the user knows it was received: slack_toggle_reaction with action="add", emoji="eyes", and the trigger's channelId + message timestamp.
+- When the work is done, remove the "eyes" (action="remove") and optionally add a "white_check_mark". The triggering event provides both channelId and timestamp (the message ts).
+- Reactions are a lightweight ack; they do not replace an actual reply when the user expects one.
 
 MESSAGE TYPES:
 - Plain text: Simple notifications, short updates. Use \`message\` parameter only.

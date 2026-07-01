@@ -174,6 +174,16 @@ export const slackUsersResponseSchema = z.object({
 })
 export type SlackUsersResponse = z.infer<typeof slackUsersResponseSchema>
 
+export const slackEmojiSchema = z.object({
+    name: z.string()
+})
+export type SlackEmoji = z.infer<typeof slackEmojiSchema>
+
+export const slackEmojiResponseSchema = z.object({
+    emoji: z.array(slackEmojiSchema)
+})
+export type SlackEmojiResponse = z.infer<typeof slackEmojiResponseSchema>
+
 export const TERSE_AGENT_MESSAGE_EVENT_TYPE = "terse_agent_message" as const
 
 export const terseAgentMessageEventPayloadSchema = z.object({

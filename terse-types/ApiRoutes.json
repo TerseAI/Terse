@@ -61,6 +61,7 @@
         "OAUTH_CALLBACK": "/slack/oauth-callback",
         "CHANNELS": "/slack/channels",
         "USERS": "/slack/users",
+        "EMOJI": "/slack/emoji",
         "EVENTS": "/slack/events"
     },
     "POSTHOG": {

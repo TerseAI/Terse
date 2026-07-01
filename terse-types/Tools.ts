@@ -710,6 +710,14 @@ export const slackReadConversationInputSchema = z.object({
     cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
 })
 
+export const slackToggleReactionInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
+    channelId: z.string().describe("The Slack channel ID where the message lives (C…/G…/D…), e.g. the triggering message's channel."),
+    timestamp: z.string().describe("The message timestamp (ts) to react to, from the trigger event or slack_read_conversation."),
+    emoji: z.string().describe("Emoji name without colons, e.g. 'eyes', 'white_check_mark', 'thumbsup'."),
+    action: z.enum(["add", "remove"]).describe("'add' to place the reaction (e.g. ack receipt), 'remove' to clear it (e.g. drop a 'working' indicator when done).")
+})
+
 export const searchGitHubCodeInputSchema = z.object({
     repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
     query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
@@ -1240,6 +1248,18 @@ export const slackReadConversationTool = defineTool({
         count: z.number().int(),
         hasMore: z.boolean(),
         nextCursor: z.string().nullable()
+    })
+})
+
+export const slackToggleReactionTool = defineTool({
+    name: "slack_toggle_reaction",
+    inputSchema: slackToggleReactionInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        channel: z.string(),
+        timestamp: z.string(),
+        emoji: z.string(),
+        action: z.enum(["add", "remove"]),
+        summary: z.string()
     })
 })
 
@@ -2201,6 +2221,7 @@ export const ToolDefinitions = {
     [slackListChannelsTool.name]: slackListChannelsTool,
     [slackListUsersTool.name]: slackListUsersTool,
     [slackReadConversationTool.name]: slackReadConversationTool,
+    [slackToggleReactionTool.name]: slackToggleReactionTool,
     [searchGitHubCodeTool.name]: searchGitHubCodeTool,
     [grepGitHubCodeTool.name]: grepGitHubCodeTool,
     [readGitHubFileTool.name]: readGitHubFileTool,

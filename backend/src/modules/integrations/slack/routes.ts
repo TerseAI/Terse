@@ -3,7 +3,7 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 
-import { getCurrentSlackIntegration, getSlackChannels, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./controller"
+import { getCurrentSlackIntegration, getSlackChannels, getSlackEmoji, getSlackIntegrations, getSlackUsers, slackOAuthCallback } from "./controller"
 
 const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken])
@@ -14,5 +14,6 @@ router.get("/get-current-integration", limit, auth, getCurrentSlackIntegration)
 router.get("/oauth-callback", rateLimit(RateLimitKind.AuthEndpoint), slackOAuthCallback)
 router.get("/channels", limit, auth, getSlackChannels)
 router.get("/users", limit, auth, getSlackUsers)
+router.get("/emoji", limit, auth, getSlackEmoji)
 
 export default router

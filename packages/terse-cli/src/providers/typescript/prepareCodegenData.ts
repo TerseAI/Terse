@@ -1,5 +1,6 @@
 import { type ToolDefinition, toolsWithIntegrationId } from "terse-types"
 
+import STANDARD_SLACK_EMOJI from "../../data/standardSlackEmoji.json" with { type: "json" }
 import type {
     AttioAttributeData,
     AttioInstanceData,
@@ -61,6 +62,7 @@ interface SlackSectionContext {
     skillToolType: string
     channelClass: ResourceClassContext
     userClass: ResourceClassContext
+    emojiClass: ResourceClassContext
 }
 
 interface LinearSectionContext {
@@ -418,6 +420,14 @@ function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDe
 function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefinition[]): SectionContext<SlackSectionContext> {
     if (instances.length === 0) return sectionData([])
     const inst = instances[0]
+
+    // Merge the bundled standard emoji short-names (Slack's `emoji.list` API only returns the
+    // workspace's *custom* emoji) with the live custom emoji, deduped + sorted, so `SlackEmoji.*`
+    // covers both. The `emoji` param stays a plain string, so any name still works directly too.
+    const mergedEmoji = Array.from(new Set([...STANDARD_SLACK_EMOJI, ...inst.emojis.map(e => e.name)]))
+        .sort()
+        .map(name => ({ name }))
+
     return sectionData(
         ["SlackAppMentionTrigger", "SlackConfig", "SlackMessageTrigger", "SlackOutputConfig", "SlackReactionAddedTrigger", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTrigger"],
         {
@@ -440,7 +450,8 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
                 ],
                 "name",
                 inst.users
-            )
+            ),
+            emojiClass: buildResourceClassContext("SlackEmoji", [{ classField: "name", type: "string", sourceField: "name" }], "name", mergedEmoji)
         }
     )
 }

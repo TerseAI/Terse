@@ -11,7 +11,7 @@ import { ConfigurationFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, SlackIntegration, SlackIntegrationMetadata } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
-import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse, SlackUserResponse, SlackUsersResponse } from "terse-types/types"
+import { OAuthInstallationDetails, SlackChannel as SlackChannelShared, SlackChannelType, SlackChannelsResponse, SlackEmojiResponse, SlackUserResponse, SlackUsersResponse } from "terse-types/types"
 import { z } from "zod"
 
 import logger, { runWithUserContext } from "../../common/logger"
@@ -258,10 +258,11 @@ export class SlackIntegrationManager
         const client_id = this.config.clientId
         const redirect_uri = this.config.oauthCallbackUrl
         const isBotUser = options.isBotUser
-        const scope = "channels:history,groups:history,im:history,channels:read,groups:read,im:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
+        const scope =
+            "channels:history,groups:history,im:history,channels:read,groups:read,im:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,emoji:read,files:read"
         const user_scope = isBotUser
             ? ""
-            : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,chat:write,im:write,reactions:read,reactions:write,files:read"
+            : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,chat:write,im:write,reactions:read,reactions:write,emoji:read,files:read"
         const state = mintOAuthState(req, res, {
             userId,
             organizationId,
@@ -971,6 +972,65 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
     } while (cursor)
 
     return { users }
+}
+
+/**
+ * List the workspace's custom emoji for the given integration.
+ *
+ * Slack's `emoji.list` returns only the workspace's custom emoji (names → image URLs, with
+ * aliases pointing at other emoji via `alias:<name>`). Standard Unicode emoji are NOT returned
+ * by this API — the CLI bundles those separately and merges the two at codegen time. Requires
+ * the `emoji:read` scope; older installs lack it, so a missing scope is treated as "no custom
+ * emoji" rather than a hard failure (codegen still emits the standard set).
+ */
+export const fetchSlackEmojiForIntegration = async (userId: string, organizationId: string, integrationId: string): Promise<SlackEmojiResponse> => {
+    if (!integrationId) {
+        throw createSlackRouteError("integrationId is required", 400)
+    }
+    if (!organizationId) {
+        throw createSlackRouteError("Organization context is required", 400)
+    }
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        where: {
+            id: integrationId,
+            organization_id: organizationId
+        },
+        include: {
+            slack_integration: true
+        }
+    })
+    if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+        throw createSlackRouteError("Slack integration not found", 404)
+    }
+
+    const token = await getSlackToken(userSlackIntegration)
+    if (!token) {
+        throw createSlackRouteError("Slack access token not found", 401, "The Slack integration token is missing. Please reconnect.", "SLACK_TOKEN_MISSING")
+    }
+    const client = new WebClient(token, {
+        logLevel: LogLevel.ERROR
+    })
+
+    try {
+        const res = await client.emoji.list({})
+        if (!res.ok || !res.emoji) {
+            return { emoji: [] }
+        }
+        const emoji = Object.keys(res.emoji)
+            .filter(name => name.length > 0)
+            .sort()
+            .map(name => ({ name }))
+        return { emoji }
+    } catch (error: unknown) {
+        const code = (error as { data?: { error?: string } })?.data?.error
+        // The app was installed before `emoji:read` was requested; degrade gracefully so
+        // `terse generate` still succeeds with the bundled standard emoji set.
+        if (code === "missing_scope") {
+            logger.warn("Slack emoji.list missing 'emoji:read' scope; returning no custom emoji", { integrationId })
+            return { emoji: [] }
+        }
+        throw error
+    }
 }
 
 // MARK: - SLACK Event

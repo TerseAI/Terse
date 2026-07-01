@@ -27,6 +27,10 @@ interface SlackUserData {
     name: string
 }
 
+interface SlackEmojiData {
+    name: string
+}
+
 interface LinearTeamData {
     id: string
     name: string
@@ -84,6 +88,7 @@ interface AttioObjectData {
 export interface SlackInstanceData extends IntegrationInstanceData {
     channels: SlackChannelData[]
     users: SlackUserData[]
+    emojis: SlackEmojiData[]
 }
 
 export interface LinearInstanceData extends IntegrationInstanceData {

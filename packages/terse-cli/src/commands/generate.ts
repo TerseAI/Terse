@@ -155,17 +155,19 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
                 const instances = await fetchWithAuth<SlackIntegration[]>(ApiRoutes.SLACK.INTEGRATIONS, apiKey)
                 input.slack = await Promise.all(
                     instances.map(async (inst): Promise<SlackInstanceData> => {
-                        const [channelsResp, usersResp] = await Promise.all([
+                        const [channelsResp, usersResp, emojiResp] = await Promise.all([
                             fetchWithAuth<{ channels: Array<{ id: string; name: string }> }>(`${ApiRoutes.SLACK.CHANNELS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(() => ({
                                 channels: []
                             })),
-                            fetchWithAuth<{ users: Array<{ id: string; name: string }> }>(`${ApiRoutes.SLACK.USERS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(() => ({ users: [] }))
+                            fetchWithAuth<{ users: Array<{ id: string; name: string }> }>(`${ApiRoutes.SLACK.USERS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(() => ({ users: [] })),
+                            fetchWithAuth<{ emoji: Array<{ name: string }> }>(`${ApiRoutes.SLACK.EMOJI}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(() => ({ emoji: [] }))
                         ])
                         return {
                             id: inst.id,
                             displayName: inst.teamName || inst.id,
                             channels: channelsResp.channels || [],
-                            users: usersResp.users || []
+                            users: usersResp.users || [],
+                            emojis: emojiResp.emoji || []
                         }
                     })
                 )

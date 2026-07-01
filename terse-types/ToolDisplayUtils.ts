@@ -373,6 +373,27 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return "Conversation loaded"
         }
     },
+    slack_toggle_reaction: {
+        preparing: "Preparing reaction",
+        executing: params => {
+            const emoji = params?.emoji as string | undefined
+            const action = params?.action as string | undefined
+            if (emoji && action) return `${action === "add" ? "Adding" : "Removing"} :${emoji}:`
+            return "Toggling reaction"
+        },
+        complete: (params, _result) => {
+            const emoji = params?.emoji as string | undefined
+            const action = params?.action as string | undefined
+            if (emoji && action) return action === "add" ? `Added :${emoji}:` : `Removed :${emoji}:`
+            return "Reaction toggled"
+        },
+        approval: params => {
+            const emoji = params?.emoji as string | undefined
+            const action = params?.action as string | undefined
+            if (emoji && action) return `${action === "add" ? "Add" : "Remove"} :${emoji}: reaction?`
+            return "Toggle this reaction?"
+        }
+    },
 
     // ===================
     // GitHub Tools

@@ -3,7 +3,7 @@ import { Request, Response } from "express"
 import { UserSession } from "terse-types/types"
 
 import logger from "../../../common/logger"
-import { SlackIntegrationManager, fetchSlackChannelsForIntegration, fetchSlackUsersForIntegration } from "../../../integrations/slack/integration"
+import { SlackIntegrationManager, fetchSlackChannelsForIntegration, fetchSlackEmojiForIntegration, fetchSlackUsersForIntegration } from "../../../integrations/slack/integration"
 import { db } from "../../../loaders/prisma"
 
 // MARK: - Route Handlers
@@ -130,6 +130,37 @@ export const getSlackUsers = async (req: Request, res: Response) => {
         })
         res.status(error?.statusCode || 500).json({
             error: error?.message || "Failed to fetch users",
+            details: error?.details,
+            code: error?.code
+        })
+    }
+}
+
+export const getSlackEmoji = async (req: Request, res: Response) => {
+    const user = req.session?.user
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" })
+    }
+    if (!user.organizationId) {
+        return res.status(400).json({ error: "Organization context is required" })
+    }
+
+    const integrationId = req.query.integrationId as string
+    if (!integrationId) {
+        return res.status(400).json({ error: "integrationId is required" })
+    }
+
+    try {
+        const response = await fetchSlackEmojiForIntegration(user.id, user.organizationId, integrationId)
+        res.status(200).json(response)
+    } catch (error: any) {
+        logger.error("Error fetching Slack emoji", {
+            error: error?.message || error,
+            integrationId,
+            userId: user.id
+        })
+        res.status(error?.statusCode || 500).json({
+            error: error?.message || "Failed to fetch emoji",
             details: error?.details,
             code: error?.code
         })
