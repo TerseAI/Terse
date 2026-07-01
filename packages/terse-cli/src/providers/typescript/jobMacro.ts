@@ -21,10 +21,11 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
             const nameProp = obj.properties.find(p => isProp(p, "name"))
             const onTrigger = obj.properties.find(p => isProp(p, "onTrigger"))
             const statesProp = obj.properties.find(p => isProp(p, "states"))
+            const durable = obj.properties.find(p => isProp(p, "durable"))?.initializer.kind === ts.SyntaxKind.TrueKeyword
             const jobName = nameProp && ts.isStringLiteralLike(nameProp.initializer) ? nameProp.initializer.text : undefined
             const fn = onTrigger?.initializer
 
-            if (jobName && fn && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) {
+            if (jobName && fn && durable && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) {
                 const fnName = `terseWf_${Buffer.from(jobName).toString("hex")}`
                 const param = fn.parameters.length ? fn.parameters[0].name.getText(sf) : "event"
                 const stateParam = fn.parameters.length > 1 ? fn.parameters[1].name.getText(sf) : "state"
@@ -102,19 +103,19 @@ function extractJobSteps(ts: typeof TS, source: string, fileName: string): { cod
     return { code, stepDefs }
 }
 
-function stepFunctionText(ts: typeof TS, sf: TS.SourceFile, name: string, run: TS.ArrowFunction | TS.FunctionExpression, inputSchema: TS.Expression | undefined, outputSchema: TS.Expression | undefined): string {
+function stepFunctionText(
+    ts: typeof TS,
+    sf: TS.SourceFile,
+    name: string,
+    run: TS.ArrowFunction | TS.FunctionExpression,
+    inputSchema: TS.Expression | undefined,
+    outputSchema: TS.Expression | undefined
+): string {
     const param = inputSchema ? "__terseArgs" : ""
     const parseInput = inputSchema ? `  const __terseInput = (${inputSchema.getText(sf)}).parse(__terseArgs)\n` : ""
     const callRun = inputSchema ? `(${run.getText(sf)})(__terseInput)` : `(${run.getText(sf)})()`
     const validated = outputSchema ? `(${outputSchema.getText(sf)}).parse(__terseResult)` : `__terseResult`
-    return (
-        `export async function ${name}(${param}) {\n` +
-        `  "use step"\n` +
-        parseInput +
-        `  const __terseResult = await ${callRun}\n` +
-        `  return ${validated}\n` +
-        `}`
-    )
+    return `export async function ${name}(${param}) {\n` + `  "use step"\n` + parseInput + `  const __terseResult = await ${callRun}\n` + `  return ${validated}\n` + `}`
 }
 
 function buildStepsModule(ts: typeof TS, sf: TS.SourceFile, imports: TS.ImportDeclaration[], stepDefs: StepDef[]): string {

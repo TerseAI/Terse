@@ -105,6 +105,7 @@ import { z } from "zod"
 
 import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
+import { resolveRunIdentity } from "./runIdentity/index.js"
 import { openSessionStream } from "./sessionStream.js"
 import {
     type InferEvents,
@@ -144,26 +145,6 @@ async function buildSdkRequestHeaders(): Promise<Record<string, string>> {
     if (projectId) headers["X-Terse-Project-Id"] = projectId
     if (jobName) headers["X-Terse-Job-Name"] = jobName
     return headers
-}
-
-// Run/session identity comes from the run's seeded attributes, looked up by
-// the workflow runtime's run id (which is NOT the Terse run id — that's a
-// separate value seeded as an attribute at dispatch). Outside a durable run
-// there is no identity to resolve; the run-id header falls back to env.
-async function resolveRunIdentity(): Promise<{ sessionId?: string; runId?: string; projectId?: string; jobName?: string }> {
-    try {
-        // Dynamic imports keep `workflow` / `workflow/runtime` (which transitively
-        // pull node:fs etc.) out of the barrel's static graph, so they never land
-        // in the workflow bundle. This only runs inside a step, where Node is allowed.
-        const { getWorkflowMetadata } = await import("workflow")
-        const { getWorld } = await import("workflow/runtime")
-        const workflowRunId = getWorkflowMetadata().workflowRunId
-        const world = await getWorld()
-        const { attributes } = await world.runs.get(workflowRunId)
-        return { sessionId: attributes?.sessionId, runId: attributes?.runId, projectId: attributes?.projectId, jobName: attributes?.jobName }
-    } catch {
-        return {}
-    }
 }
 
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
@@ -325,6 +306,7 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     filter?: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => boolean | Promise<boolean>
     onTrigger: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => Promise<void>
     remoteServerUrl?: string
+    durable?: boolean
 }
 
 export function createJob<TTriggers extends readonly TypedTrigger[], const TStates extends readonly StateDefinition[] = readonly []>(params: CreateJobParameters<TTriggers, TStates>) {
@@ -742,16 +724,21 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
 export function jobStep<I extends z.ZodType, O>(opts: { input: z.infer<I>; inputSchema: I; outputSchema?: z.ZodType<O>; run: (input: z.infer<I>) => Promise<O> }): Promise<O>
 export function jobStep<O>(opts: { outputSchema?: z.ZodType<O>; run: () => Promise<O> }): Promise<O>
 export async function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
+    if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_USE_STEP"))) {
+        throw new Error("jobStep() is only available in durable jobs. Add `durable: true` to this job.")
+    }
     const input = opts.inputSchema ? opts.inputSchema.parse(opts.input) : undefined
     const result = await opts.run(input)
     return opts.outputSchema ? opts.outputSchema.parse(result) : result
 }
 
 export function sleep(duration: string | number | Date): Promise<void> {
-    // Locally (`terse test`, no TERSE_RUN_ID) there is no suspend machinery — calling
-    // the durable sleep would try to schedule a backend resume and throw. Skip the wait
-    // and note what production would have done instead.
-    if (!process.env.TERSE_RUN_ID && Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
+    if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
+        throw new Error("sleep() is only available in durable jobs. Add `durable: true` to this job.")
+    }
+    // Locally (`terse test`, no TERSE_RUN_ID) there is no suspend machinery, so skip the
+    // wait and note what production would have done instead.
+    if (!process.env.TERSE_RUN_ID) {
         console.log(`[terse] Skipping sleep locally — in production this run would suspend and resume after ${describeDuration(duration)}.`)
         return Promise.resolve()
     }

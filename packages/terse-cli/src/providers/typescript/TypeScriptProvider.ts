@@ -4,24 +4,21 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
-import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
-import { __buildJobStateAccessor, __resetRegisteredTerseInstances, fetchRegisteredJobs, isAgentApprovalHandlingClaimed } from "terse-sdk"
+import type { CreateJobParameters } from "terse-sdk"
+import { __resetRegisteredTerseInstances, fetchRegisteredJobs } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
-import { readApiKeyOrBail } from "../../api.js"
 import { CliError } from "../../cliError.js"
-import { BACKEND_URL } from "../../config.js"
 import { ensureDotenvLoaded } from "../../dotenv.js"
-import { isCliRunCommandEnabled } from "../../env.js"
+import { readProjectConfig } from "../../projectConfig.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
-import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
 
-import { buildWorkflowArtifacts, getDurableRuntime } from "./durableRuntime.js"
+import { buildWorkflowArtifacts } from "./durableRuntime.js"
 import { prepareTemplateContext } from "./prepareCodegenData.js"
-import { readRunStatus, resolveWorkflowRunId, rewindFailedRun } from "./rewindRun.js"
+import { type JobRuntime, directJobRuntime, durableJobRuntime } from "./runtimes/index.js"
 import { renderGeneratedCode } from "./templateEngine.js"
 
 const execAsync = promisify(exec)
@@ -176,27 +173,7 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        const isVerbose = opts?.verbose ?? true
-        const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
-        const apiKey = readApiKeyOrBail({
-            title: "TERSE_API_KEY is not set.",
-            detail: "Please set it in your environment variables."
-        })
-
-        try {
-            await this.withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
-                if (isVerbose) {
-                    console.log(chalk.cyan(`  Job "${job.name}" started`))
-                }
-                const rt = await getDurableRuntime(process.cwd())
-                await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
-            })
-        } catch (error) {
-            if (error instanceof CliError) throw error
-            throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {
-                detail: formatErrorDetail(error)
-            })
-        }
+        return selectRuntime(job).executeJob(job, runId, event, opts)
     }
 
     async resumeRun(
@@ -206,114 +183,22 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        const isVerbose = opts?.verbose ?? true
-        const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
-        const apiKey = readApiKeyOrBail({
-            title: "TERSE_API_KEY is not set.",
-            detail: "Please set it in your environment variables."
-        })
-
-        const dataDir = process.env.WORKFLOW_LOCAL_DATA_DIR ?? path.join(process.cwd(), ".terse", "data")
-        const workflowRunId = resolveWorkflowRunId(dataDir, runId)
-        const status = readRunStatus(dataDir, workflowRunId)
-
-        try {
-            await this.withSession(apiKey, isVerbose, pauseUiAround, async () => {
-                // A terminally failed run must be rewound (its run_failed marker trimmed)
-                // before the runtime starts, so recovery re-enqueues it as a live run.
-                if (status === "failed") {
-                    const { rewoundStepId } = rewindFailedRun(dataDir, workflowRunId)
-                    if (isVerbose) console.log(chalk.yellow(`  Re-driving failed run ${workflowRunId}${rewoundStepId ? " from the failed step" : ""}; completed steps replay from the journal`))
-                } else if (isVerbose) {
-                    console.log(chalk.cyan(`  Resuming run ${workflowRunId}`))
-                }
-                const rt = await getDurableRuntime(process.cwd())
-                await rt.resumeRun(workflowRunId)
-                if (isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
-            })
-        } catch (error) {
-            if (error instanceof CliError) throw error
-            throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, {
-                detail: formatErrorDetail(error)
-            })
-        }
-    }
-
-    // Holds a session stream open (for tool-approval routing) for the duration of
-    // `action`. A durable run reads its session id from its seeded attributes, so a
-    // resumed run keeps its original session id; routing approvals across a resume
-    // is a follow-up.
-    private async withSession<T>(apiKey: string, isVerbose: boolean, pauseUiAround: <U>(fn: () => Promise<U>) => Promise<U>, action: (sessionId: string) => Promise<T>): Promise<T> {
-        // Track the latest agent run id seen on the session stream so we can
-        // pair an incoming tool_approval_requested with the right run. The
-        // backend's approval gate keys decisions on (runId, stepId, orgId);
-        // tool_approval_requested itself only carries stepId, so we read
-        // runId from the most recent run_started in this session.
-        let latestRunId: string | null = null
-
-        const handleSessionEvent = async (event: SessionStreamEvent): Promise<void> => {
-            if (event.type === "run_started") {
-                latestRunId = event.runId
-                return
-            }
-            if (event.type !== "tool_approval_requested") return
-
-            if (isCliRunCommandEnabled()) return
-
-            // If a TerseAgent in this process defined its own onApprovalRequired,
-            // it will handle and submit the decision on its own SSE stream.
-            // Skip here to avoid double-prompting and duplicate decision posts.
-            if (isAgentApprovalHandlingClaimed()) return
-
-            const runId = latestRunId
-            if (!runId) {
-                console.error(chalk.red("  Received approval request before run_started — cannot route decision."))
-                return
-            }
-
-            const { toolName, arguments: rawArguments, stepId } = event.toolApprovalRequested
-
-            if (!process.stdout.isTTY) {
-                console.error(chalk.red(`  Approval required for "${toolName}" but no TTY is attached — auto-rejecting.`))
-                console.error(chalk.dim("  In non-interactive contexts, set TerseAgent.onApprovalRequired in your job code."))
-                try {
-                    await submitApprovalDecision(apiKey, { runId, stepId, approved: false })
-                } catch (error) {
-                    console.error(chalk.red(`  Failed to submit auto-reject: ${(error as Error).message}`))
-                }
-                return
-            }
-
-            sessionPaused = true
-            try {
-                await pauseUiAround(async () => {
-                    const approved = await promptForToolApproval(toolName, rawArguments)
-                    await submitApprovalDecision(apiKey, { runId, stepId, approved })
-                })
-            } catch (error) {
-                console.error(chalk.red(`  Failed to submit approval decision: ${(error as Error).message}`))
-            } finally {
-                sessionPaused = false
-            }
-        }
-
-        const session = await openSessionStream(apiKey, {
-            verbose: isVerbose,
-            isPaused: () => sessionPaused,
-            onEvent: handleSessionEvent
-        })
-
-        try {
-            return await action(session.sessionId)
-        } finally {
-            session.close?.()
-        }
+        return durableJobRuntime.resumeRun(runId, opts)
     }
 }
 
 export const typeScriptProvider = new TypeScriptProvider()
 
-let sessionPaused = false
+// Durability is opt-in per job and unavailable on self-hosted control planes.
+function selectRuntime(job: CreateJobParameters): JobRuntime {
+    const selfHosted = readProjectConfig()?.selfHosted === true
+    if (job.durable && selfHosted) {
+        throw new CliError("durable_self_hosted", `Job "${job.name}" is durable, but durability isn't available on self-hosted control planes yet.`, {
+            detail: "Remove `durable: true` from this job, or run it on Terse cloud."
+        })
+    }
+    return job.durable && !selfHosted ? durableJobRuntime : directJobRuntime
+}
 
 function isModuleNotFoundError(error: unknown): error is Error & { code: string } {
     return error instanceof Error && (error as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND"

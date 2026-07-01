@@ -15,7 +15,7 @@ createJob({
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
 
     states: [{ key: "runCount", value: z.number().default(0) }],
-
+    durable: false,
     // The handler runs every time a trigger fires. `event` is typed to match
     // the trigger(s) above.
     onTrigger: async (event, state) => {
@@ -25,11 +25,11 @@ createJob({
         // (a Zod schema) forces a structured response: `response` is typed
         // `{ joke: string }`.
 
-        jobStep({
-            run: async () => {
-                console.log("OMG WE ARE ABOUT TO SLEEP FOR 1 MINUTE")
-            }
-        })
+        // jobStep({
+        //     run: async () => {
+        //         console.log("OMG WE ARE ABOUT TO SLEEP FOR 1 MINUTE")
+        //     }
+        // })
 
         const response = await generateText({
             prompt: "Tell me a joke about Game Of thrones",
@@ -45,21 +45,21 @@ createJob({
         const runCount = await state.get("runCount")
         await state.set("runCount", runCount + 1)
 
-        const work = await jobStep({
-            input: runCount,
-            inputSchema: z.number(),
-            outputSchema: z.string(),
-            run: async (runCount: number) => {
-                console.log("Run count: ", runCount)
-                console.log("pretend there is a lot of work happening here.")
+        // const work = await jobStep({
+        //     input: runCount,
+        //     inputSchema: z.number(),
+        //     outputSchema: z.string(),
+        //     run: async (runCount: number) => {
+        //         console.log("Run count: ", runCount)
+        //         console.log("pretend there is a lot of work happening here.")
 
-                return "work is done " + runCount
-            }
-        })
+        //         return "work is done " + runCount
+        //     }
+        // })
 
-        console.log(work)
+        // console.log(work)
 
-        await sleep("1m")
+        // await sleep("1m")
 
         await toolbox.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,

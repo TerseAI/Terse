@@ -155,7 +155,7 @@ async function withMacroedSources(cwd: string, build: () => Promise<void>): Prom
         if (stepsCode) fs.writeFileSync(stepsFilePath(file), stepsCode)
         for (const job of jobs) workflowFnByJob.set(job.name, { fnName: job.fnName, file: path.relative(cwd, file) })
     }
-    await build()
+    if (workflowFnByJob.size > 0) await build()
 
     return workflowFnByJob
 }
