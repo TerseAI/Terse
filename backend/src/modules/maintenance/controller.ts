@@ -11,7 +11,7 @@ interface TokenRefreshSummary {
     results: { integrationType: IntegrationType; total: number; refreshed: number; failed: number; failures: Array<{ integrationId: string; error: string }> }[]
 }
 
-/** Core logic for the token-refresh cron. Callable from the HTTP route and the BullMQ worker. */
+/** Core logic for the token-refresh cron. Callable from the HTTP route and the pg-boss worker. */
 export async function runTokenRefresh(): Promise<TokenRefreshSummary> {
     const results: TokenRefreshSummary["results"] = []
 

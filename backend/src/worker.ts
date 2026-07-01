@@ -1,19 +1,19 @@
 /**
- * Terse background worker — a second entry point in the backend package that consumes BullMQ
+ * Terse background worker — a second entry point in the backend package that consumes the pg-boss
  * queues: user cron triggers, platform maintenance crons, and durable agent run execution. Reuses
  * Prisma, settings, and the domain handlers from the web process.
  *
- * Requires REDIS_URL. Mirrors server.ts's graceful-shutdown lifecycle.
+ * Durable queue state lives in Postgres (pgboss schema); Redis is only used here for the
+ * Socket.IO emit adapter and pub/sub. Mirrors server.ts's graceful-shutdown lifecycle.
  */
-import { Worker } from "bullmq"
 import "dotenv/config"
+import { Job, JobWithMetadata } from "pg-boss"
 import { RunHistoryStatus } from "terse-types"
 
 import logger from "./common/logger"
 import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
-import { BullMq } from "./loaders/bullmq"
+import { Boss } from "./loaders/pgBoss"
 import { db } from "./loaders/prisma"
-import { RedisNamespace } from "./loaders/redisNamespace"
 import { WorkerSocketEmitter } from "./loaders/workerSocket"
 import { markRunFailed } from "./modules/agents/AgentRunner/runHistory"
 import { runReviewAllAgents } from "./modules/agents/review/controller"
@@ -22,117 +22,108 @@ import { runCleanupSdkImages } from "./modules/sdk/maintenance/controller"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
 import { TaskQueueEmitter } from "./tasks/abstract/redisTaskQueue"
 import { handleRunExecution } from "./tasks/handlers/runExecutionHandler"
-import { MaintenanceJob, upsertMaintenanceSchedulers } from "./tasks/queues/maintenanceQueue"
+import { MaintenanceJob, maintenanceQueueName, upsertMaintenanceSchedulers } from "./tasks/queues/maintenanceQueue"
 import { QueueName } from "./tasks/queues/queueNames"
 import { RunExecutionJobData, runExecutionJobId } from "./tasks/queues/runExecutionQueue"
-import { ScheduleJobData, upsertScheduleTrigger } from "./tasks/queues/scheduleQueue"
+import { dispatchDueSchedules, registerScheduleDispatcher } from "./tasks/queues/scheduleDispatcher"
+import { ScheduleJobData } from "./tasks/queues/scheduleQueue"
 
 const SDK_RUN_CONCURRENCY = Number(process.env.SDK_RUN_CONCURRENCY) || 25
 
-const workers: Worker[] = []
+async function main(): Promise<void> {
+    // DATABASE_URL / REDIS_URL are hard requirements enforced in settings (requireEnv); importing
+    // settings throws loudly before we get here if either is missing.
+    logger.info("🛠  Terse worker starting")
 
-function startWorker<T>(name: string, processor: (data: T) => Promise<void> | void, opts: { concurrency?: number; maxStalledCount?: number; lockDuration?: number } = {}): void {
-    const worker = new Worker<T>(
-        name,
-        async job => {
-            await processor(job.data)
-        },
-        {
-            connection: BullMq.getInstance().createWorkerConnection(),
-            prefix: RedisNamespace.bullmq,
-            concurrency: opts.concurrency ?? 10,
-            ...(opts.maxStalledCount !== undefined ? { maxStalledCount: opts.maxStalledCount } : {}),
-            ...(opts.lockDuration !== undefined ? { lockDuration: opts.lockDuration } : {})
+    // Run execution streams via Socket.IO; wire the emit-only adapter and the getter the run/cache
+    // services read through, before any run job can be picked up.
+    await WorkerSocketEmitter.getInstance().init()
+    registerSocketGetter(() => WorkerSocketEmitter.getInstance().getSocket())
+
+    // Provision all queues + schedules before registering workers, so no worker polls a queue
+    // that doesn't exist yet.
+    await Boss.getInstance().start("worker")
+    await upsertMaintenanceSchedulers()
+    await registerScheduleDispatcher()
+    await registerWorkers()
+    await reconcileOrphanedRuns()
+    logger.info("✅ Terse worker ready")
+}
+
+async function registerWorkers(): Promise<void> {
+    const boss = Boss.getInstance().getBoss()
+
+    // Recurring cron triggers: the dispatcher fans out one `schedule` job per due trigger; we
+    // process it by invoking the same handler the old Cloud Scheduler webhook used. is_active is
+    // enforced inside.
+    await boss.work<ScheduleJobData>(
+        QueueName.Schedule,
+        { localConcurrency: 10 },
+        withJobLogging(QueueName.Schedule, async data => {
+            await new CronJobIntegrationManager().processWebhookEvent({ inputId: data.inputId })
+        })
+    )
+
+    // includeMetadata exposes startAfter: a late-running dispatch still evaluates its own scheduled
+    // minute instead of the wall-clock one.
+    await boss.work(QueueName.ScheduleDispatch, { localConcurrency: 1, includeMetadata: true }, async (jobs: JobWithMetadata[]) => {
+        for (const job of jobs) {
+            try {
+                await dispatchDueSchedules(job.startAfter)
+            } catch (error) {
+                logger.error(`[worker:${QueueName.ScheduleDispatch}] dispatch failed`, { jobId: job.id, error })
+                throw error
+            }
         }
-    )
-    worker.on("failed", (job, error) => logger.error(`[worker:${name}] job failed`, { jobId: job?.id, error }))
-    worker.on("error", error => logger.error(`[worker:${name}] worker error`, { error }))
-    // A stalled job is one whose lock expired (worker died / event loop blocked past lockDuration).
-    // With maxStalledCount:0 the run queue fails it instead of re-delivering — log so it's visible.
-    worker.on("stalled", jobId => logger.warn(`[worker:${name}] job stalled (lock expired)`, { jobId }))
-    worker.on("completed", job => {
-        const startedAt = job.processedOn
-        const finishedAt = job.finishedOn
-        logger.info(`[worker:${name}] job completed`, { jobId: job.id, durationMs: startedAt && finishedAt ? finishedAt - startedAt : undefined })
-    })
-    workers.push(worker)
-    logger.info(`[worker:${name}] started`)
-}
-
-function registerWorkers(): void {
-    // Recurring cron triggers: a fired scheduler enqueues a `schedule` job; we process it by
-    // invoking the same handler the old Cloud Scheduler webhook used. is_active is enforced inside.
-    startWorker<ScheduleJobData>(QueueName.Schedule, async data => {
-        await new CronJobIntegrationManager().processWebhookEvent({ inputId: data.inputId })
     })
 
-    // Platform maintenance crons, discriminated by job name.
-    startMaintenanceWorker()
-
-    startWorker<RunExecutionJobData>(QueueName.SdkRunExecution, data => handleRunExecution(data), { concurrency: SDK_RUN_CONCURRENCY, maxStalledCount: 0, lockDuration: 60_000 })
-}
-
-/** Maintenance jobs share one queue and are dispatched by job name. */
-async function runMaintenanceJob(name: string): Promise<void> {
-    switch (name) {
-        case MaintenanceJob.RefreshTokens:
-            await runTokenRefresh()
-            return
-        case MaintenanceJob.ClearOldSecretVersions:
-            await runClearOldSecretVersions({ dryRun: false })
-            return
-        case MaintenanceJob.CleanupSdkImages:
-            await runCleanupSdkImages()
-            return
-        case MaintenanceJob.ReviewAgents:
-            await runReviewAllAgents({ dryRun: false })
-            return
-        default:
-            logger.warn(`[worker:${QueueName.Maintenance}] unknown maintenance job`, { name })
+    for (const job of Object.values(MaintenanceJob)) {
+        const queue = maintenanceQueueName(job)
+        await boss.work(queue, { localConcurrency: 1 }, withJobLogging(queue, MAINTENANCE_HANDLERS[job]))
     }
+
+    await boss.work<RunExecutionJobData>(QueueName.SdkRunExecution, { localConcurrency: SDK_RUN_CONCURRENCY }, withJobLogging(QueueName.SdkRunExecution, data => handleRunExecution(data)))
 }
 
-function startMaintenanceWorker(): void {
-    const worker = new Worker(
-        QueueName.Maintenance,
-        async job => {
-            await runMaintenanceJob(job.name)
-        },
-        { connection: BullMq.getInstance().createWorkerConnection(), prefix: RedisNamespace.bullmq, concurrency: 1 }
-    )
-    worker.on("failed", (job, error) => logger.error(`[worker:${QueueName.Maintenance}] job failed`, { job: job?.name, error }))
-    worker.on("error", error => logger.error(`[worker:${QueueName.Maintenance}] worker error`, { error }))
-    workers.push(worker)
-    logger.info(`[worker:${QueueName.Maintenance}] started`)
+const MAINTENANCE_HANDLERS: Record<MaintenanceJob, () => Promise<void>> = {
+    [MaintenanceJob.RefreshTokens]: async () => {
+        await runTokenRefresh()
+    },
+    [MaintenanceJob.ClearOldSecretVersions]: async () => {
+        await runClearOldSecretVersions({ dryRun: false })
+    },
+    [MaintenanceJob.CleanupSdkImages]: async () => {
+        await runCleanupSdkImages()
+    },
+    [MaintenanceJob.ReviewAgents]: async () => {
+        await runReviewAllAgents({ dryRun: false })
+    }
 }
 
 /**
- * Rebuild the BullMQ Job Schedulers from Postgres (the durable source of truth) on every boot.
- * upsert is idempotent, so this self-heals a wiped/lost Redis and keeps schedulers in sync with the
- * automation_time_trigger_configs table.
+ * pg-boss delivers jobs in batches (size 1 by default); process each and log the outcome so per-job
+ * visibility matches what the old queue event listeners provided. A throw marks the job failed
+ * (retryLimit 0 everywhere — never re-delivered).
  */
-async function reconcileSchedules(): Promise<void> {
-    const configs = await db().automation_time_trigger_configs.findMany({
-        select: { automation_input_id: true, cron_expression: true }
-    })
-
-    let reconciled = 0
-    for (const config of configs) {
-        if (!config.cron_expression) continue
-        try {
-            await upsertScheduleTrigger(config.automation_input_id, config.cron_expression)
-            reconciled++
-        } catch (error) {
-            logger.error("Failed to reconcile schedule from Postgres", { inputId: config.automation_input_id, error })
+function withJobLogging<TData extends object>(queue: string, processor: (data: TData) => Promise<void> | void): (jobs: Job<TData>[]) => Promise<void> {
+    return async jobs => {
+        for (const job of jobs) {
+            const startedAt = Date.now()
+            try {
+                await processor(job.data)
+                logger.info(`[worker:${queue}] job completed`, { jobId: job.id, durationMs: Date.now() - startedAt })
+            } catch (error) {
+                logger.error(`[worker:${queue}] job failed`, { jobId: job.id, error })
+                throw error
+            }
         }
     }
-    logger.info("✅ Reconciled BullMQ schedules from Postgres", { reconciled, total: configs.length })
 }
 
 /**
  * Fail runs left IN_PROGRESS with no live execution job — orphaned when a worker died mid-run
- * (the Modal sandbox lifecycle is independent of BullMQ, so a re-delivered/killed job can't be
- * trusted to have finalized the run). Conservative: only stale runs with no active/queued job.
+ * (the Modal sandbox lifecycle is independent of the queue, so a killed job can't be trusted to
+ * have finalized the run). Conservative: only stale runs whose job is not created/retry/active.
  */
 async function reconcileOrphanedRuns(): Promise<void> {
     const STALE_MS = 15 * 60_000
@@ -147,13 +138,12 @@ async function reconcileOrphanedRuns(): Promise<void> {
         return
     }
 
-    const queue = BullMq.getInstance().getQueue(QueueName.SdkRunExecution)
-    const liveStates = new Set(["active", "waiting", "delayed", "prioritized", "waiting-children"])
+    const boss = Boss.getInstance().getBoss()
+    const liveStates = new Set(["created", "retry", "active"])
     let failed = 0
     for (const run of stale) {
-        const job = await queue.getJob(runExecutionJobId(run.id))
-        const state = job ? await job.getState() : null
-        if (state && liveStates.has(state)) continue // legitimately executing
+        const jobs = await boss.findJobs(QueueName.SdkRunExecution, { key: runExecutionJobId(run.id) })
+        if (jobs.some(job => liveStates.has(job.state))) continue // legitimately executing
         try {
             if (await markRunFailed(run.id, "Run orphaned (no active execution job after worker restart)", "agent")) failed++
         } catch (error) {
@@ -161,23 +151,6 @@ async function reconcileOrphanedRuns(): Promise<void> {
         }
     }
     logger.info("✅ Reconciled orphaned runs", { candidates: stale.length, failed })
-}
-
-async function main(): Promise<void> {
-    // REDIS_URL is a hard requirement enforced in settings (requireEnv); importing settings throws
-    // loudly before we get here if it is missing.
-    logger.info("🛠  Terse worker starting")
-
-    // Run execution streams via Socket.IO; wire the emit-only adapter and the getter the run/cache
-    // services read through, before any run job can be picked up.
-    await WorkerSocketEmitter.getInstance().init()
-    registerSocketGetter(() => WorkerSocketEmitter.getInstance().getSocket())
-
-    registerWorkers()
-    await reconcileSchedules()
-    await upsertMaintenanceSchedulers()
-    await reconcileOrphanedRuns()
-    logger.info("✅ Terse worker ready", { queues: workers.length })
 }
 
 await main()
@@ -196,11 +169,10 @@ async function gracefulShutdown(signal: string): Promise<void> {
     forceExit.unref()
 
     try {
-        // Stop accepting new jobs and let in-flight jobs finish.
-        await Promise.allSettled(workers.map(worker => worker.close()))
-        logger.info("✅ Workers drained")
+        // Stops fetching new jobs, lets in-flight jobs finish, then closes the pool.
+        await Boss.getInstance().stop()
+        logger.info("✅ Queue workers drained")
 
-        await BullMq.getInstance().close()
         await TaskQueueEmitter.getInstance().close()
         await WorkerSocketEmitter.getInstance().close()
         logger.info("✅ Redis connections closed")

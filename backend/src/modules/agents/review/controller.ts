@@ -38,7 +38,7 @@ type EmailGroup = {
     agents: EmailAgentSummary[]
 }
 
-/** Core logic for the weekly agent-review cron. Invoked by the BullMQ maintenance worker. */
+/** Core logic for the weekly agent-review cron. Invoked by the pg-boss maintenance worker. */
 export async function runReviewAllAgents({ dryRun = false }: { dryRun?: boolean } = {}): Promise<void> {
     logger.info("[ReviewAgents] Weekly review job triggered")
 

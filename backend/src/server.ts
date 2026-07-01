@@ -6,7 +6,7 @@ import { analytics } from "./common/analytics"
 import { buildCorsAllowedOrigins } from "./common/corsOrigins"
 import logger from "./common/logger"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
-import { BullMq } from "./loaders/bullmq"
+import { Boss } from "./loaders/pgBoss"
 import { db } from "./loaders/prisma"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
 import { setupLLMAnalytics } from "./modules/agents/openaiInstance"
@@ -25,6 +25,14 @@ try {
     await rateLimiter.init()
 } catch (error) {
     logger.error("❌ Failed to initialize rate limiter", { error })
+    process.exit(1)
+}
+
+// Durable job queue (enqueue-only on the web role) — must be up before any request can enqueue.
+try {
+    await Boss.getInstance().start("web")
+} catch (error) {
+    logger.error("❌ Failed to start pg-boss", { error })
     process.exit(1)
 }
 
@@ -94,11 +102,11 @@ async function gracefulShutdown(signal: string) {
         }
 
         try {
+            await Boss.getInstance().stop()
             await TaskQueueEmitter.getInstance().close()
-            await BullMq.getInstance().close()
-            logger.info("✅ Redis queues + pub/sub closed")
+            logger.info("✅ Job queue + pub/sub closed")
         } catch (error) {
-            logger.error("Redis shutdown failed", { error })
+            logger.error("Queue/pub-sub shutdown failed", { error })
         }
 
         try {

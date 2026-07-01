@@ -200,7 +200,7 @@ function startWorker() {
         if (shuttingDown) {
             return
         }
-        console.error(`BullMQ worker exited unexpectedly with code ${code ?? "unknown"}.`)
+        console.error(`Queue worker exited unexpectedly with code ${code ?? "unknown"}.`)
         if (serverProcess && !serverProcess.killed) {
             serverProcess.kill("SIGTERM")
         }

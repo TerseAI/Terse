@@ -9,7 +9,7 @@ export interface CleanupSdkImagesOptions {
     batchSize?: number
 }
 
-/** Core logic for the SDK-image cleanup cron. Callable from the HTTP route and the BullMQ worker. */
+/** Core logic for the SDK-image cleanup cron. Callable from the HTTP route and the pg-boss worker. */
 export async function runCleanupSdkImages(opts: CleanupSdkImagesOptions = {}) {
     const result = await new SdkSandboxImageService().cleanupUnusedImages(opts)
 

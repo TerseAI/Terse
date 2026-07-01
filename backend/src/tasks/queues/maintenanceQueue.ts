@@ -1,11 +1,10 @@
 /**
  * Platform maintenance crons. These have no Postgres-backed definition (they were static GCP
- * Cloud Scheduler jobs), so the worker declares them as static BullMQ Job Schedulers on boot.
- * upsert is idempotent, so they self-heal a wiped Redis like the user cron schedulers.
+ * Cloud Scheduler jobs), so the worker declares them as native pg-boss schedules on boot — one
+ * queue per job so each is worked and observed independently. schedule() upserts, so a re-boot
+ * self-heals a wiped queue store.
  */
-import { BullMq } from "../../loaders/bullmq"
-
-import { QueueName } from "./queueNames"
+import { Boss } from "../../loaders/pgBoss"
 
 export const MaintenanceJob = {
     RefreshTokens: "refresh-tokens",
@@ -13,8 +12,6 @@ export const MaintenanceJob = {
     CleanupSdkImages: "cleanup-sdk-images",
     ReviewAgents: "review-agents"
 } as const
-
-export type MaintenanceJob = (typeof MaintenanceJob)[keyof typeof MaintenanceJob]
 
 /** Cron patterns in UTC. Match these to the prior Cloud Scheduler cadence at decommission time. */
 const MAINTENANCE_SCHEDULES: Record<MaintenanceJob, string> = {
@@ -24,10 +21,17 @@ const MAINTENANCE_SCHEDULES: Record<MaintenanceJob, string> = {
     [MaintenanceJob.ReviewAgents]: "0 13 * * 1" // weekly, Monday 13:00 UTC
 }
 
-/** Declare/refresh the static maintenance schedulers. Throws if Redis is unavailable. */
+export function maintenanceQueueName(job: MaintenanceJob): string {
+    return `maintenance-${job}`
+}
+
+/** Declare/refresh the static maintenance queues and schedules. Throws if Postgres is unavailable. */
 export async function upsertMaintenanceSchedulers(): Promise<void> {
-    const queue = BullMq.getInstance().getQueue(QueueName.Maintenance)
+    const boss = Boss.getInstance().getBoss()
     for (const job of Object.values(MaintenanceJob)) {
-        await queue.upsertJobScheduler(`maintenance-${job}`, { pattern: MAINTENANCE_SCHEDULES[job], tz: "UTC" }, { name: job })
+        await boss.createQueue(maintenanceQueueName(job), { retryLimit: 0 })
+        await boss.schedule(maintenanceQueueName(job), MAINTENANCE_SCHEDULES[job], {}, { tz: "UTC" })
     }
 }
+
+export type MaintenanceJob = (typeof MaintenanceJob)[keyof typeof MaintenanceJob]

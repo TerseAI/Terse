@@ -132,12 +132,12 @@ export class CronJobIntegrationManager
 
         try {
             await upsertScheduleTrigger(agentTrigger.id, cronExpression)
-            logger.info("✅ Upserted BullMQ schedule for time trigger", {
+            logger.info("✅ Validated time trigger schedule", {
                 inputId: agentTrigger.id,
                 cronExpression
             })
         } catch (error) {
-            logger.error("❌ Failed to upsert BullMQ schedule", {
+            logger.error("❌ Failed to validate time trigger schedule", {
                 error,
                 inputId: agentTrigger.id,
                 cronExpression
@@ -153,11 +153,11 @@ export class CronJobIntegrationManager
 
         try {
             await removeScheduleTrigger(agentTrigger.id)
-            logger.info("✅ Removed BullMQ schedule for time trigger", {
+            logger.info("✅ Removed time trigger schedule", {
                 inputId: agentTrigger.id
             })
         } catch (error) {
-            logger.error("❌ Failed to remove BullMQ schedule", {
+            logger.error("❌ Failed to remove time trigger schedule", {
                 error,
                 inputId: agentTrigger.id
             })

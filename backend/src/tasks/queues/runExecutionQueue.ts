@@ -3,13 +3,22 @@
  *
  * The payload is fully self-contained (ids only): the worker re-loads the agent and reconstructs a
  * server-side user session, so nothing relies on in-memory request state. Idempotency is keyed by
- * `run-<runId>` and we never auto-retry a side-effecting run (attempts: 1), so an at-least-once
- * enqueue can't spawn two Modal sandboxes or double-bill.
+ * `run-<runId>` (the pg-boss singletonKey) and the queue never auto-retries a side-effecting run
+ * (retryLimit 0), so an at-least-once enqueue can't spawn two Modal sandboxes or double-bill.
  */
-import { BullMq } from "../../loaders/bullmq"
+import { Boss } from "../../loaders/pgBoss"
 import { JobExecutionKind } from "../../services/jobExecutors/types"
 
 import { QueueName } from "./queueNames"
+
+export function runExecutionJobId(runId: string): string {
+    return `run-${runId}`
+}
+
+/** Throws if Postgres is unavailable; a failed enqueue is a failed operation (no inline fallback). */
+export async function enqueueRunExecution(data: RunExecutionJobData): Promise<void> {
+    await Boss.getInstance().getBoss().send(QueueName.SdkRunExecution, data, { singletonKey: runExecutionJobId(data.runId) })
+}
 
 export interface RunExecutionJobData {
     runId: string
@@ -18,20 +27,4 @@ export interface RunExecutionJobData {
     userId: string
     jobName: string
     kind: JobExecutionKind
-}
-
-// BullMQ custom job ids cannot contain ":".
-export function runExecutionJobId(runId: string): string {
-    return `run-${runId}`
-}
-
-export async function enqueueRunExecution(data: RunExecutionJobData): Promise<void> {
-    await BullMq.getInstance()
-        .getQueue(QueueName.SdkRunExecution)
-        .add("start", data, {
-            jobId: runExecutionJobId(data.runId),
-            attempts: 1,
-            removeOnComplete: { age: 86_400, count: 1000 },
-            removeOnFail: { age: 604_800 }
-        })
 }

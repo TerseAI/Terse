@@ -21,8 +21,8 @@ services:
     image: redis:7-alpine
     container_name: terse-redis
     restart: unless-stopped
-    # noeviction is required for BullMQ: under an eviction policy Redis can drop queued jobs.
-    # appendonly persists the queue across restarts.
+    # Redis carries only ephemeral state (pub/sub, Socket.IO fan-out, rate limiting); the durable
+    # job queue lives in Postgres (pg-boss). noeviction + appendonly are conservative defaults.
     command: ["redis-server", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-6379}:6379"

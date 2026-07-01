@@ -187,7 +187,7 @@ Backend work needs Postgres, Redis, and the credentials backend integrations exp
 
 ### Redis (required for the backend)
 
-The backend uses Redis for job queues (BullMQ), schedules, and rate limiting. It's a hard requirement: `pnpm run dev` exits with `ECONNREFUSED` errors if Redis isn't reachable. Start one locally before running the backend:
+The backend uses Redis for pub/sub, Socket.IO fan-out, and rate limiting (the durable job queue runs on pg-boss in Postgres). It's a hard requirement: `pnpm run dev` exits with `ECONNREFUSED` errors if Redis isn't reachable. Start one locally before running the backend:
 
 ```bash
 # Docker (recommended)
@@ -202,8 +202,6 @@ Set the connection string in `backend/.env` (this is the default, so it's only n
 ```bash
 REDIS_URL=redis://localhost:6379
 ```
-
-BullMQ can silently drop queued jobs under an eviction policy, so the backing Redis must use `maxmemory-policy=noeviction`. That's the default for a fresh Redis, so the commands above need no extra config.
 
 ## License
 

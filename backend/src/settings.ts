@@ -39,6 +39,9 @@ export const settings = {
     redis: {
         url: requireEnv("REDIS_URL")
     },
+    pgboss: {
+        maxConnections: optionalIntEnv("PGBOSS_MAX_CONNECTIONS")
+    },
 
     // WorkOS — opt-in. Present means AuthProvider picks WorkOS; absent means LocalAuthProvider.
     workos: optionalIntegrationSettings(["WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD", "WORKOS_REDIRECT_URI", "WORKOS_WEBHOOK_SECRET"], () => ({
@@ -222,7 +225,7 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 // Export individual always-on settings for convenience. Opt-in integration blocks
 // (gmail, githubApp, notion, slack, linear, attio, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
-export const { jwt, gemini, urls, gcs, optional, redis } = settings
+export const { jwt, gemini, urls, gcs, optional, redis, pgboss } = settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively
@@ -272,6 +275,18 @@ function optionalBoolEnv(name: string, defaultValue = false): boolean {
     }
 
     throw new Error(`Invalid boolean environment variable: ${name}. Expected "true" or "false".`)
+}
+
+function optionalIntEnv(name: string): number | undefined {
+    const value = optionalEnv(name)
+    if (value === undefined) {
+        return undefined
+    }
+    const parsed = Number(value)
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(`Invalid integer environment variable: ${name}. Expected a positive integer, got "${value}".`)
+    }
+    return parsed
 }
 
 /**
