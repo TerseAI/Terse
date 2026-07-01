@@ -1,6 +1,6 @@
 ---
 name: improve
-description: Improve an existing Terse SDK job. Use when the user wants to optimize, fix, refactor, or enhance an automation — better prompts, smarter filtering, type safety, error handling, or tool usage.
+description: Improve an existing Terse SDK job. Use when the user wants to fix, optimize, or refactor an automation they have already built.
 argument-hint: <job-name>
 ---
 
@@ -10,7 +10,7 @@ Improve the Terse job named: **$ARGUMENTS**
 
 ## Reference docs
 
-The bundled [sdk-reference.md](reference/sdk-reference.md) is a quick offline cheat sheet, but Terse evolves fast. Always pull the live docs before making non-trivial changes:
+The bundled [sdk-reference.md](../../reference/sdk-reference.md) covers the common path offline. Terse evolves fast, so pull the live docs whenever you reach past what the reference covers or aren't sure it's current:
 
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
@@ -19,7 +19,7 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 ## Steps
 
-**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](../../reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
 
 `src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
@@ -61,15 +61,15 @@ If the user has not deployed the job yet (no agent found), skip this step and re
 
 ### 3. Analyze for improvements
 
-Evaluate each area below. Not every area will need changes — focus on the ones that make the biggest difference. Start with **Tool usage** — moving work from the agent to `toolbox` is usually the highest-impact fix.
+Account for every area below before you finish: for each, either make a change or confirm it's already fine. Don't stop at the first easy win. Start with **Tool usage**, since moving work from the agent to `toolbox` is usually the highest-impact fix.
 
 #### Tool Usage
 
-- **Deterministic vs AI**: For actions with known parameters, use `toolbox` — not `generateText`. Read available methods in `src/terse.generated.ts`.
+- **Known calls vs judgment**: For actions with known parameters, use `toolbox`, not `generateText`. Read available methods in `src/terse.generated.ts`.
 - **Unnecessary agents**: If the handler only runs deterministic tools, drop `generateText` entirely and call `toolbox` directly.
 - **Prompts doing integration work**: Phrases like "post to Slack", "create a Linear issue", or "add label X" in a prompt usually mean that step should be code. Keep prompts for judgment only (summarize, triage, draft).
 - **Skill scoping**: `skills` controls what tools the model can pick during a `generateText` run. `toolbox.<integration>` is unaffected by `skills` — use it when you want a deterministic call without configuring an agent.
-- **Multi-step**: Deterministic setup first (`toolbox.slack.sendMessage`), then a narrow `generateText` call for the part that needs reasoning, then post the result back with `toolbox`.
+- **Multi-step**: Known setup first (`toolbox.slack.sendMessage`), then a narrow `generateText` call for the part that needs judgment, then post the result back with `toolbox`.
 - **Tool results**: Capture return values from deterministic calls when later steps need them (e.g. `message.message_ts` for threading).
 
 #### Prompt Quality
