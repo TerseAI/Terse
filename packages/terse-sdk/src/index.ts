@@ -721,12 +721,25 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
     return await agent.runAndWait(params.prompt)
 }
 
+export class DurableOnlyError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "DurableOnlyError"
+    }
+}
+
 export function jobStep<I extends z.ZodType, O>(opts: { input: z.infer<I>; inputSchema: I; outputSchema?: z.ZodType<O>; run: (input: z.infer<I>) => Promise<O> }): Promise<O>
 export function jobStep<O>(opts: { outputSchema?: z.ZodType<O>; run: () => Promise<O> }): Promise<O>
-export async function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
+export function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
+    // Synchronous guard so an un-awaited jobStep() still throws at the call site
+    // instead of floating as an unhandled rejection.
     if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_USE_STEP"))) {
-        throw new Error("jobStep() is only available in durable jobs. Add `durable: true` to this job.")
+        throw new DurableOnlyError("jobStep() is only available in durable jobs. Add `durable: true` to this job.")
     }
+    return runJobStep(opts)
+}
+
+async function runJobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
     const input = opts.inputSchema ? opts.inputSchema.parse(opts.input) : undefined
     const result = await opts.run(input)
     return opts.outputSchema ? opts.outputSchema.parse(result) : result
@@ -734,7 +747,7 @@ export async function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; 
 
 export function sleep(duration: string | number | Date): Promise<void> {
     if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
-        throw new Error("sleep() is only available in durable jobs. Add `durable: true` to this job.")
+        throw new DurableOnlyError("sleep() is only available in durable jobs. Add `durable: true` to this job.")
     }
     // Locally (`terse test`, no TERSE_RUN_ID) there is no suspend machinery, so skip the
     // wait and note what production would have done instead.

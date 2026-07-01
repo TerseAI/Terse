@@ -30,6 +30,9 @@ export const directJobRuntime: JobRuntime = {
             })
         } catch (error) {
             if (error instanceof CliError) throw error
+            if (error instanceof Error && error.name === "DurableOnlyError") {
+                throw new CliError("durable_only", error.message, { actionRequired: true })
+            }
             throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, { detail: formatErrorDetail(error) })
         }
     },
