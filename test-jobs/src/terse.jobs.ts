@@ -45,17 +45,17 @@ createJob({
         const runCount = await state.get("runCount")
         await state.set("runCount", runCount + 1)
 
-        // const work = await jobStep({
-        //     input: runCount,
-        //     inputSchema: z.number(),
-        //     outputSchema: z.string(),
-        //     run: async (runCount: number) => {
-        //         console.log("Run count: ", runCount)
-        //         console.log("pretend there is a lot of work happening here.")
+        const work = await jobStep({
+            input: runCount,
+            inputSchema: z.number(),
+            outputSchema: z.string(),
+            run: async (runCount: number) => {
+                console.log("Run count: ", runCount)
+                console.log("pretend there is a lot of work happening here.")
 
-        //         return "work is done " + runCount
-        //     }
-        // })
+                return "work is done " + runCount
+            }
+        })
 
         // console.log(work)
 
