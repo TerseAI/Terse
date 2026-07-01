@@ -4,22 +4,21 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
-import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
-import { __buildJobStateAccessor, __resetRegisteredTerseInstances, createSDKTrigger, fetchRegisteredJobs, getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "terse-sdk"
+import type { CreateJobParameters } from "terse-sdk"
+import { __resetRegisteredTerseInstances, fetchRegisteredJobs } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
-import { readApiKeyOrBail } from "../../api.js"
 import { CliError } from "../../cliError.js"
-import { BACKEND_URL } from "../../config.js"
 import { ensureDotenvLoaded } from "../../dotenv.js"
-import { isCliRunCommandEnabled } from "../../env.js"
+import { readProjectConfig } from "../../projectConfig.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
-import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../shared/sessionStream.js"
 
+import { buildWorkflowArtifacts } from "./durableRuntime.js"
 import { prepareTemplateContext } from "./prepareCodegenData.js"
+import { type JobRuntime, directJobRuntime, durableJobRuntime } from "./runtimes/index.js"
 import { renderGeneratedCode } from "./templateEngine.js"
 
 const execAsync = promisify(exec)
@@ -39,7 +38,7 @@ class TypeScriptProvider implements LanguageProvider {
     readonly entryFile = "src/terse.jobs.ts"
     readonly generatedCodePath = "src/terse.generated.ts"
     readonly deployExclusions = {
-        dirs: new Set(["node_modules", ".git", "dist", ".next", ".turbo"]),
+        dirs: new Set(["node_modules", ".git", "dist", ".next", ".turbo", ".terse"]),
         files: new Set([".env", ".DS_Store"])
     }
 
@@ -159,6 +158,10 @@ class TypeScriptProvider implements LanguageProvider {
         return registry
     }
 
+    async prebuild(): Promise<void> {
+        await buildWorkflowArtifacts(process.cwd())
+    }
+
     async executeJob(
         job: CreateJobParameters,
         runId: string | null,
@@ -170,105 +173,34 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        const isVerbose = opts?.verbose ?? true
-        const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
+        return selectRuntime(job).executeJob(job, runId, event, opts)
+    }
 
-        const serializedEventRuntime = createSDKTrigger(event)
-
-        const apiKey = readApiKeyOrBail({
-            title: "TERSE_API_KEY is not set.",
-            detail: "Please set it in your environment variables."
-        })
-
-        // Track the latest agent run id seen on the session stream so we can
-        // pair an incoming tool_approval_requested with the right run. The
-        // backend's approval gate keys decisions on (runId, stepId, orgId);
-        // tool_approval_requested itself only carries stepId, so we read
-        // runId from the most recent run_started in this session.
-        let latestRunId: string | null = null
-
-        const handleSessionEvent = async (event: SessionStreamEvent): Promise<void> => {
-            if (event.type === "run_started") {
-                latestRunId = event.runId
-                return
-            }
-            if (event.type !== "tool_approval_requested") return
-
-            if (isCliRunCommandEnabled()) return
-
-            // If a TerseAgent in this process defined its own onApprovalRequired,
-            // it will handle and submit the decision on its own SSE stream.
-            // Skip here to avoid double-prompting and duplicate decision posts.
-            if (isAgentApprovalHandlingClaimed()) return
-
-            const runId = latestRunId
-            if (!runId) {
-                console.error(chalk.red("  Received approval request before run_started — cannot route decision."))
-                return
-            }
-
-            const { toolName, arguments: rawArguments, stepId } = event.toolApprovalRequested
-
-            if (!process.stdout.isTTY) {
-                console.error(chalk.red(`  Approval required for "${toolName}" but no TTY is attached — auto-rejecting.`))
-                console.error(chalk.dim("  In non-interactive contexts, set TerseAgent.onApprovalRequired in your job code."))
-                try {
-                    await submitApprovalDecision(apiKey, { runId, stepId, approved: false })
-                } catch (error) {
-                    console.error(chalk.red(`  Failed to submit auto-reject: ${(error as Error).message}`))
-                }
-                return
-            }
-
-            sessionPaused = true
-            try {
-                await pauseUiAround(async () => {
-                    const approved = await promptForToolApproval(toolName, rawArguments)
-                    await submitApprovalDecision(apiKey, { runId, stepId, approved })
-                })
-            } catch (error) {
-                console.error(chalk.red(`  Failed to submit approval decision: ${(error as Error).message}`))
-            } finally {
-                sessionPaused = false
-            }
+    async resumeRun(
+        runId: string,
+        opts?: {
+            verbose?: boolean
+            pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
-
-        const session = await openSessionStream(apiKey, {
-            verbose: isVerbose,
-            isPaused: () => sessionPaused,
-            onEvent: handleSessionEvent
-        })
-        const closeSession = session.close
-
-        await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl: BACKEND_URL, projectId: opts?.projectId, jobName: job.name }, async () => {
-            try {
-                const state = __buildJobStateAccessor(job.states ?? [])
-                if (job.filter) {
-                    const shouldRun = await job.filter(serializedEventRuntime, state)
-                    if (!shouldRun) {
-                        console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
-                        return
-                    }
-                }
-
-                if (isVerbose) {
-                    console.log(chalk.cyan(`  Job "${job.name}" started`))
-                }
-                await job.onTrigger(serializedEventRuntime, state)
-            } catch (error) {
-                throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, {
-                    detail: formatErrorDetail(error)
-                })
-            } finally {
-                closeSession?.()
-            }
-        })
+    ): Promise<void> {
+        return durableJobRuntime.resumeRun(runId, opts)
     }
 }
 
 export const typeScriptProvider = new TypeScriptProvider()
 
-let sessionPaused = false
+// Durability is opt-in per job and unavailable on self-hosted control planes.
+function selectRuntime(job: CreateJobParameters): JobRuntime {
+    const selfHosted = readProjectConfig()?.selfHosted === true
+    if (job.durable && selfHosted) {
+        throw new CliError("durable_self_hosted", `Job "${job.name}" is durable, but durability isn't available on self-hosted control planes yet.`, {
+            detail: "Remove `durable: true` from this job, or run it on Terse cloud."
+        })
+    }
+    const durable = job.durable === true && !selfHosted
+    console.log(chalk.dim(`  Runtime: ${durable ? "durable" : "direct"}`))
+    return durable ? durableJobRuntime : directJobRuntime
+}
 
 function isModuleNotFoundError(error: unknown): error is Error & { code: string } {
     return error instanceof Error && (error as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND"

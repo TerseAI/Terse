@@ -6,3 +6,4 @@ packages:
   - frontend
   - backend
   - terse-types
+  - test-jobs

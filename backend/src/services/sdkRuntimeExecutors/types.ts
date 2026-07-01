@@ -65,6 +65,7 @@ export interface SdkRuntimeExecutor {
     buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void>
     prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void>
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
+    resume(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
 }
 
 export const SDK_SOURCE_IMAGE_PROJECT_DIR = "/opt/terse-sdk-run/project"

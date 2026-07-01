@@ -30,6 +30,7 @@ export interface LanguageProvider {
     renderGeneratedCode(input: CodegenInput): string
     typecheck(): Promise<void>
     loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>>
+    prebuild(): Promise<void>
     executeJob(
         job: CreateJobParameters,
         runId: string | null,
@@ -43,6 +44,13 @@ export interface LanguageProvider {
              * caller can pause any outer UI it owns (clack spinners, etc.)
              * for the duration of the prompt and decision submission.
              */
+            pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+        }
+    ): Promise<void>
+    resumeRun(
+        runId: string,
+        opts?: {
+            verbose?: boolean
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void>

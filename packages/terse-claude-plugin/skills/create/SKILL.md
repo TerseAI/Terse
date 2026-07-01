@@ -69,7 +69,30 @@ Add a `filter` function if the job should skip certain events:
 
 Filters prevent unnecessary agent runs and save cost.
 
-### 5. Write the onTrigger handler
+### 5 Decide to be Durable Or Not
+
+By default, Terse Jobs are non-durable (think of it like a closure in the cloud). By flipping the durable flag to true in createJob, you can run the job in a durable execution environment similar to Temporal.
+
+You would want to enable this to support Human in the loop approvals, pausing the jobs (ex: sleep for 2 hours) or for large long running multi step workflows that need to recover well in the event of a failure.
+
+Using sleep() of jobStep() in a non-durable job will result in a runtime crash!
+
+By default, all terse-sdk functions like state.get/set, toolbox.*, generateText are already durable steps so no changes needed there. However, this is a proper durable execution environment, if you have code that is not in a step, it will get re-run a bunch of times (remember, each step is queued and starts from the top of the function!!!). If the non-step code is non-indempotent, has side effects (ex: send an email), takes a long time or is just expensive you will have problems.
+
+You can fix this with the jobStep() api:
+
+```typescript
+const pr = await jobStep({
+  input: { number },
+  inputSchema: z.object({ number: z.number() }),
+  outputSchema: z.object({ title: z.string() }), // optional
+  run: async ({ number }) => { /* octokit, fetch, etc. */ }
+})
+```
+
+full docs at: https://docs.useterse.ai/core-concepts/durability
+
+### 6. Write the onTrigger handler
 
 Use the appropriate event type from `terse-sdk`. Plan the handler as a pipeline: filters and deterministic steps first, agent last (if at all).
 
@@ -116,7 +139,7 @@ await toolbox.slack.sendMessage({ channelId: ..., message: summary, thread_ts: m
 
 If the user's request is fully deterministic (e.g. "post X to Slack when Y happens"), do not create an agent at all.
 
-### 6. Verify in an agent-friendly way
+### 7. Verify in an agent-friendly way
 
 Do not assume bare `terse test` is available. It needs an interactive terminal.
 
@@ -134,7 +157,7 @@ Use `terse test run --event-file <path>` or `--event <json>` when you already ha
 If multiple jobs exist, pass the job name explicitly because non-interactive job loading cannot prompt.
 Reserve bare `terse test` for manual sessions with a TTY.
 
-### 7. Final check
+### 8. Final check
 
 Verify the things that are easy to get wrong:
 - Every `Triggers.<integration>.…`, `Skills.<integration>(…)`, resource constant, and tool call exists in `src/terse.generated.ts`. Inventing constants that aren't there is the most common failure.
@@ -143,7 +166,7 @@ Verify the things that are easy to get wrong:
 - Agent prompts include full event context via `event.formatForAgentRunner()`.
 - Imports resolve to real exports from `terse-sdk` and `./terse.generated`.
 
-### 8. Ask before deploying
+### 9. Ask before deploying
 
 Do not run `terse deploy` automatically. After the job is written and verified, ask the user whether to deploy it now.
 

@@ -1,0 +1,17 @@
+{
+    "name": "test-jobs",
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch"
+    },
+    "dependencies": {
+        "terse-sdk": "workspace:*",
+        "zod": "^4.3.6",
+        "workflow": "5.0.0-beta.19"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0"
+    }
+}

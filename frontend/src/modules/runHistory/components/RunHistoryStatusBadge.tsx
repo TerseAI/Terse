@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, Clock, Filter, XCircle } from "lucide-react"
+import { Ban, CheckCircle2, Clock, Filter, PauseCircle, XCircle } from "lucide-react"
 import { RunHistoryStatus } from "terse-types"
 
 import StatusBadge from "@/components/StatusBadge"
@@ -16,5 +16,6 @@ export default function RunHistoryStatusBadge({ status, className }: Props) {
     if (status === RunHistoryStatus.CANCELLED) return <StatusBadge text="Cancelled" icon={Ban} className={className} status="warning" />
     if (status === RunHistoryStatus.IN_PROGRESS) return <StatusBadge text="In Progress" iconComponent={<Spinner />} className={className} />
     if (status === RunHistoryStatus.AWAITING_APPROVAL) return <StatusBadge text="Awaiting Approval" icon={Clock} className={className} status="warning" />
+    if (status === RunHistoryStatus.SUSPENDED) return <StatusBadge text="Suspended" icon={PauseCircle} className={className} status="warning" />
     return <StatusBadge text="Unknown" className={className} />
 }

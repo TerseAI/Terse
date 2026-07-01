@@ -730,6 +730,21 @@ export const sdkApprovalDecisionRequestBodySchema = z.object({
 })
 export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionRequestBodySchema>
 
+const validQueueNameSchema = z.string().regex(/^__(?:[a-z][a-z0-9]*_)?wkf_(?:workflow|step)_.+$/, "Must be a valid queue name with a recognized prefix")
+
+export const sdkJobSuspendRequestBodySchema = z.object({
+    runId: z.string().min(1),
+    name: validQueueNameSchema,
+    delaySeconds: z.number().int().positive(),
+    idempotencyKey: z.string().min(1).optional()
+})
+export type SdkJobSuspendRequestBody = z.infer<typeof sdkJobSuspendRequestBodySchema>
+
+export const sdkJobSuspendResponseBodySchema = z.object({
+    success: z.boolean()
+})
+export type SdkJobSuspendResponseBody = z.infer<typeof sdkJobSuspendResponseBodySchema>
+
 export const sdkCreateProjectRequestBodySchema = z.object({
     name: z.string().min(1)
 })

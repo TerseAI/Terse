@@ -2,6 +2,7 @@ import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { UserSession } from "terse-types/types"
 
 import logger from "../common/logger"
+import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
 import { getActiveDeployForProject } from "../common/projectHelper"
 import { shellQuote } from "../common/shellEscape"
 import { db } from "../loaders/prisma"
@@ -13,12 +14,14 @@ import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from 
 import { createSandboxToken } from "../modules/auth/helpers/apiTokens"
 import { settings } from "../settings"
 import { AgentWithRelations } from "../types/prisma"
+import { resolveUserInOrg } from "../utility/identity"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { SecretService } from "./SecretService"
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
+import { runJournalDir } from "./sandboxProvider/runJournal"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
 import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
@@ -30,6 +33,7 @@ interface SdkJobExecutionParams {
     userId: string
     user: UserSession
     jobName: string
+    restoreImageId?: string
 }
 
 type SdkSourceImageRecord = {
@@ -56,7 +60,7 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { runId, agent, userId, user, jobName } = params
+        const { runId, agent, userId, user, jobName, restoreImageId } = params
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
@@ -86,6 +90,7 @@ export class SdkJobExecutionService {
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,
+                WORKFLOW_LOCAL_DATA_DIR: runJournalDir(runId),
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1"
@@ -100,7 +105,8 @@ export class SdkJobExecutionService {
                 agentId: agent.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
-                cliVersion: sourceImage.cliVersion
+                cliVersion: sourceImage.cliVersion,
+                restoreImageId
             })
 
             if (result.exitCode === 0) {
@@ -211,12 +217,17 @@ export class SdkJobExecutionService {
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
         cliVersion: string
+        restoreImageId?: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId } = params
 
         const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId)
+        if (restoreImageId) {
+            await sandboxService.restoreDirectory(sb, runJournalDir(runId), restoreImageId)
+        }
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
-        const result = await executor.execute(executorContext)
+        // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
+        const result = restoreImageId ? await executor.resume(executorContext) : await executor.execute(executorContext)
         return result
     }
 
@@ -462,4 +473,64 @@ export class SdkJobExecutionService {
             where: { id: tokenId }
         })
     }
+}
+
+// Snapshots a suspending run's journal directory off its live sandbox and returns the
+// resulting image id, which rides the scheduler payload to the resume call. Returns
+// undefined when the run has no live sandbox (nothing to snapshot).
+export async function snapshotRunJournalForSuspend(runId: string): Promise<string | undefined> {
+    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
+    const projectId = run?.automation?.project_id
+    if (!projectId) return undefined
+
+    const provider = getSandboxProvider()
+    const app = await provider.getOrCreateApp("terse-sdk-sandbox")
+    const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
+    if (!sandbox) return undefined
+
+    return provider.snapshotDirectory(sandbox, runJournalDir(runId))
+}
+
+export async function resumeSdkRun(runId: string, restoreImageId?: string): Promise<void> {
+    if (!restoreImageId) {
+        logger.warn("resumeSdkRun: missing snapshot image, cannot resume", { runId })
+        return
+    }
+
+    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation_id: true } })
+    if (!run) {
+        logger.warn("resumeSdkRun: run not found", { runId })
+        return
+    }
+
+    const agent = await db().automations.findUnique({
+        where: { id: run.automation_id },
+        include: {
+            prompt: true,
+            inputs: { include: getInputConfigInclude() },
+            outputs: { include: getOutputConfigInclude() },
+            tool_approvals: true,
+            project: true
+        }
+    })
+    if (!agent) {
+        logger.warn("resumeSdkRun: agent not found", { runId, agentId: run.automation_id })
+        return
+    }
+
+    const user = await resolveUserInOrg(agent.user_id, agent.organization_id)
+    if (!user) {
+        logger.warn("resumeSdkRun: user not resolved", { runId, userId: agent.user_id })
+        return
+    }
+
+    await new SdkJobExecutionService().execute({
+        runId,
+        agent,
+        orgId: agent.organization_id,
+        userId: agent.user_id,
+        user,
+        jobName: agent.name,
+        restoreImageId
+    })
 }

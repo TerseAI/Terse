@@ -768,6 +768,7 @@ enum RunHistoryStatus {
   skipped
   in_progress
   awaiting_approval
+  suspended
 }
 
 enum RunHistoryDecisionAction {
