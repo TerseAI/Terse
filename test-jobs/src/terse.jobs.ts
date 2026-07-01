@@ -15,7 +15,7 @@ createJob({
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
 
     states: [{ key: "runCount", value: z.number().default(0) }],
-    durable: false,
+    durable: true,
     // The handler runs every time a trigger fires. `event` is typed to match
     // the trigger(s) above.
     onTrigger: async (event, state) => {

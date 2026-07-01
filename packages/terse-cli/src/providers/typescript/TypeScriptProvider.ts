@@ -197,7 +197,9 @@ function selectRuntime(job: CreateJobParameters): JobRuntime {
             detail: "Remove `durable: true` from this job, or run it on Terse cloud."
         })
     }
-    return job.durable && !selfHosted ? durableJobRuntime : directJobRuntime
+    const durable = job.durable === true && !selfHosted
+    console.log(chalk.dim(`  Runtime: ${durable ? "durable" : "direct"}`))
+    return durable ? durableJobRuntime : directJobRuntime
 }
 
 function isModuleNotFoundError(error: unknown): error is Error & { code: string } {
