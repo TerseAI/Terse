@@ -7,8 +7,6 @@
     </picture>
   </a>
 
-  <h1>Terse</h1>
-
   <p><strong>Workflow building for the coding agent era.</strong></p>
 
   <p>
