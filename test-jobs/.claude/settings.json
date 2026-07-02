@@ -1,0 +1,13 @@
+{
+    "extraKnownMarketplaces": {
+        "terse-plugins": {
+            "source": {
+                "source": "github",
+                "repo": "TerseAI/Terse"
+            }
+        }
+    },
+    "enabledPlugins": {
+        "terse@terse-plugins": true
+    }
+}
