@@ -1,0 +1,110 @@
+---
+title: "Durability"
+description: "Opt-in durable execution: jobs that pause, wait for as long as you need, and survive restarts without repeating work."
+icon: "history"
+---
+
+A durable job can pause for long waits, survive process restarts and redeploys, and never repeat work it has already done. Each step runs **exactly once** and its result is remembered, so an interrupted job resumes from where it left off instead of starting over.
+
+Durability is opt-in per job. Add `durable: true`:
+
+```ts
+createJob({
+    name: "onboard-customer",
+    triggers: [Triggers.stripe.onCustomerCreated()],
+    durable: true,
+    onTrigger: async (event, state) => {
+        // ...
+    }
+})
+```
+
+Without the flag a job runs start to finish in a single execution (the default). With it, the job can suspend and resume.
+
+## Everything in the SDK is already a step
+
+You don't need to change anything to make the built-in SDK calls durable. `toolbox.*`, `generateText()`, `runAndWait()`, and `state.get` / `state.set` are already durable steps. Each one runs once, its result is journaled, and it never runs again on resume.
+
+```ts
+onTrigger: async (event, state) => {
+    const summary = await generateText({ prompt: `Summarize: ${event.body}`, skills: [] })
+    await toolbox.slack.sendMessage({ channelId, message: summary })
+
+    const count = await state.get("count")
+    await state.set("count", count + 1)
+}
+```
+
+Every line above is a durable step. If the job resumes, completed calls replay from the journal: the model isn't re-prompted, the Slack message isn't sent twice.
+
+## Wrapping your own code with jobStep
+
+Anything that is not a Terse SDK call needs to be wrapped in `jobStep` so it becomes a durable step too. That covers third-party SDKs like Octokit or Resend, a raw `fetch`, a database write, anything with a side effect.
+
+<Warning>
+Code outside a step runs again on **every replay**, not just once. If it has a side effect and is not idempotent (sending an email, charging a card, creating a record), it will happen multiple times and cause real problems. Wrap every side effect in `jobStep` so it runs exactly once.
+</Warning>
+
+```ts
+import { jobStep } from "terse-sdk"
+import { z } from "zod"
+
+const pr = await jobStep({
+    input: { number: event.pullRequest.number },
+    inputSchema: z.object({ number: z.number() }),
+    outputSchema: z.object({ title: z.string() }),
+    run: async ({ number }) => {
+        const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
+        const { data } = await octokit.pulls.get({ owner: "acme", repo: "web", pull_number: number })
+        return { title: data.title }
+    }
+})
+```
+
+- `input` is the data the step needs. It is the only thing passed in, because steps run in isolation and cannot read variables from the surrounding handler.
+- `inputSchema` and `outputSchema` are zod schemas that validate the values crossing the durability boundary. `outputSchema` is optional.
+- `run` receives the validated input and returns the result, which is journaled.
+
+For a side effect with no input or output, just pass `run`:
+
+```ts
+await jobStep({
+    run: async () => {
+        await resend.emails.send({ to, subject, html })
+    }
+})
+```
+
+## Waiting
+
+Durable jobs can sleep for as long as you want, from minutes to days, without holding a process open. The job suspends and resumes when the timer fires. Nothing runs and nothing is billed while it waits.
+
+```ts
+createJob({
+    name: "trial-follow-up",
+    triggers: [Triggers.stripe.onTrialStarted()],
+    durable: true,
+    onTrigger: async (event) => {
+        const draft = await generateText({
+            prompt: `Write a friendly 3-day check-in message for ${event.customer.email}`,
+            skills: []
+        })
+
+        await sleep("3d")
+
+        // `draft` is still here after the 3-day suspend: generateText is a step,
+        // so its result is journaled and replayed when the job resumes.
+        await toolbox.slack.sendMessage({ channelId, message: draft })
+    }
+})
+```
+
+The model runs today, the job sleeps for three days, and the follow-up uses the exact text generated earlier. You never re-generate it. Durations are `ms`-style strings: `"30s"`, `"5m"`, `"1h"`, `"3d"`.
+
+<Note>
+`sleep()` and `jobStep()` are only available in durable jobs. Call them in a non-durable job and you get a clear error asking you to add `durable: true`.
+</Note>
+
+## How it works
+
+A durable job's handler is replayed from the top each time it advances. Completed steps return their recorded result instead of running again, and only new work executes. That is why side effects must live inside steps: anything outside a step runs on every replay.

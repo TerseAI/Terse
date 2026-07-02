@@ -27,6 +27,7 @@ export function waitForApprovalDecision(runId: string, stepId: string, organizat
     return approvalTaskQueue.waitFor(APPROVAL_DECISION_TASK_NAME, task => task.runId === runId && task.stepId === stepId && task.organizationId === organizationId).then(task => task.decision)
 }
 
-export function resolveApprovalDecision(runId: string, stepId: string, organizationId: string, decision: ApprovalDecision): void {
-    approvalTaskQueue.emit(new ApprovalDecisionTask(runId, stepId, organizationId, decision))
+/** Rejects with SignalPublishError if the decision could not be delivered — the run would stay blocked. */
+export function resolveApprovalDecision(runId: string, stepId: string, organizationId: string, decision: ApprovalDecision): Promise<void> {
+    return approvalTaskQueue.emit(new ApprovalDecisionTask(runId, stepId, organizationId, decision))
 }

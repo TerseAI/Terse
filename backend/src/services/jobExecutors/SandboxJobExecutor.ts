@@ -13,6 +13,7 @@ import { SecretService } from "../SecretService"
 import { getSandboxProvider } from "../sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
+import { runJournalDir } from "../sandboxProvider/runJournal"
 import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "../sdkRuntimeExecutors/types"
 import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
@@ -45,7 +46,7 @@ export class SandboxJobExecutor implements JobExecutor {
     }
 
     async execute(context: JobExecutionContext): Promise<RunOutcome> {
-        const { runId, agent, orgId, userId, user, jobName } = context
+        const { runId, agent, orgId, userId, user, jobName, restoreImageId } = context
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
@@ -74,6 +75,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,
+                WORKFLOW_LOCAL_DATA_DIR: runJournalDir(runId),
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1"
@@ -88,7 +90,8 @@ export class SandboxJobExecutor implements JobExecutor {
                 agentId: agent.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
-                cliVersion: sourceImage.cliVersion
+                cliVersion: sourceImage.cliVersion,
+                restoreImageId
             })
 
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
@@ -198,12 +201,17 @@ export class SandboxJobExecutor implements JobExecutor {
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
         cliVersion: string
+        restoreImageId?: string
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId } = params
 
         const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId)
+        if (restoreImageId) {
+            await sandboxService.restoreDirectory(sb, runJournalDir(runId), restoreImageId)
+        }
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
-        const result = await executor.execute(executorContext)
+        // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
+        const result = restoreImageId ? await executor.resume(executorContext) : await executor.execute(executorContext)
         return result
     }
 
@@ -450,3 +458,20 @@ export class SandboxJobExecutor implements JobExecutor {
         })
     }
 }
+
+// Snapshots a suspending run's journal directory off its live sandbox and returns the
+// resulting image id, which rides the scheduler payload to the resume call. Returns
+// undefined when the run has no live sandbox (nothing to snapshot).
+export async function snapshotRunJournalForSuspend(runId: string): Promise<string | undefined> {
+    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
+    const projectId = run?.automation?.project_id
+    if (!projectId) return undefined
+
+    const provider = getSandboxProvider()
+    const app = await provider.getOrCreateApp("terse-sdk-sandbox")
+    const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
+    if (!sandbox) return undefined
+
+    return provider.snapshotDirectory(sandbox, runJournalDir(runId))
+}
+

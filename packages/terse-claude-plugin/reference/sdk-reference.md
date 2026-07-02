@@ -106,19 +106,19 @@ const scored = await generateText({
 })
 ```
 
-`skills` and `toolApprovals` behave exactly as on `TerseAgent.create()`. Use `generateText` for agentic work and `toolbox` for deterministic calls — that covers almost every job. Drop down to `TerseAgent.create()` only for the advanced cases it doesn't expose: streaming partial output with `run()`, or reusing one agent instance across several calls.
+`skills` and `toolApprovals` behave exactly as on `TerseAgent.create()`. Use `generateText` for judgment calls and `toolbox` for known calls — that covers almost every job. Drop down to `TerseAgent.create()` only for the advanced cases it doesn't expose: streaming partial output with `run()`, or reusing one agent instance across several calls.
 
 Include event context by interpolating `event.formatForAgentRunner()` into the prompt string — there is no separate `event` parameter.
 
 ### When to Use What
 
-There are two primitives you reach for in almost every job:
+Two primitives cover almost every job. The deciding question is whether a step needs **judgment**: a judgment call goes to `generateText`, a known call goes to `toolbox`.
 
 | Approach | Use When |
 |----------|----------|
-| `generateText({ prompt, skills? })` | **Default for anything agentic.** The model decides what to do — summarize, analyze, choose and call tools (scoped by `skills`) — and you get the final output back. |
-| `toolbox.<integration>.<method>(params)` | **Default for anything deterministic.** You know the exact call to make. `toolbox` is unfiltered, needs no agent and no `skills`. |
-| Combination | Deterministic setup first (e.g. send a Slack message via `toolbox`), then `generateText` for the part that needs reasoning. |
+| `generateText({ prompt, skills? })` | **The step needs judgment.** The model decides what to do (summarize, analyze, choose and call tools scoped by `skills`) and you get the final output back. |
+| `toolbox.<integration>.<method>(params)` | **The step is a known call.** You already know the exact method and parameters. `toolbox` is unfiltered, needs no agent and no `skills`. |
+| Combination | Known setup first (e.g. send a Slack message via `toolbox`), then `generateText` for the part that needs judgment. |
 
 You only need `TerseAgent.create()` directly for the advanced cases `generateText` doesn't cover: streaming partial output with `run()`, or reusing one agent instance across several calls. Prefer `generateText` + `toolbox` otherwise.
 

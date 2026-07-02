@@ -6,6 +6,9 @@
 import { CronExpressionParser } from "cron-parser"
 
 import logger from "../../common/logger"
+import { Boss } from "../../loaders/pgBoss"
+
+import { QueueName } from "./queueNames"
 
 /** Validates the cron expression the dispatcher will evaluate. Throws InvalidCronExpressionError. */
 export async function upsertScheduleTrigger(inputId: string, cronExpression: string): Promise<void> {
@@ -22,6 +25,24 @@ export async function removeScheduleTrigger(inputId: string): Promise<void> {
     logger.info("Time trigger schedule removed (dispatcher reads Postgres directly)", { inputId })
 }
 
+/** Fan-out producer for the dispatcher. Returns false when the minute-bucketed singletonKey deduped it. */
+export async function enqueueDueScheduleJob(inputId: string, minuteStart: Date): Promise<boolean> {
+    const jobId = await Boss.getInstance()
+        .getBoss()
+        .send(QueueName.Schedule, { inputId } satisfies ScheduleJobData, {
+            singletonKey: `${inputId}:${minuteStart.toISOString()}`,
+            singletonSeconds: 60
+        })
+    return jobId !== null
+}
+
+/** Manual triggers always fire: no singleton dedupe. */
+export async function enqueueManualScheduleJob(inputId: string, manualContext?: string): Promise<void> {
+    await Boss.getInstance()
+        .getBoss()
+        .send(QueueName.Schedule, { inputId, isManualTrigger: true, manualContext } satisfies ScheduleJobData)
+}
+
 export class InvalidCronExpressionError extends Error {
     constructor(inputId: string, cronExpression: string) {
         super(`Invalid cron expression "${cronExpression}" for time trigger ${inputId}`)
@@ -31,4 +52,6 @@ export class InvalidCronExpressionError extends Error {
 
 export interface ScheduleJobData {
     inputId: string
+    isManualTrigger?: boolean
+    manualContext?: string
 }

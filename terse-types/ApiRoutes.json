@@ -160,6 +160,7 @@
         "APPROVAL_DECISION": "/sdk/approval-decision",
         "SESSION_EVENTS": "/sdk/session-events",
         "LISTEN": "/sdk/listen",
+        "SUSPEND": "/sdk/suspend",
         "CREATE_PROJECT": "/sdk/projects",
         "DEPLOY": "/sdk/deploy",
         "IDENTIFY": "/sdk/auth/identify",

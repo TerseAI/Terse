@@ -16,7 +16,8 @@ const VALID_STATUSES: RunHistoryStatus[] = [
     RunHistoryStatus.CANCELLED,
     RunHistoryStatus.SKIPPED,
     RunHistoryStatus.IN_PROGRESS,
-    RunHistoryStatus.AWAITING_APPROVAL
+    RunHistoryStatus.AWAITING_APPROVAL,
+    RunHistoryStatus.SUSPENDED
 ]
 
 export class AgentNotFoundError extends Error {

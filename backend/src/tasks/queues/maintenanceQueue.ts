@@ -10,7 +10,8 @@ export const MaintenanceJob = {
     RefreshTokens: "refresh-tokens",
     ClearOldSecretVersions: "clear-old-secret-versions",
     CleanupSdkImages: "cleanup-sdk-images",
-    ReviewAgents: "review-agents"
+    ReviewAgents: "review-agents",
+    ReconcileOrphanedRuns: "reconcile-orphaned-runs"
 } as const
 
 /** Cron patterns in UTC. Match these to the prior Cloud Scheduler cadence at decommission time. */
@@ -18,7 +19,8 @@ const MAINTENANCE_SCHEDULES: Record<MaintenanceJob, string> = {
     [MaintenanceJob.RefreshTokens]: "0 * * * *", // hourly
     [MaintenanceJob.ClearOldSecretVersions]: "0 3 * * *", // daily 03:00 UTC
     [MaintenanceJob.CleanupSdkImages]: "0 4 * * *", // daily 04:00 UTC
-    [MaintenanceJob.ReviewAgents]: "0 13 * * 1" // weekly, Monday 13:00 UTC
+    [MaintenanceJob.ReviewAgents]: "0 13 * * 1", // weekly, Monday 13:00 UTC
+    [MaintenanceJob.ReconcileOrphanedRuns]: "*/15 * * * *" // matches the stale-run window
 }
 
 export function maintenanceQueueName(job: MaintenanceJob): string {

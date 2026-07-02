@@ -27,12 +27,12 @@ type RunCancellationSubscription = {
     getReason: () => CancelReason
 }
 
-export function requestRunCancellation(runId: string, organizationId: string, reason: CancelReason = CancelReason.USER_CANCELLED): void {
-    cancellationTaskQueue.emit(new CancellationTask(organizationId, runId, reason))
+export function requestRunCancellation(runId: string, organizationId: string, reason: CancelReason = CancelReason.USER_CANCELLED): Promise<void> {
+    return cancellationTaskQueue.emit(new CancellationTask(organizationId, runId, reason))
 }
 
-export function requestOrgCancellation(organizationId: string, reason: CancelReason = CancelReason.BILLING_OVERAGE): void {
-    cancellationTaskQueue.emit(new CancellationTask(organizationId, undefined, reason))
+export function requestOrgCancellation(organizationId: string, reason: CancelReason = CancelReason.BILLING_OVERAGE): Promise<void> {
+    return cancellationTaskQueue.emit(new CancellationTask(organizationId, undefined, reason))
 }
 
 export function listenForRunCancellation(runId: string, organizationId: string, controller: AbortController): RunCancellationSubscription {

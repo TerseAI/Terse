@@ -1,5 +1,4 @@
 import MQEmitterRedis from "mqemitter-redis"
-import { EventEmitter } from "node:events"
 
 import logger from "../../common/logger"
 import { RedisNamespace } from "../../loaders/redisNamespace"
@@ -25,7 +24,7 @@ export class TaskQueueEmitter {
 
     public getEmitter(): ReturnType<typeof MQEmitterRedis> {
         if (!this.emitter) {
-            const emitter = MQEmitterRedis({ connectionString: redis.url }) as ReturnType<typeof MQEmitterRedis> & { state: EventEmitter }
+            const emitter = MQEmitterRedis({ connectionString: redis.url })
             emitter.state.on("error", (error: Error) => logger.error("RedisTaskQueue pub/sub connection error (Redis unavailable)", { error }))
             this.emitter = emitter
         }
@@ -50,14 +49,18 @@ export class RedisTaskQueue<T extends Task> implements TaskQueue<T> {
         return `${RedisNamespace.pubsub}/${this.namespace}/${taskName}`
     }
 
-    emit(task: T): void {
-        TaskQueueEmitter.getInstance()
-            .getEmitter()
-            .emit({ topic: this.topic(task.taskName), payload: task }, error => {
-                if (error) {
-                    logger.error("RedisTaskQueue emit failed — signal dropped (Redis unavailable)", { error, taskName: task.taskName })
-                }
-            })
+    emit(task: T): Promise<void> {
+        return new Promise((resolve, reject) => {
+            TaskQueueEmitter.getInstance()
+                .getEmitter()
+                .emit({ topic: this.topic(task.taskName), payload: task }, error => {
+                    if (error) {
+                        reject(new SignalPublishError(task.taskName, error))
+                    } else {
+                        resolve()
+                    }
+                })
+        })
     }
 
     addListener(listener: TaskListener<T>): Unsubscribe {
@@ -105,5 +108,12 @@ export class RedisTaskQueue<T extends Task> implements TaskQueue<T> {
 
             this.addListener(listener)
         })
+    }
+}
+
+export class SignalPublishError extends Error {
+    constructor(taskName: string, cause: Error) {
+        super(`Failed to publish "${taskName}" signal to Redis pub/sub: ${cause.message}`)
+        this.name = "SignalPublishError"
     }
 }

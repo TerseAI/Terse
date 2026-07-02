@@ -72,7 +72,9 @@ async function createQueues(boss: PgBoss): Promise<void> {
     // standard-policy queue; note createQueue can't change the policy of an existing queue.)
     await boss.createQueue(QueueName.SdkRunExecution, { policy: "exclusive", retryLimit: 0, expireInSeconds: RUN_EXECUTION_EXPIRE_SECONDS })
     await boss.createQueue(QueueName.Schedule, { retryLimit: 0 })
-    await boss.createQueue(QueueName.ScheduleDispatch, { retryLimit: 0 })
+    // Dispatch is retried: the fan-out singletonKey dedupes triggers already sent, and the short
+    // delay keeps retries inside the minute being evaluated (pg-boss resets startAfter on retry).
+    await boss.createQueue(QueueName.ScheduleDispatch, { retryLimit: 2, retryDelay: 5 })
 }
 
 export class BossNotStartedError extends Error {

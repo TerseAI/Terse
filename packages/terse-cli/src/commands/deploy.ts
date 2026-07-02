@@ -64,6 +64,15 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     let zipSizeBytes = 0
 
     if (!isUrlMode) {
+        const buildSpinner = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
+        buildSpinner.start("Building workflow bundle")
+        try {
+            await provider.prebuild()
+            buildSpinner.stop("Workflow bundle built")
+        } catch (error) {
+            buildSpinner.stop("Workflow bundle build failed")
+            throw error
+        }
         const zipPayload = buildZipPayload(provider)
         sourceZipBase64 = zipPayload.sourceZipBase64
         fileCount = zipPayload.fileCount
@@ -213,6 +222,8 @@ function collectFiles(dir: string, baseDir: string, provider: LanguageProvider):
 function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {
     const cwd = process.cwd()
     const files = collectFiles(cwd, cwd, provider)
+    const wfDir = path.join(cwd, ".terse", "wf")
+    if (fs.existsSync(wfDir)) Object.assign(files, collectFiles(wfDir, cwd, provider))
     const fileCount = Object.keys(files).length
 
     if (fileCount === 0) {

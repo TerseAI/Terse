@@ -53,14 +53,18 @@ async function main(): Promise<void> {
 async function registerWorkers(): Promise<void> {
     const boss = Boss.getInstance().getBoss()
 
-    // Recurring cron triggers: the dispatcher fans out one `schedule` job per due trigger; we
-    // process it by invoking the same handler the old Cloud Scheduler webhook used. is_active is
-    // enforced inside.
+    // Cron triggers (fanned out by the dispatcher) and manual triggers (enqueued by the web role)
+    // share this queue; we process both by invoking the same handler the old Cloud Scheduler
+    // webhook used. is_active is enforced inside.
     await boss.work<ScheduleJobData>(
         QueueName.Schedule,
         { localConcurrency: 10 },
         withJobLogging(QueueName.Schedule, async data => {
-            await new CronJobIntegrationManager().processWebhookEvent({ inputId: data.inputId })
+            await new CronJobIntegrationManager().processWebhookEvent({
+                inputId: data.inputId,
+                isManualTrigger: data.isManualTrigger,
+                manualContext: data.manualContext
+            })
         })
     )
 
@@ -82,7 +86,11 @@ async function registerWorkers(): Promise<void> {
         await boss.work(queue, { localConcurrency: 1 }, withJobLogging(queue, MAINTENANCE_HANDLERS[job]))
     }
 
-    await boss.work<RunExecutionJobData>(QueueName.SdkRunExecution, { localConcurrency: SDK_RUN_CONCURRENCY }, withJobLogging(QueueName.SdkRunExecution, data => handleRunExecution(data)))
+    await boss.work<RunExecutionJobData>(
+        QueueName.SdkRunExecution,
+        { localConcurrency: SDK_RUN_CONCURRENCY },
+        withJobLogging(QueueName.SdkRunExecution, data => handleRunExecution(data))
+    )
 }
 
 const MAINTENANCE_HANDLERS: Record<MaintenanceJob, () => Promise<void>> = {
@@ -97,13 +105,16 @@ const MAINTENANCE_HANDLERS: Record<MaintenanceJob, () => Promise<void>> = {
     },
     [MaintenanceJob.ReviewAgents]: async () => {
         await runReviewAllAgents({ dryRun: false })
+    },
+    [MaintenanceJob.ReconcileOrphanedRuns]: async () => {
+        await reconcileOrphanedRuns()
     }
 }
 
 /**
  * pg-boss delivers jobs in batches (size 1 by default); process each and log the outcome so per-job
  * visibility matches what the old queue event listeners provided. A throw marks the job failed
- * (retryLimit 0 everywhere — never re-delivered).
+ * (these queues run retryLimit 0 — never re-delivered; schedule-dispatch retries, handled above).
  */
 function withJobLogging<TData extends object>(queue: string, processor: (data: TData) => Promise<void> | void): (jobs: Job<TData>[]) => Promise<void> {
     return async jobs => {
@@ -121,9 +132,10 @@ function withJobLogging<TData extends object>(queue: string, processor: (data: T
 }
 
 /**
- * Fail runs left IN_PROGRESS with no live execution job — orphaned when a worker died mid-run
- * (the Modal sandbox lifecycle is independent of the queue, so a killed job can't be trusted to
- * have finalized the run). Conservative: only stale runs whose job is not created/retry/active.
+ * Fail runs left IN_PROGRESS with no live execution job — orphaned when a worker died mid-run or
+ * the job hit its expiry ceiling (the Modal sandbox lifecycle is independent of the queue, so a
+ * killed job can't be trusted to have finalized the run). Runs at boot and on a maintenance
+ * schedule. Conservative: only stale runs whose job is not created/retry/active.
  */
 async function reconcileOrphanedRuns(): Promise<void> {
     const STALE_MS = 15 * 60_000
@@ -145,7 +157,7 @@ async function reconcileOrphanedRuns(): Promise<void> {
         const jobs = await boss.findJobs(QueueName.SdkRunExecution, { key: runExecutionJobId(run.id) })
         if (jobs.some(job => liveStates.has(job.state))) continue // legitimately executing
         try {
-            if (await markRunFailed(run.id, "Run orphaned (no active execution job after worker restart)", "agent")) failed++
+            if (await markRunFailed(run.id, "Run orphaned (no live execution job)", "agent")) failed++
         } catch (error) {
             logger.error("Failed to mark orphaned run as failed", { runId: run.id, error })
         }

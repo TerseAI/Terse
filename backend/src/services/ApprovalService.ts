@@ -222,12 +222,12 @@ export class ApprovalService {
             emitCacheInvalidationWithKey(channel.organization_id, PENDING_APPROVALS_INVALIDATION_KEY)
             emitCacheInvalidationWithWildcard(channel.organization_id, "chatHistory", runId)
 
-            // SDK runs: resolve the in-memory approval gate.
+            // SDK runs: resolve the approval gate over Redis pub/sub.
             // The SSE handler (handleSdkAgentRun) is awaiting waitForApprovalDecision() and will either
             // resume the agent (approve/soft-reject) or finalize the run as cancelled (hardReject).
             const finalSlackStatus = resolveSlackApprovalStatus(approved, hardReject, rejectionReason)
 
-            resolveApprovalDecision(runId, stepId, channel.organization_id, {
+            await resolveApprovalDecision(runId, stepId, channel.organization_id, {
                 approved: !hardReject && approved,
                 rejectionReason,
                 hardReject: !!hardReject
@@ -235,7 +235,7 @@ export class ApprovalService {
 
             await this.updateSlackNotification(runId, stepId, finalSlackStatus, user, channel.id)
 
-            logger.info("[ApprovalService] SDK approval decision resolved via in-memory gate", { runId, stepId, approved, hardReject })
+            logger.info("[ApprovalService] SDK approval decision resolved", { runId, stepId, approved, hardReject })
             return {
                 status: ApprovalProcessingStatus.COMPLETED
             }

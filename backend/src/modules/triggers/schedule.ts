@@ -6,10 +6,10 @@ import { manualTriggerParamsSchema, manualTriggerRequestSchema, triggerWithEvent
 import logger, { runWithUserContext } from "../../common/logger"
 import { verifyParallelWebhookSignature } from "../../common/parallelWebhookSignature"
 import { extractErrorMessage } from "../../common/strings"
-import { CronJobIntegrationManager } from "../../integrations/cronJob/integration"
 import { WebMonitorIntegrationManager } from "../../integrations/webMonitor/integration"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
+import { enqueueManualScheduleJob } from "../../tasks/queues/scheduleQueue"
 import { resolveUserInOrg } from "../../utility/identity"
 import { fetchEventFromRunId } from "../sdk/run-trigger/controller"
 
@@ -43,20 +43,10 @@ export async function handleManualTrigger(req: Request, res: Response) {
 
     logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, organizationId, hasContext: !!context })
 
-    // Acknowledge immediately
-    res.status(200).json({ received: true, message: "Manual trigger initiated" })
+    // Enqueue before the ack: a 200 means the trigger survives a crash of this process.
+    await enqueueManualScheduleJob(inputId, context)
 
-    // Process asynchronously
-    const cronJobManager = new CronJobIntegrationManager()
-    cronJobManager
-        .processWebhookEvent({
-            inputId,
-            isManualTrigger: true,
-            manualContext: context
-        })
-        .catch(error => {
-            logger.error("❌ Error processing manual trigger", { error, inputId })
-        })
+    res.status(200).json({ received: true, message: "Manual trigger initiated" })
 }
 
 function isPrismaUniqueViolation(error: unknown): boolean {

@@ -7,7 +7,7 @@ import { type SkillConfigData, skillConfigDataSchema } from "terse-types/Configs
 import logger from "../../../common/logger"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../../common/typeConverters"
 import { db } from "../../../loaders/prisma"
-import { emitCacheInvalidationWithKey } from "../../../services/CacheInvalidationService"
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../../services/CacheInvalidationService"
 import { CancelReason } from "../cancellation/RunCancellationTaskQueue"
 
 export type RunTrigger = RunHistoryTrigger
@@ -91,19 +91,27 @@ export async function appendRunAction(runId: string, action: RunHistoryAction, o
 
 export async function finalizeRunStatus(runId: string, status: CompletedRunStatus): Promise<void> {
     const prisma = db()
-    const updated = await prisma.run_history_records.update({
-        where: { id: runId },
-        data: { status },
-        select: { automation_id: true }
+    // A suspended run exited cleanly to park itself; a clean process exit must not
+    // be mistaken for completion and overwrite the suspended state.
+    const result = await prisma.run_history_records.updateMany({
+        where: { id: runId, status: { not: RunHistoryStatus.SUSPENDED } },
+        data: { status }
     })
+    if (result.count === 0) return
     if (status === RunHistoryStatus.SUCCESS) {
-        try {
-            await prisma.automations.update({
-                where: { id: updated.automation_id },
-                data: { consecutive_failures: 0 }
-            })
-        } catch (error) {
-            logger.warn("Failed to reset consecutive_failures on success", { error, runId, agentId: updated.automation_id })
+        const record = await prisma.run_history_records.findUnique({
+            where: { id: runId },
+            select: { automation_id: true }
+        })
+        if (record) {
+            try {
+                await prisma.automations.update({
+                    where: { id: record.automation_id },
+                    data: { consecutive_failures: 0 }
+                })
+            } catch (error) {
+                logger.warn("Failed to reset consecutive_failures on success", { error, runId, agentId: record.automation_id })
+            }
         }
     }
 }
@@ -192,6 +200,35 @@ export async function markRunInProgress(runId: string): Promise<void> {
         where: { id: runId },
         data: { status: RunHistoryStatus.IN_PROGRESS }
     })
+}
+
+export async function markRunSuspended(runId: string): Promise<boolean> {
+    const result = await db().run_history_records.updateMany({
+        where: { id: runId, status: RunHistoryStatus.IN_PROGRESS },
+        data: { status: RunHistoryStatus.SUSPENDED }
+    })
+    if (result.count > 0) await emitRunHistoryInvalidation(runId)
+    return result.count > 0
+}
+
+// Atomically claims a suspended run for resumption. Only the caller that flips
+// suspended -> in_progress wins, which guarantees a single live sandbox per run
+// when a timer and another resume race.
+export async function claimSuspendedRun(runId: string): Promise<boolean> {
+    const result = await db().run_history_records.updateMany({
+        where: { id: runId, status: RunHistoryStatus.SUSPENDED },
+        data: { status: RunHistoryStatus.IN_PROGRESS }
+    })
+    if (result.count > 0) await emitRunHistoryInvalidation(runId)
+    return result.count > 0
+}
+
+async function emitRunHistoryInvalidation(runId: string): Promise<void> {
+    const run = await db().run_history_records.findUnique({
+        where: { id: runId },
+        select: { automation_id: true, automation: { select: { organization_id: true } } }
+    })
+    if (run?.automation?.organization_id) emitCacheInvalidationWithWildcard(run.automation.organization_id, "runHistory", run.automation_id)
 }
 
 export type FailureStage = "filter" | "agent"

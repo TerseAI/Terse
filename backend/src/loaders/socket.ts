@@ -338,7 +338,13 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                 return
             }
 
-            requestRunCancellation(runId, runRecord.automation.organization_id, CancelReason.USER_CANCELLED)
+            try {
+                await requestRunCancellation(runId, runRecord.automation.organization_id, CancelReason.USER_CANCELLED)
+            } catch (error) {
+                logger.error("[agent:chat:cancel] Failed to publish cancellation signal", { error, runId })
+                ack({ accepted: false, reason: "cancel_signal_failed" })
+                return
+            }
             ack({ accepted: true })
         })
 

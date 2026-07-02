@@ -13,7 +13,8 @@ export interface TaskListener<T extends Task> {
 }
 
 interface TaskEmitter<T extends Task> {
-    emit(task: T): void
+    /** Resolves once the signal is published; rejects if it could not be delivered. */
+    emit(task: T): Promise<void>
 }
 
 export interface WaitForOptions {

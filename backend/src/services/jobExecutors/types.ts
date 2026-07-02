@@ -11,6 +11,8 @@ export interface JobExecutionContext {
     readonly userId: string
     readonly user: UserSession
     readonly jobName: string
+    /** Journal snapshot image to restore when resuming a suspended run. */
+    readonly restoreImageId?: string
 }
 
 // `failed` carries the raw cause; the dispatcher is the single place that calls classifyAgentError +

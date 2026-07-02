@@ -1,3 +1,4 @@
+import ms from "ms"
 import type {
     RunHistoryAction,
     SdkAgentRunRequestBody,
@@ -99,10 +100,12 @@ import type {
     WorkOSUserTrigger as _RawWorkOSUserTrigger,
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
+import { sleep as workflowSleep } from "workflow"
 import { z } from "zod"
 
-import { claimAgentApprovalHandling, getJobContext, releaseAgentApprovalHandling, runWithJobContext } from "./context.js"
+import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
+import { resolveRunIdentity } from "./runIdentity/index.js"
 import { openSessionStream } from "./sessionStream.js"
 import {
     type InferEvents,
@@ -123,10 +126,10 @@ function resolveTerseBackendUrl(): string {
 }
 
 function resolveApiBaseUrl(): string {
-    return getJobContext()?.apiBaseUrl ?? resolveTerseBackendUrl()
+    return resolveTerseBackendUrl()
 }
 
-function buildSdkRequestHeaders(): Record<string, string> {
+async function buildSdkRequestHeaders(): Promise<Record<string, string>> {
     const apiKey = process.env.TERSE_API_KEY
     if (!apiKey) {
         throw new Error("TERSE_API_KEY environment variable is not set.")
@@ -136,18 +139,17 @@ function buildSdkRequestHeaders(): Record<string, string> {
         "Content-Type": "application/json",
         Accept: "text/event-stream"
     }
-    const ctx = getJobContext()
-    if (ctx?.sessionId) headers["X-Terse-Session-Id"] = ctx.sessionId
-    const runIdHeader = ctx ? ctx.runId : process.env.TERSE_RUN_ID
-    if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
-    if (ctx?.projectId) headers["X-Terse-Project-Id"] = ctx.projectId
-    if (ctx?.jobName) headers["X-Terse-Job-Name"] = ctx.jobName
+    const { sessionId, runId, projectId, jobName } = await resolveRunIdentity()
+    if (sessionId) headers["X-Terse-Session-Id"] = sessionId
+    if (runId) headers["X-Terse-Run-Id"] = runId
+    if (projectId) headers["X-Terse-Project-Id"] = projectId
+    if (jobName) headers["X-Terse-Job-Name"] = jobName
     return headers
 }
 
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
 
-export { getJobContext, isAgentApprovalHandlingClaimed, runWithJobContext } from "./context.js"
+export { isAgentApprovalHandlingClaimed } from "./context.js"
 export type { TerseJobContext } from "./context.js"
 
 export { SessionStreamError, openListenStream, openSessionStream } from "./sessionStream.js"
@@ -304,6 +306,7 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     filter?: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => boolean | Promise<boolean>
     onTrigger: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => Promise<void>
     remoteServerUrl?: string
+    durable?: boolean
 }
 
 export function createJob<TTriggers extends readonly TypedTrigger[], const TStates extends readonly StateDefinition[] = readonly []>(params: CreateJobParameters<TTriggers, TStates>) {
@@ -350,9 +353,10 @@ export function __resetRegisteredTerseInstances(): void {
 }
 
 async function stateGet(key: string): Promise<string | null> {
+    "use step"
     const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_GET}`, {
         method: "POST",
-        headers: buildSdkRequestHeaders(),
+        headers: await buildSdkRequestHeaders(),
         body: JSON.stringify({ key } satisfies SdkStateGetRequest)
     })
     if (!res.ok) {
@@ -363,9 +367,10 @@ async function stateGet(key: string): Promise<string | null> {
 }
 
 async function statePut(key: string, content: string): Promise<void> {
+    "use step"
     const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_PUT}`, {
         method: "POST",
-        headers: buildSdkRequestHeaders(),
+        headers: await buildSdkRequestHeaders(),
         body: JSON.stringify({ key, content } satisfies SdkStatePutRequest)
     })
     if (!res.ok) {
@@ -439,11 +444,11 @@ export class Terse {
             throw new Error("TERSE_API_KEY is not set. " + "Add it to your .env file or export it before starting your server.")
         }
 
-        verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
+        await verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
 
         const challenge = webhookJobChallengeRequestSchema.safeParse(body)
         if (challenge.success) {
-            const signature = computeChallengeSignature(signingSecret, challenge.data.challenge)
+            const signature = await computeChallengeSignature(signingSecret, challenge.data.challenge)
             return { challenge: challenge.data.challenge, signature }
         }
 
@@ -471,22 +476,18 @@ export class Terse {
         const session = await openSessionStream(apiBaseUrl, apiKey)
 
         try {
-            const result = await runWithJobContext({ sessionId: session.sessionId, runId, apiBaseUrl }, async () => {
-                const inputEvent = createSDKTrigger(event)
-                const state = __buildJobStateAccessor(job.states ?? [])
+            const inputEvent = createSDKTrigger(event)
+            const state = __buildJobStateAccessor(job.states ?? [])
 
-                if (job.filter) {
-                    const shouldRun = await job.filter(inputEvent, state)
-                    if (!shouldRun) {
-                        return { status: "ok" as const, filtered: true }
-                    }
+            if (job.filter) {
+                const shouldRun = await job.filter(inputEvent, state)
+                if (!shouldRun) {
+                    return { status: "ok" as const, filtered: true }
                 }
-                await job.onTrigger(inputEvent, state)
+            }
+            await job.onTrigger(inputEvent, state)
 
-                return { status: "ok" as const }
-            })
-
-            return result
+            return { status: "ok" as const }
         } catch (error) {
             session.close()
             throw error
@@ -533,13 +534,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     async *run(userMessage: string, outputSchema?: z.ZodType): AsyncGenerator<TerseAgentResult> {
-        const requestBody: SdkAgentRunRequestBody = sdkAgentRunRequestBodySchema.parse({
-            prompt: this.prompt,
-            toolApprovals: this.toolApprovals,
-            message: userMessage,
-            skills: this.skills,
-            outputSchema: outputSchema ? (stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) as Record<string, unknown>) : undefined
-        })
+        const requestBody = this.buildRequestBody(userMessage, outputSchema)
 
         // Claim approval handling for this run if the caller wired up its own
         // callback, so the CLI's session-stream handler won't also prompt and
@@ -550,7 +545,7 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
         try {
             const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
                 method: "POST",
-                headers: buildSdkRequestHeaders(),
+                headers: await buildSdkRequestHeaders(),
                 body: JSON.stringify(requestBody)
             })
 
@@ -573,9 +568,10 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     async submitApprovalDecision(params: { runId: string; stepId: string; approved: boolean }): Promise<void> {
+        "use step"
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
             method: "POST",
-            headers: buildSdkRequestHeaders(),
+            headers: await buildSdkRequestHeaders(),
             body: JSON.stringify(params satisfies SdkApprovalDecisionRequestBody)
         })
 
@@ -588,21 +584,53 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema: OutputSchema): Promise<z.infer<OutputSchema>>
     async runAndWait(userMessage: string): Promise<string>
     async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema?: OutputSchema): Promise<string | z.infer<OutputSchema>> {
-        for await (const chunk of this.run(userMessage, outputSchema)) {
-            if (chunk.type === EventType.FINAL_OUTPUT) {
-                const raw = (chunk as FinalOutputResult).finalOutput
-                if (!outputSchema) return raw
-                return outputSchema.parse(JSON.parse(raw)) as z.infer<OutputSchema>
-            }
-        }
+        const requestBody = this.buildRequestBody(userMessage, outputSchema)
+        const raw = await TerseAgent.fetchFinalOutput(requestBody)
+        if (!outputSchema) return raw
+        return outputSchema.parse(JSON.parse(raw))
+    }
 
+    private buildRequestBody(userMessage: string, outputSchema?: z.ZodType): SdkAgentRunRequestBody {
+        return sdkAgentRunRequestBodySchema.parse({
+            prompt: this.prompt,
+            toolApprovals: this.toolApprovals,
+            message: userMessage,
+            skills: this.skills,
+            outputSchema: outputSchema ? stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) : undefined
+        })
+    }
+
+    private static async fetchFinalOutput(requestBody: SdkAgentRunRequestBody): Promise<string> {
+        "use step"
+        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
+            method: "POST",
+            headers: await TerseAgent.buildHeaders(),
+            body: JSON.stringify(requestBody)
+        })
+        const contentType = res.headers.get("content-type") ?? ""
+        if (!contentType.includes("text/event-stream")) {
+            const data: SdkAgentRunResponseBody = await res.json()
+            const details = data.details?.length ? ` (${data.details.join("; ")})` : ""
+            if (!res.ok || !data.success) throw new Error(`${data.error ?? "Agent run failed"}${details}`)
+            throw new Error("Run completed without final output")
+        }
+        if (!res.body) throw new Error("Stream did not provide a response body.")
+        for await (const eventData of iterateSseDataLines(res.body)) {
+            const parsed = safeParseStreamEvent(eventData)
+            if (!parsed) continue
+            if (parsed.type === "error") throw new Error(parsed.message)
+            if (parsed.type === "done") break
+            const result = mapStreamEventToResult(parsed)
+            if (result instanceof FinalOutputResult) return result.finalOutput
+        }
         throw new Error("Run completed without final output")
     }
 
     static async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
+        "use step"
         const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
             method: "POST",
-            headers: buildSdkRequestHeaders(),
+            headers: await buildSdkRequestHeaders(),
             body: JSON.stringify({ toolName, params })
         })
         const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
@@ -610,6 +638,23 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             throw new Error(data.error ?? "Tool execution failed")
         }
         return data.result as TOutput
+    }
+
+    private static async buildHeaders(): Promise<Record<string, string>> {
+        const apiKey = process.env.TERSE_API_KEY
+        if (!apiKey) {
+            throw new Error("TERSE_API_KEY environment variable is not set.")
+        }
+        const headers: Record<string, string> = {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "text/event-stream"
+        }
+        const { sessionId, runId } = await resolveRunIdentity()
+        if (sessionId) headers["X-Terse-Session-Id"] = sessionId
+        const runIdHeader = runId ?? process.env.TERSE_RUN_ID
+        if (runIdHeader) headers["X-Terse-Run-Id"] = runIdHeader
+        return headers
     }
 
     private async *consumeSseStream(res: Response): AsyncGenerator<TerseAgentResult> {
@@ -674,6 +719,49 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
         return await agent.runAndWait(params.prompt, params.outputSchema)
     }
     return await agent.runAndWait(params.prompt)
+}
+
+export class DurableOnlyError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "DurableOnlyError"
+    }
+}
+
+export function jobStep<I extends z.ZodType, O>(opts: { input: z.infer<I>; inputSchema: I; outputSchema?: z.ZodType<O>; run: (input: z.infer<I>) => Promise<O> }): Promise<O>
+export function jobStep<O>(opts: { outputSchema?: z.ZodType<O>; run: () => Promise<O> }): Promise<O>
+export function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
+    // Synchronous guard so an un-awaited jobStep() still throws at the call site
+    // instead of floating as an unhandled rejection.
+    if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_USE_STEP"))) {
+        throw new DurableOnlyError("jobStep() is only available in durable jobs. Add `durable: true` to this job.")
+    }
+    return runJobStep(opts)
+}
+
+async function runJobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
+    const input = opts.inputSchema ? opts.inputSchema.parse(opts.input) : undefined
+    const result = await opts.run(input)
+    return opts.outputSchema ? opts.outputSchema.parse(result) : result
+}
+
+export function sleep(duration: string | number | Date): Promise<void> {
+    if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
+        throw new DurableOnlyError("sleep() is only available in durable jobs. Add `durable: true` to this job.")
+    }
+    // Locally (`terse test`, no TERSE_RUN_ID) there is no suspend machinery, so skip the
+    // wait and note what production would have done instead.
+    if (!process.env.TERSE_RUN_ID) {
+        console.log(`[terse] Skipping sleep locally — in production this run would suspend and resume after ${describeDuration(duration)}.`)
+        return Promise.resolve()
+    }
+    return workflowSleep(duration as any)
+}
+
+function describeDuration(duration: string | number | Date): string {
+    if (typeof duration === "string") return duration
+    if (duration instanceof Date) return ms(Math.max(0, duration.getTime() - Date.now()), { long: true })
+    return ms(duration, { long: true })
 }
 
 export enum EventType {

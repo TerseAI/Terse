@@ -11,7 +11,8 @@ export const RunHistoryStatus = {
     CANCELLED: "cancelled",
     SKIPPED: "skipped",
     IN_PROGRESS: "in_progress",
-    AWAITING_APPROVAL: "awaiting_approval"
+    AWAITING_APPROVAL: "awaiting_approval",
+    SUSPENDED: "suspended"
 } as const
 export const runHistoryStatusSchema = z.enum(RunHistoryStatus)
 export type RunHistoryStatus = z.infer<typeof runHistoryStatusSchema>

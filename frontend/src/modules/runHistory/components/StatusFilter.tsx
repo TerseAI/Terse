@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, ChevronDown, Clock, Filter as FilterIcon, FlaskConical, Loader2, XCircle } from "lucide-react"
+import { Ban, CheckCircle2, ChevronDown, Clock, Filter as FilterIcon, FlaskConical, Loader2, PauseCircle, XCircle } from "lucide-react"
 import { RunHistoryStatus } from "terse-types"
 
 import StatusBadge from "@/components/StatusBadge"
@@ -51,6 +51,10 @@ function StatusFilter({ selectedStatuses, onToggleStatus, includeTest, onToggleI
                     <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={selectedStatuses.has(RunHistoryStatus.AWAITING_APPROVAL)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.AWAITING_APPROVAL)} />
                         <StatusBadge text="Awaiting Approval" icon={Clock} status="warning" iconClassName="w-16 h-16" />
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <Checkbox checked={selectedStatuses.has(RunHistoryStatus.SUSPENDED)} onCheckedChange={() => onToggleStatus(RunHistoryStatus.SUSPENDED)} />
+                        <StatusBadge text="Suspended" icon={PauseCircle} status="warning" iconClassName="w-16 h-16" />
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer">
                         <Checkbox checked={includeTest} onCheckedChange={onToggleIncludeTest} />
