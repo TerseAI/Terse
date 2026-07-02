@@ -1,11 +1,3 @@
-/**
- * Worker-side dispatcher for the `sdk-run-execution` queue. Reconstructs the agent + user session
- * from ids (no in-memory request state), gates + base-charges the run, resolves the JobExecutor for
- * the run's kind, and owns every terminal run transition in one place. Billing lives here so it is the
- * single choke point: no run-execution path — sandbox or remote-webhook — can bypass it. On an
- * unexpected throw it finalizes the run and rethrows so pg-boss records the job as failed (retryLimit 0
- * — never silently retried).
- */
 import { RunHistoryStatus } from "terse-types"
 
 import logger from "../../common/logger"

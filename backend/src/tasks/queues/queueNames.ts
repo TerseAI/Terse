@@ -4,10 +4,8 @@
  * maintenanceQueue.ts.
  */
 export const QueueName = {
-    /** User cron trigger fan-out target (one job per due trigger per minute). */
+    /** User cron trigger jobs (one pg-boss schedule per trigger, keyed by input id). */
     Schedule: "schedule",
-    /** Per-minute dispatcher that reads automation_time_trigger_configs and fans out Schedule jobs. */
-    ScheduleDispatch: "schedule-dispatch",
     /** Durable agent run execution. */
     SdkRunExecution: "sdk-run-execution"
 } as const

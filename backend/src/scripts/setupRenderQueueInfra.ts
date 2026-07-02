@@ -5,7 +5,7 @@
  * (worker.ts) that consumes the pg-boss queues (durable state lives in Postgres via DATABASE_URL;
  * Redis carries only ephemeral pub/sub, Socket.IO adapter, and rate-limit keys). This script wires
  * both for a target environment so prod can be set up the same way Staging was set up by hand. It
- * is the infra counterpart to decommissionCloudScheduler.ts (run that to retire the old GCP crons
+ * is the infra counterpart to migrateFromCloudSchedulerToPgBoss.ts (run that to retire the old GCP crons
  * once this is live).
  *
  * It does three things, each a no-op if already in the desired state:

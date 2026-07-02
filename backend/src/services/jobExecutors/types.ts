@@ -15,8 +15,6 @@ export interface JobExecutionContext {
     readonly restoreImageId?: string
 }
 
-// `failed` carries the raw cause; the dispatcher is the single place that calls classifyAgentError +
-// finalizeRunFailure. Executors report a terminal outcome and never throw for expected failures.
 export type RunOutcome = { status: "success" } | { status: "skipped"; reason: string } | { status: "failed"; cause: unknown }
 
 export interface JobExecutor {

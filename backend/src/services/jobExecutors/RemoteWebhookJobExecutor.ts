@@ -25,15 +25,12 @@ export class RemoteWebhookJobExecutor implements JobExecutor {
             return { status: "failed", cause: new Error(reason) }
         }
 
-        // Re-load the event from the persisted run record so the queue payload stays ids-only.
         const runRecord = await db().run_history_records.findUnique({ where: { id: runId }, select: { trigger_payload: true } })
         const event = parseSerializedTriggerPayload(runRecord?.trigger_payload ?? null)
         if (!event) {
             return { status: "failed", cause: new Error(`Webhook agent "${agent.name}" has no trigger payload to deliver`) }
         }
 
-        // Tracks the most recently entered stage so the unhandled-error catch block at the bottom
-        // can attribute thrown exceptions to the right stage in the run-history snippet.
         let currentStage: WebhookFailureStage = "handshake"
         let knownTriggerUrl: string = remoteServerUrl
 

@@ -1,22 +1,24 @@
 /**
- * One-off decommission of GCP Cloud Scheduler now that crons run on pg-boss (a per-minute
- * dispatcher over automation_time_trigger_configs).
+ * One-off migration of user cron triggers from GCP Cloud Scheduler to pg-boss.
  *
  * Cloud Scheduler held a derivative copy of each schedule; Postgres (automation_time_trigger_configs)
- * is the source of truth and the worker's dispatcher reads it directly each minute. This script
- * pauses, then (after a soak) deletes the GCP jobs.
+ * is the source of truth and pg-boss now owns firing via one schedule per trigger (see
+ * tasks/queues/scheduleQueue.ts). New and edited triggers are scheduled at write time; this script
+ * backfills pg-boss schedules for triggers that predate the cutover, then pauses and (after a soak)
+ * deletes the GCP jobs.
  *
  * SAFETY: dry-run is the DEFAULT. Nothing is mutated unless you pass --apply. Recommended sequence:
- *   1. pnpm tsx src/scripts/decommissionCloudScheduler.ts --action list
+ *   1. pnpm tsx src/scripts/migrateFromCloudSchedulerToPgBoss.ts --action list
  *        Inventory every Cloud Scheduler job; identify the user crons (terse-schedule-*) and the
  *        3 platform maintenance jobs (whose names were configured manually in GCP).
- *   2. ... --action pause                 (dry run: prints what it would pause)
- *      ... --action pause --apply         (pauses all terse-schedule-* jobs; verify nothing breaks)
- *   3. ... --action delete --apply        (deletes all terse-schedule-* jobs)
- *   4. ... --action delete --names <maintenance-job-1>,<maintenance-job-2>,... --apply
+ *   2. ... --action backfill             (dry run: prints the pg-boss schedules it would create)
+ *      ... --action backfill --apply     (creates a pg-boss schedule per unmigrated trigger)
+ *   3. ... --action pause --apply        (pauses all terse-schedule-* jobs; verify pg-boss fires them)
+ *   4. ... --action delete --apply       (deletes all terse-schedule-* jobs)
+ *   5. ... --action delete --names <maintenance-job-1>,<maintenance-job-2>,... --apply
  *        (deletes the explicitly-named maintenance jobs once Phase 4 schedulers are confirmed firing)
  *
- * Selection:
+ * Selection (pause/delete):
  *   default            → all jobs named `terse-schedule-*` (user crons), cross-referenced with
  *                        Postgres and labelled tracked|orphan.
  *   --names a,b,c      → operate ONLY on these exact GCP job names (use for the maintenance jobs).
@@ -24,8 +26,11 @@
 import { CloudSchedulerClient } from "@google-cloud/scheduler"
 import "dotenv/config"
 
+import { Boss } from "../loaders/pgBoss"
 import { db } from "../loaders/prisma"
 import { settings } from "../settings"
+import { QueueName } from "../tasks/queues/queueNames"
+import { assertValidUserCron, upsertScheduleTrigger } from "../tasks/queues/scheduleQueue"
 
 const USER_CRON_PREFIX = "terse-schedule-"
 
@@ -37,9 +42,9 @@ interface ScheduledJob {
 }
 
 /**
- * Minimal, self-contained GCP Cloud Scheduler client. Lives only in this one-off decommission
+ * Minimal, self-contained GCP Cloud Scheduler client. Lives only in this one-off migration
  * script so the main codebase ships no Cloud Scheduler code. Delete this script and the
- * @google-cloud/scheduler dependency once decommission is complete.
+ * @google-cloud/scheduler dependency once the migration is complete.
  */
 class CloudScheduler {
     private client: CloudSchedulerClient
@@ -91,7 +96,7 @@ class CloudScheduler {
     }
 }
 
-type Action = "list" | "pause" | "delete"
+type Action = "list" | "backfill" | "pause" | "delete"
 
 interface Args {
     action: Action
@@ -114,8 +119,8 @@ function parseArgs(argv: string[]): Args {
 }
 
 function parseAction(value: string | undefined): Action {
-    if (value === "list" || value === "pause" || value === "delete") return value
-    throw new Error(`--action must be one of list|pause|delete (got "${value ?? ""}")`)
+    if (value === "list" || value === "backfill" || value === "pause" || value === "delete") return value
+    throw new Error(`--action must be one of list|backfill|pause|delete (got "${value ?? ""}")`)
 }
 
 function parseNames(value: string | undefined): string[] {
@@ -135,8 +140,54 @@ async function loadTrackedInputIds(): Promise<Set<string>> {
     return new Set(configs.map(c => c.automation_input_id))
 }
 
+/** Creates a pg-boss schedule for every trigger that doesn't have one yet. Needs no GCP access. */
+async function runBackfill(apply: boolean): Promise<void> {
+    await Boss.getInstance().start("web")
+
+    const configs = await db().automation_time_trigger_configs.findMany({
+        select: { automation_input_id: true, cron_expression: true }
+    })
+    const existing = await Boss.getInstance().getBoss().getSchedules(QueueName.Schedule)
+    const existingKeys = new Set(existing.map(schedule => schedule.key))
+
+    let backfilled = 0
+    let alreadyScheduled = 0
+    let invalid = 0
+    for (const { automation_input_id: inputId, cron_expression: cronExpression } of configs) {
+        if (existingKeys.has(inputId)) {
+            alreadyScheduled++
+            continue
+        }
+
+        try {
+            if (apply) {
+                await upsertScheduleTrigger(inputId, cronExpression)
+                console.log(`  ✓ scheduled ${inputId}  "${cronExpression}"`)
+            } else {
+                assertValidUserCron(inputId, cronExpression)
+                console.log(`  • [dry-run] would schedule ${inputId}  "${cronExpression}"`)
+            }
+            backfilled++
+        } catch (error) {
+            console.error(`  ✗ invalid cron for ${inputId} "${cronExpression}":`, error instanceof Error ? error.message : error)
+            invalid++
+        }
+    }
+
+    console.log(`\nDone. ${apply ? "" : "(dry run) "}backfilled: ${backfilled}, already scheduled: ${alreadyScheduled}, invalid: ${invalid}`)
+    if (!apply) console.log("Re-run with --apply to perform these changes.")
+    await Boss.getInstance().stop()
+}
+
 async function main(): Promise<void> {
     const args = parseArgs(process.argv.slice(2))
+    const banner = args.apply ? "APPLY (mutating)" : "DRY RUN (no changes)"
+    console.log(`\n=== Cloud Scheduler → pg-boss migration — action=${args.action} — ${banner} ===\n`)
+
+    if (args.action === "backfill") {
+        await runBackfill(args.apply)
+        return
+    }
 
     if (!settings.gcp) {
         console.error("GCP is not configured (GCP_SERVICE_ACCOUNT_BASE64 / GCP_PROJECT_ID). Nothing to decommission.")
@@ -144,9 +195,6 @@ async function main(): Promise<void> {
     }
 
     const scheduler = new CloudScheduler()
-    const banner = args.apply ? "APPLY (mutating)" : "DRY RUN (no changes)"
-    console.log(`\n=== Cloud Scheduler decommission — action=${args.action} — ${banner} ===\n`)
-
     const allJobs = await scheduler.list()
 
     if (args.action === "list") {
@@ -165,7 +213,7 @@ async function main(): Promise<void> {
         for (const job of others) {
             console.log(`  - ${job.id}  [${job.state}]  "${job.schedule}"  -> ${job.url}`)
         }
-        console.log(`\nNext: pause/delete user crons with --action pause|delete; delete maintenance jobs with --action delete --names <name1>,<name2>`)
+        console.log(`\nNext: backfill pg-boss schedules with --action backfill; pause/delete user crons with --action pause|delete; delete maintenance jobs with --action delete --names <name1>,<name2>`)
         return
     }
 
@@ -224,6 +272,6 @@ async function main(): Promise<void> {
 main()
     .then(() => process.exit(0))
     .catch(error => {
-        console.error("Decommission script failed:", error)
+        console.error("Migration script failed:", error)
         process.exit(1)
     })

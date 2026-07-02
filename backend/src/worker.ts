@@ -1,13 +1,5 @@
-/**
- * Terse background worker — a second entry point in the backend package that consumes the pg-boss
- * queues: user cron triggers, platform maintenance crons, and durable agent run execution. Reuses
- * Prisma, settings, and the domain handlers from the web process.
- *
- * Durable queue state lives in Postgres (pgboss schema); Redis is only used here for the
- * Socket.IO emit adapter and pub/sub. Mirrors server.ts's graceful-shutdown lifecycle.
- */
 import "dotenv/config"
-import { Job, JobWithMetadata } from "pg-boss"
+import { Job } from "pg-boss"
 import { RunHistoryStatus } from "terse-types"
 
 import logger from "./common/logger"
@@ -25,7 +17,6 @@ import { handleRunExecution } from "./tasks/handlers/runExecutionHandler"
 import { MaintenanceJob, maintenanceQueueName, upsertMaintenanceSchedulers } from "./tasks/queues/maintenanceQueue"
 import { QueueName } from "./tasks/queues/queueNames"
 import { RunExecutionJobData, runExecutionJobId } from "./tasks/queues/runExecutionQueue"
-import { dispatchDueSchedules, registerScheduleDispatcher } from "./tasks/queues/scheduleDispatcher"
 import { ScheduleJobData } from "./tasks/queues/scheduleQueue"
 
 const SDK_RUN_CONCURRENCY = Number(process.env.SDK_RUN_CONCURRENCY) || 25
@@ -44,7 +35,6 @@ async function main(): Promise<void> {
     // that doesn't exist yet.
     await Boss.getInstance().start("worker")
     await upsertMaintenanceSchedulers()
-    await registerScheduleDispatcher()
     await registerWorkers()
     await reconcileOrphanedRuns()
     logger.info("✅ Terse worker ready")
@@ -53,9 +43,9 @@ async function main(): Promise<void> {
 async function registerWorkers(): Promise<void> {
     const boss = Boss.getInstance().getBoss()
 
-    // Cron triggers (fanned out by the dispatcher) and manual triggers (enqueued by the web role)
-    // share this queue; we process both by invoking the same handler the old Cloud Scheduler
-    // webhook used. is_active is enforced inside.
+    // Cron triggers (fired by per-trigger pg-boss schedules) and manual triggers (enqueued by the
+    // web role) share this queue; we process both by invoking the same handler the old Cloud
+    // Scheduler webhook used. is_active is enforced inside.
     await boss.work<ScheduleJobData>(
         QueueName.Schedule,
         { localConcurrency: 10 },
@@ -67,19 +57,6 @@ async function registerWorkers(): Promise<void> {
             })
         })
     )
-
-    // includeMetadata exposes startAfter: a late-running dispatch still evaluates its own scheduled
-    // minute instead of the wall-clock one.
-    await boss.work(QueueName.ScheduleDispatch, { localConcurrency: 1, includeMetadata: true }, async (jobs: JobWithMetadata[]) => {
-        for (const job of jobs) {
-            try {
-                await dispatchDueSchedules(job.startAfter)
-            } catch (error) {
-                logger.error(`[worker:${QueueName.ScheduleDispatch}] dispatch failed`, { jobId: job.id, error })
-                throw error
-            }
-        }
-    })
 
     for (const job of Object.values(MaintenanceJob)) {
         const queue = maintenanceQueueName(job)
@@ -114,7 +91,7 @@ const MAINTENANCE_HANDLERS: Record<MaintenanceJob, () => Promise<void>> = {
 /**
  * pg-boss delivers jobs in batches (size 1 by default); process each and log the outcome so per-job
  * visibility matches what the old queue event listeners provided. A throw marks the job failed
- * (these queues run retryLimit 0 — never re-delivered; schedule-dispatch retries, handled above).
+ * (these queues run retryLimit 0 — never re-delivered).
  */
 function withJobLogging<TData extends object>(queue: string, processor: (data: TData) => Promise<void> | void): (jobs: Job<TData>[]) => Promise<void> {
     return async jobs => {

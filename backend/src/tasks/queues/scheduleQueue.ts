@@ -1,8 +1,3 @@
-/**
- * User cron triggers. Postgres (automation_time_trigger_configs) is the single source of truth;
- * the worker's per-minute dispatcher (scheduleDispatcher.ts) reads it live and fans out `schedule`
- * jobs, so there is no per-trigger scheduler state to register or tear down anywhere else.
- */
 import { CronExpressionParser } from "cron-parser"
 
 import logger from "../../common/logger"
@@ -10,30 +5,17 @@ import { Boss } from "../../loaders/pgBoss"
 
 import { QueueName } from "./queueNames"
 
-/** Validates the cron expression the dispatcher will evaluate. Throws InvalidCronExpressionError. */
 export async function upsertScheduleTrigger(inputId: string, cronExpression: string): Promise<void> {
-    try {
-        CronExpressionParser.parse(cronExpression, { tz: "UTC" })
-    } catch {
-        throw new InvalidCronExpressionError(inputId, cronExpression)
-    }
-    logger.info("Time trigger schedule ready (dispatcher reads Postgres directly)", { inputId, cronExpression })
-}
-
-/** No scheduler state exists outside Postgres, so removal is complete once the row is gone. */
-export async function removeScheduleTrigger(inputId: string): Promise<void> {
-    logger.info("Time trigger schedule removed (dispatcher reads Postgres directly)", { inputId })
-}
-
-/** Fan-out producer for the dispatcher. Returns false when the minute-bucketed singletonKey deduped it. */
-export async function enqueueDueScheduleJob(inputId: string, minuteStart: Date): Promise<boolean> {
-    const jobId = await Boss.getInstance()
+    assertValidUserCron(inputId, cronExpression)
+    await Boss.getInstance()
         .getBoss()
-        .send(QueueName.Schedule, { inputId } satisfies ScheduleJobData, {
-            singletonKey: `${inputId}:${minuteStart.toISOString()}`,
-            singletonSeconds: 60
-        })
-    return jobId !== null
+        .schedule(QueueName.Schedule, cronExpression, { inputId } satisfies ScheduleJobData, { tz: "UTC", key: inputId })
+    logger.info("Time trigger schedule upserted", { inputId, cronExpression })
+}
+
+export async function removeScheduleTrigger(inputId: string): Promise<void> {
+    await Boss.getInstance().getBoss().unschedule(QueueName.Schedule, inputId)
+    logger.info("Time trigger schedule removed", { inputId })
 }
 
 /** Manual triggers always fire: no singleton dedupe. */
@@ -43,9 +25,26 @@ export async function enqueueManualScheduleJob(inputId: string, manualContext?: 
         .send(QueueName.Schedule, { inputId, isManualTrigger: true, manualContext } satisfies ScheduleJobData)
 }
 
+/**
+ * This parse mirrors pg-boss's own validation (schedule() runs the identical cron-parser call),
+ * but here it throws a typed error at the boundary without a DB write. The 5-field rule is
+ * stricter than pg-boss: its scheduler fires at minute granularity, so a 6-field seconds cron
+ * would pass validation and then silently degrade to once per minute.
+ */
+export function assertValidUserCron(inputId: string, cronExpression: string): void {
+    if (cronExpression.trim().split(/\s+/).length !== 5) {
+        throw new InvalidCronExpressionError(inputId, cronExpression)
+    }
+    try {
+        CronExpressionParser.parse(cronExpression, { tz: "UTC" })
+    } catch {
+        throw new InvalidCronExpressionError(inputId, cronExpression)
+    }
+}
+
 export class InvalidCronExpressionError extends Error {
     constructor(inputId: string, cronExpression: string) {
-        super(`Invalid cron expression "${cronExpression}" for time trigger ${inputId}`)
+        super(`Invalid cron expression "${cronExpression}" for time trigger ${inputId} — expected a standard 5-field cron`)
         this.name = "InvalidCronExpressionError"
     }
 }

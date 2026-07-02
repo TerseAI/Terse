@@ -20,12 +20,9 @@ export function runExecutionJobId(runId: string): string {
     return `run-${runId}`
 }
 
-/** Throws if Postgres is unavailable; a failed enqueue is a failed operation (no inline fallback). */
 export async function enqueueRunExecution(data: RunExecutionJobData, opts?: { delaySeconds?: number }): Promise<void> {
     const singletonKey = data.restoreImageId ? resumeExecutionJobId(data.runId, data.restoreImageId) : runExecutionJobId(data.runId)
-    // Retention must outlive the delay: pg-boss archives queued jobs past their retention window,
-    // which would silently swallow a long suspension.
-    const delay = opts?.delaySeconds ? { startAfter: opts.delaySeconds, retentionSeconds: opts.delaySeconds + RESUME_RETENTION_BUFFER_SECONDS } : {}
+    const delay = opts?.delaySeconds ? { startAfter: opts.delaySeconds } : {}
     await Boss.getInstance()
         .getBoss()
         .send(QueueName.SdkRunExecution, data, { singletonKey, ...delay })
@@ -34,8 +31,6 @@ export async function enqueueRunExecution(data: RunExecutionJobData, opts?: { de
 function resumeExecutionJobId(runId: string, restoreImageId: string): string {
     return `resume-${runId}-${restoreImageId}`
 }
-
-const RESUME_RETENTION_BUFFER_SECONDS = 14 * 24 * 60 * 60
 
 export interface RunExecutionJobData {
     runId: string

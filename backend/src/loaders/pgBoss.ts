@@ -1,12 +1,3 @@
-/**
- * pg-boss wiring — the durable job queues (run execution, user cron fan-out, platform maintenance)
- * live in Postgres under the `pgboss` schema, so queued jobs survive restarts. Redis remains for
- * ephemeral concerns only (pub/sub, Socket.IO adapter, rate limiting).
- *
- * One PgBoss instance per process. The web role only enqueues, so it skips scheduling and
- * maintenance supervision and runs a smaller pool; the worker role runs both. The pool is
- * additive to Prisma's — keep `max` small (PGBOSS_MAX_CONNECTIONS to override).
- */
 import { PgBoss } from "pg-boss"
 
 import logger from "../common/logger"
@@ -14,9 +5,6 @@ import { settings } from "../settings"
 import { QueueName } from "../tasks/queues/queueNames"
 
 const POOL_MAX: Record<BossRole, number> = { web: 3, worker: 10 }
-
-// Ceiling for a single run in the active state. An expired job is failed (retryLimit 0 — a
-// side-effecting run is never re-delivered), and orphan reconciliation finalizes its run record.
 const RUN_EXECUTION_EXPIRE_SECONDS = 3600
 
 export class Boss {
@@ -65,16 +53,9 @@ export class Boss {
     }
 }
 
-/** Maintenance queues are provisioned alongside their schedules in upsertMaintenanceSchedulers. */
 async function createQueues(boss: PgBoss): Promise<void> {
-    // `exclusive` + the run's singletonKey = at most one queued-or-active job per run, so an
-    // at-least-once enqueue can't start a second sandbox. (singletonKey alone doesn't dedupe on a
-    // standard-policy queue; note createQueue can't change the policy of an existing queue.)
     await boss.createQueue(QueueName.SdkRunExecution, { policy: "exclusive", retryLimit: 0, expireInSeconds: RUN_EXECUTION_EXPIRE_SECONDS })
     await boss.createQueue(QueueName.Schedule, { retryLimit: 0 })
-    // Dispatch is retried: the fan-out singletonKey dedupes triggers already sent, and the short
-    // delay keeps retries inside the minute being evaluated (pg-boss resets startAfter on retry).
-    await boss.createQueue(QueueName.ScheduleDispatch, { retryLimit: 2, retryDelay: 5 })
 }
 
 export class BossNotStartedError extends Error {
