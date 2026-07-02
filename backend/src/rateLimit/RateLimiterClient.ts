@@ -52,8 +52,6 @@ export class RateLimiterClient {
     public async init(): Promise<void> {
         if (this.initialized) return
 
-        // Validate URL shape up front so a typo doesn't get swallowed by node-redis's lazy
-        // connection errors. Redis is required, so a connect failure is fatal (fail loud at boot).
         new URL(redis.url)
         const client = createClient({ url: redis.url }) as RedisClientType
         client.on("error", err => logger.error("Rate-limit Redis error", { err }))

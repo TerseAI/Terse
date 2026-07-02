@@ -1,16 +1,3 @@
-/**
- * Producer for the `sdk-run-execution` queue — durable agent run execution.
- *
- * The payload is fully self-contained (ids only): the worker re-loads the agent and reconstructs a
- * server-side user session, so nothing relies on in-memory request state. Idempotency is keyed by
- * `run-<runId>` (the pg-boss singletonKey) and the queue never auto-retries a side-effecting run
- * (retryLimit 0), so an at-least-once enqueue can't spawn two Modal sandboxes or double-bill.
- *
- * Resumes of suspended runs re-enter through the same queue as delayed jobs (`startAfter`) with a
- * per-snapshot key: the original `run-<runId>` job is still active when the run suspends itself, and
- * the queue's `exclusive` policy would silently drop a duplicate key. Single-flight for resumes is
- * guaranteed by the dispatcher's `claimSuspendedRun`.
- */
 import { Boss } from "../../loaders/pgBoss"
 import { JobExecutionKind } from "../../services/jobExecutors/types"
 

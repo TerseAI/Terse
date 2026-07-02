@@ -18,19 +18,12 @@ export async function removeScheduleTrigger(inputId: string): Promise<void> {
     logger.info("Time trigger schedule removed", { inputId })
 }
 
-/** Manual triggers always fire: no singleton dedupe. */
 export async function enqueueManualScheduleJob(inputId: string, manualContext?: string): Promise<void> {
     await Boss.getInstance()
         .getBoss()
         .send(QueueName.Schedule, { inputId, isManualTrigger: true, manualContext } satisfies ScheduleJobData)
 }
 
-/**
- * This parse mirrors pg-boss's own validation (schedule() runs the identical cron-parser call),
- * but here it throws a typed error at the boundary without a DB write. The 5-field rule is
- * stricter than pg-boss: its scheduler fires at minute granularity, so a 6-field seconds cron
- * would pass validation and then silently degrade to once per minute.
- */
 export function assertValidUserCron(inputId: string, cronExpression: string): void {
     if (cronExpression.trim().split(/\s+/).length !== 5) {
         throw new InvalidCronExpressionError(inputId, cronExpression)

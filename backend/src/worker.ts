@@ -22,17 +22,11 @@ import { ScheduleJobData } from "./tasks/queues/scheduleQueue"
 const SDK_RUN_CONCURRENCY = Number(process.env.SDK_RUN_CONCURRENCY) || 25
 
 async function main(): Promise<void> {
-    // DATABASE_URL / REDIS_URL are hard requirements enforced in settings (requireEnv); importing
-    // settings throws loudly before we get here if either is missing.
     logger.info("🛠  Terse worker starting")
 
-    // Run execution streams via Socket.IO; wire the emit-only adapter and the getter the run/cache
-    // services read through, before any run job can be picked up.
     await WorkerSocketEmitter.getInstance().init()
     registerSocketGetter(() => WorkerSocketEmitter.getInstance().getSocket())
 
-    // Provision all queues + schedules before registering workers, so no worker polls a queue
-    // that doesn't exist yet.
     await Boss.getInstance().start("worker")
     await upsertMaintenanceSchedulers()
     await registerWorkers()
@@ -43,9 +37,6 @@ async function main(): Promise<void> {
 async function registerWorkers(): Promise<void> {
     const boss = Boss.getInstance().getBoss()
 
-    // Cron triggers (fired by per-trigger pg-boss schedules) and manual triggers (enqueued by the
-    // web role) share this queue; we process both by invoking the same handler the old Cloud
-    // Scheduler webhook used. is_active is enforced inside.
     await boss.work<ScheduleJobData>(
         QueueName.Schedule,
         { localConcurrency: 10 },

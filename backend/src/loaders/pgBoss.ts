@@ -27,7 +27,6 @@ export class Boss {
         return this.boss
     }
 
-    /** Idempotent. Provisions/migrates the pgboss schema and the queues both roles rely on. */
     public async start(role: BossRole): Promise<void> {
         if (this.boss) return
         const boss = new PgBoss({
@@ -45,7 +44,6 @@ export class Boss {
         logger.info(`[pgboss:${role}] started`)
     }
 
-    /** Drains in-flight jobs, stops scheduling/maintenance, and closes the pool. */
     public async stop(): Promise<void> {
         if (!this.boss) return
         await this.boss.stop({ graceful: true, timeout: 25_000, close: true })

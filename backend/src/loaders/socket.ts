@@ -61,7 +61,6 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
     logger.info("Socket.IO server initialized")
 
     // Redis adapter so Socket.IO state is shared across web instances and the worker can emit into
-    // it. Redis is required; a connection failure here is fatal (fail loud at boot).
     pub = createClient({ url: redis.url })
     sub = pub.duplicate()
     await pub.connect()
