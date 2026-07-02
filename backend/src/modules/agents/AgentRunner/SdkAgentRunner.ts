@@ -9,6 +9,7 @@ import { stripZodJsonSchemaMetadata } from "terse-types"
 import { SdkAgentStreamEvent, UserSession } from "terse-types/types"
 
 import logger from "../../../common/logger"
+import { extractErrorMessage } from "../../../common/strings"
 import { convertConfigTypeToOutputConfigType } from "../../../common/typeConverters"
 import { Session } from "../../../express"
 import { db } from "../../../loaders/prisma"
@@ -152,7 +153,7 @@ export class SdkAgentRunner extends BaseAgentRunner<SdkRunnerSession, Agent<SdkR
                 this.failedToolCalls.push({
                     tool: event.tool_name,
                     status: event.status,
-                    error: event.errorContext ? String(event.errorContext.error) : undefined
+                    error: event.errorContext ? extractErrorMessage(event.errorContext.error) : undefined
                 })
             }
             this.send({
