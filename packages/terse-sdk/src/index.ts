@@ -5,6 +5,10 @@ import type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
+    SdkInputRequestExpireBody,
+    SdkInputRequestRegisterBody,
+    SdkInputRequestRegisterResponse,
+    SdkInputResponsePayload,
     SdkStateGetRequest,
     SdkStatePutRequest,
     WebhookJobChallengeResponse,
@@ -100,7 +104,7 @@ import type {
     WorkOSUserTrigger as _RawWorkOSUserTrigger,
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
-import { sleep as workflowSleep } from "workflow"
+import { createHook, fetch as workflowFetch, sleep as workflowSleep } from "workflow"
 import { z } from "zod"
 
 import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
@@ -762,6 +766,160 @@ function describeDuration(duration: string | number | Date): string {
     if (typeof duration === "string") return duration
     if (duration instanceof Date) return ms(Math.max(0, duration.getTime() - Date.now()), { long: true })
     return ms(duration, { long: true })
+}
+
+export type SlackInputTarget = { provider: "slack"; channelId: string }
+
+// channel takes a Slack channel id; use the generated constants, e.g. SlackChannel.Launches.channelId.
+export function slack(target: { channel: string }): SlackInputTarget {
+    return { provider: "slack", channelId: target.channel }
+}
+
+export type InputOption<Id extends string = string> = {
+    id: Id
+    label: string
+    description?: string
+    freeText?: boolean
+}
+
+export type SlackDeliveryRef = { channelId: string; messageTs: string }
+
+export type InputRespondent = { provider: string; userId: string; displayName?: string }
+
+export type InputDecision<Id extends string> =
+    | { kind: "response"; choice: Id; text?: string; respondent: InputRespondent; slack: SlackDeliveryRef }
+    | { kind: "timeout"; slack: SlackDeliveryRef }
+
+export type WaitForInputParams<Options extends readonly InputOption[]> = {
+    via: SlackInputTarget
+    prompt: string
+    details?: Record<string, string>
+    options: Options
+    timeout?: string | number
+}
+
+export function waitForInput<const Options extends readonly InputOption[]>(params: WaitForInputParams<Options>): Promise<InputDecision<Options[number]["id"]>> {
+    if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
+        throw new DurableOnlyError("waitForInput() is only available in durable jobs. Add `durable: true` to this job.")
+    }
+    if (!process.env.TERSE_RUN_ID) {
+        return promptForInputLocally(params)
+    }
+    return waitForInputDurable(params)
+}
+
+// Suspended runs park indefinitely on their journal snapshot; the ceiling only bounds
+// each scheduler timer, so a no-timeout wait re-arms every chunk instead of expiring.
+const INPUT_WAIT_CEILING_MS = 30 * 24 * 60 * 60 * 1000
+
+async function waitForInputDurable<Options extends readonly InputOption[]>(params: WaitForInputParams<Options>): Promise<InputDecision<Options[number]["id"]>> {
+    const timeoutMs = params.timeout === undefined ? undefined : durationToMs(params.timeout)
+    const hook = createHook<SdkInputResponsePayload>()
+    const delivery = await registerInputRequest(hook.token, params, timeoutMs)
+
+    let elapsedMs = 0
+    while (true) {
+        const chunkMs = timeoutMs === undefined ? INPUT_WAIT_CEILING_MS : Math.min(timeoutMs - elapsedMs, INPUT_WAIT_CEILING_MS)
+        const winner = await Promise.race([
+            Promise.resolve(hook).then(payload => ({ type: "response" as const, payload })),
+            workflowSleep(chunkMs).then(() => ({ type: "sleep" as const }))
+        ])
+        if (winner.type === "response") {
+            hook.dispose()
+            return {
+                kind: "response",
+                choice: winner.payload.choice as Options[number]["id"],
+                text: winner.payload.text,
+                respondent: winner.payload.respondent,
+                slack: delivery
+            }
+        }
+        elapsedMs += chunkMs
+        if (timeoutMs !== undefined && elapsedMs >= timeoutMs) {
+            hook.dispose()
+            await expireInputRequest(hook.token, delivery)
+            return { kind: "timeout", slack: delivery }
+        }
+    }
+}
+
+async function registerInputRequest(token: string, params: WaitForInputParams<readonly InputOption[]>, timeoutMs: number | undefined): Promise<SlackDeliveryRef> {
+    const body: SdkInputRequestRegisterBody = {
+        token,
+        runId: process.env.TERSE_RUN_ID!,
+        prompt: params.prompt,
+        details: params.details,
+        options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
+        timeoutSeconds: timeoutMs === undefined ? undefined : Math.ceil(timeoutMs / 1000),
+        via: params.via
+    }
+    const response = await postInputRequestStep(ApiRoutes.SDK.INPUT_REQUEST, body)
+    const parsed = (await response.json()) as SdkInputRequestRegisterResponse
+    if (!response.ok || !parsed.success || !parsed.delivery) {
+        throw new Error(`waitForInput: failed to deliver input request: ${parsed.error ?? `HTTP ${response.status}`}`)
+    }
+    return parsed.delivery
+}
+
+async function expireInputRequest(token: string, delivery: SlackDeliveryRef): Promise<void> {
+    const body: SdkInputRequestExpireBody = {
+        token,
+        runId: process.env.TERSE_RUN_ID!,
+        delivery: { provider: "slack", channelId: delivery.channelId, messageTs: delivery.messageTs }
+    }
+    const response = await postInputRequestStep(ApiRoutes.SDK.INPUT_REQUEST_EXPIRE, body)
+    if (!response.ok) {
+        throw new Error(`waitForInput: failed to expire input request: HTTP ${response.status}`)
+    }
+}
+
+// workflowFetch is the workflow stdlib's hoisted "use step" fetch, so the HTTP call is
+// journaled and replays from cache instead of re-delivering on every workflow replay.
+async function postInputRequestStep(route: string, body: unknown): Promise<Response> {
+    const headers = { ...(await buildSdkRequestHeaders()), Accept: "application/json" }
+    return workflowFetch(`${resolveTerseBackendUrl()}${route}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body)
+    })
+}
+
+async function promptForInputLocally<Options extends readonly InputOption[]>(params: WaitForInputParams<Options>): Promise<InputDecision<Options[number]["id"]>> {
+    const { isCancel, select, text } = await import("@clack/prompts")
+    console.log(`[terse] waitForInput: in production this run would suspend and wait for a response in Slack channel ${params.via.channelId}.`)
+    for (const [key, value] of Object.entries(params.details ?? {})) {
+        console.log(`  ${key}: ${value}`)
+    }
+
+    const choice = await select({
+        message: params.prompt,
+        options: params.options.map(o => ({ value: o.id, label: o.label, hint: o.description }))
+    })
+    if (isCancel(choice)) throw new Error("waitForInput: cancelled at local prompt")
+
+    const option = params.options.find(o => o.id === choice)
+    let freeTextAnswer: string | undefined
+    if (option?.freeText) {
+        const answer = await text({ message: `${option.label}:` })
+        if (isCancel(answer)) throw new Error("waitForInput: cancelled at local prompt")
+        freeTextAnswer = answer || undefined
+    }
+
+    return {
+        kind: "response",
+        choice: choice as Options[number]["id"],
+        text: freeTextAnswer,
+        respondent: { provider: "local", userId: "local" },
+        slack: { channelId: params.via.channelId, messageTs: "" }
+    }
+}
+
+function durationToMs(duration: string | number): number {
+    const value = typeof duration === "string" ? ms(duration as import("ms").StringValue) : duration
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+        throw new Error(`waitForInput: invalid timeout ${JSON.stringify(duration)}`)
+    }
+    return value
 }
 
 export enum EventType {

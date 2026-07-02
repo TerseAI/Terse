@@ -202,10 +202,10 @@ export async function markRunInProgress(runId: string): Promise<void> {
     })
 }
 
-export async function markRunSuspended(runId: string): Promise<boolean> {
+export async function markRunSuspended(runId: string, suspendImageId: string): Promise<boolean> {
     const result = await db().run_history_records.updateMany({
         where: { id: runId, status: RunHistoryStatus.IN_PROGRESS },
-        data: { status: RunHistoryStatus.SUSPENDED }
+        data: { status: RunHistoryStatus.SUSPENDED, suspend_image_id: suspendImageId }
     })
     if (result.count > 0) await emitRunHistoryInvalidation(runId)
     return result.count > 0

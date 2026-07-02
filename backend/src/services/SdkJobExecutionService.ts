@@ -1,5 +1,5 @@
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { UserSession } from "terse-types/types"
+import { SdkInputResponsePayload, UserSession } from "terse-types/types"
 
 import logger from "../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
@@ -34,6 +34,12 @@ interface SdkJobExecutionParams {
     user: UserSession
     jobName: string
     restoreImageId?: string
+    hookResume?: HookResume
+}
+
+export type HookResume = {
+    token: string
+    payload: SdkInputResponsePayload
 }
 
 type SdkSourceImageRecord = {
@@ -60,7 +66,7 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { runId, agent, userId, user, jobName, restoreImageId } = params
+        const { runId, agent, userId, user, jobName, restoreImageId, hookResume } = params
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
@@ -83,7 +89,7 @@ export class SdkJobExecutionService {
 
             const sandboxBackendUrl = getSandboxProvider().supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
 
-            const sandboxEnv = {
+            const sandboxEnv: Record<string, string> = {
                 // Make sure to keep this first as the sandbox env,
                 // so that the following env variables take precedence.
                 ...projectSecretValues,
@@ -94,6 +100,10 @@ export class SdkJobExecutionService {
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1"
+            }
+            if (hookResume) {
+                sandboxEnv.TERSE_RESUME_HOOK_TOKEN = hookResume.token
+                sandboxEnv.TERSE_RESUME_HOOK_PAYLOAD = JSON.stringify(hookResume.payload)
             }
 
             const result = await this.executeWithSourceImage({
@@ -491,7 +501,7 @@ export async function snapshotRunJournalForSuspend(runId: string): Promise<strin
     return provider.snapshotDirectory(sandbox, runJournalDir(runId))
 }
 
-export async function resumeSdkRun(runId: string, restoreImageId?: string): Promise<void> {
+export async function resumeSdkRun(runId: string, restoreImageId?: string, hookResume?: HookResume): Promise<void> {
     if (!restoreImageId) {
         logger.warn("resumeSdkRun: missing snapshot image, cannot resume", { runId })
         return
@@ -531,6 +541,7 @@ export async function resumeSdkRun(runId: string, restoreImageId?: string): Prom
         userId: agent.user_id,
         user,
         jobName: agent.name,
-        restoreImageId
+        restoreImageId,
+        hookResume
     })
 }

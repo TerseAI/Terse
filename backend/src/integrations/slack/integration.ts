@@ -1,5 +1,5 @@
 import { InputConfigType } from "@prisma/client"
-import { LogLevel, TokensRevokedEvent, WebClient } from "@slack/web-api"
+import { ConversationsListResponse, LogLevel, TokensRevokedEvent, WebClient } from "@slack/web-api"
 import { Reaction } from "@slack/web-api/dist/types/response/ChannelsHistoryResponse"
 import { Channel as SlackChannel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse"
 import { User as SlackUser } from "@slack/web-api/dist/types/response/UsersInfoResponse"
@@ -258,7 +258,7 @@ export class SlackIntegrationManager
         const client_id = this.config.clientId
         const redirect_uri = this.config.oauthCallbackUrl
         const isBotUser = options.isBotUser
-        const scope = "channels:history,groups:history,im:history,channels:read,groups:read,im:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
+        const scope = "channels:history,groups:history,im:history,channels:read,groups:read,im:read,mpim:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
         const user_scope = isBotUser
             ? ""
             : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,chat:write,im:write,reactions:read,reactions:write,files:read"
@@ -833,7 +833,9 @@ export const fetchSlackChannelsForIntegration = async (userId: string, organizat
     })
 
     try {
-        const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
+        // allSettled: a missing scope for one conversation type (e.g. mpim:read on older
+        // bot installs) must not blank the channel types the token CAN list.
+        const [publicResult, privateResult, mpimResult] = await Promise.allSettled([
             client.conversations.list({
                 types: "public_channel",
                 exclude_archived: true,
@@ -850,6 +852,13 @@ export const fetchSlackChannelsForIntegration = async (userId: string, organizat
                 limit: 1000
             })
         ])
+
+        if (publicResult.status === "rejected") {
+            throw publicResult.reason
+        }
+        const publicChannels = publicResult.value
+        const privateChannels = settledChannelList(privateResult, "private_channel", integrationId)
+        const mpimChannels = settledChannelList(mpimResult, "mpim", integrationId)
 
         const channels: SlackChannelShared[] = []
 
@@ -916,6 +925,12 @@ export const fetchSlackChannelsForIntegration = async (userId: string, organizat
 
         throw createSlackRouteError("Failed to fetch channels", 500, error.message)
     }
+}
+
+function settledChannelList(result: PromiseSettledResult<ConversationsListResponse>, channelType: string, integrationId: string): ConversationsListResponse {
+    if (result.status === "fulfilled") return result.value
+    logger.warn(`Skipping Slack ${channelType} listing`, { error: result.reason, integrationId, channelType })
+    return { ok: false }
 }
 
 /**

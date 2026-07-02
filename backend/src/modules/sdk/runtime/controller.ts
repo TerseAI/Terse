@@ -5,10 +5,13 @@ import { SkillConfigData } from "terse-types/Configs"
 import {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
+    SdkInputRequestRegisterResponse,
     SdkJobSuspendResponseBody,
     UserSession,
     sdkAgentRunRequestBodySchema,
     sdkApprovalDecisionRequestBodySchema,
+    sdkInputRequestExpireBodySchema,
+    sdkInputRequestRegisterBodySchema,
     sdkJobSuspendRequestBodySchema
 } from "terse-types/types"
 import { z } from "zod"
@@ -27,6 +30,7 @@ import { CancelReason } from "../../../modules/agents/cancellation/RunCancellati
 import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellation/runCancellationEffects"
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
+import { expireInputRequest, registerInputRequest } from "../../../services/InputRequestService"
 import { resumeSdkRun, snapshotRunJournalForSuspend } from "../../../services/SdkJobExecutionService"
 import { settings } from "../../../settings"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
@@ -400,8 +404,13 @@ export async function handleJobSuspension(req: Request, res: Response) {
     try {
         const resumeUrl = `${settings.urls.backend}${buildRoute(ApiRoutes.SDK.RESUME, {})}`
         const imageId = await snapshotRunJournalForSuspend(runId)
-        await markRunSuspended(runId)
-        await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey, imageId })
+        if (!imageId) {
+            // Parking without a journal snapshot would leave the run unresumable; refuse loudly.
+            logger.error("Refusing to suspend run without a journal snapshot", { runId })
+            return res.status(500).json({ success: false, error: "Could not snapshot the run journal; suspension aborted." })
+        }
+        await markRunSuspended(runId, imageId)
+        await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey })
 
         const response: SdkJobSuspendResponseBody = { success: true }
         return res.status(200).json(response)
@@ -428,9 +437,46 @@ export async function handleJobResumption(req: Request, res: Response) {
         logger.warn("Failed to delete suspension scheduler job", { error, runId })
     }
 
+    // The run record is the source of truth for the snapshot; the payload imageId only
+    // covers suspensions parked before suspend_image_id was introduced.
+    const record = await db().run_history_records.findUnique({ where: { id: runId }, select: { suspend_image_id: true } })
+
     const claimed = await claimSuspendedRun(runId)
     if (!claimed) return res.status(200).json({ success: true })
 
-    void resumeSdkRun(runId, imageId).catch(error => logger.error("Failed to resume suspended run", { error, runId }))
+    void resumeSdkRun(runId, record?.suspend_image_id ?? imageId).catch(error => logger.error("Failed to resume suspended run", { error, runId }))
+    return res.status(200).json({ success: true })
+}
+
+export async function handleInputRequestRegister(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user?.organizationId) return res.status(401).json({ success: false, error: "Unauthorized" })
+
+    const parsed = sdkInputRequestRegisterBodySchema.safeParse(req.body)
+    if (!parsed.success) {
+        return res.status(400).json({ success: false, error: "Invalid request body", details: parsed.error.issues.map(i => i.message) })
+    }
+
+    const result = await registerInputRequest(user.organizationId, parsed.data)
+    if (!result.ok) {
+        const response: SdkInputRequestRegisterResponse = { success: false, error: result.error }
+        return res.status(422).json(response)
+    }
+
+    const response: SdkInputRequestRegisterResponse = { success: true, delivery: { channelId: result.channelId, messageTs: result.messageTs } }
+    return res.status(200).json(response)
+}
+
+export async function handleInputRequestExpire(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user?.organizationId) return res.status(401).json({ success: false, error: "Unauthorized" })
+
+    const parsed = sdkInputRequestExpireBodySchema.safeParse(req.body)
+    if (!parsed.success) {
+        return res.status(400).json({ success: false, error: "Invalid request body", details: parsed.error.issues.map(i => i.message) })
+    }
+
+    const result = await expireInputRequest(user.organizationId, parsed.data)
+    if (!result.ok) return res.status(422).json({ success: false, error: result.error })
     return res.status(200).json({ success: true })
 }

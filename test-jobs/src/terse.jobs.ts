@@ -1,4 +1,4 @@
-import { createJob, generateText, jobStep, sleep } from "terse-sdk"
+import { createJob, generateText, jobStep, slack, sleep, waitForInput } from "terse-sdk"
 import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
@@ -59,12 +59,37 @@ createJob({
 
         // console.log(work)
 
-        // await sleep("1m")
-
-        await toolbox.slack.sendMessage({
-            channelId: SlackChannel.AllTerseInc.channelId,
-            message: "this job is done! we are DURABLE"
+        const result = await waitForInput({
+            via: slack({ channel: SlackChannel.AllTerseInc.channelId }),
+            prompt: "What is the meaning of life?",
+            details: {
+                test: "This is a test of the waitForInput function"
+            },
+            options: [
+                { id: "approve", label: "Approve" },
+                { id: "reject", label: "Reject" }
+            ]
         })
+
+        if (result.kind === "timeout") {
+            await toolbox.slack.sendMessage({
+                channelId: SlackChannel.AllTerseInc.channelId,
+                message: "this job timed out! we are DURABLE"
+            })
+            return
+        }
+
+        if (result.choice === "approve") {
+            await toolbox.slack.sendMessage({
+                channelId: SlackChannel.AllTerseInc.channelId,
+                message: "this job is approved! we are DURABLE"
+            })
+        } else {
+            await toolbox.slack.sendMessage({
+                channelId: SlackChannel.AllTerseInc.channelId,
+                message: "this job is rejected! we are DURABLE"
+            })
+        }
 
         console.log(response.joke)
     }

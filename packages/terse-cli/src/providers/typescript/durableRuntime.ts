@@ -5,7 +5,7 @@ import path from "node:path"
 import { __buildJobStateAccessor, createSDKTrigger, fetchRegisteredJobs } from "terse-sdk"
 import { TerseJobContext } from "terse-sdk/dist/context"
 import { SerializedEvent } from "terse-types"
-import { getRun, start } from "workflow/api"
+import { getRun, resumeHook, start } from "workflow/api"
 import { setWorld } from "workflow/runtime"
 
 import { createTerseWorld } from "../../terseWorld.js"
@@ -75,6 +75,7 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             return await run.returnValue
         },
         resumeRun: workflowRunId => getRun(workflowRunId).returnValue,
+        resumeHook: (token, payload) => resumeHook(token, payload).then(() => undefined),
         close: () => world.close?.() ?? Promise.resolve()
     }
 }
@@ -82,6 +83,7 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
 type DurableRuntime = {
     dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<unknown>
     resumeRun: (workflowRunId: string) => Promise<unknown>
+    resumeHook: (token: string, payload: unknown) => Promise<void>
     close: () => Promise<void>
 }
 

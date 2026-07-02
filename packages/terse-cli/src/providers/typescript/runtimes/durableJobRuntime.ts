@@ -46,6 +46,7 @@ export const durableJobRuntime: JobRuntime = {
                     console.log(chalk.cyan(`  Resuming run ${workflowRunId}`))
                 }
                 const rt = await getDurableRuntime(process.cwd())
+                await deliverHookPayload(rt, isVerbose)
                 await rt.resumeRun(workflowRunId)
                 if (isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
             })
@@ -53,5 +54,26 @@ export const durableJobRuntime: JobRuntime = {
             if (error instanceof CliError) throw error
             throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })
         }
+    }
+}
+
+// A resume triggered by a human response (waitForInput) carries the hook payload in the
+// environment. Delivery failure is not fatal: resuming anyway replays the run, which then
+// re-parks on whatever it is actually waiting for and re-snapshots itself.
+async function deliverHookPayload(rt: Awaited<ReturnType<typeof getDurableRuntime>>, isVerbose: boolean): Promise<void> {
+    const token = process.env.TERSE_RESUME_HOOK_TOKEN
+    if (!token) return
+
+    const payloadRaw = process.env.TERSE_RESUME_HOOK_PAYLOAD
+    if (!payloadRaw) {
+        console.log(chalk.yellow(`  Hook resume requested for ${token} but no payload was provided; resuming without it`))
+        return
+    }
+
+    try {
+        await rt.resumeHook(token, JSON.parse(payloadRaw))
+        if (isVerbose) console.log(chalk.cyan(`  Delivered input response to hook ${token}`))
+    } catch (error) {
+        console.log(chalk.yellow(`  Could not deliver input response to hook ${token}: ${formatErrorDetail(error)}`))
     }
 }

@@ -15,6 +15,7 @@ import { SecretService } from "../../services/SecretService"
 import { settings } from "../../settings"
 
 import { createFeedbackModal, createTerseHomeView } from "./blockKitHelpers"
+import { registerInputRequestHandlers } from "./inputRequestHandlers"
 
 const ExpressReceiver = ((ExpressReceiverModule as any).default || ExpressReceiverModule) as typeof ExpressReceiverType
 
@@ -653,12 +654,14 @@ export async function setupSlackBolt() {
         await ack()
     })
 
+    registerInputRequestHandlers(slack)
+
     // Catch-all handler for any other action events to prevent timeout errors.
     // Slack requires every action to be acked within 3s; this absorbs the
     // ones that don't have a dedicated handler above. The negative lookahead
     // only needs to exclude prefixes that DO have dedicated handlers
-    // (currently just approval_*) — anything else falls through here.
-    slack.action(/^(?!approval_(approve|reject|request_changes)_).*$/, async ({ ack }) => {
+    // (approval_* and terse_input__*) — anything else falls through here.
+    slack.action(/^(?!approval_(approve|reject|request_changes)_|terse_input__).*$/, async ({ ack }) => {
         await ack()
     })
 
