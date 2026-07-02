@@ -4,7 +4,7 @@ import { SdkInputRequestOption, SdkInputResponsePayload } from "terse-types/type
 
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
-import { resolveInputRequest } from "../../services/InputRequestService"
+import { InputResolveOutcome, resolveInputRequest } from "../../services/InputRequestService"
 
 import { createFeedbackModal } from "./blockKitHelpers"
 import {
@@ -190,9 +190,12 @@ async function deliverResponse(params: DeliverResponseParams): Promise<void> {
     const outcome = await resolveInputRequest({ organizationId, runId, token, response })
     if (outcome === "resumed") return
 
-    const failureLine =
-        outcome === "run_finished" ? ":warning: This response arrived after the run had already finished." : ":warning: The run never reached a resumable state; the response was not delivered."
-    await finalizeSlackInputRequestMessage(client, channelId, messageTs, failureLine)
+    const failureLines: Record<Exclude<InputResolveOutcome, "resumed">, string> = {
+        run_finished: ":warning: This response arrived after the run had already finished.",
+        gave_up: ":warning: The run never reached a resumable state; the response was not delivered.",
+        unresumable: ":warning: The run's parked state is missing, so it was marked failed; the response could not be delivered."
+    }
+    await finalizeSlackInputRequestMessage(client, channelId, messageTs, failureLines[outcome])
 }
 
 async function verifySlackWorkspaceInOrganization(body: { user: { id: string; team_id?: string }; team?: { id?: string } | null }, organizationId: string): Promise<boolean> {

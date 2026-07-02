@@ -1,14 +1,13 @@
-import { RunHistoryStatus } from "terse-types"
 import { SdkInputRequestExpireBody, SdkInputRequestRegisterBody, SdkInputResponsePayload } from "terse-types/types"
 
 import logger from "../common/logger"
 import { deliverSlackInputRequest, finalizeSlackInputRequestMessage, getSlackBotClientForOrganization } from "../integrations/slack/inputRequests"
 import { db } from "../loaders/prisma"
-import { claimSuspendedRun } from "../modules/agents/AgentRunner/runHistory"
+import { claimSuspendedRun, markRunFailed } from "../modules/agents/AgentRunner/runHistory"
 
 import { resumeSdkRun } from "./SdkJobExecutionService"
 
-export type InputResolveOutcome = "resumed" | "run_finished" | "gave_up"
+export type InputResolveOutcome = "resumed" | "run_finished" | "gave_up" | "unresumable"
 
 export async function registerInputRequest(organizationId: string, body: SdkInputRequestRegisterBody): Promise<{ ok: true; channelId: string; messageTs: string } | { ok: false; error: string }> {
     const run = await findRunInOrganization(body.runId, organizationId)
@@ -38,14 +37,21 @@ export async function resolveInputRequest(params: { organizationId: string; runI
         const claimed = await claimSuspendedRun(runId)
         if (claimed) {
             const record = await db().run_history_records.findUnique({ where: { id: runId }, select: { suspend_image_id: true } })
-            void resumeSdkRun(runId, record?.suspend_image_id ?? undefined, { token, payload: response }).catch(error => {
+            // Suspension refuses to park without a snapshot, so a claimed run missing one is
+            // corrupted state that can never resume; fail it loudly instead of dropping the response.
+            if (!record?.suspend_image_id) {
+                logger.error("[InputRequest] Claimed suspended run has no journal snapshot", { runId, token })
+                await markRunFailed(runId, "Suspended run has no journal snapshot; the input response could not be delivered", "agent")
+                return "unresumable"
+            }
+            void resumeSdkRun(runId, record.suspend_image_id, { token, payload: response }).catch(error => {
                 logger.error("[InputRequest] Failed to resume run for input response", { error, runId, token })
             })
             return "resumed"
         }
 
-        const status = await readRunStatus(runId)
-        if (status !== RunHistoryStatus.IN_PROGRESS && status !== RunHistoryStatus.AWAITING_APPROVAL) {
+        const status = await readRunStatus(runId, organizationId)
+        if (status !== "in_progress" && status !== "awaiting_approval") {
             logger.warn("[InputRequest] Response arrived for a run that is no longer waiting", { runId, status, token })
             return "run_finished"
         }
@@ -78,9 +84,12 @@ async function findRunInOrganization(runId: string, organizationId: string): Pro
     return { jobName: run.automation.name }
 }
 
-async function readRunStatus(runId: string): Promise<RunHistoryStatus | null> {
-    const record = await db().run_history_records.findUnique({ where: { id: runId }, select: { status: true } })
-    return (record?.status as RunHistoryStatus | undefined) ?? null
+async function readRunStatus(runId: string, organizationId: string) {
+    const record = await db().run_history_records.findFirst({
+        where: { id: runId, automation: { organization_id: organizationId } },
+        select: { status: true }
+    })
+    return record?.status ?? null
 }
 
 function delay(durationMs: number): Promise<void> {
