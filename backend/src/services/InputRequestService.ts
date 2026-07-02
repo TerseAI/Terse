@@ -1,19 +1,23 @@
 import { SdkInputRequestExpireBody, SdkInputRequestRegisterBody, SdkInputResponsePayload } from "terse-types/types"
 
 import logger from "../common/logger"
-import { deliverSlackInputRequest, finalizeSlackInputRequestMessage, getSlackBotClientForOrganization } from "../integrations/slack/inputRequests"
 import { db } from "../loaders/prisma"
 import { claimSuspendedRun, markRunFailed } from "../modules/agents/AgentRunner/runHistory"
 
 import { resumeSdkRun } from "./SdkJobExecutionService"
+import { getInputRequestProvider } from "./inputRequestProviders/InputRequestProviderRegistry"
+import { InputRequestDeliverResult } from "./inputRequestProviders/types"
 
 export type InputResolveOutcome = "resumed" | "run_finished" | "gave_up" | "unresumable"
 
-export async function registerInputRequest(organizationId: string, body: SdkInputRequestRegisterBody): Promise<{ ok: true; channelId: string; messageTs: string } | { ok: false; error: string }> {
+export async function registerInputRequest(organizationId: string, body: SdkInputRequestRegisterBody): Promise<InputRequestDeliverResult> {
     const run = await findRunInOrganization(body.runId, organizationId)
     if (!run) return { ok: false, error: "Run not found" }
 
-    return deliverSlackInputRequest({ organizationId, jobName: run.jobName, body })
+    const provider = getInputRequestProvider(body.via.provider)
+    if (!provider) return { ok: false, error: `No input provider is registered for "${body.via.provider}".` }
+
+    return provider.deliver({ organizationId, jobName: run.jobName, body })
 }
 
 // A response can beat the run's own suspension POST (a fast click lands while the run is
@@ -66,11 +70,10 @@ export async function expireInputRequest(organizationId: string, body: SdkInputR
     const run = await findRunInOrganization(body.runId, organizationId)
     if (!run) return { ok: false, error: "Run not found" }
 
-    const client = await getSlackBotClientForOrganization(organizationId)
-    if (!client) return { ok: false, error: "No Slack integration is connected for this organization." }
+    const provider = getInputRequestProvider(body.delivery.provider)
+    if (!provider) return { ok: false, error: `No input provider is registered for "${body.delivery.provider}".` }
 
-    const updated = await finalizeSlackInputRequestMessage(client, body.delivery.channelId, body.delivery.messageTs, ":hourglass: Timed out waiting for a response.")
-    return { ok: updated, error: updated ? undefined : "Failed to update the Slack message." }
+    return provider.expire({ organizationId, delivery: body.delivery })
 }
 
 // helpers

@@ -5,8 +5,10 @@ import type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
+    SdkInputRequestDelivery,
     SdkInputRequestExpireBody,
     SdkInputRequestRegisterBody,
+    SdkInputRequestTarget,
     SdkInputResponsePayload,
     SdkStateGetRequest,
     SdkStatePutRequest,
@@ -768,7 +770,14 @@ function describeDuration(duration: string | number | Date): string {
     return ms(duration, { long: true })
 }
 
-export type SlackInputTarget = { provider: "slack"; channelId: string }
+// Provider-neutral input targets and delivery refs; both unions live in terse-types.
+// Adding a provider: extend those unions, add a target constructor here, and register
+// an InputRequestProvider in the backend. Everything between is provider-agnostic.
+export type InputTarget = SdkInputRequestTarget
+export type InputDelivery = SdkInputRequestDelivery
+type DeliveryFor<Target extends InputTarget> = Extract<InputDelivery, { provider: Target["provider"] }>
+
+export type SlackInputTarget = Extract<InputTarget, { provider: "slack" }>
 
 // channel takes a Slack channel id; use the generated constants, e.g. SlackChannel.Launches.channelId.
 export function slack(target: { channel: string }): SlackInputTarget {
@@ -782,21 +791,23 @@ export type InputOption<Id extends string = string> = {
     freeText?: boolean
 }
 
-export type SlackDeliveryRef = { channelId: string; messageTs: string }
-
 export type InputRespondent = { provider: string; userId: string; displayName?: string }
 
-export type InputDecision<Id extends string> = { kind: "response"; choice: Id; text?: string; respondent: InputRespondent; slack: SlackDeliveryRef } | { kind: "timeout"; slack: SlackDeliveryRef }
+export type InputDecision<Id extends string, Delivery extends InputDelivery = InputDelivery> =
+    | { kind: "response"; choice: Id; text?: string; respondent: InputRespondent; delivery: Delivery }
+    | { kind: "timeout"; delivery: Delivery }
 
-export type WaitForInputParams<Options extends readonly InputOption[]> = {
-    via: SlackInputTarget
+export type WaitForInputParams<Options extends readonly InputOption[], Target extends InputTarget = InputTarget> = {
+    via: Target
     prompt: string
     details?: Record<string, string>
     options: Options
     timeout?: string | number
 }
 
-export function waitForInput<const Options extends readonly InputOption[]>(params: WaitForInputParams<Options>): Promise<InputDecision<Options[number]["id"]>> {
+export function waitForInput<const Options extends readonly InputOption[], Target extends InputTarget>(
+    params: WaitForInputParams<Options, Target>
+): Promise<InputDecision<Options[number]["id"], DeliveryFor<Target>>> {
     if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
         throw new DurableOnlyError("waitForInput() is only available in durable jobs. Add `durable: true` to this job.")
     }
@@ -810,10 +821,16 @@ export function waitForInput<const Options extends readonly InputOption[]>(param
 // each scheduler timer, so a no-timeout wait re-arms every chunk instead of expiring.
 const INPUT_WAIT_CEILING_MS = 30 * 24 * 60 * 60 * 1000
 
-async function waitForInputDurable<Options extends readonly InputOption[]>(params: WaitForInputParams<Options>): Promise<InputDecision<Options[number]["id"]>> {
+async function waitForInputDurable<Options extends readonly InputOption[], Target extends InputTarget>(
+    params: WaitForInputParams<Options, Target>
+): Promise<InputDecision<Options[number]["id"], DeliveryFor<Target>>> {
     const timeoutMs = params.timeout === undefined ? undefined : durationToMs(params.timeout)
     const hook = createHook<SdkInputResponsePayload>()
     const delivery = await registerInputRequest(hook.token, params, timeoutMs)
+    if (delivery.provider !== params.via.provider) {
+        throw new Error(`waitForInput: backend delivered via "${delivery.provider}" but the target was "${params.via.provider}"`)
+    }
+    const typedDelivery = delivery as DeliveryFor<Target>
 
     let elapsedMs = 0
     while (true) {
@@ -826,19 +843,19 @@ async function waitForInputDurable<Options extends readonly InputOption[]>(param
                 choice: winner.payload.choice as Options[number]["id"],
                 text: winner.payload.text,
                 respondent: winner.payload.respondent,
-                slack: delivery
+                delivery: typedDelivery
             }
         }
         elapsedMs += chunkMs
         if (timeoutMs !== undefined && elapsedMs >= timeoutMs) {
             hook.dispose()
-            await expireInputRequest(hook.token, delivery)
-            return { kind: "timeout", slack: delivery }
+            await expireInputRequest(hook.token, typedDelivery)
+            return { kind: "timeout", delivery: typedDelivery }
         }
     }
 }
 
-async function registerInputRequest(token: string, params: WaitForInputParams<readonly InputOption[]>, timeoutMs: number | undefined): Promise<SlackDeliveryRef> {
+async function registerInputRequest(token: string, params: WaitForInputParams<readonly InputOption[], InputTarget>, timeoutMs: number | undefined): Promise<InputDelivery> {
     const body: SdkInputRequestRegisterBody = {
         token,
         runId: process.env.TERSE_RUN_ID!,
@@ -859,11 +876,11 @@ async function registerInputRequest(token: string, params: WaitForInputParams<re
     return parsed.delivery
 }
 
-async function expireInputRequest(token: string, delivery: SlackDeliveryRef): Promise<void> {
+async function expireInputRequest(token: string, delivery: InputDelivery): Promise<void> {
     const body: SdkInputRequestExpireBody = {
         token,
         runId: process.env.TERSE_RUN_ID!,
-        delivery: { provider: "slack", channelId: delivery.channelId, messageTs: delivery.messageTs }
+        delivery
     }
     const response = await postInputRequestStep(ApiRoutes.SDK.INPUT_REQUEST_EXPIRE, body)
     if (!response.ok) {
@@ -882,9 +899,11 @@ async function postInputRequestStep(route: string, body: unknown): Promise<Respo
     })
 }
 
-async function promptForInputLocally<Options extends readonly InputOption[]>(params: WaitForInputParams<Options>): Promise<InputDecision<Options[number]["id"]>> {
+async function promptForInputLocally<Options extends readonly InputOption[], Target extends InputTarget>(
+    params: WaitForInputParams<Options, Target>
+): Promise<InputDecision<Options[number]["id"], DeliveryFor<Target>>> {
     const { isCancel, select, text } = await import("@clack/prompts")
-    console.log(`[terse] waitForInput: in production this run would suspend and wait for a response in Slack channel ${params.via.channelId}.`)
+    console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${describeInputTarget(params.via)}.`)
     for (const [key, value] of Object.entries(params.details ?? {})) {
         console.log(`  ${key}: ${value}`)
     }
@@ -908,7 +927,21 @@ async function promptForInputLocally<Options extends readonly InputOption[]>(par
         choice: choice as Options[number]["id"],
         text: freeTextAnswer,
         respondent: { provider: "local", userId: "local" },
-        slack: { channelId: params.via.channelId, messageTs: "" }
+        delivery: localDelivery(params.via)
+    }
+}
+
+function describeInputTarget(target: InputTarget): string {
+    switch (target.provider) {
+        case "slack":
+            return `Slack channel ${target.channelId}`
+    }
+}
+
+function localDelivery<Target extends InputTarget>(target: Target): DeliveryFor<Target> {
+    switch (target.provider) {
+        case "slack":
+            return { provider: "slack", channelId: target.channelId, messageTs: "" } as DeliveryFor<Target>
     }
 }
 

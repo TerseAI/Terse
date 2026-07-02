@@ -463,7 +463,7 @@ export async function handleInputRequestRegister(req: Request, res: Response) {
         return res.status(422).json(response)
     }
 
-    const response: SdkInputRequestRegisterResponse = { success: true, delivery: { channelId: result.channelId, messageTs: result.messageTs } }
+    const response: SdkInputRequestRegisterResponse = { success: true, delivery: result.delivery }
     return res.status(200).json(response)
 }
 

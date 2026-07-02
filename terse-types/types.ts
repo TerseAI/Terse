@@ -772,15 +772,19 @@ export const sdkInputRequestRegisterBodySchema = z.object({
 })
 export type SdkInputRequestRegisterBody = z.infer<typeof sdkInputRequestRegisterBodySchema>
 
+// One member per input provider; adding a provider extends this union and the target union above.
+export const sdkInputRequestDeliverySchema = z.discriminatedUnion("provider", [
+    z.object({
+        provider: z.literal("slack"),
+        channelId: z.string().min(1),
+        messageTs: z.string().min(1)
+    })
+])
+export type SdkInputRequestDelivery = z.infer<typeof sdkInputRequestDeliverySchema>
+
 export const sdkInputRequestRegisterResponseSchema = z.object({
     success: z.boolean(),
-    requestId: z.string().optional(),
-    delivery: z
-        .object({
-            channelId: z.string(),
-            messageTs: z.string()
-        })
-        .optional(),
+    delivery: sdkInputRequestDeliverySchema.optional(),
     error: z.string().optional()
 })
 export type SdkInputRequestRegisterResponse = z.infer<typeof sdkInputRequestRegisterResponseSchema>
@@ -788,11 +792,7 @@ export type SdkInputRequestRegisterResponse = z.infer<typeof sdkInputRequestRegi
 export const sdkInputRequestExpireBodySchema = z.object({
     token: z.string().min(1),
     runId: z.string().min(1),
-    delivery: z.object({
-        provider: z.literal("slack"),
-        channelId: z.string().min(1),
-        messageTs: z.string().min(1)
-    })
+    delivery: sdkInputRequestDeliverySchema
 })
 export type SdkInputRequestExpireBody = z.infer<typeof sdkInputRequestExpireBodySchema>
 
