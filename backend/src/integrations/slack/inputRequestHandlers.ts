@@ -25,12 +25,13 @@ export function registerInputRequestHandlers(slack: SlackApp): void {
         await ack()
 
         try {
+            if (body.type !== "block_actions") return
             if (!("action_id" in action)) return
             const optionId = parseInputRequestActionId(action.action_id)
             if (!optionId) return
 
-            const message = (body as any).message as { ts?: string; blocks?: KnownBlock[]; metadata?: { event_payload?: unknown } } | undefined
-            const channelId = (body as any).channel?.id as string | undefined
+            const message = body.message
+            const channelId = body.channel?.id
             const parsedMetadata = inputRequestMetadataSchema.safeParse(message?.metadata?.event_payload)
             if (!parsedMetadata.success || !channelId || !message?.ts) {
                 logger.error("[SlackInputRequest] Button click without readable request metadata", { actionId: action.action_id })
@@ -60,7 +61,7 @@ export function registerInputRequestHandlers(slack: SlackApp): void {
             }
 
             if (option.freeText) {
-                const triggerId = (body as any).trigger_id as string | undefined
+                const triggerId = body.trigger_id
                 if (!triggerId) {
                     await respond({ text: "Error: Unable to open the response form.", response_type: "ephemeral" })
                     return
@@ -189,7 +190,8 @@ async function deliverResponse(params: DeliverResponseParams): Promise<void> {
     const outcome = await resolveInputRequest({ organizationId, runId, token, response })
     if (outcome === "resumed") return
 
-    const failureLine = outcome === "run_finished" ? ":warning: This response arrived after the run had already finished." : ":warning: The run never reached a resumable state; the response was not delivered."
+    const failureLine =
+        outcome === "run_finished" ? ":warning: This response arrived after the run had already finished." : ":warning: The run never reached a resumable state; the response was not delivered."
     await finalizeSlackInputRequestMessage(client, channelId, messageTs, failureLine)
 }
 

@@ -67,7 +67,8 @@ createJob({
             },
             options: [
                 { id: "approve", label: "Approve" },
-                { id: "reject", label: "Reject" }
+                { id: "reject", label: "Reject" },
+                { id: "changes", label: "Request changes", freeText: true }
             ]
         })
 
@@ -82,12 +83,18 @@ createJob({
         if (result.choice === "approve") {
             await toolbox.slack.sendMessage({
                 channelId: SlackChannel.AllTerseInc.channelId,
-                message: "this job is approved! we are DURABLE"
+                message: "this job is approved!"
+            })
+        } else if (result.choice === "changes") {
+            const changes = result.text ?? ""
+            await toolbox.slack.sendMessage({
+                channelId: SlackChannel.AllTerseInc.channelId,
+                message: "this job needs changes!" + changes
             })
         } else {
             await toolbox.slack.sendMessage({
                 channelId: SlackChannel.AllTerseInc.channelId,
-                message: "this job is rejected! we are DURABLE"
+                message: "this job is rejected!"
             })
         }
 

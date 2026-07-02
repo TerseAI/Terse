@@ -7,7 +7,6 @@ import type {
     SdkApprovalDecisionRequestBody,
     SdkInputRequestExpireBody,
     SdkInputRequestRegisterBody,
-    SdkInputRequestRegisterResponse,
     SdkInputResponsePayload,
     SdkStateGetRequest,
     SdkStatePutRequest,
@@ -18,6 +17,7 @@ import {
     ApiRoutes,
     IntegrationType,
     sdkAgentRunRequestBodySchema,
+    sdkInputRequestRegisterResponseSchema,
     sdkStateGetResponseSchema,
     stripZodJsonSchemaMetadata,
     webhookJobChallengeRequestSchema,
@@ -786,9 +786,7 @@ export type SlackDeliveryRef = { channelId: string; messageTs: string }
 
 export type InputRespondent = { provider: string; userId: string; displayName?: string }
 
-export type InputDecision<Id extends string> =
-    | { kind: "response"; choice: Id; text?: string; respondent: InputRespondent; slack: SlackDeliveryRef }
-    | { kind: "timeout"; slack: SlackDeliveryRef }
+export type InputDecision<Id extends string> = { kind: "response"; choice: Id; text?: string; respondent: InputRespondent; slack: SlackDeliveryRef } | { kind: "timeout"; slack: SlackDeliveryRef }
 
 export type WaitForInputParams<Options extends readonly InputOption[]> = {
     via: SlackInputTarget
@@ -820,10 +818,7 @@ async function waitForInputDurable<Options extends readonly InputOption[]>(param
     let elapsedMs = 0
     while (true) {
         const chunkMs = timeoutMs === undefined ? INPUT_WAIT_CEILING_MS : Math.min(timeoutMs - elapsedMs, INPUT_WAIT_CEILING_MS)
-        const winner = await Promise.race([
-            Promise.resolve(hook).then(payload => ({ type: "response" as const, payload })),
-            workflowSleep(chunkMs).then(() => ({ type: "sleep" as const }))
-        ])
+        const winner = await Promise.race([Promise.resolve(hook).then(payload => ({ type: "response" as const, payload })), workflowSleep(chunkMs).then(() => ({ type: "sleep" as const }))])
         if (winner.type === "response") {
             hook.dispose()
             return {
@@ -854,9 +849,12 @@ async function registerInputRequest(token: string, params: WaitForInputParams<re
         via: params.via
     }
     const response = await postInputRequestStep(ApiRoutes.SDK.INPUT_REQUEST, body)
-    const parsed = (await response.json()) as SdkInputRequestRegisterResponse
-    if (!response.ok || !parsed.success || !parsed.delivery) {
-        throw new Error(`waitForInput: failed to deliver input request: ${parsed.error ?? `HTTP ${response.status}`}`)
+    if (!response.ok) {
+        throw new Error(`waitForInput: failed to deliver input request: HTTP ${response.status}: ${await response.text()}`)
+    }
+    const parsed = sdkInputRequestRegisterResponseSchema.parse(await response.json())
+    if (!parsed.success || !parsed.delivery) {
+        throw new Error(`waitForInput: failed to deliver input request: ${parsed.error ?? "registration failed"}`)
     }
     return parsed.delivery
 }

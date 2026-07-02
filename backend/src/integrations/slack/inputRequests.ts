@@ -90,13 +90,7 @@ export async function deliverSlackInputRequest(params: {
 // Replaces the message's action buttons with a status line, keeping the request content.
 // Pass the message blocks when the caller has them (button clicks include the message);
 // otherwise they are fetched, which modal submissions and expiry need.
-export async function finalizeSlackInputRequestMessage(
-    client: WebClient,
-    channelId: string,
-    messageTs: string,
-    statusLine: string,
-    existingBlocks?: KnownBlock[]
-): Promise<boolean> {
+export async function finalizeSlackInputRequestMessage(client: WebClient, channelId: string, messageTs: string, statusLine: string, existingBlocks?: KnownBlock[]): Promise<boolean> {
     try {
         const blocks = existingBlocks ?? (await fetchMessageBlocks(client, channelId, messageTs))
         const withoutActions = (blocks ?? []).filter(block => block.type !== "actions")
