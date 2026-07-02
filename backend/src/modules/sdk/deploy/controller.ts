@@ -1,7 +1,7 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { Request, Response } from "express"
-import { TriggerConfigData } from "terse-types/Configs"
-import { SdkDeployResponseBody, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types/types"
+import { ConfigType, TriggerConfigData } from "terse-types/Configs"
+import { SdkDeployJob, SdkDeployResponseBody, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types/types"
 
 import logger from "../../../common/logger"
 import { getInputConfigInclude } from "../../../common/prismaIncludes"
@@ -18,6 +18,7 @@ import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDown
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
+import { InvalidCronExpressionError, assertValidUserCron } from "../../../tasks/queues/scheduleQueue"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
 export async function handleSdkDeploy(req: Request, res: Response) {
@@ -43,6 +44,9 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             throw error
         }
     }
+
+    const cronError = findInvalidCronTrigger(jobs)
+    if (cronError) return res.status(400).json({ success: false, error: cronError })
 
     const project = await db().projects.findUnique({
         where: { id: projectId, organization_id: organizationId },
@@ -174,6 +178,23 @@ function parseSourceZipBuffer(sourceZipBase64: string): Buffer {
     const zipBuffer = Buffer.from(sourceZipBase64, "base64")
     if (zipBuffer.length === 0) throw new Error("sourceZipBase64 is empty")
     return zipBuffer
+}
+
+function findInvalidCronTrigger(jobs: SdkDeployJob[]): string | null {
+    for (const job of jobs) {
+        for (const trigger of job.triggers) {
+            if (trigger.configType !== ConfigType.TIME_TRIGGER) continue
+            try {
+                assertValidUserCron(job.jobName, trigger.cronExpression)
+            } catch (error) {
+                if (error instanceof InvalidCronExpressionError) {
+                    return `Job "${job.jobName}" has an invalid cron expression "${trigger.cronExpression}" — expected a standard 5-field cron (UTC).`
+                }
+                throw error
+            }
+        }
+    }
+    return null
 }
 
 async function updateExistingAutomation(

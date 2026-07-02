@@ -3,10 +3,11 @@ import { RunHistoryStatus } from "terse-types"
 import logger from "../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
 import { db } from "../../loaders/prisma"
-import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../loaders/socket"
+import { finalizeRunFailure } from "../../loaders/socket"
 import { claimSuspendedRun, finalizeRunStatus, markRunFailed, markRunSkipped } from "../../modules/agents/AgentRunner/runHistory"
 import { classifyAgentError } from "../../modules/agents/agentErrorUtils"
 import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
+import { invalidateRunAndChatHistory } from "../../services/CacheInvalidationService"
 import { jobExecutorRegistry } from "../../services/jobExecutors/JobExecutorRegistry"
 import { AgentWithRelations } from "../../types/prisma"
 import { resolveUserInOrg } from "../../utility/identity"
@@ -49,7 +50,7 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
     if (!agent) {
         logger.error("Run execution: agent not found; failing run", { runId, agentId, orgId })
         await markRunFailed(runId, "Agent not found for run execution", "agent")
-        emitCacheInvalidationWithWildcard(orgId, "runHistory", agentId)
+        invalidateRunAndChatHistory(orgId, agentId, runId)
         throw new Error("Agent not found for run execution")
     }
 
@@ -67,11 +68,11 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
         switch (outcome.status) {
             case "success":
                 await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
+                invalidateRunAndChatHistory(orgId, agent.id, runId)
                 return
             case "skipped":
                 await markRunSkipped(runId, outcome.reason)
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
+                invalidateRunAndChatHistory(orgId, agent.id, runId)
                 return
             case "failed":
                 await finalizeRunFailure(runId, classifyAgentError(outcome.cause), user, agent)
