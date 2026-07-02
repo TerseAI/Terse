@@ -474,4 +474,3 @@ export async function snapshotRunJournalForSuspend(runId: string): Promise<strin
 
     return provider.snapshotDirectory(sandbox, runJournalDir(runId))
 }
-

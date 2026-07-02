@@ -26,7 +26,9 @@ export async function enqueueRunExecution(data: RunExecutionJobData, opts?: { de
     // Retention must outlive the delay: pg-boss archives queued jobs past their retention window,
     // which would silently swallow a long suspension.
     const delay = opts?.delaySeconds ? { startAfter: opts.delaySeconds, retentionSeconds: opts.delaySeconds + RESUME_RETENTION_BUFFER_SECONDS } : {}
-    await Boss.getInstance().getBoss().send(QueueName.SdkRunExecution, data, { singletonKey, ...delay })
+    await Boss.getInstance()
+        .getBoss()
+        .send(QueueName.SdkRunExecution, data, { singletonKey, ...delay })
 }
 
 function resumeExecutionJobId(runId: string, restoreImageId: string): string {
