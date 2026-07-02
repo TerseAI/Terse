@@ -38,13 +38,9 @@ type EmailGroup = {
     agents: EmailAgentSummary[]
 }
 
-/** Core logic for the weekly agent-review cron. Invoked by the pg-boss maintenance worker. */
 export async function runReviewAllAgents({ dryRun = false }: { dryRun?: boolean } = {}): Promise<void> {
     logger.info("[ReviewAgents] Weekly review job triggered")
 
-    // Weekly reviews depend on ClaudeCodeSandboxService, which runs the Claude Code CLI
-    // inside a container (specific image, `coder` user, fixed paths). LocalSandboxService
-    // is a plain child_process.spawn on the host and can't host that — cloud-only for now.
     if (!getSandboxProvider().supportsContainerizedRunners) {
         logger.info("[ReviewAgents] Skipping: current sandbox provider does not support containerized runners")
         return

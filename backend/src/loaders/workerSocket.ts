@@ -23,10 +23,9 @@ export class WorkerSocketEmitter {
     }
 
     public async init(): Promise<void> {
-        this.io = new Server() // standalone, emit-only (no httpServer.listen)
+        this.io = new Server()
 
         // Same Redis adapter as the web process so worker-side emits (run streaming, cache invalidation)
-        // reach browser clients connected on the web instances. Redis is required; failure is fatal.
         this.pub = createClient({ url: redis.url })
         this.sub = this.pub.duplicate()
         await this.pub.connect()
