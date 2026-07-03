@@ -79,11 +79,8 @@ createJob({
         }
 
         const result2 = await waitForInput({
-            via: slack({ channel: SlackChannel.MpdmOlivierTerse2Terse3Thomas1.channelId }),
-            prompt: "What is the meaning of life?",
-            details: {
-                test: "This is a test of the waitForInput function"
-            },
+            via: slack({ channel: SlackChannel.AllTerseInc.channelId }),
+            prompt: "This is a second prompt for testing the waitForInput function",
             options: [
                 { id: "approve", label: "Approve" },
                 { id: "reject", label: "Reject" },
@@ -93,18 +90,18 @@ createJob({
 
         if (result2.choice === "approve") {
             await toolbox.slack.sendMessage({
-                channelId: SlackChannel.MpdmOlivierTerse2Terse3Thomas1.channelId,
+                channelId: SlackChannel.AllTerseInc.channelId,
                 message: "this job is approved!"
             })
         } else if (result2.choice === "changes") {
             const changes = result2.text ?? ""
             await toolbox.slack.sendMessage({
-                channelId: SlackChannel.MpdmOlivierTerse2Terse3Thomas1.channelId,
+                channelId: SlackChannel.AllTerseInc.channelId,
                 message: "this job needs changes!" + changes
             })
         } else {
             await toolbox.slack.sendMessage({
-                channelId: SlackChannel.MpdmOlivierTerse2Terse3Thomas1.channelId,
+                channelId: SlackChannel.AllTerseInc.channelId,
                 message: "this job is rejected!"
             })
         }

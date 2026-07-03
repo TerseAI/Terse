@@ -259,7 +259,7 @@ export class SlackIntegrationManager
         const redirect_uri = this.config.oauthCallbackUrl
         const isBotUser = options.isBotUser
         const scope =
-            "channels:history,groups:history,im:history,channels:read,groups:read,im:read,mpim:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
+            "channels:history,groups:history,im:history,mpim:history,channels:read,groups:read,im:read,mpim:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
         const user_scope = isBotUser
             ? ""
             : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,chat:write,im:write,reactions:read,reactions:write,files:read"
