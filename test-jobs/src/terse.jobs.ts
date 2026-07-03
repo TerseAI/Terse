@@ -1,4 +1,4 @@
-import { createJob, generateText, jobStep, sleep } from "terse-sdk"
+import { createJob, generateText, jobStep, slack, sleep, waitForInput } from "terse-sdk"
 import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
@@ -19,20 +19,8 @@ createJob({
     // The handler runs every time a trigger fires. `event` is typed to match
     // the trigger(s) above.
     onTrigger: async (event, state) => {
-        // `generateText` runs the model and returns its output. `skills`
-        // declares which integrations the model can call — keep the list
-        // narrow so it only touches what you intend. The optional `outputSchema`
-        // (a Zod schema) forces a structured response: `response` is typed
-        // `{ joke: string }`.
-
-        // jobStep({
-        //     run: async () => {
-        //         console.log("OMG WE ARE ABOUT TO SLEEP FOR 1 MINUTE")
-        //     }
-        // })
-
         const response = await generateText({
-            prompt: "Tell me a joke about Game Of thrones",
+            prompt: "Tell me a joke about Lord of the rings",
             skills: [],
             outputSchema: z.object({ joke: z.string() })
         })
@@ -59,12 +47,40 @@ createJob({
 
         // console.log(work)
 
-        // await sleep("1m")
-
-        await toolbox.slack.sendMessage({
-            channelId: SlackChannel.AllTerseInc.channelId,
-            message: "this job is done! we are DURABLE"
+        const result = await waitForInput({
+            via: slack({ channel: SlackChannel.AllTerseInc.channelId }),
+            prompt: "What is the meaning of life?",
+            details: {
+                test: "This is a test of the waitForInput function"
+            },
+            options: [
+                { id: "approve", label: "Approve" },
+                { id: "reject", label: "Reject" },
+                { id: "changes", label: "Request changes", freeText: true }
+            ]
         })
+
+        if (result.choice === "approve") {
+            await toolbox.slack.sendMessage({
+                channelId: SlackChannel.AllTerseInc.channelId,
+                message: "this job is approved!"
+            })
+        } else if (result.choice === "changes") {
+            const changes = result.text ?? ""
+            await toolbox.slack.sendMessage({
+                channelId: SlackChannel.AllTerseInc.channelId,
+                message: "this job needs changes!" + changes
+            })
+        } else {
+            await toolbox.slack.sendMessage({
+                channelId: SlackChannel.AllTerseInc.channelId,
+                message: "this job is rejected!"
+            })
+        }
+
+        console.log("sleeping for 1 minute")
+        await sleep("1m")
+        console.log("sleep completed")
 
         console.log(response.joke)
     }
@@ -72,3 +88,66 @@ createJob({
 
 // Ready to ship? Run `terse deploy` to push this job to Terse so its triggers
 // start firing in the cloud. Re-run it any time you change a job.
+
+createJob({
+    name: "Basic Test - Hello World",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    onTrigger: async event => {
+        console.log("Hello, world!")
+    }
+})
+
+createJob({
+    name: "Basic Test - Failure, sleep() on non durable job",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    onTrigger: async event => {
+        console.log("trying to sleep in non durable job")
+        await sleep(1000)
+        console.log("sleep in non durable job completed")
+    }
+})
+
+createJob({
+    name: "Basic Test - Failure, waitForInput() on non durable job",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    onTrigger: async event => {
+        console.log("trying to waitForInput in non durable job")
+        await waitForInput({
+            via: slack({ channel: SlackChannel.AllTerseInc.channelId }),
+            prompt: "What is the meaning of life?",
+            options: [
+                { id: "approve", label: "Approve" },
+                { id: "reject", label: "Reject" },
+                { id: "changes", label: "Request changes", freeText: true }
+            ]
+        })
+    }
+})
+
+createJob({
+    name: "Basic Test - Failure, jobStep() on non durable job",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    onTrigger: async event => {
+        console.log("trying to jobStep in non durable job")
+        await jobStep({
+            input: "test",
+            inputSchema: z.string(),
+            outputSchema: z.string(),
+            run: async (input: string) => {
+                console.log("jobStep in non durable job completed")
+                return "work is done " + input
+            }
+        })
+    }
+})
+
+createJob({
+    name: "Basic Test - Success. sleep in durable job works",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    durable: true,
+    onTrigger: async event => {
+        console.log("trying to sleep in durable job")
+        await sleep("2m")
+        console.log("sleep in durable job completed")
+    }
+})

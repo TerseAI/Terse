@@ -1,5 +1,4 @@
-import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { UserSession } from "terse-types/types"
+import { SdkInputResponsePayload, UserSession } from "terse-types/types"
 
 import logger from "../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
@@ -8,7 +7,7 @@ import { shellQuote } from "../common/shellEscape"
 import { db } from "../loaders/prisma"
 import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../loaders/socket"
 import { StreamEventEmitter } from "../modules/agents/AgentRunner/StreamProcessor"
-import { attachProjectDeployToRun, finalizeRunStatus } from "../modules/agents/AgentRunner/runHistory"
+import { attachProjectDeployToRun } from "../modules/agents/AgentRunner/runHistory"
 import { classifyAgentError } from "../modules/agents/agentErrorUtils"
 import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../modules/agents/systemEvents/processOutputSystemEvent"
 import { createSandboxToken } from "../modules/auth/helpers/apiTokens"
@@ -18,6 +17,7 @@ import { resolveUserInOrg } from "../utility/identity"
 
 import { getSocketIO } from "./CacheInvalidationService"
 import { SecretService } from "./SecretService"
+import { resolveRunStatus } from "./resolveRunStatus"
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
@@ -34,6 +34,12 @@ interface SdkJobExecutionParams {
     user: UserSession
     jobName: string
     restoreImageId?: string
+    hookResume?: HookResume
+}
+
+export type HookResume = {
+    token: string
+    payload: SdkInputResponsePayload
 }
 
 type SdkSourceImageRecord = {
@@ -60,7 +66,7 @@ export class SdkJobExecutionService {
     }
 
     async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { runId, agent, userId, user, jobName, restoreImageId } = params
+        const { runId, agent, userId, user, jobName, restoreImageId, hookResume } = params
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
@@ -83,7 +89,7 @@ export class SdkJobExecutionService {
 
             const sandboxBackendUrl = getSandboxProvider().supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
 
-            const sandboxEnv = {
+            const sandboxEnv: Record<string, string> = {
                 // Make sure to keep this first as the sandbox env,
                 // so that the following env variables take precedence.
                 ...projectSecretValues,
@@ -94,6 +100,13 @@ export class SdkJobExecutionService {
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1"
+            }
+            // Interim transport: the response payload rides sandbox env vars because there is no
+            // server-side store for it yet. Once the shared Redis cache lands, stash the payload
+            // there keyed by token and pass only the token; the CLI fetches it over the authed API.
+            if (hookResume) {
+                sandboxEnv.TERSE_RESUME_HOOK_TOKEN = hookResume.token
+                sandboxEnv.TERSE_RESUME_HOOK_PAYLOAD = JSON.stringify(hookResume.payload)
             }
 
             const result = await this.executeWithSourceImage({
@@ -109,15 +122,7 @@ export class SdkJobExecutionService {
                 restoreImageId
             })
 
-            if (result.exitCode === 0) {
-                await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
-                emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
-                logger.info("SDK sandbox: terse run completed", { runId, agentId: agent.id, runtime: executor.runtime })
-            } else {
-                const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
-                await finalizeRunFailure(runId, classifyAgentError(new Error(errorMsg)), user, agent)
-                logger.error("SDK sandbox: terse run failed", { runId, agentId: agent.id, exitCode: result.exitCode, runtime: executor.runtime })
-            }
+            await resolveRunStatus({ runId, agent, orgId, user, result, runtimeName: executor.runtime })
 
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
         } catch (error) {
@@ -475,23 +480,7 @@ export class SdkJobExecutionService {
     }
 }
 
-// Snapshots a suspending run's journal directory off its live sandbox and returns the
-// resulting image id, which rides the scheduler payload to the resume call. Returns
-// undefined when the run has no live sandbox (nothing to snapshot).
-export async function snapshotRunJournalForSuspend(runId: string): Promise<string | undefined> {
-    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
-    const projectId = run?.automation?.project_id
-    if (!projectId) return undefined
-
-    const provider = getSandboxProvider()
-    const app = await provider.getOrCreateApp("terse-sdk-sandbox")
-    const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
-    if (!sandbox) return undefined
-
-    return provider.snapshotDirectory(sandbox, runJournalDir(runId))
-}
-
-export async function resumeSdkRun(runId: string, restoreImageId?: string): Promise<void> {
+export async function resumeSdkRun(runId: string, restoreImageId?: string, hookResume?: HookResume): Promise<void> {
     if (!restoreImageId) {
         logger.warn("resumeSdkRun: missing snapshot image, cannot resume", { runId })
         return
@@ -531,6 +520,7 @@ export async function resumeSdkRun(runId: string, restoreImageId?: string): Prom
         userId: agent.user_id,
         user,
         jobName: agent.name,
-        restoreImageId
+        restoreImageId,
+        hookResume
     })
 }

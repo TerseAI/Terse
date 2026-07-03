@@ -5,10 +5,12 @@ import { SkillConfigData } from "terse-types/Configs"
 import {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
+    SdkInputRequestRegisterResponse,
     SdkJobSuspendResponseBody,
     UserSession,
     sdkAgentRunRequestBodySchema,
     sdkApprovalDecisionRequestBodySchema,
+    sdkInputRequestRegisterBodySchema,
     sdkJobSuspendRequestBodySchema
 } from "terse-types/types"
 import { z } from "zod"
@@ -27,7 +29,9 @@ import { CancelReason } from "../../../modules/agents/cancellation/RunCancellati
 import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellation/runCancellationEffects"
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
-import { resumeSdkRun, snapshotRunJournalForSuspend } from "../../../services/SdkJobExecutionService"
+import { registerInputRequest } from "../../../services/InputRequestService"
+import { resumeSdkRun } from "../../../services/SdkJobExecutionService"
+import { snapshotRunJournalForSuspend } from "../../../services/resolveRunStatus"
 import { settings } from "../../../settings"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
 
@@ -400,8 +404,13 @@ export async function handleJobSuspension(req: Request, res: Response) {
     try {
         const resumeUrl = `${settings.urls.backend}${buildRoute(ApiRoutes.SDK.RESUME, {})}`
         const imageId = await snapshotRunJournalForSuspend(runId)
-        await markRunSuspended(runId)
-        await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey, imageId })
+        if (!imageId) {
+            // Parking without a journal snapshot would leave the run unresumable; refuse loudly.
+            logger.error("Refusing to suspend run without a journal snapshot", { runId })
+            return res.status(500).json({ success: false, error: "Could not snapshot the run journal; suspension aborted." })
+        }
+        await markRunSuspended(runId, imageId, { kind: "timer", delaySeconds })
+        await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey })
 
         const response: SdkJobSuspendResponseBody = { success: true }
         return res.status(200).json(response)
@@ -428,9 +437,30 @@ export async function handleJobResumption(req: Request, res: Response) {
         logger.warn("Failed to delete suspension scheduler job", { error, runId })
     }
 
-    const claimed = await claimSuspendedRun(runId)
-    if (!claimed) return res.status(200).json({ success: true })
+    // The suspension row is the source of truth for the snapshot; the payload imageId
+    // only covers suspensions parked before run_suspensions was introduced.
+    const claim = await claimSuspendedRun(runId)
+    if (!claim.claimed) return res.status(200).json({ success: true })
 
-    void resumeSdkRun(runId, imageId).catch(error => logger.error("Failed to resume suspended run", { error, runId }))
+    void resumeSdkRun(runId, claim.suspendImageId ?? imageId).catch(error => logger.error("Failed to resume suspended run", { error, runId }))
     return res.status(200).json({ success: true })
+}
+
+export async function handleInputRequestRegister(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user?.organizationId) return res.status(401).json({ success: false, error: "Unauthorized" })
+
+    const parsed = sdkInputRequestRegisterBodySchema.safeParse(req.body)
+    if (!parsed.success) {
+        return res.status(400).json({ success: false, error: "Invalid request body", details: parsed.error.issues.map(i => i.message) })
+    }
+
+    const result = await registerInputRequest(user.organizationId, parsed.data)
+    if (!result.ok) {
+        const response: SdkInputRequestRegisterResponse = { success: false, error: result.error }
+        return res.status(422).json(response)
+    }
+
+    const response: SdkInputRequestRegisterResponse = { success: true, delivery: result.delivery }
+    return res.status(200).json(response)
 }

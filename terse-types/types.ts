@@ -745,6 +745,60 @@ export const sdkJobSuspendResponseBodySchema = z.object({
 })
 export type SdkJobSuspendResponseBody = z.infer<typeof sdkJobSuspendResponseBodySchema>
 
+export const sdkInputRequestOptionSchema = z.object({
+    id: z.string().min(1),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    freeText: z.boolean().optional()
+})
+export type SdkInputRequestOption = z.infer<typeof sdkInputRequestOptionSchema>
+
+export const sdkInputRequestTargetSchema = z.discriminatedUnion("provider", [
+    z.object({
+        provider: z.literal("slack"),
+        channelId: z.string().min(1)
+    })
+])
+export type SdkInputRequestTarget = z.infer<typeof sdkInputRequestTargetSchema>
+
+export const sdkInputRequestRegisterBodySchema = z.object({
+    token: z.string().min(1),
+    runId: z.string().min(1),
+    prompt: z.string().min(1),
+    details: z.record(z.string(), z.string()).optional(),
+    options: z.array(sdkInputRequestOptionSchema).min(1),
+    via: sdkInputRequestTargetSchema
+})
+export type SdkInputRequestRegisterBody = z.infer<typeof sdkInputRequestRegisterBodySchema>
+
+// One member per input provider; adding a provider extends this union and the target union above.
+export const sdkInputRequestDeliverySchema = z.discriminatedUnion("provider", [
+    z.object({
+        provider: z.literal("slack"),
+        channelId: z.string().min(1),
+        messageTs: z.string().min(1)
+    })
+])
+export type SdkInputRequestDelivery = z.infer<typeof sdkInputRequestDeliverySchema>
+
+export const sdkInputRequestRegisterResponseSchema = z.object({
+    success: z.boolean(),
+    delivery: sdkInputRequestDeliverySchema.optional(),
+    error: z.string().optional()
+})
+export type SdkInputRequestRegisterResponse = z.infer<typeof sdkInputRequestRegisterResponseSchema>
+
+export const sdkInputResponsePayloadSchema = z.object({
+    choice: z.string().min(1),
+    text: z.string().optional(),
+    respondent: z.object({
+        provider: z.string(),
+        userId: z.string(),
+        displayName: z.string().optional()
+    })
+})
+export type SdkInputResponsePayload = z.infer<typeof sdkInputResponsePayloadSchema>
+
 export const sdkCreateProjectRequestBodySchema = z.object({
     name: z.string().min(1)
 })

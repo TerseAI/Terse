@@ -41,5 +41,11 @@ export const directJobRuntime: JobRuntime = {
         throw new CliError("resume_not_durable", "Only durable jobs can be resumed.", {
             detail: "This run belongs to a non-durable job — non-durable jobs run to completion and never suspend."
         })
+    },
+
+    async resumeRunWithInput() {
+        throw new CliError("resume_not_durable", "Only durable jobs can be resumed.", {
+            detail: "This run belongs to a non-durable job — non-durable jobs run to completion and never suspend."
+        })
     }
 }

@@ -162,6 +162,7 @@
         "LISTEN": "/sdk/listen",
         "SUSPEND": "/sdk/suspend",
         "RESUME": "/sdk/resume",
+        "INPUT_REQUEST": "/sdk/input-request",
         "CREATE_PROJECT": "/sdk/projects",
         "DEPLOY": "/sdk/deploy",
         "IDENTIFY": "/sdk/auth/identify",
