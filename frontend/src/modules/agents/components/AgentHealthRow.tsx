@@ -21,7 +21,8 @@ export const ALL_RUN_STATUSES = new Set([
     RunHistoryStatus.CANCELLED,
     RunHistoryStatus.SKIPPED,
     RunHistoryStatus.IN_PROGRESS,
-    RunHistoryStatus.AWAITING_APPROVAL
+    RunHistoryStatus.AWAITING_APPROVAL,
+    RunHistoryStatus.SUSPENDED
 ])
 
 export type HealthStatus = "failing" | "healthy" | "no_runs" | "paused"
@@ -220,6 +221,8 @@ function runDotColor(status: RunHistoryStatus) {
             return "bg-accent-tertiary animate-pulse"
         case RunHistoryStatus.AWAITING_APPROVAL:
             return "bg-warning"
+        case RunHistoryStatus.SUSPENDED:
+            return "bg-warning/70"
         case RunHistoryStatus.CANCELLED:
             return "bg-muted-foreground/50"
         case RunHistoryStatus.SKIPPED:

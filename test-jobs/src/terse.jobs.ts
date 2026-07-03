@@ -78,33 +78,9 @@ createJob({
             })
         }
 
-        const result2 = await waitForInput({
-            via: slack({ channel: SlackChannel.AllTerseInc.channelId }),
-            prompt: "This is a second prompt for testing the waitForInput function",
-            options: [
-                { id: "approve", label: "Approve" },
-                { id: "reject", label: "Reject" },
-                { id: "changes", label: "Request changes", freeText: true }
-            ]
-        })
-
-        if (result2.choice === "approve") {
-            await toolbox.slack.sendMessage({
-                channelId: SlackChannel.AllTerseInc.channelId,
-                message: "this job is approved!"
-            })
-        } else if (result2.choice === "changes") {
-            const changes = result2.text ?? ""
-            await toolbox.slack.sendMessage({
-                channelId: SlackChannel.AllTerseInc.channelId,
-                message: "this job needs changes!" + changes
-            })
-        } else {
-            await toolbox.slack.sendMessage({
-                channelId: SlackChannel.AllTerseInc.channelId,
-                message: "this job is rejected!"
-            })
-        }
+        console.log("sleeping for 1 minute")
+        await sleep("1m")
+        console.log("sleep completed")
 
         console.log(response.joke)
     }
