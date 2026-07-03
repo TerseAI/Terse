@@ -7,7 +7,6 @@ import { fetchWithAuth, readApiKeyOrBail } from "../../../api.js"
 import { CliError } from "../../../cliError.js"
 import { BACKEND_URL } from "../../../config.js"
 import { getDurableRuntime } from "../durableRuntime.js"
-import { setParkListener } from "../parkSignals.js"
 import { readRunStatus, resolveWorkflowRunId, rewindFailedRun } from "../rewindRun.js"
 
 import { type JobRuntime, type ResumeHookInput, type ResumeRunOptions, formatErrorDetail } from "./JobRuntime.js"
@@ -24,7 +23,8 @@ export const durableJobRuntime: JobRuntime = {
                 if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
                 const rt = await getDurableRuntime(process.cwd())
                 await rt.start()
-                await driveUntilSettledOrParked(() => rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event))
+                const outcome = await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
+                if (outcome.kind === "parked") await parkRun()
             })
         } catch (error) {
             if (error instanceof CliError) throw error
@@ -64,38 +64,16 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
             } else {
                 await rt.start()
             }
-            const outcome = await driveUntilSettledOrParked(() => rt.resumeRun(workflowRunId))
-            if (outcome === "settled" && isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
+            const outcome = await rt.resumeRun(workflowRunId)
+            if (outcome.kind === "parked") {
+                await parkRun()
+                return
+            }
+            if (isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
         })
     } catch (error) {
         if (error instanceof CliError) throw error
         throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })
-    }
-}
-
-// Drives the run to one of its two possible outcomes. A run that parks on an input hook
-// never settles (its payload arrives in a future sandbox), so the park event — fired by
-// the workflow handler wrapper when a pass ends having scheduled nothing while an
-// unresolved hook exists — is the second exit: call /sdk/park and return, letting the
-// process exit cleanly.
-async function driveUntilSettledOrParked(drive: () => Promise<unknown>): Promise<"settled" | "parked"> {
-    // Local runs have no backend to park against; waitForInput never creates hooks there
-    // (it prompts in the terminal instead).
-    if (!process.env.TERSE_RUN_ID) {
-        await drive()
-        return "settled"
-    }
-
-    const parked = new Promise<"parked">(resolve => {
-        setParkListener(() => resolve("parked"))
-    })
-
-    try {
-        const outcome = await Promise.race([drive().then(() => "settled" as const), parked])
-        if (outcome === "parked") await parkRun()
-        return outcome
-    } finally {
-        setParkListener(undefined)
     }
 }
 
