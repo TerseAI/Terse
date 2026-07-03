@@ -96,8 +96,8 @@ createJob({
                 channelId: SlackChannel.MpdmOlivierTerse2Terse3Thomas1.channelId,
                 message: "this job is approved!"
             })
-        } else if (result.choice === "changes") {
-            const changes = result.text ?? ""
+        } else if (result2.choice === "changes") {
+            const changes = result2.text ?? ""
             await toolbox.slack.sendMessage({
                 channelId: SlackChannel.MpdmOlivierTerse2Terse3Thomas1.channelId,
                 message: "this job needs changes!" + changes
@@ -174,7 +174,7 @@ createJob({
     durable: true,
     onTrigger: async event => {
         console.log("trying to sleep in durable job")
-        await sleep(1000)
+        await sleep("2m")
         console.log("sleep in durable job completed")
     }
 })
