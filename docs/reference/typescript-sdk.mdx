@@ -16,6 +16,7 @@ After `terse generate`, integration triggers and skills are grouped under top-le
 Import these from `terse-sdk`:
 
 - `createJob`, `CreateJobParameters`: register a workflow (call at module top level or from imported modules)
+- `sleep`, `jobStep`, `waitForInput`, `slack`: durable-only helpers for timed waits, custom steps, and human input prompts. See [Durability](/core-concepts/durability)
 - `generateText`: the shorthand for agentic runs — one prompt in, final output out, with the model free to call any tool granted via `skills`. Use this for almost everything; see [`generateText`](#generatetext) below
 - `Terse`, `TERSE_JOB_WEBHOOK_TRIGGER_PATH`: client and mount path for `handleTrigger` when you self-host the data plane webhook endpoint
 - `TerseAgent`, `EventType`: the lower-level agent that `generateText` wraps. Reach for `TerseAgent.create()` directly only when you need to stream with `run()` or reuse one agent instance across calls; `EventType` enumerates values on streamed results
@@ -74,6 +75,7 @@ Duplicate `name` values throw an error when the second job registers. At most **
 | `states`    | `{ key, value }[]`                              | Optional typed persistent state. `value` is a Zod schema. See [job state](#job-state).            |
 | `filter`    | `(event, state) => boolean \| Promise<boolean>` | Optional function to skip the run for specific events. See [filtering events](#filtering-events).  |
 | `onTrigger` | `(event, state) => Promise<void>`               | The workflow handler. Called once per trigger event.                                              |
+| `durable`   | `boolean`                                       | Optional. When `true`, the job can use `sleep()`, `jobStep()`, and `waitForInput()`. See [Durability](/core-concepts/durability). |
 
 To point the SDK at a self-hosted control plane, set `TERSE_BACKEND_URL` (it defaults to `https://api.useterse.ai`). To route execution to a self-hosted data plane, set `remoteServerUrl` in `terse.config.json` instead.
 
@@ -327,6 +329,35 @@ createJob({
 ```
 
 Use `toolApprovals` for workflows that write to production systems during early development, or when compliance requires a human in the loop.
+
+## Durable helpers
+
+These functions are only available when `durable: true` is set on the job. Calling them in a non-durable job throws `DurableOnlyError`.
+
+### `sleep(duration)`
+
+Suspends the run until the timer fires. Accepts `ms`-style strings (`"30s"`, `"5m"`, `"1h"`, `"3d"`), a millisecond number, or a `Date`. Locally (`terse test`, no `TERSE_RUN_ID`), the wait is skipped and a log line notes what production would have done.
+
+### `jobStep(...)`
+
+Wraps custom side-effectful code as a durable step. See [Durability — Wrapping your own code with jobStep](/core-concepts/durability#wrapping-your-own-code-with-jobstep).
+
+### `waitForInput(...)`
+
+Posts an interactive input request and suspends until a human responds. Returns a typed `InputResponse` with `choice`, optional `text` (when the selected option has `freeText: true`), `respondent`, and `delivery`.
+
+| Field     | Type                              | Description                                                                 |
+| --------- | --------------------------------- | --------------------------------------------------------------------------- |
+| `via`     | `InputTarget`                     | Where to deliver the prompt. Use `slack({ channel })` with a channel id.    |
+| `prompt`  | `string`                          | The question shown to the respondent.                                       |
+| `details` | `Record<string, string>`          | Optional key/value pairs rendered alongside the prompt.                     |
+| `options` | `InputOption[]`                   | Action buttons. Each has `id`, `label`, optional `description`, and optional `freeText`. |
+
+`result.choice` is typed to the union of your option ids. See [Durability — Waiting for human input](/core-concepts/durability#waiting-for-human-input).
+
+### `slack({ channel })`
+
+Target constructor for `waitForInput`. Pass a Slack channel id (for example `SlackChannel.DealDesk.channelId` from generated helpers).
 
 ## Events
 

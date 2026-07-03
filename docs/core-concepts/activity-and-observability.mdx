@@ -19,6 +19,7 @@ Each run moves through a defined set of statuses:
 | **Failed** | The run threw an error or a tool call failed |
 | **Skipped** | The `filter` function returned `false`. No handler executed, no tokens spent |
 | **Awaiting approval** | A tool requiring [human approval](/core-concepts/human-in-the-loop) paused the run |
+| **Suspended** | A durable run is paused — waiting on a timer (`sleep()`) or a human response (`waitForInput()`) |
 | **Cancelled** | The run was manually stopped |
 
 ## What gets recorded

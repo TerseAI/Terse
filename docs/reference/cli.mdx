@@ -529,6 +529,25 @@ Common errors:
 
 Press Ctrl-C to stop listening.
 
+### `terse resume --run-id <id>`
+
+Resumes an interrupted durable run from its journal in `.terse/data`.
+
+```bash
+terse resume --run-id wrun_abc123
+```
+
+Use this to continue a run that was paused by `sleep()` or `waitForInput()`, or to re-drive a failed durable run under your current local code. Pending and running runs resume where they left off; completed steps replay from the journal instead of re-executing.
+
+Options:
+
+| Flag                  | Description                              |
+| --------------------- | ---------------------------------------- |
+| `-v, --verbose`       | Show job stream output during the run (default: enabled) |
+| `--no-verbose`        | Hide job stream output                   |
+
+The run's journal must be present locally (for example restored from a snapshot). In production, the Terse Cloud data plane resumes suspended runs automatically when a timer fires or a human responds in Slack.
+
 ### `terse replay [run-id]`
 
 Fetches the stored trigger event for one past run and re-executes the matching local workflow on your machine with verbose output.
@@ -558,7 +577,7 @@ Options:
 | `--json`          | Print JSON instead of a table                                                                             |
 | `--limit <n>`     | Max runs to return. Default 20, max 100                                                                   |
 | `--page <n>`      | Page number, 1-indexed                                                                                    |
-| `--status <list>` | Comma-separated statuses: `success`, `failed`, `cancelled`, `skipped`, `in_progress`, `awaiting_approval` |
+| `--status <list>` | Comma-separated statuses: `success`, `failed`, `cancelled`, `skipped`, `in_progress`, `awaiting_approval`, `suspended` |
 | `--since <iso>`   | Only runs at or after this ISO timestamp                                                                  |
 | `--until <iso>`   | Only runs at or before this ISO timestamp                                                                 |
 | `--query <q>`     | Free-text search across trigger, decision, and event fields                                               |
