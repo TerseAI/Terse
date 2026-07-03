@@ -17,7 +17,6 @@ export const durableJobRuntime: JobRuntime = {
         const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
         const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
 
-        startHandleDebugDump()
         try {
             await withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
                 if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
@@ -74,16 +73,6 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
         if (error instanceof CliError) throw error
         throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })
     }
-}
-
-async function parkRun(): Promise<void> {
-    const runId = process.env.TERSE_RUN_ID
-    if (!runId) return
-    const apiKey = readApiKeyOrBail()
-    const body: SdkJobParkRequestBody = { runId }
-    console.log(chalk.dim(`  Calling ${ApiRoutes.SDK.PARK} for run ${runId}`))
-    await fetchWithAuth(ApiRoutes.SDK.PARK, apiKey, body, "POST")
-    console.log(chalk.yellow("  Run parked waiting for input; sandbox suspending"))
 }
 
 function resolveDataDir(): string {
