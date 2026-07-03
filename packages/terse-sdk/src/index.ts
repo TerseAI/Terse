@@ -733,6 +733,12 @@ export class DurableOnlyError extends Error {
     }
 }
 
+// The durable runtime injects its sleep implementation on globalThis; its presence is
+// how we detect that we're running inside a durable job.
+function isDurableExecution(): boolean {
+    return Boolean(Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP")))
+}
+
 export function jobStep<I extends z.ZodType, O>(opts: { input: z.infer<I>; inputSchema: I; outputSchema?: z.ZodType<O>; run: (input: z.infer<I>) => Promise<O> }): Promise<O>
 export function jobStep<O>(opts: { outputSchema?: z.ZodType<O>; run: () => Promise<O> }): Promise<O>
 export function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
@@ -751,7 +757,7 @@ async function runJobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outp
 }
 
 export function sleep(duration: string | number | Date): Promise<void> {
-    if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
+    if (!isDurableExecution()) {
         throw new DurableOnlyError("sleep() is only available in durable jobs. Add `durable: true` to this job.")
     }
     // Locally (`terse test`, no TERSE_RUN_ID) there is no suspend machinery, so skip the
@@ -809,7 +815,7 @@ export type WaitForInputParams<Options extends readonly InputOption[], Target ex
 export function waitForInput<const Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
 ): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
-    if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
+    if (!isDurableExecution()) {
         throw new DurableOnlyError("waitForInput() is only available in durable jobs. Add `durable: true` to this job.")
     }
     if (!process.env.TERSE_RUN_ID) {
@@ -818,9 +824,9 @@ export function waitForInput<const Options extends readonly InputOption[], Targe
     return waitForInputDurable(params)
 }
 
-// No sleep, no race, and no park signal here on purpose. The hook entity this writes to
-// the journal IS the park request: the CLI host watches for "runtime idle + unresolved
-// hook on disk" and calls /sdk/park itself. Workflow code stays pure replayable logic.
+// No sleep, no race, no park signal: the hook entity this journals IS the wait. The run
+// parks by draining its queue and exiting; the backend reads the journal at exit and
+// suspends the sandbox.
 async function waitForInputDurable<Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
 ): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
@@ -831,7 +837,6 @@ async function waitForInputDurable<Options extends readonly InputOption[], Targe
     }
     const typedDelivery = delivery as DeliveryFor<Target>
 
-    console.log(`[terse] waitForInput: waiting for a response (hook ${hook.token})`)
     const payload = await hook
     hook.dispose()
     return {

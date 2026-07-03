@@ -11,7 +11,6 @@ import {
     sdkAgentRunRequestBodySchema,
     sdkApprovalDecisionRequestBodySchema,
     sdkInputRequestRegisterBodySchema,
-    sdkJobParkRequestBodySchema,
     sdkJobSuspendRequestBodySchema
 } from "terse-types/types"
 import { z } from "zod"
@@ -31,7 +30,8 @@ import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellat
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
 import { registerInputRequest } from "../../../services/InputRequestService"
-import { resumeSdkRun, snapshotRunJournalForSuspend } from "../../../services/SdkJobExecutionService"
+import { resumeSdkRun } from "../../../services/SdkJobExecutionService"
+import { snapshotRunJournalForSuspend } from "../../../services/resolveRunStatus"
 import { settings } from "../../../settings"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
 
@@ -467,35 +467,3 @@ export async function handleInputRequestRegister(req: Request, res: Response) {
     return res.status(200).json(response)
 }
 
-// Parks a run that is blocked on an unresolved input hook: snapshot + mark suspended.
-// Unlike /sdk/suspend there is no timer to schedule — the wake-up comes from a human
-// response — so this endpoint works without Cloud Scheduler.
-export async function handleJobPark(req: Request, res: Response) {
-    const user = req.session?.user
-    if (!user?.organizationId) return res.status(401).json({ success: false, error: "Unauthorized" })
-
-    const parsed = sdkJobParkRequestBodySchema.safeParse(req.body)
-    if (!parsed.success) {
-        return res.status(400).json({ success: false, error: "Invalid request body", details: parsed.error.issues.map(i => i.message) })
-    }
-
-    const { runId } = parsed.data
-    const run = await db().run_history_records.findFirst({
-        where: { id: runId, automation: { organization_id: user.organizationId } },
-        select: { id: true }
-    })
-    if (!run) return res.status(404).json({ success: false, error: "Run not found" })
-
-    try {
-        const imageId = await snapshotRunJournalForSuspend(runId)
-        if (!imageId) {
-            logger.error("Refusing to park run without a journal snapshot", { runId })
-            return res.status(500).json({ success: false, error: "Could not snapshot the run journal; park aborted." })
-        }
-        await markRunSuspended(runId, imageId)
-        return res.status(200).json({ success: true })
-    } catch (error) {
-        logger.error("Failed to park run", { error, runId })
-        return res.status(500).json({ success: false, error: extractErrorMessage(error) })
-    }
-}

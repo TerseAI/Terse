@@ -11,7 +11,6 @@ import { setWorld } from "workflow/runtime"
 import { createTerseWorld } from "../../terseWorld.js"
 
 import { transformJobSource } from "./jobMacro.js"
-import { setParkListener, trackStepHandler, trackWorkflowHandler } from "./parkSignals.js"
 import { TerseWorkflowBuilder } from "./terseWorkflowBuilder.js"
 
 let runtimePromise: Promise<DurableRuntime> | null = null
@@ -28,10 +27,9 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     const world = createTerseWorld()
     setWorld(world)
 
-    const dataDir = process.env.WORKFLOW_LOCAL_DATA_DIR ?? path.join(cwd, ".terse", "data")
     const require = createRequire(import.meta.url)
-    world.registerHandler("__wkf_step_", trackStepHandler(require(path.join(out, "steps.cjs")).POST))
-    world.registerHandler("__wkf_workflow_", trackWorkflowHandler(require(path.join(out, "workflows.cjs")).POST, dataDir))
+    world.registerHandler("__wkf_step_", require(path.join(out, "steps.cjs")).POST)
+    world.registerHandler("__wkf_workflow_", require(path.join(out, "workflows.cjs")).POST)
 
     const manifest = JSON.parse(fs.readFileSync(path.join(out, "manifest.json"), "utf8"))
     const workflowIdByJob = new Map<string, string>()
@@ -59,21 +57,6 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
         await world.start?.()
     }
 
-    // A drive has two endings: the run completes, or it parks on an input hook — in which
-    // case returnValue never resolves and the park event (from the workflow handler
-    // wrapper) is the terminal signal instead.
-    const driveToOutcome = (drive: () => Promise<unknown>): Promise<DriveOutcome> => {
-        return new Promise<DriveOutcome>((resolve, reject) => {
-            setParkListener(() => {
-                setParkListener(undefined)
-                resolve({ kind: "parked" })
-            })
-            drive()
-                .then(value => resolve({ kind: "completed", value }), reject)
-                .finally(() => setParkListener(undefined))
-        })
-    }
-
     return {
         start: startWorld,
         dispatchJob: async (jobName, ctx, event) => {
@@ -84,7 +67,7 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             if (!job) throw new Error(`No job was registered with name "${jobName}".`)
 
             const state = __buildJobStateAccessor(job.states ?? [])
-            if (job?.filter && !(await job.filter(createSDKTrigger(event), state))) return { kind: "completed", value: { status: "ok", filtered: true } }
+            if (job?.filter && !(await job.filter(createSDKTrigger(event), state))) return { filtered: true, awaitResult: async () => ({ status: "ok", filtered: true }) }
 
             process.env.TERSE_BACKEND_URL ??= ctx.apiBaseUrl
             const attributes: Record<string, string> = { sessionId: ctx.sessionId }
@@ -96,24 +79,19 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             if (ctx.jobName) attributes.jobName = ctx.jobName
             if (ctx.projectId) attributes.projectId = ctx.projectId
 
-            return driveToOutcome(async () => {
-                const run = await start({ workflowId }, [event], { attributes })
-                return run.returnValue
-            })
+            const run = await start({ workflowId }, [event], { attributes })
+            return { filtered: false, awaitResult: () => run.returnValue }
         },
-        resumeRun: workflowRunId => driveToOutcome(() => getRun(workflowRunId).returnValue),
-        // resumeHook auto re-queues the run, so this is a complete resume on its own.
+        awaitRunResult: workflowRunId => getRun(workflowRunId).returnValue,
         deliverInput: (token, payload) => resumeHook(token, payload).then(() => undefined),
         close: () => world.close?.() ?? Promise.resolve()
     }
 }
 
-export type DriveOutcome = { kind: "completed"; value: unknown } | { kind: "parked" }
-
 type DurableRuntime = {
     start: () => Promise<void>
-    dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<DriveOutcome>
-    resumeRun: (workflowRunId: string) => Promise<DriveOutcome>
+    dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<{ filtered: boolean; awaitResult: () => Promise<unknown> }>
+    awaitRunResult: (workflowRunId: string) => Promise<unknown>
     deliverInput: (token: string, payload: unknown) => Promise<void>
     close: () => Promise<void>
 }

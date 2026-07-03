@@ -1,11 +1,10 @@
 import chalk from "chalk"
 import path from "node:path"
-import { ApiRoutes } from "terse-types"
-import type { SdkJobParkRequestBody } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "../../../api.js"
+import { readApiKeyOrBail } from "../../../api.js"
 import { CliError } from "../../../cliError.js"
 import { BACKEND_URL } from "../../../config.js"
+import { isCliRunCommandEnabled } from "../../../env.js"
 import { getDurableRuntime } from "../durableRuntime.js"
 import { readRunStatus, resolveWorkflowRunId, rewindFailedRun } from "../rewindRun.js"
 
@@ -18,13 +17,16 @@ export const durableJobRuntime: JobRuntime = {
         const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
         const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
 
+        startHandleDebugDump()
         try {
             await withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
                 if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
                 const rt = await getDurableRuntime(process.cwd())
                 await rt.start()
-                const outcome = await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
-                if (outcome.kind === "parked") await parkRun()
+                const dispatched = await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
+
+                // We can't await in the Modal Sandbox. This polls, and a blocked run will never exit.
+                if (!isCliRunCommandEnabled()) await dispatched.awaitResult()
             })
         } catch (error) {
             if (error instanceof CliError) throw error
@@ -64,11 +66,8 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
             } else {
                 await rt.start()
             }
-            const outcome = await rt.resumeRun(workflowRunId)
-            if (outcome.kind === "parked") {
-                await parkRun()
-                return
-            }
+            if (isCliRunCommandEnabled()) return
+            await rt.awaitRunResult(workflowRunId)
             if (isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
         })
     } catch (error) {

@@ -6,7 +6,6 @@ import { ApiRoutes } from "terse-types"
 import type { SdkJobSuspendRequestBody, SdkJobSuspendResponseBody } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
-import { noteEnqueue } from "./providers/typescript/parkSignals.js"
 
 export type TerseWorld = LocalWorld
 
@@ -30,9 +29,6 @@ export function createTerseWorld(): TerseWorld {
 
 function terseQueue(baseQueue: Queue["queue"]): Queue["queue"] {
     return (name: ValidQueueName, message: QueuePayload, opts?: QueueOptions) => {
-        // Park detection counts every scheduled message: a workflow pass that enqueued
-        // anything is still making progress and must not be parked.
-        noteEnqueue()
         if (opts?.delaySeconds && opts.delaySeconds > SUSPEND_THRESHOLD_SECONDS) {
             return scheduleTerseTimer(name, opts).then(() => ({ messageId: null }))
         }

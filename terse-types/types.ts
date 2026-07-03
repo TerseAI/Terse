@@ -788,11 +788,6 @@ export const sdkInputRequestRegisterResponseSchema = z.object({
 })
 export type SdkInputRequestRegisterResponse = z.infer<typeof sdkInputRequestRegisterResponseSchema>
 
-export const sdkJobParkRequestBodySchema = z.object({
-    runId: z.string().min(1)
-})
-export type SdkJobParkRequestBody = z.infer<typeof sdkJobParkRequestBodySchema>
-
 export const sdkInputResponsePayloadSchema = z.object({
     choice: z.string().min(1),
     text: z.string().optional(),
