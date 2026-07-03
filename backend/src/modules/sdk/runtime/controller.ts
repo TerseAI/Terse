@@ -409,7 +409,7 @@ export async function handleJobSuspension(req: Request, res: Response) {
             logger.error("Refusing to suspend run without a journal snapshot", { runId })
             return res.status(500).json({ success: false, error: "Could not snapshot the run journal; suspension aborted." })
         }
-        await markRunSuspended(runId, imageId)
+        await markRunSuspended(runId, imageId, { kind: "timer", delaySeconds })
         await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey })
 
         const response: SdkJobSuspendResponseBody = { success: true }
@@ -437,14 +437,12 @@ export async function handleJobResumption(req: Request, res: Response) {
         logger.warn("Failed to delete suspension scheduler job", { error, runId })
     }
 
-    // The run record is the source of truth for the snapshot; the payload imageId only
-    // covers suspensions parked before suspend_image_id was introduced.
-    const record = await db().run_history_records.findUnique({ where: { id: runId }, select: { suspend_image_id: true } })
+    // The suspension row is the source of truth for the snapshot; the payload imageId
+    // only covers suspensions parked before run_suspensions was introduced.
+    const claim = await claimSuspendedRun(runId)
+    if (!claim.claimed) return res.status(200).json({ success: true })
 
-    const claimed = await claimSuspendedRun(runId)
-    if (!claimed) return res.status(200).json({ success: true })
-
-    void resumeSdkRun(runId, record?.suspend_image_id ?? imageId).catch(error => logger.error("Failed to resume suspended run", { error, runId }))
+    void resumeSdkRun(runId, claim.suspendImageId ?? imageId).catch(error => logger.error("Failed to resume suspended run", { error, runId }))
     return res.status(200).json({ success: true })
 }
 

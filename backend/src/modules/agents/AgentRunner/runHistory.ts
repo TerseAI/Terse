@@ -202,25 +202,55 @@ export async function markRunInProgress(runId: string): Promise<void> {
     })
 }
 
-export async function markRunSuspended(runId: string, suspendImageId: string): Promise<boolean> {
-    const result = await db().run_history_records.updateMany({
-        where: { id: runId, status: RunHistoryStatus.IN_PROGRESS },
-        data: { status: RunHistoryStatus.SUSPENDED, suspend_image_id: suspendImageId }
+export type RunSuspensionDetails = { kind: "input"; hookToken?: string } | { kind: "timer"; delaySeconds: number }
+
+export async function markRunSuspended(runId: string, suspendImageId: string, details: RunSuspensionDetails): Promise<boolean> {
+    const suspended = await db().$transaction(async tx => {
+        const result = await tx.run_history_records.updateMany({
+            where: { id: runId, status: RunHistoryStatus.IN_PROGRESS },
+            data: { status: RunHistoryStatus.SUSPENDED }
+        })
+        if (result.count === 0) return false
+        await tx.run_suspensions.create({
+            data: {
+                run_id: runId,
+                kind: details.kind,
+                suspend_image_id: suspendImageId,
+                hook_token: details.kind === "input" ? (details.hookToken ?? null) : null,
+                delay_seconds: details.kind === "timer" ? details.delaySeconds : null
+            }
+        })
+        return true
     })
-    if (result.count > 0) await emitRunHistoryInvalidation(runId)
-    return result.count > 0
+    if (suspended) await emitRunHistoryInvalidation(runId)
+    return suspended
 }
+
+export type SuspendedRunClaim = { claimed: false } | { claimed: true; suspendImageId?: string }
 
 // Atomically claims a suspended run for resumption. Only the caller that flips
 // suspended -> in_progress wins, which guarantees a single live sandbox per run
-// when a timer and another resume race.
-export async function claimSuspendedRun(runId: string): Promise<boolean> {
-    const result = await db().run_history_records.updateMany({
-        where: { id: runId, status: RunHistoryStatus.SUSPENDED },
-        data: { status: RunHistoryStatus.IN_PROGRESS }
+// when a timer and another resume race. Stamps the open suspension row and returns
+// its snapshot image.
+export async function claimSuspendedRun(runId: string): Promise<SuspendedRunClaim> {
+    const claim = await db().$transaction(async (tx): Promise<SuspendedRunClaim> => {
+        const result = await tx.run_history_records.updateMany({
+            where: { id: runId, status: RunHistoryStatus.SUSPENDED },
+            data: { status: RunHistoryStatus.IN_PROGRESS }
+        })
+        if (result.count === 0) return { claimed: false }
+
+        const suspension = await tx.run_suspensions.findFirst({
+            where: { run_id: runId, resumed_at: null },
+            orderBy: { created_at: "desc" }
+        })
+        if (!suspension) return { claimed: true }
+
+        await tx.run_suspensions.update({ where: { id: suspension.id }, data: { resumed_at: new Date() } })
+        return { claimed: true, suspendImageId: suspension.suspend_image_id }
     })
-    if (result.count > 0) await emitRunHistoryInvalidation(runId)
-    return result.count > 0
+    if (claim.claimed) await emitRunHistoryInvalidation(runId)
+    return claim
 }
 
 async function emitRunHistoryInvalidation(runId: string): Promise<void> {

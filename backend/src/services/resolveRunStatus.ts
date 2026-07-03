@@ -30,7 +30,8 @@ type ResolveRunStatusParams = {
 // the (final, since the process is dead) journal is the source of truth for which.
 export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<void> {
     const { runId, agent, orgId, user, result, runtimeName } = params
-    const verdict = await classifyRunExit(result, runId, agent.project.id)
+    const journal = result.exitCode === 0 ? await readRunJournalState(runId, agent.project.id) : null
+    const verdict = classifyRunExit(result, journal)
 
     switch (verdict) {
         case "failed_exit": {
@@ -51,7 +52,7 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
                 logger.error("SDK sandbox: parked run could not be snapshotted", { runId, agentId: agent.id })
                 return
             }
-            await markRunSuspended(runId, imageId)
+            await markRunSuspended(runId, imageId, { kind: "input", hookToken: journal?.hookToken })
             emitCacheInvalidationWithWildcard(orgId, "runHistory", agent.id)
             logger.info("SDK sandbox: run parked waiting for input", { runId, agentId: agent.id })
             return
@@ -87,17 +88,15 @@ export async function snapshotRunJournalForSuspend(runId: string): Promise<strin
 
 // helpers
 
-async function classifyRunExit(result: SandboxCommandResult, runId: string, projectId: string): Promise<RunVerdict> {
+function classifyRunExit(result: SandboxCommandResult, journal: RunJournalState | null): RunVerdict {
     if (result.exitCode !== 0) return "failed_exit"
-
-    const journal = await readRunJournalState(runId, projectId)
     if (journal?.status === "failed") return "failed_in_workflow"
     if (journal?.status === "running" && journal.awaitingHook) return "parked_on_input"
     if (journal?.status === "running") return "suspended_on_timer"
     return "completed"
 }
 
-type RunJournalState = { status: string; awaitingHook: boolean }
+type RunJournalState = { status: string; awaitingHook: boolean; hookToken?: string }
 
 // Reads world-local's journal off the sandbox filesystem: the run record's status field
 // (runs/*.json) and whether any unresolved hook entity remains (hooks/*.json; answered
@@ -112,7 +111,7 @@ async function readRunJournalState(runId: string, projectId: string): Promise<Ru
 
 async function readJournalFromSandbox(sandbox: Sandbox, runId: string): Promise<RunJournalState | null> {
     const journalDir = runJournalDir(runId)
-    const command = `grep -ho '"status": *"[a-z_]*"' ${shellQuote(journalDir)}/runs/*.json 2>/dev/null | head -1; echo ---; find ${shellQuote(journalDir)}/hooks -name '*.json' 2>/dev/null | head -1`
+    const command = `grep -ho '"status": *"[a-z_]*"' ${shellQuote(journalDir)}/runs/*.json 2>/dev/null | head -1; echo ---; grep -ho '"token": *"[^"]*"' ${shellQuote(journalDir)}/hooks/*.json 2>/dev/null | head -1`
     const proc = await sandbox.exec(["sh", "-c", command], { stdout: "pipe", stderr: "pipe" })
     const stdout = await proc.stdout.readText()
     await proc.wait()
@@ -120,5 +119,6 @@ async function readJournalFromSandbox(sandbox: Sandbox, runId: string): Promise<
     const [statusRaw = "", hookRaw = ""] = stdout.split("---")
     const status = statusRaw.match(/"status": *"([a-z_]+)"/)?.[1]
     if (!status) return null
-    return { status, awaitingHook: hookRaw.trim().length > 0 }
+    const hookToken = hookRaw.match(/"token": *"([^"]+)"/)?.[1]
+    return { status, awaitingHook: hookToken !== undefined, hookToken }
 }

@@ -38,17 +38,16 @@ export async function resolveInputRequest(params: { organizationId: string; runI
     let attempt = 0
     while (attempt < RESOLVE_CLAIM_ATTEMPTS) {
         attempt++
-        const claimed = await claimSuspendedRun(runId)
-        if (claimed) {
-            const record = await db().run_history_records.findUnique({ where: { id: runId }, select: { suspend_image_id: true } })
+        const claim = await claimSuspendedRun(runId)
+        if (claim.claimed) {
             // Suspension refuses to park without a snapshot, so a claimed run missing one is
             // corrupted state that can never resume; fail it loudly instead of dropping the response.
-            if (!record?.suspend_image_id) {
+            if (!claim.suspendImageId) {
                 logger.error("[InputRequest] Claimed suspended run has no journal snapshot", { runId, token })
                 await markRunFailed(runId, "Suspended run has no journal snapshot; the input response could not be delivered", "agent")
                 return "unresumable"
             }
-            void resumeSdkRun(runId, record.suspend_image_id, { token, payload: response }).catch(error => {
+            void resumeSdkRun(runId, claim.suspendImageId, { token, payload: response }).catch(error => {
                 logger.error("[InputRequest] Failed to resume run for input response", { error, runId, token })
             })
             return "resumed"
