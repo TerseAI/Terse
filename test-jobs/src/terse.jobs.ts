@@ -72,14 +72,6 @@ createJob({
             ]
         })
 
-        if (result.kind === "timeout") {
-            await toolbox.slack.sendMessage({
-                channelId: SlackChannel.AllTerseInc.channelId,
-                message: "this job timed out! we are DURABLE"
-            })
-            return
-        }
-
         if (result.choice === "approve") {
             await toolbox.slack.sendMessage({
                 channelId: SlackChannel.AllTerseInc.channelId,

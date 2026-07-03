@@ -13,9 +13,17 @@ export type ResumeRunOptions = {
     pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
 }
 
+export type ResumeHookInput = {
+    token: string
+    payload: unknown
+}
+
 export interface JobRuntime {
     executeJob(job: CreateJobParameters, runId: string | null, event: SerializedEvent, opts?: RunJobOptions): Promise<void>
+    // Wake a parked run and drive it (timer fired, or recovery).
     resumeRun(runId: string, opts?: ResumeRunOptions): Promise<void>
+    // Deliver a human response to the run's hook, then drive it (waitForInput answered).
+    resumeRunWithInput(runId: string, input: ResumeHookInput, opts?: ResumeRunOptions): Promise<void>
 }
 
 export function formatErrorDetail(error: unknown): string {

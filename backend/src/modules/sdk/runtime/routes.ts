@@ -6,8 +6,8 @@ import { handleMemoryDelete, handleMemoryGet, handleMemoryList, handleMemoryPut 
 import { handleStateGet, handleStatePut } from "../state/controller"
 
 import {
-    handleInputRequestExpire,
     handleInputRequestRegister,
+    handleJobPark,
     handleJobResumption,
     handleJobSuspension,
     handleSdkAgentRun,
@@ -28,7 +28,7 @@ router.get("/listen", limit, auth, handleSdkListen)
 router.post("/suspend", limit, auth, handleJobSuspension)
 router.post("/resume", limit, schedulerAuth, handleJobResumption)
 router.post("/input-request", limit, auth, handleInputRequestRegister)
-router.post("/input-request/expire", limit, auth, handleInputRequestExpire)
+router.post("/park", limit, auth, handleJobPark)
 
 router.post("/memory/list", limit, auth, handleMemoryList)
 router.post("/memory/get", limit, auth, handleMemoryGet)

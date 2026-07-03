@@ -101,6 +101,9 @@ export class SdkJobExecutionService {
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1"
             }
+            // Interim transport: the response payload rides sandbox env vars because there is no
+            // server-side store for it yet. Once the shared Redis cache lands, stash the payload
+            // there keyed by token and pass only the token; the CLI fetches it over the authed API.
             if (hookResume) {
                 sandboxEnv.TERSE_RESUME_HOOK_TOKEN = hookResume.token
                 sandboxEnv.TERSE_RESUME_HOOK_PAYLOAD = JSON.stringify(hookResume.payload)

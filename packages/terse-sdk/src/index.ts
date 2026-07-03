@@ -6,7 +6,6 @@ import type {
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
     SdkInputRequestDelivery,
-    SdkInputRequestExpireBody,
     SdkInputRequestRegisterBody,
     SdkInputRequestTarget,
     SdkInputResponsePayload,
@@ -793,21 +792,23 @@ export type InputOption<Id extends string = string> = {
 
 export type InputRespondent = { provider: string; userId: string; displayName?: string }
 
-export type InputDecision<Id extends string, Delivery extends InputDelivery = InputDelivery> =
-    | { kind: "response"; choice: Id; text?: string; respondent: InputRespondent; delivery: Delivery }
-    | { kind: "timeout"; delivery: Delivery }
+export type InputResponse<Id extends string, Delivery extends InputDelivery = InputDelivery> = {
+    choice: Id
+    text?: string
+    respondent: InputRespondent
+    delivery: Delivery
+}
 
 export type WaitForInputParams<Options extends readonly InputOption[], Target extends InputTarget = InputTarget> = {
     via: Target
     prompt: string
     details?: Record<string, string>
     options: Options
-    timeout?: string | number
 }
 
 export function waitForInput<const Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
-): Promise<InputDecision<Options[number]["id"], DeliveryFor<Target>>> {
+): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
     if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP"))) {
         throw new DurableOnlyError("waitForInput() is only available in durable jobs. Add `durable: true` to this job.")
     }
@@ -817,52 +818,37 @@ export function waitForInput<const Options extends readonly InputOption[], Targe
     return waitForInputDurable(params)
 }
 
-// Suspended runs park indefinitely on their journal snapshot; the ceiling only bounds
-// each scheduler timer, so a no-timeout wait re-arms every chunk instead of expiring.
-const INPUT_WAIT_CEILING_MS = 30 * 24 * 60 * 60 * 1000
-
+// No sleep, no race, and no park signal here on purpose. The hook entity this writes to
+// the journal IS the park request: the CLI host watches for "runtime idle + unresolved
+// hook on disk" and calls /sdk/park itself. Workflow code stays pure replayable logic.
 async function waitForInputDurable<Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
-): Promise<InputDecision<Options[number]["id"], DeliveryFor<Target>>> {
-    const timeoutMs = params.timeout === undefined ? undefined : durationToMs(params.timeout)
+): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
     const hook = createHook<SdkInputResponsePayload>()
-    const delivery = await registerInputRequest(hook.token, params, timeoutMs)
+    const delivery = await registerInputRequest(hook.token, params)
     if (delivery.provider !== params.via.provider) {
         throw new Error(`waitForInput: backend delivered via "${delivery.provider}" but the target was "${params.via.provider}"`)
     }
     const typedDelivery = delivery as DeliveryFor<Target>
 
-    let elapsedMs = 0
-    while (true) {
-        const chunkMs = timeoutMs === undefined ? INPUT_WAIT_CEILING_MS : Math.min(timeoutMs - elapsedMs, INPUT_WAIT_CEILING_MS)
-        const winner = await Promise.race([Promise.resolve(hook).then(payload => ({ type: "response" as const, payload })), workflowSleep(chunkMs).then(() => ({ type: "sleep" as const }))])
-        if (winner.type === "response") {
-            hook.dispose()
-            return {
-                kind: "response",
-                choice: winner.payload.choice as Options[number]["id"],
-                text: winner.payload.text,
-                respondent: winner.payload.respondent,
-                delivery: typedDelivery
-            }
-        }
-        elapsedMs += chunkMs
-        if (timeoutMs !== undefined && elapsedMs >= timeoutMs) {
-            hook.dispose()
-            await expireInputRequest(hook.token, typedDelivery)
-            return { kind: "timeout", delivery: typedDelivery }
-        }
+    console.log(`[terse] waitForInput: waiting for a response (hook ${hook.token})`)
+    const payload = await hook
+    hook.dispose()
+    return {
+        choice: payload.choice as Options[number]["id"],
+        text: payload.text,
+        respondent: payload.respondent,
+        delivery: typedDelivery
     }
 }
 
-async function registerInputRequest(token: string, params: WaitForInputParams<readonly InputOption[], InputTarget>, timeoutMs: number | undefined): Promise<InputDelivery> {
+async function registerInputRequest(token: string, params: WaitForInputParams<readonly InputOption[], InputTarget>): Promise<InputDelivery> {
     const body: SdkInputRequestRegisterBody = {
         token,
         runId: process.env.TERSE_RUN_ID!,
         prompt: params.prompt,
         details: params.details,
         options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
-        timeoutSeconds: timeoutMs === undefined ? undefined : Math.ceil(timeoutMs / 1000),
         via: params.via
     }
     const response = await postInputRequestStep(ApiRoutes.SDK.INPUT_REQUEST, body)
@@ -874,18 +860,6 @@ async function registerInputRequest(token: string, params: WaitForInputParams<re
         throw new Error(`waitForInput: failed to deliver input request: ${parsed.error ?? "registration failed"}`)
     }
     return parsed.delivery
-}
-
-async function expireInputRequest(token: string, delivery: InputDelivery): Promise<void> {
-    const body: SdkInputRequestExpireBody = {
-        token,
-        runId: process.env.TERSE_RUN_ID!,
-        delivery
-    }
-    const response = await postInputRequestStep(ApiRoutes.SDK.INPUT_REQUEST_EXPIRE, body)
-    if (!response.ok) {
-        throw new Error(`waitForInput: failed to expire input request: HTTP ${response.status}`)
-    }
 }
 
 // workflowFetch is the workflow stdlib's hoisted "use step" fetch, so the HTTP call is
@@ -901,7 +875,7 @@ async function postInputRequestStep(route: string, body: unknown): Promise<Respo
 
 async function promptForInputLocally<Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
-): Promise<InputDecision<Options[number]["id"], DeliveryFor<Target>>> {
+): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
     const { isCancel, select, text } = await import("@clack/prompts")
     console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${describeInputTarget(params.via)}.`)
     for (const [key, value] of Object.entries(params.details ?? {})) {
@@ -923,7 +897,6 @@ async function promptForInputLocally<Options extends readonly InputOption[], Tar
     }
 
     return {
-        kind: "response",
         choice: choice as Options[number]["id"],
         text: freeTextAnswer,
         respondent: { provider: "local", userId: "local" },
@@ -943,14 +916,6 @@ function localDelivery<Target extends InputTarget>(target: Target): DeliveryFor<
         case "slack":
             return { provider: "slack", channelId: target.channelId, messageTs: "" } as DeliveryFor<Target>
     }
-}
-
-function durationToMs(duration: string | number): number {
-    const value = typeof duration === "string" ? ms(duration as import("ms").StringValue) : duration
-    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
-        throw new Error(`waitForInput: invalid timeout ${JSON.stringify(duration)}`)
-    }
-    return value
 }
 
 export enum EventType {

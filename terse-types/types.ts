@@ -767,7 +767,6 @@ export const sdkInputRequestRegisterBodySchema = z.object({
     prompt: z.string().min(1),
     details: z.record(z.string(), z.string()).optional(),
     options: z.array(sdkInputRequestOptionSchema).min(1),
-    timeoutSeconds: z.number().int().positive().optional(),
     via: sdkInputRequestTargetSchema
 })
 export type SdkInputRequestRegisterBody = z.infer<typeof sdkInputRequestRegisterBodySchema>
@@ -789,12 +788,10 @@ export const sdkInputRequestRegisterResponseSchema = z.object({
 })
 export type SdkInputRequestRegisterResponse = z.infer<typeof sdkInputRequestRegisterResponseSchema>
 
-export const sdkInputRequestExpireBodySchema = z.object({
-    token: z.string().min(1),
-    runId: z.string().min(1),
-    delivery: sdkInputRequestDeliverySchema
+export const sdkJobParkRequestBodySchema = z.object({
+    runId: z.string().min(1)
 })
-export type SdkInputRequestExpireBody = z.infer<typeof sdkInputRequestExpireBodySchema>
+export type SdkJobParkRequestBody = z.infer<typeof sdkJobParkRequestBodySchema>
 
 export const sdkInputResponsePayloadSchema = z.object({
     choice: z.string().min(1),

@@ -1,13 +1,16 @@
 import chalk from "chalk"
 import path from "node:path"
+import { ApiRoutes } from "terse-types"
+import type { SdkJobParkRequestBody } from "terse-types"
 
-import { readApiKeyOrBail } from "../../../api.js"
+import { fetchWithAuth, readApiKeyOrBail } from "../../../api.js"
 import { CliError } from "../../../cliError.js"
 import { BACKEND_URL } from "../../../config.js"
 import { getDurableRuntime } from "../durableRuntime.js"
+import { setParkListener } from "../parkSignals.js"
 import { readRunStatus, resolveWorkflowRunId, rewindFailedRun } from "../rewindRun.js"
 
-import { type JobRuntime, formatErrorDetail } from "./JobRuntime.js"
+import { type JobRuntime, type ResumeHookInput, type ResumeRunOptions, formatErrorDetail } from "./JobRuntime.js"
 import { withSession } from "./session.js"
 
 export const durableJobRuntime: JobRuntime = {
@@ -20,7 +23,8 @@ export const durableJobRuntime: JobRuntime = {
             await withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
                 if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
                 const rt = await getDurableRuntime(process.cwd())
-                await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
+                await rt.start()
+                await driveUntilSettledOrParked(() => rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event))
             })
         } catch (error) {
             if (error instanceof CliError) throw error
@@ -29,51 +33,95 @@ export const durableJobRuntime: JobRuntime = {
     },
 
     async resumeRun(runId, opts) {
-        const isVerbose = opts?.verbose ?? true
-        const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
-        const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
+        return driveResume(runId, opts)
+    },
 
-        const dataDir = process.env.WORKFLOW_LOCAL_DATA_DIR ?? path.join(process.cwd(), ".terse", "data")
-        const workflowRunId = resolveWorkflowRunId(dataDir, runId)
-        const status = readRunStatus(dataDir, workflowRunId)
-
-        try {
-            await withSession(apiKey, isVerbose, pauseUiAround, async () => {
-                if (status === "failed") {
-                    const { rewoundStepId } = rewindFailedRun(dataDir, workflowRunId)
-                    if (isVerbose) console.log(chalk.yellow(`  Re-driving failed run ${workflowRunId}${rewoundStepId ? " from the failed step" : ""}; completed steps replay from the journal`))
-                } else if (isVerbose) {
-                    console.log(chalk.cyan(`  Resuming run ${workflowRunId}`))
-                }
-                const rt = await getDurableRuntime(process.cwd())
-                await deliverHookPayload(rt, isVerbose)
-                await rt.resumeRun(workflowRunId)
-                if (isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
-            })
-        } catch (error) {
-            if (error instanceof CliError) throw error
-            throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })
-        }
+    async resumeRunWithInput(runId, input, opts) {
+        return driveResume(runId, opts, input)
     }
 }
 
-// A resume triggered by a human response (waitForInput) carries the hook payload in the
-// environment. Delivery failure is not fatal: resuming anyway replays the run, which then
-// re-parks on whatever it is actually waiting for and re-snapshots itself.
-async function deliverHookPayload(rt: Awaited<ReturnType<typeof getDurableRuntime>>, isVerbose: boolean): Promise<void> {
-    const token = process.env.TERSE_RESUME_HOOK_TOKEN
-    if (!token) return
+async function driveResume(runId: string, opts: ResumeRunOptions | undefined, input?: ResumeHookInput): Promise<void> {
+    const isVerbose = opts?.verbose ?? true
+    const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
+    const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
 
-    const payloadRaw = process.env.TERSE_RESUME_HOOK_PAYLOAD
-    if (!payloadRaw) {
-        console.log(chalk.yellow(`  Hook resume requested for ${token} but no payload was provided; resuming without it`))
-        return
-    }
+    const dataDir = resolveDataDir()
+    const workflowRunId = resolveWorkflowRunId(dataDir, runId)
+    const status = readRunStatus(dataDir, workflowRunId)
 
     try {
-        await rt.resumeHook(token, JSON.parse(payloadRaw))
-        if (isVerbose) console.log(chalk.cyan(`  Delivered input response to hook ${token}`))
+        await withSession(apiKey, isVerbose, pauseUiAround, async () => {
+            if (status === "failed") {
+                const { rewoundStepId } = rewindFailedRun(dataDir, workflowRunId)
+                if (isVerbose) console.log(chalk.yellow(`  Re-driving failed run ${workflowRunId}${rewoundStepId ? " from the failed step" : ""}; completed steps replay from the journal`))
+            } else if (isVerbose) {
+                console.log(chalk.cyan(`  Resuming run ${workflowRunId}`))
+            }
+            const rt = await getDurableRuntime(process.cwd())
+            if (input) {
+                await deliverInput(rt, input, isVerbose)
+            } else {
+                await rt.start()
+            }
+            const outcome = await driveUntilSettledOrParked(() => rt.resumeRun(workflowRunId))
+            if (outcome === "settled" && isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
+        })
     } catch (error) {
-        console.log(chalk.yellow(`  Could not deliver input response to hook ${token}: ${formatErrorDetail(error)}`))
+        if (error instanceof CliError) throw error
+        throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })
+    }
+}
+
+// Drives the run to one of its two possible outcomes. A run that parks on an input hook
+// never settles (its payload arrives in a future sandbox), so the park event — fired by
+// the workflow handler wrapper when a pass ends having scheduled nothing while an
+// unresolved hook exists — is the second exit: call /sdk/park and return, letting the
+// process exit cleanly.
+async function driveUntilSettledOrParked(drive: () => Promise<unknown>): Promise<"settled" | "parked"> {
+    // Local runs have no backend to park against; waitForInput never creates hooks there
+    // (it prompts in the terminal instead).
+    if (!process.env.TERSE_RUN_ID) {
+        await drive()
+        return "settled"
+    }
+
+    const parked = new Promise<"parked">(resolve => {
+        setParkListener(() => resolve("parked"))
+    })
+
+    try {
+        const outcome = await Promise.race([drive().then(() => "settled" as const), parked])
+        if (outcome === "parked") await parkRun()
+        return outcome
+    } finally {
+        setParkListener(undefined)
+    }
+}
+
+async function parkRun(): Promise<void> {
+    const runId = process.env.TERSE_RUN_ID
+    if (!runId) return
+    const apiKey = readApiKeyOrBail()
+    const body: SdkJobParkRequestBody = { runId }
+    console.log(chalk.dim(`  Calling ${ApiRoutes.SDK.PARK} for run ${runId}`))
+    await fetchWithAuth(ApiRoutes.SDK.PARK, apiKey, body, "POST")
+    console.log(chalk.yellow("  Run parked waiting for input; sandbox suspending"))
+}
+
+function resolveDataDir(): string {
+    return process.env.WORKFLOW_LOCAL_DATA_DIR ?? path.join(process.cwd(), ".terse", "data")
+}
+
+// Input resumes skip start(): resumeHook re-queues the run itself, and start()'s
+// crash-recovery wake would add a concurrent second replay.
+async function deliverInput(rt: Awaited<ReturnType<typeof getDurableRuntime>>, input: ResumeHookInput, isVerbose: boolean): Promise<void> {
+    try {
+        await rt.deliverInput(input.token, input.payload)
+        if (isVerbose) console.log(chalk.cyan(`  Delivered input response to hook ${input.token}`))
+    } catch (error) {
+        // Stale token: recovery replay instead; the run re-parks on its real wait.
+        console.log(chalk.yellow(`  Could not deliver input response to hook ${input.token}: ${formatErrorDetail(error)}`))
+        await rt.start()
     }
 }

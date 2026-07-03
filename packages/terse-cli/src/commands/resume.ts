@@ -8,5 +8,25 @@ export async function resume(runId?: string, opts?: { verbose?: boolean }, provi
             detail: "Usage: terse resume --run-id wrun_..."
         })
     }
-    await provider.resumeRun(runId, { verbose: opts?.verbose })
+
+    // The backend sets these when the resume delivers a human response (waitForInput);
+    // a plain timer/recovery resume runs without them.
+    const hookToken = process.env.TERSE_RESUME_HOOK_TOKEN
+    if (!hookToken) {
+        await provider.resumeRun(runId, { verbose: opts?.verbose })
+        return
+    }
+
+    const payloadRaw = process.env.TERSE_RESUME_HOOK_PAYLOAD
+    if (!payloadRaw) {
+        throw new CliError("missing_hook_payload", "TERSE_RESUME_HOOK_TOKEN is set but TERSE_RESUME_HOOK_PAYLOAD is missing.")
+    }
+    let payload: unknown
+    try {
+        payload = JSON.parse(payloadRaw)
+    } catch {
+        throw new CliError("invalid_hook_payload", "TERSE_RESUME_HOOK_PAYLOAD is not valid JSON.")
+    }
+
+    await provider.resumeRunWithInput(runId, { token: hookToken, payload }, { verbose: opts?.verbose })
 }

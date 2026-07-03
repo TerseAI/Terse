@@ -1,4 +1,4 @@
-import { SdkInputRequestExpireBody, SdkInputRequestRegisterBody, SdkInputResponsePayload } from "terse-types/types"
+import { SdkInputRequestRegisterBody, SdkInputResponsePayload } from "terse-types/types"
 
 import logger from "../common/logger"
 import { db } from "../loaders/prisma"
@@ -64,16 +64,6 @@ export async function resolveInputRequest(params: { organizationId: string; runI
 
     logger.error("[InputRequest] Gave up waiting for run to suspend after input response", { runId, token })
     return "gave_up"
-}
-
-export async function expireInputRequest(organizationId: string, body: SdkInputRequestExpireBody): Promise<{ ok: boolean; error?: string }> {
-    const run = await findRunInOrganization(body.runId, organizationId)
-    if (!run) return { ok: false, error: "Run not found" }
-
-    const provider = getInputRequestProvider(body.delivery.provider)
-    if (!provider) return { ok: false, error: `No input provider is registered for "${body.delivery.provider}".` }
-
-    return provider.expire({ organizationId, delivery: body.delivery })
 }
 
 // helpers

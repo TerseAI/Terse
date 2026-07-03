@@ -11,6 +11,7 @@ import { setWorld } from "workflow/runtime"
 import { createTerseWorld } from "../../terseWorld.js"
 
 import { transformJobSource } from "./jobMacro.js"
+import { trackStepHandler, trackWorkflowHandler } from "./parkSignals.js"
 import { TerseWorkflowBuilder } from "./terseWorkflowBuilder.js"
 
 let runtimePromise: Promise<DurableRuntime> | null = null
@@ -27,13 +28,10 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     const world = createTerseWorld()
     setWorld(world)
 
+    const dataDir = process.env.WORKFLOW_LOCAL_DATA_DIR ?? path.join(cwd, ".terse", "data")
     const require = createRequire(import.meta.url)
-    world.registerHandler("__wkf_step_", require(path.join(out, "steps.cjs")).POST)
-    world.registerHandler("__wkf_workflow_", require(path.join(out, "workflows.cjs")).POST)
-
-    // start() re-enqueues recovered (pending/running) runs from .terse/data, so the
-    // handlers must already be registered or there is nothing to drain them.
-    await world.start?.()
+    world.registerHandler("__wkf_step_", trackStepHandler(require(path.join(out, "steps.cjs")).POST))
+    world.registerHandler("__wkf_workflow_", trackWorkflowHandler(require(path.join(out, "workflows.cjs")).POST, dataDir))
 
     const manifest = JSON.parse(fs.readFileSync(path.join(out, "manifest.json"), "utf8"))
     const workflowIdByJob = new Map<string, string>()
@@ -50,7 +48,19 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
         )
     }
 
+    // start() re-enqueues recovered (pending/running) runs and begins draining the queue.
+    // It is NOT called during construction: a hook-resume must journal its payload first,
+    // or the re-enqueued replay races the payload write, re-arms the raced sleep, and
+    // fires a spurious suspension for a run that is about to complete.
+    let started = false
+    const startWorld = async () => {
+        if (started) return
+        started = true
+        await world.start?.()
+    }
+
     return {
+        start: startWorld,
         dispatchJob: async (jobName, ctx, event) => {
             const workflowId = workflowIdByJob.get(jobName)
             if (!workflowId) throw new Error(`No durable workflow was built for job "${jobName}".`)
@@ -75,15 +85,17 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             return await run.returnValue
         },
         resumeRun: workflowRunId => getRun(workflowRunId).returnValue,
-        resumeHook: (token, payload) => resumeHook(token, payload).then(() => undefined),
+        // resumeHook auto re-queues the run, so this is a complete resume on its own.
+        deliverInput: (token, payload) => resumeHook(token, payload).then(() => undefined),
         close: () => world.close?.() ?? Promise.resolve()
     }
 }
 
 type DurableRuntime = {
+    start: () => Promise<void>
     dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<unknown>
     resumeRun: (workflowRunId: string) => Promise<unknown>
-    resumeHook: (token: string, payload: unknown) => Promise<void>
+    deliverInput: (token: string, payload: unknown) => Promise<void>
     close: () => Promise<void>
 }
 

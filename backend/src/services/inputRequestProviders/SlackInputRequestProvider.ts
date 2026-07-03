@@ -1,6 +1,6 @@
-import { deliverSlackInputRequest, finalizeSlackInputRequestMessage, getSlackBotClientForOrganization } from "../../integrations/slack/inputRequests"
+import { deliverSlackInputRequest } from "../../integrations/slack/inputRequests"
 
-import { InputRequestDeliverParams, InputRequestDeliverResult, InputRequestExpireParams, InputRequestExpireResult, InputRequestProvider } from "./types"
+import { InputRequestDeliverParams, InputRequestDeliverResult, InputRequestProvider } from "./types"
 
 export class SlackInputRequestProvider implements InputRequestProvider {
     readonly provider = "slack" as const
@@ -10,13 +10,5 @@ export class SlackInputRequestProvider implements InputRequestProvider {
         const result = await deliverSlackInputRequest({ organizationId, jobName, body })
         if (!result.ok) return result
         return { ok: true, delivery: { provider: "slack", channelId: result.channelId, messageTs: result.messageTs } }
-    }
-
-    async expire({ organizationId, delivery }: InputRequestExpireParams): Promise<InputRequestExpireResult> {
-        if (delivery.provider !== "slack") return { ok: false, error: "Delivery is not a Slack message." }
-        const client = await getSlackBotClientForOrganization(organizationId)
-        if (!client) return { ok: false, error: "No Slack integration is connected for this organization." }
-        const updated = await finalizeSlackInputRequestMessage(client, delivery.channelId, delivery.messageTs, ":hourglass: Timed out waiting for a response.")
-        return { ok: updated, error: updated ? undefined : "Failed to update the Slack message." }
     }
 }
