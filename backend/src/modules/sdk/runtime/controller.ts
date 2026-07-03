@@ -466,4 +466,3 @@ export async function handleInputRequestRegister(req: Request, res: Response) {
     const response: SdkInputRequestRegisterResponse = { success: true, delivery: result.delivery }
     return res.status(200).json(response)
 }
-
