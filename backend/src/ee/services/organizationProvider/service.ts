@@ -1,5 +1,6 @@
 import { WorkOS } from "@workos-inc/node"
 
+import { AnalyticsEvent, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
 import { getOrgLogoDownloadUrl, getOrgLogoUploadUrl } from "../../../services/FileStorageService"
 import { settings } from "../../../settings"
@@ -83,6 +84,8 @@ export async function createOrganizationForUser(input: {
     }
 
     logger.info("Organization created", { organizationId: organization.id, workosUserId, name: organization.name })
+    analytics.groupIdentify(organization.id, { name: organization.name })
+    analytics.capture(workosUserId, AnalyticsEvent.ORGANIZATION_CREATED, { organizationId: organization.id, organizationName: organization.name })
     return {
         organization: { id: organization.id, name: organization.name },
         sealedSession: refreshResult.sealedSession

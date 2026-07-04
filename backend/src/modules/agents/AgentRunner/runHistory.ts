@@ -4,6 +4,7 @@ import { pendingApprovalsKey, serializedEventSchema } from "terse-types"
 import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger, type SerializedEvent } from "terse-types"
 import { type SkillConfigData, skillConfigDataSchema } from "terse-types/Configs"
 
+import { AnalyticsEvent, RunEventProperties, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../../common/typeConverters"
 import { db } from "../../../loaders/prisma"
@@ -45,7 +46,19 @@ export async function createRunRecord(params: {
             decision_reason: "",
             status: RunHistoryStatus.IN_PROGRESS
         },
-        select: { id: true }
+        select: { id: true, automation: { select: { id: true, name: true, user_id: true, organization_id: true } } }
+    })
+
+    analytics.capture(triggeredByUserId ?? record.automation.user_id, AnalyticsEvent.JOB_TRIGGERED, {
+        runId: record.id,
+        jobId: record.automation.id,
+        jobName: record.automation.name,
+        organizationId: record.automation.organization_id ?? undefined,
+        triggerIntegration: trigger.integration,
+        triggerEvent: trigger.event,
+        isManuallyTriggered: isManuallyTriggered ?? false,
+        isTest: isTest ?? false,
+        isReplay: !!replayOfRunId
     })
 
     return record.id
@@ -62,6 +75,7 @@ export async function markRunSkipped(runId: string, reason: string): Promise<voi
             status: RunHistoryStatus.SKIPPED
         }
     })
+    captureRunLifecycleEvent(runId, AnalyticsEvent.JOB_SKIPPED, { reason })
 }
 
 export async function appendRunAction(runId: string, action: RunHistoryAction, organizationId: string, stepId?: string): Promise<string> {
@@ -98,6 +112,7 @@ export async function finalizeRunStatus(runId: string, status: CompletedRunStatu
         data: { status }
     })
     if (result.count === 0) return
+    captureRunLifecycleEvent(runId, status === RunHistoryStatus.SUCCESS ? AnalyticsEvent.JOB_COMPLETED : AnalyticsEvent.JOB_FAILED)
     if (status === RunHistoryStatus.SUCCESS) {
         const record = await prisma.run_history_records.findUnique({
             where: { id: runId },
@@ -135,7 +150,7 @@ export async function recordAgentFailureAndMaybePause(agentId: string): Promise<
         const updated = await tx.automations.update({
             where: { id: agentId },
             data: { consecutive_failures: { increment: 1 } },
-            select: { consecutive_failures: true, is_active: true }
+            select: { consecutive_failures: true, is_active: true, user_id: true, organization_id: true }
         })
 
         const count = updated.consecutive_failures
@@ -147,6 +162,11 @@ export async function recordAgentFailureAndMaybePause(agentId: string): Promise<
                 data: { is_active: false }
             })
             wasPaused = true
+            analytics.capture(updated.user_id, AnalyticsEvent.JOB_AUTO_PAUSED, {
+                jobId: agentId,
+                organizationId: updated.organization_id ?? undefined,
+                consecutiveFailures: count
+            })
         }
         let tier: FailureTier
         if (count >= PAUSE_THRESHOLD) {
@@ -222,7 +242,10 @@ export async function markRunSuspended(runId: string, suspendImageId: string, de
         })
         return true
     })
-    if (suspended) await emitRunHistoryInvalidation(runId)
+    if (suspended) {
+        captureRunLifecycleEvent(runId, AnalyticsEvent.JOB_SUSPENDED, { suspensionKind: details.kind })
+        await emitRunHistoryInvalidation(runId)
+    }
     return suspended
 }
 
@@ -249,7 +272,10 @@ export async function claimSuspendedRun(runId: string): Promise<SuspendedRunClai
         await tx.run_suspensions.update({ where: { id: suspension.id }, data: { resumed_at: new Date() } })
         return { claimed: true, suspendImageId: suspension.suspend_image_id }
     })
-    if (claim.claimed) await emitRunHistoryInvalidation(runId)
+    if (claim.claimed) {
+        captureRunLifecycleEvent(runId, AnalyticsEvent.JOB_RESUMED)
+        await emitRunHistoryInvalidation(runId)
+    }
     return claim
 }
 
@@ -280,6 +306,7 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
             decision_reason: prefixedMessage
         }
     })
+    if (result.count > 0) captureRunLifecycleEvent(runId, AnalyticsEvent.JOB_FAILED, { errorMessage, failureStage: stage })
     return result.count > 0
 }
 
@@ -293,6 +320,7 @@ export async function markRunCancelled(runId: string, reason: string = CancelRea
             decision_reason: reason
         }
     })
+    captureRunLifecycleEvent(runId, AnalyticsEvent.JOB_CANCELLED, { reason })
 }
 
 export async function storePendingApprovalState(runId: string, organizationId: string, serializedState: string, interruptions: RunToolApprovalItem[]): Promise<void> {
@@ -303,6 +331,8 @@ export async function storePendingApprovalState(runId: string, organizationId: s
         include: {
             automation: {
                 select: {
+                    id: true,
+                    name: true,
                     user_id: true,
                     organization_id: true
                 }
@@ -336,6 +366,13 @@ export async function storePendingApprovalState(runId: string, organizationId: s
             status: RunHistoryStatus.AWAITING_APPROVAL,
             has_approval_request: true
         }
+    })
+
+    analytics.capture(runRecord.automation.user_id, AnalyticsEvent.JOB_AWAITING_APPROVAL, {
+        runId,
+        jobId: runRecord.automation.id,
+        jobName: runRecord.automation.name,
+        organizationId: runRecord.automation.organization_id ?? undefined
     })
 
     if (runRecord.automation.organization_id) {
@@ -430,4 +467,33 @@ export function readSdkSkillsFromJson(sdkSkillsJson: unknown): SkillConfigData[]
         logger.warn("Failed to parse sdk_skills from run record", { error })
         return []
     }
+}
+
+type RunLifecycleEvent =
+    | typeof AnalyticsEvent.JOB_SKIPPED
+    | typeof AnalyticsEvent.JOB_COMPLETED
+    | typeof AnalyticsEvent.JOB_FAILED
+    | typeof AnalyticsEvent.JOB_SUSPENDED
+    | typeof AnalyticsEvent.JOB_RESUMED
+    | typeof AnalyticsEvent.JOB_CANCELLED
+
+// Fire-and-forget: run status transitions must never fail on analytics. Events are
+// attributed to the job's owner and grouped under the organization.
+function captureRunLifecycleEvent(runId: string, event: RunLifecycleEvent, extra?: Partial<RunEventProperties>): void {
+    void db()
+        .run_history_records.findUnique({
+            where: { id: runId },
+            select: { automation: { select: { id: true, name: true, user_id: true, organization_id: true } } }
+        })
+        .then(run => {
+            if (!run?.automation) return
+            analytics.capture(run.automation.user_id, event, {
+                runId,
+                jobId: run.automation.id,
+                jobName: run.automation.name,
+                organizationId: run.automation.organization_id ?? undefined,
+                ...extra
+            })
+        })
+        .catch((error: unknown) => logger.warn("Failed to capture run analytics event", { error, runId, event }))
 }

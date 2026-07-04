@@ -3,6 +3,7 @@ import { Request, Response } from "express"
 import { ConfigType, TriggerConfigData } from "terse-types/Configs"
 import { SdkDeployJob, SdkDeployResponseBody, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types/types"
 
+import { AnalyticsEvent, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
 import { getInputConfigInclude } from "../../../common/prismaIncludes"
 import { markDeployFailed, markDeploySucceeded } from "../../../common/projectDeploys"
@@ -129,12 +130,17 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 logger.error("Failed to create or update automation", { error })
                 await markDeployFailed(prisma, deploy.id, error)
                 emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
+                analytics.capture(userId, AnalyticsEvent.PROJECT_DEPLOY_FAILED, { projectId, organizationId, deployId: deploy.id, errorMessage: extractErrorMessage(error) })
                 return res.status(500).json({ success: false, error: "Failed to create or update automation" })
             }
 
             await setupAgentTriggers(agent)
 
             results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: buildDeployResultTriggers(agent) })
+
+            if (!isUpdate) {
+                analytics.capture(userId, AnalyticsEvent.JOB_CREATED, { jobId: agent.id, jobName: job.jobName, organizationId, projectId })
+            }
 
             logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, { automationId: agent.id, jobName: job.jobName, organizationId, triggerCount: job.triggers.length })
         }
@@ -157,6 +163,17 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
         emitCacheInvalidationWithWildcard(organizationId, "project", projectId)
 
+        analytics.capture(userId, AnalyticsEvent.PROJECT_DEPLOYED, {
+            projectId,
+            organizationId,
+            deployId: deploy.id,
+            jobsDeployed: jobs.length,
+            jobsAdded,
+            jobsRemoved: removed.length,
+            cliVersion,
+            viaRemoteServer: !!remoteServerUrl
+        })
+
         const response: SdkDeployResponseBody = {
             success: true,
             results,
@@ -170,6 +187,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         logger.error("SDK deploy failed", { error })
         await markDeployFailed(prisma, deploy.id, error)
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
+        analytics.capture(userId, AnalyticsEvent.PROJECT_DEPLOY_FAILED, { projectId, organizationId, deployId: deploy.id, errorMessage: extractErrorMessage(error) })
         return res.status(500).json({ success: false, error: "Deploy failed", details: extractErrorMessage(error) })
     }
 }

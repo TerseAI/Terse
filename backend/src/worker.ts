@@ -2,6 +2,7 @@ import "dotenv/config"
 import { Job } from "pg-boss"
 import { RunHistoryStatus } from "terse-types"
 
+import { analytics } from "./common/analytics"
 import logger from "./common/logger"
 import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
 import { Boss } from "./loaders/pgBoss"
@@ -156,6 +157,9 @@ async function gracefulShutdown(signal: string): Promise<void> {
         await TaskQueueEmitter.getInstance().close()
         await WorkerSocketEmitter.getInstance().close()
         logger.info("✅ Redis connections closed")
+
+        // Flush buffered PostHog events before the process exits.
+        await analytics.shutdown()
 
         try {
             await db().$disconnect()
