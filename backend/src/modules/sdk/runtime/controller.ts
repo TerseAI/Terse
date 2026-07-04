@@ -5,10 +5,12 @@ import { SkillConfigData } from "terse-types/Configs"
 import {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
+    SdkInputRequestRegisterResponse,
     SdkJobSuspendResponseBody,
     UserSession,
     sdkAgentRunRequestBodySchema,
     sdkApprovalDecisionRequestBodySchema,
+    sdkInputRequestRegisterBodySchema,
     sdkJobSuspendRequestBodySchema
 } from "terse-types/types"
 import { z } from "zod"
@@ -26,7 +28,8 @@ import { CancelReason } from "../../../modules/agents/cancellation/RunCancellati
 import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellation/runCancellationEffects"
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
-import { snapshotRunJournalForSuspend } from "../../../services/jobExecutors/SandboxJobExecutor"
+import { registerInputRequest } from "../../../services/InputRequestService"
+import { snapshotRunJournalForSuspend } from "../../../services/resolveRunStatus"
 import { enqueueRunExecution } from "../../../tasks/queues/runExecutionQueue"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
 
@@ -397,7 +400,7 @@ export async function handleJobSuspension(req: Request, res: Response) {
         if (!imageId) {
             throw new Error("No live sandbox to snapshot; the run cannot be suspended")
         }
-        await markRunSuspended(runId)
+        await markRunSuspended(runId, imageId, { kind: "timer", delaySeconds })
         await enqueueRunResumption(runId, imageId, delaySeconds)
 
         const response: SdkJobSuspendResponseBody = { success: true }
@@ -438,4 +441,23 @@ async function enqueueRunResumption(runId: string, restoreImageId: string, delay
 // finalize it normally instead of leaving it parked with no resume job.
 async function rollbackSuspension(runId: string): Promise<void> {
     await claimSuspendedRun(runId).catch(error => logger.error("Failed to roll back suspension", { error, runId }))
+}
+
+export async function handleInputRequestRegister(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user?.organizationId) return res.status(401).json({ success: false, error: "Unauthorized" })
+
+    const parsed = sdkInputRequestRegisterBodySchema.safeParse(req.body)
+    if (!parsed.success) {
+        return res.status(400).json({ success: false, error: "Invalid request body", details: parsed.error.issues.map(i => i.message) })
+    }
+
+    const result = await registerInputRequest(user.organizationId, parsed.data)
+    if (!result.ok) {
+        const response: SdkInputRequestRegisterResponse = { success: false, error: result.error }
+        return res.status(422).json(response)
+    }
+
+    const response: SdkInputRequestRegisterResponse = { success: true, delivery: result.delivery }
+    return res.status(200).json(response)
 }

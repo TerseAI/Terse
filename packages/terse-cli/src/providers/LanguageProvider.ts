@@ -54,4 +54,12 @@ export interface LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void>
+    resumeRunWithInput(
+        runId: string,
+        input: { token: string; payload: unknown },
+        opts?: {
+            verbose?: boolean
+            pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+        }
+    ): Promise<void>
 }

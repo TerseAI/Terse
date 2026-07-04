@@ -835,6 +835,7 @@ model run_history_records {
   raw_events              run_history_raw_events[]
   approval_slack_messages approval_slack_messages[]
   sent_notifications      sent_notifications[]
+  suspensions             run_suspensions[]
 
   @@index([automation_id])
   @@index([project_deploy_id])
@@ -1065,6 +1066,27 @@ model approval_slack_messages {
   @@index([run_id])
   @@index([step_id])
   @@index([status])
+}
+
+enum RunSuspensionKind {
+  input
+  timer
+}
+
+model run_suspensions {
+  id               String            @id @default(cuid())
+  run_id           String
+  kind             RunSuspensionKind
+  // Journal snapshot restored on resume; the open row (resumed_at null) is the run's current parked state
+  suspend_image_id String
+  hook_token       String?
+  delay_seconds    Int?
+  resumed_at       DateTime?
+  created_at       DateTime          @default(now())
+
+  run_history_record run_history_records @relation(fields: [run_id], references: [id], onDelete: Cascade)
+
+  @@index([run_id])
 }
 
 enum SentNotificationEventType {

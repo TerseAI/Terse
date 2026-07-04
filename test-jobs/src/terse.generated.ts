@@ -6,6 +6,7 @@ import {
     FrequencyUnit,
     ImageEditConfig,
     InferStructuredOutput,
+    MemoryConfig,
     SlackAppMentionTrigger,
     SlackConfig,
     SlackEventType,
@@ -54,23 +55,23 @@ export const Triggers = {
     slack: {
         /** Trigger on any message in a channel */
         onMessage(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
-            return new SlackConfig("cmqviv9xa003ly5skjfpkxmbg", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.MESSAGE])
+            return new SlackConfig("cmr3r2xb80002y5em42x4nqae", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.MESSAGE])
         },
         /** Trigger on direct messages to the bot */
         onDm(opts?: { userIds?: string[] }): TypedTrigger<SlackMessageTrigger> {
-            return new SlackConfig("cmqviv9xa003ly5skjfpkxmbg", undefined, undefined, true, opts?.userIds ?? [], [SlackEventType.MESSAGE])
+            return new SlackConfig("cmr3r2xb80002y5em42x4nqae", undefined, undefined, true, opts?.userIds ?? [], [SlackEventType.MESSAGE])
         },
         /** Trigger when the Slack app is directly mentioned */
         onAppMention(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackAppMentionTrigger> {
-            return new SlackConfig("cmqviv9xa003ly5skjfpkxmbg", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.APP_MENTION])
+            return new SlackConfig("cmr3r2xb80002y5em42x4nqae", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.APP_MENTION])
         },
         /** Trigger when a reaction is added to a message in a channel */
         onReactionAdded(opts: { channel: SlackChannel; userIds?: string[] }): TypedTrigger<SlackReactionAddedTrigger> {
-            return new SlackConfig("cmqviv9xa003ly5skjfpkxmbg", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.REACTION_ADDED])
+            return new SlackConfig("cmr3r2xb80002y5em42x4nqae", opts.channel.channelId, opts.channel.name, false, opts.userIds ?? [], [SlackEventType.REACTION_ADDED])
         },
         /** Trigger on all Slack events (messages + DMs) for a channel */
         trigger(opts?: { channel?: SlackChannel; listenToUserDms?: boolean; userIds?: string[]; eventTypes?: SlackEventType[] }): TypedTrigger<SlackTrigger> {
-            return new SlackConfig("cmqviv9xa003ly5skjfpkxmbg", opts?.channel?.channelId, opts?.channel?.name, opts?.listenToUserDms, opts?.userIds ?? [], opts?.eventTypes)
+            return new SlackConfig("cmr3r2xb80002y5em42x4nqae", opts?.channel?.channelId, opts?.channel?.name, opts?.listenToUserDms, opts?.userIds ?? [], opts?.eventTypes)
         },
     },
     schedule: {
@@ -107,15 +108,19 @@ export const Triggers = {
 export const Skills = {
     /** Slack — send messages and manage threads in a specific channel */
     slack(opts: { channel: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<"slack_send_message"> {
-        return new SlackOutputConfig("cmqviv9xa003ly5skjfpkxmbg", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? [], opts.userNames ?? null, opts.listenToUserDms)
+        return new SlackOutputConfig("cmr3r2xb80002y5em42x4nqae", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? [], opts.userNames ?? null, opts.listenToUserDms)
     },
-    /** Web — built-in web search, page extraction, and multi-source research */
-    web(): TypedSkill<"web_search" | "web_extract" | "web_research"> {
-        return new WebConfig()
+    /** Web — built-in web search, page extraction, and multi-source research. Pass `allowedDomains` to restrict search and page extraction to specific sites (and their subdomains). */
+    web(opts: { allowedDomains?: string[] } = {}): TypedSkill<"web_search" | "web_extract" | "web_research"> {
+        return new WebConfig(opts)
     },
     /** ImageEdit — edit and generate images */
     imageEdit(): TypedSkill<"image_edit"> {
         return new ImageEditConfig()
+    },
+    /** Memory — built-in persistent memory the agent reads and writes under /memories, scoped to this job and surviving across runs. */
+    memory(): TypedSkill<"memory"> {
+        return new MemoryConfig()
     },
 }
 // ── Typed Tools ───────────────────────────────────────────────
@@ -137,6 +142,21 @@ Use the channel ID from slack_list_channels. Supports public channels, private c
 Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more messages. */
 export type SlackReadConversationParams = Omit<ToolInputByName["slack_read_conversation"], "integrationId">
 
+/** Persistent memory stored under /memories that survives across runs. Commands: view (read a file or list a directory), create, str_replace, insert, delete, rename. Always view /memories before starting a task, and record durable progress and learnings as you work. */
+export type MemoryParams = ToolInputByName["memory"]
+
+/** Search the web for up-to-date information. Returns ranked results with titles, URLs, and content snippets. Use for questions about current events, facts, or topics requiring web sources. */
+export type WebSearchParams = ToolInputByName["web_search"]
+
+/** Extract the full text content from one or more web page URLs. Use this when you need to read the complete contents of a specific page. */
+export type WebExtractParams = ToolInputByName["web_extract"]
+
+/** Conduct deep, multi-source research on a topic. Autonomously searches across many sources and returns a comprehensive report with citations. Best for complex questions requiring synthesis across multiple sources. Takes longer than a regular search (up to 2 minutes). */
+export type WebResearchParams = ToolInputByName["web_research"]
+
+/** Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see. */
+export type ImageEditParams = ToolInputByName["image_edit"]
+
 export type GeneratedTools = {
     slack: {
         /** Send message to a Slack channel or DM. Provide channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). If both are set, channelId is used. */
@@ -153,6 +173,18 @@ Use the channel ID from slack_list_channels. Supports public channels, private c
 Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more messages. */
         readConversation(params: SlackReadConversationParams): Promise<ToolOutputByName["slack_read_conversation"]>
     }
+    terse: {
+        /** Persistent memory stored under /memories that survives across runs. Commands: view (read a file or list a directory), create, str_replace, insert, delete, rename. Always view /memories before starting a task, and record durable progress and learnings as you work. */
+        memory(params: MemoryParams): Promise<ToolOutputByName["memory"]>
+        /** Search the web for up-to-date information. Returns ranked results with titles, URLs, and content snippets. Use for questions about current events, facts, or topics requiring web sources. */
+        webSearch(params: WebSearchParams): Promise<ToolOutputByName["web_search"]>
+        /** Extract the full text content from one or more web page URLs. Use this when you need to read the complete contents of a specific page. */
+        extractPage(params: WebExtractParams): Promise<ToolOutputByName["web_extract"]>
+        /** Conduct deep, multi-source research on a topic. Autonomously searches across many sources and returns a comprehensive report with citations. Best for complex questions requiring synthesis across multiple sources. Takes longer than a regular search (up to 2 minutes). */
+        research(params: WebResearchParams): Promise<ToolOutputByName["web_research"]>
+        /** Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see. */
+        editImage(params: ImageEditParams): Promise<ToolOutputByName["image_edit"]>
+    }
 }
 
 declare module "terse-sdk" {
@@ -166,13 +198,25 @@ function createTools(agent: TerseAgent): GeneratedTools {
     return {
         ...(allowed.has("slack") ? { slack: {
             sendMessage: (params: SlackSendMessageParams) =>
-                TerseAgent.executeTool<ToolOutputByName["slack_send_message"]>("slack_send_message", { ...(params), integrationId: "cmqviv9xa003ly5skjfpkxmbg" }),
+                TerseAgent.executeTool<ToolOutputByName["slack_send_message"]>("slack_send_message", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
             listUsers: (params: SlackListUsersParams) =>
-                TerseAgent.executeTool<ToolOutputByName["slack_list_users"]>("slack_list_users", { ...(params), integrationId: "cmqviv9xa003ly5skjfpkxmbg" }),
+                TerseAgent.executeTool<ToolOutputByName["slack_list_users"]>("slack_list_users", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
             listChannels: (params: SlackListChannelsParams) =>
-                TerseAgent.executeTool<ToolOutputByName["slack_list_channels"]>("slack_list_channels", { ...(params), integrationId: "cmqviv9xa003ly5skjfpkxmbg" }),
+                TerseAgent.executeTool<ToolOutputByName["slack_list_channels"]>("slack_list_channels", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
             readConversation: (params: SlackReadConversationParams) =>
-                TerseAgent.executeTool<ToolOutputByName["slack_read_conversation"]>("slack_read_conversation", { ...(params), integrationId: "cmqviv9xa003ly5skjfpkxmbg" }),
+                TerseAgent.executeTool<ToolOutputByName["slack_read_conversation"]>("slack_read_conversation", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
+        } } : {}),
+        ...(allowed.has("terse") ? { terse: {
+            memory: (params: MemoryParams) =>
+                TerseAgent.executeTool<ToolOutputByName["memory"]>("memory", params),
+            webSearch: (params: WebSearchParams) =>
+                TerseAgent.executeTool<ToolOutputByName["web_search"]>("web_search", params),
+            extractPage: (params: WebExtractParams) =>
+                TerseAgent.executeTool<ToolOutputByName["web_extract"]>("web_extract", params),
+            research: (params: WebResearchParams) =>
+                TerseAgent.executeTool<ToolOutputByName["web_research"]>("web_research", params),
+            editImage: (params: ImageEditParams) =>
+                TerseAgent.executeTool<ToolOutputByName["image_edit"]>("image_edit", params),
         } } : {}),
     } as GeneratedTools
 }
@@ -196,12 +240,24 @@ function createTools(agent: TerseAgent): GeneratedTools {
 export const toolbox: GeneratedTools = {
     slack: {
         sendMessage: (params: SlackSendMessageParams) =>
-            TerseAgent.executeTool<ToolOutputByName["slack_send_message"]>("slack_send_message", { ...(params), integrationId: "cmqviv9xa003ly5skjfpkxmbg" }),
+            TerseAgent.executeTool<ToolOutputByName["slack_send_message"]>("slack_send_message", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
         listUsers: (params: SlackListUsersParams) =>
-            TerseAgent.executeTool<ToolOutputByName["slack_list_users"]>("slack_list_users", { ...(params), integrationId: "cmqviv9xa003ly5skjfpkxmbg" }),
+            TerseAgent.executeTool<ToolOutputByName["slack_list_users"]>("slack_list_users", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
         listChannels: (params: SlackListChannelsParams) =>
-            TerseAgent.executeTool<ToolOutputByName["slack_list_channels"]>("slack_list_channels", { ...(params), integrationId: "cmqviv9xa003ly5skjfpkxmbg" }),
+            TerseAgent.executeTool<ToolOutputByName["slack_list_channels"]>("slack_list_channels", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
         readConversation: (params: SlackReadConversationParams) =>
-            TerseAgent.executeTool<ToolOutputByName["slack_read_conversation"]>("slack_read_conversation", { ...(params), integrationId: "cmqviv9xa003ly5skjfpkxmbg" }),
+            TerseAgent.executeTool<ToolOutputByName["slack_read_conversation"]>("slack_read_conversation", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
+    },
+    terse: {
+        memory: (params: MemoryParams) =>
+            TerseAgent.executeTool<ToolOutputByName["memory"]>("memory", params),
+        webSearch: (params: WebSearchParams) =>
+            TerseAgent.executeTool<ToolOutputByName["web_search"]>("web_search", params),
+        extractPage: (params: WebExtractParams) =>
+            TerseAgent.executeTool<ToolOutputByName["web_extract"]>("web_extract", params),
+        research: (params: WebResearchParams) =>
+            TerseAgent.executeTool<ToolOutputByName["web_research"]>("web_research", params),
+        editImage: (params: ImageEditParams) =>
+            TerseAgent.executeTool<ToolOutputByName["image_edit"]>("image_edit", params),
     },
 }

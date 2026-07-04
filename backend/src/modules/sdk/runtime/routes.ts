@@ -5,7 +5,7 @@ import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 import { handleMemoryDelete, handleMemoryGet, handleMemoryList, handleMemoryPut } from "../memory/controller"
 import { handleStateGet, handleStatePut } from "../state/controller"
 
-import { handleJobSuspension, handleSdkAgentRun, handleSdkApprovalDecision, handleSdkListen, handleSessionEvents } from "./controller"
+import { handleInputRequestRegister, handleJobSuspension, handleSdkAgentRun, handleSdkApprovalDecision, handleSdkListen, handleSessionEvents } from "./controller"
 
 const router = Router()
 const auth = requireAuth([AuthKind.UserCookie, AuthKind.UserToken, AuthKind.ProjectToken])
@@ -16,6 +16,7 @@ router.post("/approval-decision", limit, auth, handleSdkApprovalDecision)
 router.get("/session-events", limit, auth, handleSessionEvents)
 router.get("/listen", limit, auth, handleSdkListen)
 router.post("/suspend", limit, auth, handleJobSuspension)
+router.post("/input-request", limit, auth, handleInputRequestRegister)
 
 router.post("/memory/list", limit, auth, handleMemoryList)
 router.post("/memory/get", limit, auth, handleMemoryGet)

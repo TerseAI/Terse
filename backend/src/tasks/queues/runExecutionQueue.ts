@@ -1,5 +1,5 @@
 import { Boss } from "../../loaders/pgBoss"
-import { JobExecutionKind } from "../../services/jobExecutors/types"
+import { HookResume, JobExecutionKind } from "../../services/jobExecutors/types"
 
 import { QueueName } from "./queueNames"
 
@@ -27,4 +27,5 @@ export interface RunExecutionJobData {
     jobName: string
     kind: JobExecutionKind
     restoreImageId?: string
+    hookResume?: HookResume
 }

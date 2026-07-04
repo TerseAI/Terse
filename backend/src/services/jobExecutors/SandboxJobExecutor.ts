@@ -10,6 +10,7 @@ import { settings } from "../../settings"
 import { AgentWithRelations } from "../../types/prisma"
 import { getSocketIO } from "../CacheInvalidationService"
 import { SecretService } from "../SecretService"
+import { resolveRunStatus } from "../resolveRunStatus"
 import { getSandboxProvider } from "../sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
@@ -46,7 +47,7 @@ export class SandboxJobExecutor implements JobExecutor {
     }
 
     async execute(context: JobExecutionContext): Promise<RunOutcome> {
-        const { runId, agent, orgId, userId, user, jobName, restoreImageId } = context
+        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume } = context
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
@@ -68,7 +69,7 @@ export class SandboxJobExecutor implements JobExecutor {
 
             const sandboxBackendUrl = getSandboxProvider().supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
 
-            const sandboxEnv = {
+            const sandboxEnv: Record<string, string> = {
                 // Make sure to keep this first as the sandbox env,
                 // so that the following env variables take precedence.
                 ...projectSecretValues,
@@ -79,6 +80,13 @@ export class SandboxJobExecutor implements JobExecutor {
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1"
+            }
+            // Interim transport: the response payload rides sandbox env vars because there is no
+            // server-side store for it yet. Once the shared Redis cache lands, stash the payload
+            // there keyed by token and pass only the token; the CLI fetches it over the authed API.
+            if (hookResume) {
+                sandboxEnv.TERSE_RESUME_HOOK_TOKEN = hookResume.token
+                sandboxEnv.TERSE_RESUME_HOOK_PAYLOAD = JSON.stringify(hookResume.payload)
             }
 
             const result = await this.executeWithSourceImage({
@@ -96,14 +104,7 @@ export class SandboxJobExecutor implements JobExecutor {
 
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
 
-            if (result.exitCode === 0) {
-                logger.info("SDK sandbox: terse run completed", { runId, agentId: agent.id, runtime: executor.runtime })
-                return { status: "success" }
-            }
-
-            const errorMsg = result.stderr?.trim().slice(0, 500) || `Process exited with code ${result.exitCode}`
-            logger.error("SDK sandbox: terse run failed", { runId, agentId: agent.id, exitCode: result.exitCode, runtime: executor.runtime })
-            return { status: "failed", cause: new Error(errorMsg) }
+            return await resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime })
         } catch (error) {
             logger.error("SDK job execution failed", {
                 error,
@@ -459,18 +460,3 @@ export class SandboxJobExecutor implements JobExecutor {
     }
 }
 
-// Snapshots a suspending run's journal directory off its live sandbox and returns the
-// resulting image id, which rides the scheduler payload to the resume call. Returns
-// undefined when the run has no live sandbox (nothing to snapshot).
-export async function snapshotRunJournalForSuspend(runId: string): Promise<string | undefined> {
-    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
-    const projectId = run?.automation?.project_id
-    if (!projectId) return undefined
-
-    const provider = getSandboxProvider()
-    const app = await provider.getOrCreateApp("terse-sdk-sandbox")
-    const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
-    if (!sandbox) return undefined
-
-    return provider.snapshotDirectory(sandbox, runJournalDir(runId))
-}

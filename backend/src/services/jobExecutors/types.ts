@@ -1,4 +1,4 @@
-import { UserSession } from "terse-types/types"
+import { SdkInputResponsePayload, UserSession } from "terse-types/types"
 
 import { AgentWithRelations } from "../../types/prisma"
 
@@ -13,9 +13,16 @@ export interface JobExecutionContext {
     readonly jobName: string
     /** Journal snapshot image to restore when resuming a suspended run. */
     readonly restoreImageId?: string
+    /** Input response to inject when resuming a run parked on a workflow hook. */
+    readonly hookResume?: HookResume
 }
 
-export type RunOutcome = { status: "success" } | { status: "skipped"; reason: string } | { status: "failed"; cause: unknown }
+export type HookResume = {
+    readonly token: string
+    readonly payload: SdkInputResponsePayload
+}
+
+export type RunOutcome = { status: "success" } | { status: "skipped"; reason: string } | { status: "suspended" } | { status: "failed"; cause: unknown }
 
 export interface JobExecutor {
     readonly kind: JobExecutionKind

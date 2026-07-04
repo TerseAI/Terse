@@ -5,7 +5,7 @@ import path from "node:path"
 import { __buildJobStateAccessor, createSDKTrigger, fetchRegisteredJobs } from "terse-sdk"
 import { TerseJobContext } from "terse-sdk/dist/context"
 import { SerializedEvent } from "terse-types"
-import { getRun, start } from "workflow/api"
+import { getRun, resumeHook, start } from "workflow/api"
 import { setWorld } from "workflow/runtime"
 
 import { createTerseWorld } from "../../terseWorld.js"
@@ -31,10 +31,6 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     world.registerHandler("__wkf_step_", require(path.join(out, "steps.cjs")).POST)
     world.registerHandler("__wkf_workflow_", require(path.join(out, "workflows.cjs")).POST)
 
-    // start() re-enqueues recovered (pending/running) runs from .terse/data, so the
-    // handlers must already be registered or there is nothing to drain them.
-    await world.start?.()
-
     const manifest = JSON.parse(fs.readFileSync(path.join(out, "manifest.json"), "utf8"))
     const workflowIdByJob = new Map<string, string>()
     const missing: Array<{ name: string; file: string }> = []
@@ -50,7 +46,19 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
         )
     }
 
+    // start() re-enqueues recovered (pending/running) runs and begins draining the queue.
+    // It is NOT called during construction: a hook-resume must journal its payload first,
+    // or the re-enqueued replay races the payload write, re-arms the raced sleep, and
+    // fires a spurious suspension for a run that is about to complete.
+    let started = false
+    const startWorld = async () => {
+        if (started) return
+        started = true
+        await world.start?.()
+    }
+
     return {
+        start: startWorld,
         dispatchJob: async (jobName, ctx, event) => {
             const workflowId = workflowIdByJob.get(jobName)
             if (!workflowId) throw new Error(`No durable workflow was built for job "${jobName}".`)
@@ -59,7 +67,7 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             if (!job) throw new Error(`No job was registered with name "${jobName}".`)
 
             const state = __buildJobStateAccessor(job.states ?? [])
-            if (job?.filter && !(await job.filter(createSDKTrigger(event), state))) return { status: "ok", filtered: true }
+            if (job?.filter && !(await job.filter(createSDKTrigger(event), state))) return { filtered: true, awaitResult: async () => ({ status: "ok", filtered: true }) }
 
             process.env.TERSE_BACKEND_URL ??= ctx.apiBaseUrl
             const attributes: Record<string, string> = { sessionId: ctx.sessionId }
@@ -72,16 +80,19 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
             if (ctx.projectId) attributes.projectId = ctx.projectId
 
             const run = await start({ workflowId }, [event], { attributes })
-            return await run.returnValue
+            return { filtered: false, awaitResult: () => run.returnValue }
         },
-        resumeRun: workflowRunId => getRun(workflowRunId).returnValue,
+        awaitRunResult: workflowRunId => getRun(workflowRunId).returnValue,
+        deliverInput: (token, payload) => resumeHook(token, payload).then(() => undefined),
         close: () => world.close?.() ?? Promise.resolve()
     }
 }
 
 type DurableRuntime = {
-    dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<unknown>
-    resumeRun: (workflowRunId: string) => Promise<unknown>
+    start: () => Promise<void>
+    dispatchJob: (jobName: string, ctx: TerseJobContext, event: SerializedEvent) => Promise<{ filtered: boolean; awaitResult: () => Promise<unknown> }>
+    awaitRunResult: (workflowRunId: string) => Promise<unknown>
+    deliverInput: (token: string, payload: unknown) => Promise<void>
     close: () => Promise<void>
 }
 

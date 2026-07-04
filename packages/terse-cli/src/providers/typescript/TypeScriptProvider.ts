@@ -185,6 +185,17 @@ class TypeScriptProvider implements LanguageProvider {
     ): Promise<void> {
         return durableJobRuntime.resumeRun(runId, opts)
     }
+
+    async resumeRunWithInput(
+        runId: string,
+        input: { token: string; payload: unknown },
+        opts?: {
+            verbose?: boolean
+            pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+        }
+    ): Promise<void> {
+        return durableJobRuntime.resumeRunWithInput(runId, input, opts)
+    }
 }
 
 export const typeScriptProvider = new TypeScriptProvider()

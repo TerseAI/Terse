@@ -27,16 +27,20 @@ function loadAgentForExecution(agentId: string, orgId: string): Promise<AgentWit
 }
 
 export async function handleRunExecution(data: RunExecutionJobData): Promise<void> {
-    const { runId, agentId, orgId, userId, jobName, kind, restoreImageId } = data
+    const { runId, agentId, orgId, userId, jobName, kind, hookResume } = data
+    let restoreImageId = data.restoreImageId
 
     // A delayed resume may fire after the run was cancelled while suspended; only the caller
     // that flips suspended -> in_progress may execute, so a failed claim means drop the job.
     if (restoreImageId) {
-        const claimed = await claimSuspendedRun(runId)
-        if (!claimed) {
+        const claim = await claimSuspendedRun(runId)
+        if (!claim.claimed) {
             logger.info("Run resumption skipped: run is no longer suspended", { runId, agentId })
             return
         }
+        // The suspension row is the source of truth for the snapshot; the payload imageId
+        // only covers suspensions parked before run_suspensions was introduced.
+        restoreImageId = claim.suspendImageId ?? restoreImageId
     }
 
     const user = await resolveUserInOrg(userId, orgId)
@@ -64,7 +68,7 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
         }
 
         const executor = jobExecutorRegistry.resolve(kind)
-        const outcome = await executor.execute({ runId, agent, orgId, userId, user, jobName, restoreImageId })
+        const outcome = await executor.execute({ runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume })
         switch (outcome.status) {
             case "success":
                 await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
@@ -72,6 +76,10 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
                 return
             case "skipped":
                 await markRunSkipped(runId, outcome.reason)
+                invalidateRunAndChatHistory(orgId, agent.id, runId)
+                return
+            case "suspended":
+                // The executor already parked the run (or /sdk/suspend did); nothing to finalize.
                 invalidateRunAndChatHistory(orgId, agent.id, runId)
                 return
             case "failed":
