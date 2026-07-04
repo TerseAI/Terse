@@ -10,7 +10,7 @@ import { getInputConfigInclude, getOutputConfigInclude } from "../../common/pris
 import { extractErrorMessage } from "../../common/strings"
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigData, convertPrismaOutputConfigToConfigData } from "../../common/typeConverters"
 import { buildHeyReachWebhookUrl, buildWebhookUrl } from "../../common/webhookUrl"
-import { INTEGRATION_REGISTRY, isSystemIntegration } from "../../integrations/abstract/IntegrationRegistry"
+import { IntegrationRegistry, isSystemIntegration } from "../../integrations/abstract/IntegrationRegistry"
 import { fetchAttioWebhookSubscriptions } from "../../integrations/attio/integration"
 import { getMonitor } from "../../integrations/webMonitor/integration"
 import { db } from "../../loaders/prisma"
@@ -48,7 +48,9 @@ export async function validateUserOwnsIntegration(organizationId: string, integr
     if (isSystemIntegration(integrationType)) {
         return true
     }
-    const integration = INTEGRATION_REGISTRY.find(integration => integration.integrationType === integrationType)
+    const integration = IntegrationRegistry.getInstance()
+        .all()
+        .find(integration => integration.integrationType === integrationType)
     if (!integration) {
         throw new Error(`Integration ${integrationType} not found`)
     }
@@ -662,7 +664,9 @@ export async function setupAgentTriggers(agent: AgentWithTriggerRelations): Prom
             const integrationType = configData.integrationType
 
             // Find the integration from the registry
-            const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)
+            const integration = IntegrationRegistry.getInstance()
+                .all()
+                .find(int => int.integrationType === integrationType)
 
             if (integration) {
                 await integration.setupAgentTrigger(trigger.integration_id, trigger)
@@ -696,7 +700,9 @@ export async function tearDownAgentTriggers(agent: AgentWithTriggerRelations): P
             const integrationType = configData.integrationType
 
             // Find the integration from the registry
-            const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType)
+            const integration = IntegrationRegistry.getInstance()
+                .all()
+                .find(int => int.integrationType === integrationType)
 
             if (integration) {
                 await integration.teardownAgentTrigger(trigger.integration_id, trigger)

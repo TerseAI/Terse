@@ -3,7 +3,7 @@ import { IntegrationType } from "terse-types"
 
 import logger from "../../common/logger"
 import { isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration"
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry"
+import { IntegrationRegistry } from "../../integrations/abstract/IntegrationRegistry"
 import { GmailTriggerRuntime, fetchAndParseEmail, getOAuth2Client } from "../../integrations/gmail/integration"
 import { db } from "../../loaders/prisma"
 import { SecretService } from "../../services/SecretService"
@@ -59,7 +59,9 @@ export class GmailEventHydrator extends Hydrator<GmailTriggerRuntime> {
             return null
         }
 
-        const manager = INTEGRATION_REGISTRY.find(m => m.integrationType === IntegrationType.GMAIL)
+        const manager = IntegrationRegistry.getInstance()
+            .all()
+            .find(m => m.integrationType === IntegrationType.GMAIL)
         if (!manager || !isOAuthIntegrationInstallation(manager)) {
             return null
         }

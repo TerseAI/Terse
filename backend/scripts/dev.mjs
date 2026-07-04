@@ -41,6 +41,7 @@ const shouldStartTunnel = forceTunnel || isTruthy(process.env.DEV_TUNNEL) || Boo
 let shuttingDown = false
 let serverProcess = null
 let tunnelProcess = null
+let workerProcess = null
 
 function runPnpm(args, options = {}) {
     return spawn(pnpmCommand, args, {
@@ -184,8 +185,26 @@ function startServer() {
         if (!shuttingDown && tunnelProcess && !tunnelProcess.killed) {
             tunnelProcess.kill("SIGTERM")
         }
+        if (!shuttingDown && workerProcess && !workerProcess.killed) {
+            workerProcess.kill("SIGTERM")
+        }
 
         process.exit(code ?? 0)
+    })
+}
+
+function startWorker() {
+    workerProcess = runPnpm(["run", "dev:worker"], { env: process.env })
+
+    workerProcess.on("exit", code => {
+        if (shuttingDown) {
+            return
+        }
+        console.error(`Queue worker exited unexpectedly with code ${code ?? "unknown"}.`)
+        if (serverProcess && !serverProcess.killed) {
+            serverProcess.kill("SIGTERM")
+        }
+        process.exit(code ?? 1)
     })
 }
 
@@ -199,6 +218,10 @@ function shutdown(signal) {
     if (tunnelProcess && !tunnelProcess.killed) {
         tunnelProcess.kill(signal)
     }
+
+    if (workerProcess && !workerProcess.killed) {
+        workerProcess.kill(signal)
+    }
 }
 
 process.on("SIGINT", () => shutdown("SIGINT"))
@@ -209,3 +232,4 @@ if (shouldStartTunnel) {
 }
 
 startServer()
+startWorker()

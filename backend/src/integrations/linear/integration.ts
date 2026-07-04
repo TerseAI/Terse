@@ -11,6 +11,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { LinearTeam, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
+import { trackIntegrationAdded } from "../../common/analytics"
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { LinearAdapter } from "../../integrations/linear/ticketing"
@@ -23,8 +24,6 @@ import { SecretNotFoundError } from "../../services/SecretService"
 import { OAUTH_TOKEN_REFRESH_THRESHOLD_MS, urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { resolveUserInOrg } from "../../utility/identity"
-import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
-import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
@@ -343,7 +342,7 @@ export class LinearIntegrationManager
             })
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
-            integrationTaskQueue.emit(new IntegrationCompletedTask(IntegrationType.LINEAR, integrationId, decoded.userId, decoded, new Date()))
+            trackIntegrationAdded(decoded.userId, { integrationType: IntegrationType.LINEAR })
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`)

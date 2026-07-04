@@ -21,11 +21,13 @@ import { appendRunHistoryErrorSystemEvent } from "../modules/agents/systemEvents
 import { NotificationManager } from "../modules/notifications/Notification"
 import { ApprovalProcessingStatus, ApprovalService } from "../services/ApprovalService"
 import { billingServiceProxyForOrganization } from "../services/BillingService"
-import { invalidateRunAndChatHistory } from "../services/CacheInvalidationService"
+import { getSocketIO, invalidateRunAndChatHistory } from "../services/CacheInvalidationService"
 import { getAuthProvider } from "../services/authProvider"
-import { optional } from "../settings"
+import { redis } from "../settings"
 import { Agent, AgentWithRelations } from "../types/prisma"
 import { resolveUserInOrg } from "../utility/identity"
+
+import { RedisNamespace } from "./redisNamespace"
 
 // Extended Socket type with userId, organizationId, and WorkOS session ID
 interface AuthenticatedSocket extends Socket {
@@ -58,39 +60,13 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
     })
     logger.info("Socket.IO server initialized")
 
-    // Set up Redis adapter for Socket.IO (OPTIONAL - only needed for multi-server deployments)
-    //
-    // By default, Socket.IO uses an in-memory adapter which is perfect for:
-    // - Local development (single server instance)
-    // - Single-server production deployments
-    //
-    // Only set REDIS_URL if you're running multiple server instances and need them to share socket state.
-    // When REDIS_URL is not set, Socket.IO automatically uses the built-in in-memory adapter.
-    //
-    // To get Redis URL (only if needed for multi-server):
-    // - Cloud (Redis Cloud, Upstash, AWS ElastiCache, etc.): Use the public endpoint URL they provide
-    //   Format: redis://username:password@host:port or rediss://username:password@host:port (SSL)
-    //
-    const redisUrl = optional.redisUrl?.trim()
-    if (redisUrl && redisUrl.length > 0) {
-        try {
-            // Validate URL format before creating client
-            new URL(redisUrl)
-
-            pub = createClient({ url: redisUrl })
-            sub = pub.duplicate()
-
-            await pub.connect()
-            await sub.connect()
-            io.adapter(createAdapter(pub, sub))
-            logger.info("✅ Redis adapter connected for Socket.IO")
-        } catch (error) {
-            logger.warn("⚠️  Invalid REDIS_URL format - Socket.IO running in single-server mode (no Redis adapter)", { error })
-            logger.warn("REDIS_URL should be in format: redis://host:port or rediss://host:port")
-        }
-    } else {
-        logger.info("ℹ️  REDIS_URL not set - Socket.IO using in-memory adapter (perfect for local dev and single-server deployments)")
-    }
+    // Redis adapter so Socket.IO state is shared across web instances and the worker can emit into
+    pub = createClient({ url: redis.url })
+    sub = pub.duplicate()
+    await pub.connect()
+    await sub.connect()
+    io.adapter(createAdapter(pub, sub, { key: RedisNamespace.socketio }))
+    logger.info("✅ Redis adapter connected for Socket.IO")
 
     // Authentication middleware: verify WorkOS access token via JWKS
     io.use(async (socket: Socket, next) => {
@@ -361,7 +337,13 @@ export async function initializeRealtimeSocket(server: HttpServer, corsAllowedOr
                 return
             }
 
-            requestRunCancellation(runId, runRecord.automation.organization_id, CancelReason.USER_CANCELLED)
+            try {
+                await requestRunCancellation(runId, runRecord.automation.organization_id, CancelReason.USER_CANCELLED)
+            } catch (error) {
+                logger.error("[agent:chat:cancel] Failed to publish cancellation signal", { error, runId })
+                ack({ accepted: false, reason: "cancel_signal_failed" })
+                return
+            }
             ack({ accepted: true })
         })
 
@@ -414,26 +396,7 @@ export function getRealtimeSocket(): Server | null {
     return io
 }
 
-export function emitCacheInvalidationWithKey(organizationId: string, key: string) {
-    if (!io) {
-        logger.warn("Socket.IO server not initialized")
-        return
-    }
-    io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, {
-        key
-    })
-}
-
-export function emitCacheInvalidationWithWildcard(organizationId: string, key: string, id: string) {
-    if (!io) {
-        logger.warn("Socket.IO server not initialized")
-        return
-    }
-    io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.INVALIDATE, {
-        key,
-        id
-    })
-}
+export { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../services/CacheInvalidationService"
 
 async function notifyRunFailure(notificationManager: NotificationManager, runId: string, failureReason: string, agentId: string, userId: string): Promise<void> {
     try {
@@ -482,7 +445,8 @@ async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedE
 
         await appendRunHistoryErrorSystemEvent(runId, classified)
 
-        if (io && organizationId) {
+        const socket = getSocketIO()
+        if (socket && organizationId) {
             const runErrorEvent = buildRunErrorEvent(classified)
             const runHistoryModelEvent: RunHistoryModelEvent = {
                 ...runErrorEvent,
@@ -493,7 +457,7 @@ async function markRunFailedAndInvalidate(runId: string, classified: ClassifiedE
                 agentId,
                 runHistoryModelEvent
             }
-            io.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
+            socket.to(SocketRooms.organization(organizationId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload)
         }
 
         if (organizationId) {

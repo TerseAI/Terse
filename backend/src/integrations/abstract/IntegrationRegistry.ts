@@ -26,23 +26,45 @@ export function isSystemIntegration(integrationType: IntegrationType): boolean {
     return SYSTEM_INTEGRATION_TYPES.includes(integrationType)
 }
 
-const INTEGRATION_TUPLE = [
-    new CronJobIntegrationManager(),
-    new WebMonitorIntegrationManager(),
-    new GithubIntegrationManager(),
-    new GmailIntegrationManager(),
-    new LinearIntegrationManager(),
-    new NotionIntegrationManager(),
-    new SlackIntegrationManager(),
-    new PosthogIntegrationManager(),
-    new LaunchDarklyIntegrationManager(),
-    new DatadogIntegrationManager(),
-    new WorkOSIntegrationManager(),
-    new AttioIntegrationManager(),
-    new SnowflakeIntegrationManager(),
-    new HeyReachIntegrationManager()
-] as const satisfies readonly IntegrationWithInstallation[]
+function buildIntegrationTuple() {
+    return [
+        new CronJobIntegrationManager(),
+        new WebMonitorIntegrationManager(),
+        new GithubIntegrationManager(),
+        new GmailIntegrationManager(),
+        new LinearIntegrationManager(),
+        new NotionIntegrationManager(),
+        new SlackIntegrationManager(),
+        new PosthogIntegrationManager(),
+        new LaunchDarklyIntegrationManager(),
+        new DatadogIntegrationManager(),
+        new WorkOSIntegrationManager(),
+        new AttioIntegrationManager(),
+        new SnowflakeIntegrationManager(),
+        new HeyReachIntegrationManager()
+    ] as const satisfies readonly IntegrationWithInstallation[]
+}
 
-// Only include integrations that have necessary secrets provided
-export const INTEGRATION_REGISTRY: readonly IntegrationWithInstallation[] = INTEGRATION_TUPLE.filter(m => m.isAvailable)
-export type IntegrationManagers = typeof INTEGRATION_TUPLE
+export type IntegrationManagers = ReturnType<typeof buildIntegrationTuple>
+
+export class IntegrationRegistry {
+    private static instance: IntegrationRegistry
+    private registry: readonly IntegrationWithInstallation[] | null = null
+
+    private constructor() {}
+
+    public static getInstance(): IntegrationRegistry {
+        if (!IntegrationRegistry.instance) {
+            IntegrationRegistry.instance = new IntegrationRegistry()
+        }
+        return IntegrationRegistry.instance
+    }
+
+    // Only include integrations that have necessary secrets provided.
+    public all(): readonly IntegrationWithInstallation[] {
+        if (!this.registry) {
+            this.registry = buildIntegrationTuple().filter(m => m.isAvailable)
+        }
+        return this.registry
+    }
+}

@@ -1,15 +1,14 @@
 import { InputConfigType } from "@prisma/client"
-import { ApiRoutes, CronTrigger, buildRoute } from "terse-types"
+import { CronTrigger, buildRoute } from "terse-types"
 import { FormFieldDefinition } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import logger, { runWithUserContext } from "../../common/logger"
-import { SchedulerClient, createSchedulerClient } from "../../common/schedulerClient"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
-import { settings } from "../../settings"
+import { removeScheduleTrigger, upsertScheduleTrigger } from "../../tasks/queues/scheduleQueue"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { resolveUserInOrg } from "../../utility/identity"
 import { FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration, createNotConnectedCliDisplayState } from "../abstract/Integration"
@@ -26,18 +25,10 @@ export class CronJobIntegrationManager
     implements FormIntegrationInstallation<IntegrationType.CRON_JOB>
 {
     readonly integrationType = IntegrationType.CRON_JOB
-    readonly settingsKey = "cloudScheduler"
-    private schedulerClient: SchedulerClient | null = null
+    readonly settingsKey = null
 
     getFormFields(): FormFieldDefinition[] {
         return []
-    }
-
-    private getSchedulerClient(): SchedulerClient {
-        if (!this.schedulerClient) {
-            this.schedulerClient = createSchedulerClient()
-        }
-        return this.schedulerClient
     }
 
     async getInstancesForOrganization(_organizationId: string): Promise<IntegrationInstance[]> {
@@ -140,30 +131,13 @@ export class CronJobIntegrationManager
         }
 
         try {
-            const scheduler = this.getSchedulerClient()
-            const jobId = this.getJobIdForInput(agentTrigger.id)
-            const webhookUrl = this.getWebhookUrl(agentTrigger.id)
-
-            const existingJob = await scheduler.get(jobId)
-            if (existingJob) {
-                logger.info("✅ Scheduler job already exists for channel input", {
-                    inputId: agentTrigger.id,
-                    jobId,
-                    schedule: existingJob.schedule
-                })
-                return
-            }
-
-            const job = await scheduler.create(jobId, cronExpression, webhookUrl)
-
-            logger.info("✅ Created Cloud Scheduler job for time trigger", {
+            await upsertScheduleTrigger(agentTrigger.id, cronExpression)
+            logger.info("✅ Validated time trigger schedule", {
                 inputId: agentTrigger.id,
-                jobId: job.id,
-                schedule: job.schedule,
-                url: job.url
+                cronExpression
             })
         } catch (error) {
-            logger.error("❌ Failed to create Cloud Scheduler job", {
+            logger.error("❌ Failed to validate time trigger schedule", {
                 error,
                 inputId: agentTrigger.id,
                 cronExpression
@@ -177,48 +151,18 @@ export class CronJobIntegrationManager
             return
         }
 
-        const scheduler = this.getSchedulerClient()
-        let jobId: string | null = null
         try {
-            jobId = this.getJobIdForInput(agentTrigger.id)
-            logger.info("Deleting Cloud Scheduler job", {
-                inputId: agentTrigger.id,
-                jobId
-            })
-        } catch (error) {
-            logger.error("❌ Failed to delete Cloud Scheduler job", {
+            await removeScheduleTrigger(agentTrigger.id)
+            logger.info("✅ Removed time trigger schedule", {
                 inputId: agentTrigger.id
             })
-            return
-        }
-
-        if (!jobId) {
-            logger.warn("No job ID found for input", { inputId: agentTrigger.id })
-            return
-        }
-
-        try {
-            await scheduler.delete(jobId)
         } catch (error) {
-            if (isSchedulerJobNotFoundError(error)) {
-                logger.info("ℹ️  Scheduler job already removed", {
-                    inputId: agentTrigger.id,
-                    jobId
-                })
-                return
-            }
-
-            logger.error("❌ Failed to delete Cloud Scheduler job", {
-                inputId: agentTrigger.id,
-                jobId
+            logger.error("❌ Failed to remove time trigger schedule", {
+                error,
+                inputId: agentTrigger.id
             })
             throw error
         }
-
-        logger.info("✅ Deleted Cloud Scheduler job for time trigger", {
-            inputId: agentTrigger.id,
-            jobId
-        })
     }
 
     async processFormSubmission(_input: FormSubmissionInput): Promise<FormSubmissionResult> {
@@ -228,29 +172,6 @@ export class CronJobIntegrationManager
             statusCode: 400
         }
     }
-
-    private getJobIdForInput(inputId: string): string {
-        return `terse-schedule-${inputId}`
-    }
-
-    private getWebhookUrl(inputId: string): string {
-        const baseUrl = settings.urls.backend
-        const webhookUrl = buildRoute(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID, { inputId })
-        return `${baseUrl}${webhookUrl}`
-    }
-}
-
-function isSchedulerJobNotFoundError(error: unknown): boolean {
-    if (!error) {
-        return false
-    }
-
-    const anyError = error as { code?: number; message?: string }
-    if (anyError.code === 5) {
-        return true
-    }
-
-    return typeof anyError.message === "string" && anyError.message.includes("NOT_FOUND")
 }
 
 class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {

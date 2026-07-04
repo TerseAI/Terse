@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import crypto from "node:crypto"
-import { ApiRoutes, BillingError, CreditGateDeniedError, SdkListenStreamEvent, buildRoute, sdkListenQuerySchema } from "terse-types"
+import { BillingError, CreditGateDeniedError, SdkListenStreamEvent, sdkListenQuerySchema } from "terse-types"
 import { SkillConfigData } from "terse-types/Configs"
 import {
     SdkAgentRunResponseBody,
@@ -16,7 +16,6 @@ import {
 import { z } from "zod"
 
 import logger from "../../../common/logger"
-import { createSchedulerClient, suspensionJobId } from "../../../common/schedulerClient"
 import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
 import { finalizeRunFailure } from "../../../loaders/socket"
@@ -30,9 +29,8 @@ import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellat
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
 import { registerInputRequest } from "../../../services/InputRequestService"
-import { resumeSdkRun } from "../../../services/SdkJobExecutionService"
 import { snapshotRunJournalForSuspend } from "../../../services/resolveRunStatus"
-import { settings } from "../../../settings"
+import { enqueueRunExecution } from "../../../tasks/queues/runExecutionQueue"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
 
 const sdkAgentRunInputSchema = sdkAgentRunRequestBodySchema.extend({ prompt: z.string().min(1) })
@@ -186,7 +184,12 @@ export async function handleSdkApprovalDecision(req: Request, res: Response) {
         resolveOrgId = user.organizationId
     }
 
-    resolveApprovalDecision(parsed.data.runId, parsed.data.stepId, resolveOrgId, { approved: parsed.data.approved })
+    try {
+        await resolveApprovalDecision(parsed.data.runId, parsed.data.stepId, resolveOrgId, { approved: parsed.data.approved })
+    } catch (error) {
+        logger.error("[sdk/approval-decision] Failed to publish approval decision", { error, runId: parsed.data.runId, stepId: parsed.data.stepId })
+        return res.status(500).json({ success: false, error: "Failed to deliver approval decision — please retry" })
+    }
     return res.status(200).json({ success: true })
 }
 
@@ -391,59 +394,53 @@ export async function handleJobSuspension(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: "Invalid request body", details: parsed.error.issues.map(i => i.message) })
     }
 
-    // Suspension is backed by Cloud Scheduler. Self-hosted deployments without GCP/Cloud Scheduler
-    // configured cannot park the delayed delivery, so fail loudly rather than silently dropping it.
-    if (!settings.gcp || !settings.cloudScheduler) {
-        return res.status(501).json({
-            success: false,
-            error: "Job suspension is unavailable on this deployment because Cloud Scheduler is not configured."
-        })
-    }
-
-    const { runId, name, delaySeconds, idempotencyKey } = parsed.data
+    const { runId, delaySeconds } = parsed.data
     try {
-        const resumeUrl = `${settings.urls.backend}${buildRoute(ApiRoutes.SDK.RESUME, {})}`
         const imageId = await snapshotRunJournalForSuspend(runId)
         if (!imageId) {
-            // Parking without a journal snapshot would leave the run unresumable; refuse loudly.
-            logger.error("Refusing to suspend run without a journal snapshot", { runId })
-            return res.status(500).json({ success: false, error: "Could not snapshot the run journal; suspension aborted." })
+            throw new Error("No live sandbox to snapshot; the run cannot be suspended")
         }
         await markRunSuspended(runId, imageId, { kind: "timer", delaySeconds })
-        await createSchedulerClient().createDelayedJob(suspensionJobId(runId, idempotencyKey), delaySeconds, resumeUrl, { runId, idempotencyKey })
+        await enqueueRunResumption(runId, imageId, delaySeconds)
 
         const response: SdkJobSuspendResponseBody = { success: true }
         return res.status(200).json(response)
     } catch (error) {
         logger.error("Failed to suspend job", { error, runId })
+        await rollbackSuspension(runId)
         return res.status(500).json({ success: false, error: extractErrorMessage(error) })
     }
 }
 
-const sdkJobResumeRequestBodySchema = z.object({ runId: z.string().min(1), idempotencyKey: z.string().min(1).optional(), imageId: z.string().min(1).optional() })
-
-export async function handleJobResumption(req: Request, res: Response) {
-    const parsed = sdkJobResumeRequestBodySchema.safeParse(req.body)
-    if (!parsed.success) return res.status(400).json({ success: false, error: "Invalid request body" })
-
-    if (!settings.gcp || !settings.cloudScheduler) {
-        return res.status(501).json({ success: false, error: "Job resumption is unavailable on this deployment because Cloud Scheduler is not configured." })
+// Suspension parks the run as a delayed pg-boss job; when the delay elapses the worker-side
+// dispatcher claims the suspended run and re-executes it from the restored journal snapshot.
+async function enqueueRunResumption(runId: string, restoreImageId: string, delaySeconds: number): Promise<void> {
+    const run = await db().run_history_records.findUnique({
+        where: { id: runId },
+        select: { automation: { select: { id: true, organization_id: true, user_id: true, name: true } } }
+    })
+    if (!run?.automation) {
+        throw new Error(`Run not found for resumption: ${runId}`)
     }
 
-    const { runId, idempotencyKey, imageId } = parsed.data
-    try {
-        await createSchedulerClient().delete(suspensionJobId(runId, idempotencyKey))
-    } catch (error) {
-        logger.warn("Failed to delete suspension scheduler job", { error, runId })
-    }
+    await enqueueRunExecution(
+        {
+            runId,
+            agentId: run.automation.id,
+            orgId: run.automation.organization_id,
+            userId: run.automation.user_id,
+            jobName: run.automation.name,
+            kind: "sandbox",
+            restoreImageId
+        },
+        { delaySeconds }
+    )
+}
 
-    // The suspension row is the source of truth for the snapshot; the payload imageId
-    // only covers suspensions parked before run_suspensions was introduced.
-    const claim = await claimSuspendedRun(runId)
-    if (!claim.claimed) return res.status(200).json({ success: true })
-
-    void resumeSdkRun(runId, claim.suspendImageId ?? imageId).catch(error => logger.error("Failed to resume suspended run", { error, runId }))
-    return res.status(200).json({ success: true })
+// Suspension failed midway: hand the run back to the live sandbox so the dispatcher can
+// finalize it normally instead of leaving it parked with no resume job.
+async function rollbackSuspension(runId: string): Promise<void> {
+    await claimSuspendedRun(runId).catch(error => logger.error("Failed to roll back suspension", { error, runId }))
 }
 
 export async function handleInputRequestRegister(req: Request, res: Response) {

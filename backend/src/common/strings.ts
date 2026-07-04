@@ -7,7 +7,20 @@ export const randomString = (length: number) => {
 }
 
 export function extractErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error)
+    if (error instanceof Error) return error.message
+    if (typeof error === "string") return error
+    if (error && typeof error === "object") {
+        return stringifyErrorObject(error)
+    }
+    return String(error)
+}
+
+function stringifyErrorObject(error: object): string {
+    try {
+        return JSON.stringify(error)
+    } catch {
+        return String(error)
+    }
 }
 
 export const isValidEpochTimestamp = (str: string): boolean => {

@@ -28,7 +28,7 @@ const IMAGE_MARKER_FILE = ".terse-image-id"
  *   sandboxes/<sandboxId>/   — active working directories
  *     scratch/                 — per-sandbox area for intermediate artifacts (zips, etc)
  *
- * Lifecycle mirrors Modal exactly so SdkSandboxImageService + SdkJobExecutionService
+ * Lifecycle mirrors Modal exactly so SdkSandboxImageService + SandboxJobExecutor
  * work unchanged: `terse deploy` → build dir → install deps → snapshot → image.
  * Runs use the snapshot, not the user's live source tree, so edits stay isolated
  * until the next deploy.

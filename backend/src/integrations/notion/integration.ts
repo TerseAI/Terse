@@ -6,6 +6,7 @@ import { AdditionalStateParams, InstallationOptionsFor, IntegrationType, NotionI
 import { NotionResource, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
+import { trackIntegrationAdded } from "../../common/analytics"
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
@@ -13,8 +14,6 @@ import { fetchNotionResources } from "../../modules/integrations/notion/controll
 import { SecretNotFoundError } from "../../services/SecretService"
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
-import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
-import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 
@@ -250,7 +249,7 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
             })
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
-            integrationTaskQueue.emit(new IntegrationCompletedTask(IntegrationType.NOTION, integrationId, decoded.userId, decoded, new Date()))
+            trackIntegrationAdded(decoded.userId, { integrationType: IntegrationType.NOTION })
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`)

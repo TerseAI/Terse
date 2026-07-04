@@ -2,9 +2,7 @@ import { TokenKind } from "@prisma/client"
 import { Request, Response } from "express"
 import { UserSession } from "terse-types/types"
 
-import { secretsMatch } from "../../../common/crypto"
 import logger from "../../../common/logger"
-import { CronJobIntegrationManager } from "../../../integrations/cronJob/integration"
 import { db } from "../../../loaders/prisma"
 import { getAuthProvider } from "../../../services/authProvider"
 import { CookieAuthOutcome } from "../../../services/authProvider/AuthProvider"
@@ -49,14 +47,6 @@ export async function authenticateViaApiToken(rawToken: string): Promise<ApiToke
         .catch(err => logger.warn("Failed to update api_token last_used_at", { error: err, tokenId: apiToken.id }))
 
     return { ok: true, user, tokenKind: apiToken.kind }
-}
-
-export function validateCloudSchedulerHeader(authHeaderValue: string | undefined): boolean {
-    if (!authHeaderValue) return false
-    const cron = new CronJobIntegrationManager()
-    if (!cron.isAvailable) return false
-    const token = authHeaderValue.startsWith("Bearer ") ? authHeaderValue.substring(7) : authHeaderValue
-    return secretsMatch(token, cron.config.secret)
 }
 
 export function readBearerToken(authHeaderValue: string | undefined): string | null {

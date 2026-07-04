@@ -36,6 +36,13 @@ export const settings = {
     database: {
         url: requireEnv("DATABASE_URL")
     },
+    redis: {
+        url: requireEnv("REDIS_URL")
+    },
+    pgboss: {
+        databaseUrl: optionalEnv("PGBOSS_DATABASE_URL"),
+        maxConnections: optionalIntEnv("PGBOSS_MAX_CONNECTIONS")
+    },
 
     // WorkOS — opt-in. Present means AuthProvider picks WorkOS; absent means LocalAuthProvider.
     workos: optionalIntegrationSettings(["WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD", "WORKOS_REDIRECT_URI", "WORKOS_WEBHOOK_SECRET"], () => ({
@@ -149,11 +156,6 @@ export const settings = {
         imagePrefix: optionalEnv("GCS_IMAGE_PREFIX", "events/images")
     },
 
-    // Cloud Scheduler (for cron jobs) — opt-in
-    cloudScheduler: optionalIntegrationSettings(["CLOUD_SCHEDULER_SECRET"], () => ({
-        secret: requireSecretMinLength("CLOUD_SCHEDULER_SECRET")
-    })),
-
     // Posthog Logs
     posthog: {
         apiKey: optionalEnv("POSTHOG_API_KEY"),
@@ -196,7 +198,6 @@ export const settings = {
 
     // Optional configuration
     optional: {
-        redisUrl: optionalEnv("REDIS_URL"),
         cookieDomain: optionalEnv("COOKIE_DOMAIN"),
         corsAllowedOrigins: optionalEnv("CORS_ALLOWED_ORIGINS")
     },
@@ -223,9 +224,9 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 }
 
 // Export individual always-on settings for convenience. Opt-in integration blocks
-// (gmail, githubApp, notion, slack, linear, attio, cloudScheduler, parallel) must be
+// (gmail, githubApp, notion, slack, linear, attio, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
-export const { jwt, gemini, urls, gcs, optional } = settings
+export const { jwt, gemini, urls, gcs, optional, redis, pgboss } = settings
 
 // OAuth token refresh threshold
 // If a token is expiring within this time window, it will be refreshed proactively
@@ -275,6 +276,18 @@ function optionalBoolEnv(name: string, defaultValue = false): boolean {
     }
 
     throw new Error(`Invalid boolean environment variable: ${name}. Expected "true" or "false".`)
+}
+
+function optionalIntEnv(name: string): number | undefined {
+    const value = optionalEnv(name)
+    if (value === undefined) {
+        return undefined
+    }
+    const parsed = Number(value)
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(`Invalid integer environment variable: ${name}. Expected a positive integer, got "${value}".`)
+    }
+    return parsed
 }
 
 /**

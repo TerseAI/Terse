@@ -1,46 +1,25 @@
-import { SdkInputResponsePayload, UserSession } from "terse-types/types"
+import logger from "../../common/logger"
+import { getActiveDeployForProject } from "../../common/projectHelper"
+import { shellQuote } from "../../common/shellEscape"
+import { db } from "../../loaders/prisma"
+import { StreamEventEmitter } from "../../modules/agents/AgentRunner/StreamProcessor"
+import { attachProjectDeployToRun } from "../../modules/agents/AgentRunner/runHistory"
+import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../../modules/agents/systemEvents/processOutputSystemEvent"
+import { createSandboxToken } from "../../modules/auth/helpers/apiTokens"
+import { settings } from "../../settings"
+import { AgentWithRelations } from "../../types/prisma"
+import { getSocketIO } from "../CacheInvalidationService"
+import { SecretService } from "../SecretService"
+import { resolveRunStatus } from "../resolveRunStatus"
+import { getSandboxProvider } from "../sandboxProvider"
+import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
+import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
+import { runJournalDir } from "../sandboxProvider/runJournal"
+import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
+import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "../sdkRuntimeExecutors/types"
+import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
 
-import logger from "../common/logger"
-import { getInputConfigInclude, getOutputConfigInclude } from "../common/prismaIncludes"
-import { getActiveDeployForProject } from "../common/projectHelper"
-import { shellQuote } from "../common/shellEscape"
-import { db } from "../loaders/prisma"
-import { emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../loaders/socket"
-import { StreamEventEmitter } from "../modules/agents/AgentRunner/StreamProcessor"
-import { attachProjectDeployToRun } from "../modules/agents/AgentRunner/runHistory"
-import { classifyAgentError } from "../modules/agents/agentErrorUtils"
-import { appendProcessOutputSystemEvent, buildProcessOutputSystemEventId } from "../modules/agents/systemEvents/processOutputSystemEvent"
-import { createSandboxToken } from "../modules/auth/helpers/apiTokens"
-import { settings } from "../settings"
-import { AgentWithRelations } from "../types/prisma"
-import { resolveUserInOrg } from "../utility/identity"
-
-import { getSocketIO } from "./CacheInvalidationService"
-import { SecretService } from "./SecretService"
-import { resolveRunStatus } from "./resolveRunStatus"
-import { getSandboxProvider } from "./sandboxProvider"
-import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
-import { Sandbox, SandboxService } from "./sandboxProvider/SandboxService"
-import { runJournalDir } from "./sandboxProvider/runJournal"
-import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "./sdkRuntimeExecutors/types"
-import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
-
-interface SdkJobExecutionParams {
-    runId: string
-    agent: AgentWithRelations
-    orgId: string
-    userId: string
-    user: UserSession
-    jobName: string
-    restoreImageId?: string
-    hookResume?: HookResume
-}
-
-export type HookResume = {
-    token: string
-    payload: SdkInputResponsePayload
-}
+import { JobExecutionContext, JobExecutionKind, JobExecutor, RunOutcome } from "./types"
 
 type SdkSourceImageRecord = {
     recordId: string
@@ -51,7 +30,9 @@ type SdkSourceImageRecord = {
     cliVersion: string
 }
 
-export class SdkJobExecutionService {
+export class SandboxJobExecutor implements JobExecutor {
+    readonly kind: JobExecutionKind = "sandbox"
+
     private emitter: StreamEventEmitter | null = null
 
     private elapsed(startMs: number): string {
@@ -65,15 +46,14 @@ export class SdkJobExecutionService {
         this.emitter.emit({ type: "NaturalStop", id: `${responseId}-stop`, response_id: responseId, timestamp: now }, now)
     }
 
-    async execute(params: SdkJobExecutionParams): Promise<void> {
-        const { runId, agent, userId, user, jobName, restoreImageId, hookResume } = params
+    async execute(context: JobExecutionContext): Promise<RunOutcome> {
+        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume } = context
         const executionStart = performance.now()
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
 
         let sandboxApiKey: string | undefined
         let sandboxTokenId: string | undefined
-        const orgId = params.orgId
 
         try {
             const sourceImage = await this.resolveSourceImage({ agent, runId })
@@ -122,9 +102,9 @@ export class SdkJobExecutionService {
                 restoreImageId
             })
 
-            await resolveRunStatus({ runId, agent, orgId, user, result, runtimeName: executor.runtime })
-
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
+
+            return await resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime })
         } catch (error) {
             logger.error("SDK job execution failed", {
                 error,
@@ -133,7 +113,7 @@ export class SdkJobExecutionService {
                 totalDuration: this.elapsed(executionStart)
             })
 
-            await finalizeRunFailure(runId, classifyAgentError(error), user, agent)
+            return { status: "failed", cause: error }
         } finally {
             this.emitSandboxNaturalStop()
             if (sandboxTokenId) {
@@ -478,49 +458,4 @@ export class SdkJobExecutionService {
             where: { id: tokenId }
         })
     }
-}
-
-export async function resumeSdkRun(runId: string, restoreImageId?: string, hookResume?: HookResume): Promise<void> {
-    if (!restoreImageId) {
-        logger.warn("resumeSdkRun: missing snapshot image, cannot resume", { runId })
-        return
-    }
-
-    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation_id: true } })
-    if (!run) {
-        logger.warn("resumeSdkRun: run not found", { runId })
-        return
-    }
-
-    const agent = await db().automations.findUnique({
-        where: { id: run.automation_id },
-        include: {
-            prompt: true,
-            inputs: { include: getInputConfigInclude() },
-            outputs: { include: getOutputConfigInclude() },
-            tool_approvals: true,
-            project: true
-        }
-    })
-    if (!agent) {
-        logger.warn("resumeSdkRun: agent not found", { runId, agentId: run.automation_id })
-        return
-    }
-
-    const user = await resolveUserInOrg(agent.user_id, agent.organization_id)
-    if (!user) {
-        logger.warn("resumeSdkRun: user not resolved", { runId, userId: agent.user_id })
-        return
-    }
-
-    await new SdkJobExecutionService().execute({
-        runId,
-        agent,
-        orgId: agent.organization_id,
-        userId: agent.user_id,
-        user,
-        jobName: agent.name,
-        restoreImageId,
-        hookResume
-    })
 }

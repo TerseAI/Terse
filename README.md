@@ -184,7 +184,25 @@ pnpm run install-global  # links your local terse-cli as `terse`
 
 The frontend and CLI talk to the hosted Terse backend at `api.useterse.ai` by default, so most SDK/CLI/frontend work doesn't need a local backend. Override with `TERSE_BACKEND_URL` if you're pointing at a self-hosted instance.
 
-Backend work needs Postgres and the credentials backend integrations expect — see [docs.useterse.ai/self-hosting](https://docs.useterse.ai/self-hosting).
+Backend work needs Postgres, Redis, and the credentials backend integrations expect. See [docs.useterse.ai/self-hosting](https://docs.useterse.ai/self-hosting) for the full list.
+
+### Redis (required for the backend)
+
+The backend uses Redis for pub/sub, Socket.IO fan-out, and rate limiting (the durable job queue runs on pg-boss in Postgres). It's a hard requirement: `pnpm run dev` exits with `ECONNREFUSED` errors if Redis isn't reachable. Start one locally before running the backend:
+
+```bash
+# Docker (recommended)
+docker run -d --name terse-redis -p 6379:6379 redis:7
+
+# or Homebrew (macOS)
+brew install redis && brew services start redis
+```
+
+Set the connection string in `backend/.env` (this is the default, so it's only needed if your Redis runs elsewhere):
+
+```bash
+REDIS_URL=redis://localhost:6379
+```
 
 ## License
 
