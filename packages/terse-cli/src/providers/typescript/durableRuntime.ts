@@ -110,6 +110,7 @@ export async function buildWorkflowArtifacts(cwd: string): Promise<Map<string, {
     const out = path.join(cwd, ".terse", "wf")
     const scanDir = path.join(".terse", "macro")
     const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, scanDir, out).build())
+    fs.mkdirSync(out, { recursive: true })
     fs.writeFileSync(path.join(out, JOBS_MAP_FILE), JSON.stringify([...workflowFnByJob]))
     fs.writeFileSync(path.join(out, SOURCES_HASH_FILE), sourcesHash(cwd))
     return workflowFnByJob

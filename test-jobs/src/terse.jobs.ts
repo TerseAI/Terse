@@ -20,7 +20,7 @@ createJob({
     // the trigger(s) above.
     onTrigger: async (event, state) => {
         const response = await generateText({
-            prompt: "Tell me a joke about Lord of the rings",
+            prompt: "Tell me a joke about Lord of the rings. With Gandalf in it",
             skills: [],
             outputSchema: z.object({ joke: z.string() })
         })
