@@ -30,7 +30,7 @@ export class Boss {
     public async start(role: BossRole): Promise<void> {
         if (this.boss) return
         const boss = new PgBoss({
-            connectionString: settings.database.url,
+            connectionString: settings.pgboss.databaseUrl ?? settings.database.url,
             schema: "pgboss",
             application_name: `terse-pgboss-${role}`,
             max: settings.pgboss.maxConnections ?? POOL_MAX[role],

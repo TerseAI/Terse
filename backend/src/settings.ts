@@ -40,6 +40,7 @@ export const settings = {
         url: requireEnv("REDIS_URL")
     },
     pgboss: {
+        databaseUrl: optionalEnv("PGBOSS_DATABASE_URL"),
         maxConnections: optionalIntEnv("PGBOSS_MAX_CONNECTIONS")
     },
 
