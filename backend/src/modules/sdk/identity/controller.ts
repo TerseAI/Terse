@@ -12,6 +12,7 @@ import {
 } from "terse-types/types"
 import { ZodError } from "zod"
 
+import { AnalyticsEvent, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
 import { createApiToken } from "../../../modules/auth/helpers/apiTokens"
 import { getAuthProvider } from "../../../services/authProvider"
@@ -90,6 +91,7 @@ export async function deviceTokenExchange(req: Request, res: Response) {
         if (!membership) return res.status(403).json({ error: "You are not a member of that organization" })
 
         const { rawToken } = await createApiToken(userId, organizationId, "CLI Login", { expiresAt: cliLoginExpiry() })
+        analytics.capture(userId, AnalyticsEvent.CLI_LOGGED_IN, { organizationId })
 
         const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || null
 

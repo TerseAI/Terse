@@ -1,11 +1,15 @@
 import { Request, Response } from "express"
 import { billingChangeRequestBodySchema, billingCheckoutRequestBodySchema, billingContextQuerySchema, billingPortalSessionRequestBodySchema, billingUsageBucketsQuerySchema } from "terse-types"
 
+import { AnalyticsEvent, analytics } from "../../common/analytics"
+
 import { BillingServiceProxy, billingForRequest } from "./service"
 
 export async function createBillingCheckoutSession(req: Request, res: Response) {
     const body = billingCheckoutRequestBodySchema.parse(req.body)
     const billingService = billingForRequest(req)
+    const user = req.session?.user
+    if (user) analytics.capture(user.id, AnalyticsEvent.BILLING_CHECKOUT_STARTED, { organizationId: user.organizationId })
     await BillingServiceProxy.respondJson(res, billingService.createCheckoutSession(body))
 }
 
@@ -18,6 +22,8 @@ export async function createBillingPortalSession(req: Request, res: Response) {
 export async function changeBillingSubscription(req: Request, res: Response) {
     const body = billingChangeRequestBodySchema.parse(req.body)
     const billingService = billingForRequest(req)
+    const user = req.session?.user
+    if (user) analytics.capture(user.id, AnalyticsEvent.BILLING_SUBSCRIPTION_CHANGE_REQUESTED, { organizationId: user.organizationId })
     await BillingServiceProxy.respondJson(res, billingService.changeBillingSubscription(body))
 }
 

@@ -2,6 +2,7 @@ import type { WorkOS, Event as WorkOSEvent } from "@workos-inc/node"
 import { Request, Response } from "express"
 import { SocketEvents, SocketRooms } from "terse-types/SocketEvents"
 
+import { AnalyticsEvent, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
 import { db } from "../../../loaders/prisma"
 import { getRealtimeSocket } from "../../../loaders/socket"
@@ -56,13 +57,21 @@ export async function handleWorkOSWebhook(workos: WorkOS, webhookSecret: string,
  * Process a validated WorkOS webhook event and emit socket events.
  */
 async function processWorkOSEvent(event: WorkOSEvent): Promise<void> {
+    const { event: eventType, data } = event
+
+    // Handled before the socket guard: signup analytics must not depend on Socket.IO.
+    if (eventType === "user.created") {
+        const displayName = [data.firstName, data.lastName].filter(Boolean).join(" ")
+        analytics.identify(data.id, { email: data.email, displayName })
+        analytics.capture(data.id, AnalyticsEvent.NEW_USER_ADDED, { email: data.email, displayName })
+        return
+    }
+
     const io = getRealtimeSocket()
     if (!io) {
         logger.warn("Socket.IO not initialized, cannot emit WorkOS webhook events")
         return
     }
-
-    const { event: eventType, data } = event
 
     switch (eventType) {
         case "user.updated": {
