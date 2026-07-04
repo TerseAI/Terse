@@ -1,4 +1,4 @@
-import { EventEmitterTaskQueue } from "../../../tasks/abstract/eventEmitterTasks"
+import { RedisTaskQueue } from "../../../tasks/abstract/redisTaskQueue"
 import { Task } from "../../../tasks/abstract/tasks"
 
 const CANCELLATION_TASK_NAME = "CANCELLATION_TASK" as const
@@ -19,7 +19,7 @@ class CancellationTask implements Task {
     ) {}
 }
 
-const cancellationTaskQueue = new EventEmitterTaskQueue<CancellationTask>()
+const cancellationTaskQueue = new RedisTaskQueue<CancellationTask>("cancellation")
 
 type RunCancellationSubscription = {
     isCancellationRequested: () => boolean
@@ -27,12 +27,12 @@ type RunCancellationSubscription = {
     getReason: () => CancelReason
 }
 
-export function requestRunCancellation(runId: string, organizationId: string, reason: CancelReason = CancelReason.USER_CANCELLED): void {
-    cancellationTaskQueue.emit(new CancellationTask(organizationId, runId, reason))
+export function requestRunCancellation(runId: string, organizationId: string, reason: CancelReason = CancelReason.USER_CANCELLED): Promise<void> {
+    return cancellationTaskQueue.emit(new CancellationTask(organizationId, runId, reason))
 }
 
-export function requestOrgCancellation(organizationId: string, reason: CancelReason = CancelReason.BILLING_OVERAGE): void {
-    cancellationTaskQueue.emit(new CancellationTask(organizationId, undefined, reason))
+export function requestOrgCancellation(organizationId: string, reason: CancelReason = CancelReason.BILLING_OVERAGE): Promise<void> {
+    return cancellationTaskQueue.emit(new CancellationTask(organizationId, undefined, reason))
 }
 
 export function listenForRunCancellation(runId: string, organizationId: string, controller: AbortController): RunCancellationSubscription {
@@ -45,7 +45,7 @@ export function listenForRunCancellation(runId: string, organizationId: string, 
             if (task.organizationId !== organizationId) {
                 return
             }
-            if (task.runId !== undefined && task.runId !== runId) {
+            if (task.runId != null && task.runId !== runId) {
                 return
             }
 

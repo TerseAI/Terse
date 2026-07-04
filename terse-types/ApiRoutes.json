@@ -161,7 +161,6 @@
         "SESSION_EVENTS": "/sdk/session-events",
         "LISTEN": "/sdk/listen",
         "SUSPEND": "/sdk/suspend",
-        "RESUME": "/sdk/resume",
         "INPUT_REQUEST": "/sdk/input-request",
         "CREATE_PROJECT": "/sdk/projects",
         "DEPLOY": "/sdk/deploy",
@@ -183,7 +182,6 @@
         "GMAIL": "/webhooks/gmail",
         "WORKOS": "/webhooks/workos",
         "LINEAR_BY_USER_ID": "/webhooks/linear/:userId",
-        "SCHEDULE_BY_INPUT_ID": "/webhooks/schedule/:inputId",
         "WEBMONITOR_BY_INPUT_ID": "/webhooks/webmonitor/:inputId",
         "WORKOS_TRIGGER_BY_INTEGRATION_ID": "/webhooks/workos-trigger/:integrationId",
         "WEBHOOK_TRIGGER_BY_TOKEN": "/webhooks/trigger/:webhookToken",
@@ -194,10 +192,6 @@
         "TRIGGER_BY_INPUT_ID": "/schedule/trigger/:inputId",
         "TRIGGER_WITH_EVENT": "/schedule/trigger-with-event/:automationId"
     },
-    "REFRESH_TOKENS": "/refresh-tokens",
-    "CLEAR_OLD_SECRET_VERSIONS": "/clear-old-secret-versions",
-    "REVIEW_AGENTS": "/review-agents",
-    "CLEANUP_SDK_IMAGES": "/cleanup-sdk-images",
     "USERS": {
         "CREATE": "/users",
         "BY_ID": "/users/:id"

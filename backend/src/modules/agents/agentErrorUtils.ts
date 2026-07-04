@@ -1,5 +1,7 @@
 import type { ModelEvent } from "terse-types/ModelEvents"
 
+import { extractErrorMessage } from "../../common/strings"
+
 /**
  * Normalizes thrown agent/runner errors and returns a stable message plus optional code
  * for specific UI handling (e.g. context_length_exceeded).
@@ -24,14 +26,8 @@ export function buildRunErrorEvent(classified: ClassifiedError): ModelEvent {
 
 const CONTEXT_LENGTH_CODE = "context_length_exceeded"
 
-function normalizeMessage(error: unknown): string {
-    if (error instanceof Error) return error.message
-    if (typeof error === "string") return error
-    return String(error)
-}
-
 function isContextLengthError(error: unknown): boolean {
-    const msg = normalizeMessage(error).toLowerCase()
+    const msg = extractErrorMessage(error).toLowerCase()
     if (
         msg.includes("context length") ||
         msg.includes("maximum context") ||
@@ -57,7 +53,7 @@ function isContextLengthError(error: unknown): boolean {
  * Returns { message, code? } for logging and for RunError events.
  */
 export function classifyAgentError(error: unknown): ClassifiedError {
-    const message = normalizeMessage(error)
+    const message = extractErrorMessage(error)
     if (isContextLengthError(error)) {
         return { message, code: CONTEXT_LENGTH_CODE }
     }

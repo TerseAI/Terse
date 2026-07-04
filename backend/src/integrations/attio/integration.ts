@@ -21,6 +21,7 @@ import { humanizeAttioEventType } from "terse-types/TriggerPresenters"
 import { AttioObject, OAuthInstallationDetails } from "terse-types/types"
 import { z } from "zod"
 
+import { trackIntegrationAdded } from "../../common/analytics"
 import logger from "../../common/logger"
 import { previewError } from "../../common/redact"
 import { buildAttioWebhookUrl } from "../../common/webhookUrl"
@@ -31,8 +32,6 @@ import { SecretNotFoundError, SecretService } from "../../services/SecretService
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs, PrismaTransaction } from "../../types/prisma"
 import { resolveUserInOrg } from "../../utility/identity"
-import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
-import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
@@ -342,7 +341,7 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
                 userId: decoded.userId
             })
 
-            integrationTaskQueue.emit(new IntegrationCompletedTask(IntegrationType.ATTIO, integrationId, decoded.userId, decoded, new Date()))
+            trackIntegrationAdded(decoded.userId, { integrationType: IntegrationType.ATTIO })
 
             res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`)
         } catch (error) {

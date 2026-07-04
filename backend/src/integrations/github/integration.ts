@@ -13,6 +13,7 @@ import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 import { OAuthInstallationDetails, Repository } from "terse-types/types"
 import { z } from "zod"
 
+import { trackIntegrationAdded } from "../../common/analytics"
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { db } from "../../loaders/prisma"
@@ -26,8 +27,6 @@ import { SecretService } from "../../services/SecretService"
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { resolveUserInOrg } from "../../utility/identity"
-import { IntegrationCompletedTask } from "../IntegrationCompletedTask"
-import { integrationTaskQueue } from "../IntegrationTaskQueues"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
@@ -263,7 +262,7 @@ export class GithubIntegrationManager
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
             // Note: GitHub uses base64-encoded JSON state, so we decode it and pass as statePayload
-            integrationTaskQueue.emit(new IntegrationCompletedTask(IntegrationType.GITHUB, githubTokenId, user_id, stateData, new Date()))
+            trackIntegrationAdded(user_id, { integrationType: IntegrationType.GITHUB })
 
             res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`)
         } catch (error) {

@@ -13,7 +13,7 @@ export interface TaskListener<T extends Task> {
 }
 
 interface TaskEmitter<T extends Task> {
-    emit(task: T): void
+    emit(task: T): Promise<void>
 }
 
 export interface WaitForOptions {

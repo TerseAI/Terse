@@ -1,49 +1,36 @@
-import { Request, Response } from "express"
-
 import logger from "../../../common/logger"
 import { deleteExpiredApiTokens } from "../../../modules/auth/helpers/apiTokens"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { sweepExpiredMemorySnapshots } from "../../../services/memory/memorySnapshots"
 
-function parseOptionalNumber(value: unknown): number | undefined {
-    if (value === undefined || value === null || value === "") return undefined
-    const parsed = Number(value)
-    if (!Number.isFinite(parsed) || parsed <= 0) throw new Error(`Invalid numeric cleanup parameter: ${value}`)
-    return parsed
+export interface CleanupSdkImagesOptions {
+    sourceImageGraceHours?: number
+    dependencyImageGraceHours?: number
+    batchSize?: number
 }
 
-export async function cleanupSdkImages(req: Request, res: Response) {
-    logger.info("SDK image cleanup cron job triggered")
+/** Core logic for the SDK-image cleanup cron. Callable from the HTTP route and the pg-boss worker. */
+export async function runCleanupSdkImages(opts: CleanupSdkImagesOptions = {}) {
+    const result = await new SdkSandboxImageService().cleanupUnusedImages(opts)
 
-    try {
-        const sourceImageGraceHours = parseOptionalNumber(req.body?.sourceImageGraceHours)
-        const dependencyImageGraceHours = parseOptionalNumber(req.body?.dependencyImageGraceHours)
-        const batchSize = parseOptionalNumber(req.body?.batchSize)
+    const deletedExpiredTokens = await deleteExpiredApiTokens().catch(error => {
+        logger.error("Failed to delete expired API tokens", { error })
+        return 0
+    })
 
-        const result = await new SdkSandboxImageService().cleanupUnusedImages({ sourceImageGraceHours, dependencyImageGraceHours, batchSize })
+    const memorySweep = await sweepExpiredMemorySnapshots().catch(error => {
+        logger.error("Failed to sweep expired memory snapshots", { error })
+        return { deletedSnapshots: 0, deletedBlobs: 0 }
+    })
 
-        const deletedExpiredTokens = await deleteExpiredApiTokens().catch(error => {
-            logger.error("Failed to delete expired API tokens", { error })
-            return 0
-        })
+    logger.info("SDK image cleanup cron job completed", {
+        deletedSourceImages: result.deletedSourceImages,
+        deletedDependencyImages: result.deletedDependencyImages,
+        deletedExpiredTokens,
+        deletedMemorySnapshots: memorySweep.deletedSnapshots,
+        deletedMemoryBlobs: memorySweep.deletedBlobs,
+        failures: result.failures.length
+    })
 
-        const memorySweep = await sweepExpiredMemorySnapshots().catch(error => {
-            logger.error("Failed to sweep expired memory snapshots", { error })
-            return { deletedSnapshots: 0, deletedBlobs: 0 }
-        })
-
-        logger.info("SDK image cleanup cron job completed", {
-            deletedSourceImages: result.deletedSourceImages,
-            deletedDependencyImages: result.deletedDependencyImages,
-            deletedExpiredTokens,
-            deletedMemorySnapshots: memorySweep.deletedSnapshots,
-            deletedMemoryBlobs: memorySweep.deletedBlobs,
-            failures: result.failures.length
-        })
-
-        return res.json({ message: "SDK image cleanup completed", ...result, deletedExpiredTokens, ...memorySweep })
-    } catch (error) {
-        logger.error("Error in SDK image cleanup cron job", { error })
-        return res.status(500).json({ error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" })
-    }
+    return { ...result, deletedExpiredTokens, ...memorySweep }
 }

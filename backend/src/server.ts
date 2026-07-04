@@ -4,15 +4,15 @@ import { createServer } from "http"
 import { createApp } from "./app"
 import { analytics } from "./common/analytics"
 import { buildCorsAllowedOrigins } from "./common/corsOrigins"
-// Import to trigger listener registration
 import logger from "./common/logger"
-import "./integrations/IntegrationTaskHandler"
 import { setupSlackBolt } from "./integrations/slack/boltApp"
+import { Boss } from "./loaders/pgBoss"
 import { db } from "./loaders/prisma"
 import { getRealtimeSocket, initializeRealtimeSocket } from "./loaders/socket"
 import { setupLLMAnalytics } from "./modules/agents/openaiInstance"
 import { RateLimiterClient } from "./rateLimit/RateLimiterClient"
 import { registerSocketGetter } from "./services/CacheInvalidationService"
+import { TaskQueueEmitter } from "./tasks/abstract/redisTaskQueue"
 
 // MARK: ASYNC INITIALIZATION
 // Bootstrap async dependencies before the Express app is built.
@@ -25,6 +25,14 @@ try {
     await rateLimiter.init()
 } catch (error) {
     logger.error("❌ Failed to initialize rate limiter", { error })
+    process.exit(1)
+}
+
+// Durable job queue (enqueue-only on the web role) — must be up before any request can enqueue.
+try {
+    await Boss.getInstance().start("web")
+} catch (error) {
+    logger.error("❌ Failed to start pg-boss", { error })
     process.exit(1)
 }
 
@@ -91,6 +99,14 @@ async function gracefulShutdown(signal: string) {
             logger.info("✅ Analytics flushed")
         } catch (error) {
             logger.error("Analytics shutdown failed", { error })
+        }
+
+        try {
+            await Boss.getInstance().stop()
+            await TaskQueueEmitter.getInstance().close()
+            logger.info("✅ Job queue + pub/sub closed")
+        } catch (error) {
+            logger.error("Queue/pub-sub shutdown failed", { error })
         }
 
         try {

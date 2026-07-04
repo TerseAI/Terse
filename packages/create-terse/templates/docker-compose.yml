@@ -17,6 +17,21 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: terse-redis
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - terse_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest}
     pull_policy: always
@@ -26,11 +41,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - ./.env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-terse}
       LOCAL_DB_URL: file:/data/local.db
+      REDIS_URL: redis://redis:6379
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     volumes:
@@ -39,6 +57,27 @@ services:
       sh -c "pnpm exec prisma migrate deploy &&
              pnpm exec prisma migrate deploy --schema=./prisma/local/schema.prisma &&
              pnpm run dev:server"
+
+  worker:
+    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest}
+    pull_policy: always
+    container_name: terse-worker
+    restart: unless-stopped
+    working_dir: /workspace/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-terse}
+      LOCAL_DB_URL: file:/data/local.db
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - terse_sqlite:/data
+    command: pnpm run dev:worker
 
   frontend:
     image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest}
@@ -57,3 +96,4 @@ services:
 volumes:
   terse_postgres:
   terse_sqlite:
+  terse_redis:

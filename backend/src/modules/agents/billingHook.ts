@@ -1,6 +1,7 @@
 import type { CallModelInputFilterArgs, ModelInputData } from "@openai/agents-core"
 import { CreditGateDeniedError, type RunGateDenyReason } from "terse-types"
 
+import logger from "../../common/logger"
 import type { Session } from "../../express"
 import { billingServiceProxyForOrganization } from "../../services/BillingService"
 
@@ -37,8 +38,8 @@ async function getBillingOverageReason(organizationId: string, userId: string): 
     const billing = billingServiceProxyForOrganization(organizationId, userId)
     const gate = await billing.checkRunGate({ organizationId, breakCache: false })
     if (!gate.allow) {
-        // Signal to all agents we are stopping.
-        requestOrgCancellation(organizationId, CancelReason.BILLING_OVERAGE)
+        // Best-effort broadcast to running agents; the deny must be returned even if it fails.
+        requestOrgCancellation(organizationId, CancelReason.BILLING_OVERAGE).catch(error => logger.error("Failed to publish org cancellation signal", { error, organizationId }))
         return gate.reason
     }
     return null
