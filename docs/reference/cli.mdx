@@ -529,6 +529,26 @@ Common errors:
 
 Press Ctrl-C to stop listening.
 
+### `terse resume`
+
+Resumes an interrupted durable run from its journal in `.terse/data`.
+
+```bash
+terse resume --run-id run_abc123
+```
+
+Use this after a durable run was suspended (for example by `sleep()` or `waitForInput()`) or interrupted locally. Pending or in-progress runs continue where they left off; failed runs are re-driven under your current code with completed steps replayed from the journal.
+
+The run's journal must be present in `.terse/data` (for example restored from a snapshot). When resuming a run that was waiting on human input, the backend sets `TERSE_RESUME_HOOK_TOKEN` and `TERSE_RESUME_HOOK_PAYLOAD` in the environment before invoking the CLI.
+
+Options:
+
+| Flag                  | Description                              | Default |
+| --------------------- | ---------------------------------------- | ------- |
+| `-v, --verbose`       | Show agent stream output during the run  | Enabled |
+| `--no-verbose`        | Hide agent stream output                 |         |
+| `--run-id <id>`       | Terse run id to resume (required)        |         |
+
 ### `terse replay [run-id]`
 
 Fetches the stored trigger event for one past run and re-executes the matching local workflow on your machine with verbose output.
@@ -558,13 +578,14 @@ Options:
 | `--json`          | Print JSON instead of a table                                                                             |
 | `--limit <n>`     | Max runs to return. Default 20, max 100                                                                   |
 | `--page <n>`      | Page number, 1-indexed                                                                                    |
-| `--status <list>` | Comma-separated statuses: `success`, `failed`, `cancelled`, `skipped`, `in_progress`, `awaiting_approval` |
+| `--status <list>` | Comma-separated statuses: `success`, `failed`, `cancelled`, `skipped`, `in_progress`, `awaiting_approval`, `suspended` |
 | `--since <iso>`   | Only runs at or after this ISO timestamp                                                                  |
 | `--until <iso>`   | Only runs at or before this ISO timestamp                                                                 |
 | `--query <q>`     | Free-text search across trigger, decision, and event fields                                               |
 | `--triggers`      | Also fetch the input trigger event JSON for each listed run                                               |
 | `--events`        | Also fetch the full model event stream for each listed run                                                |
 | `--run-id <id>`   | Show full chat events for one run instead of listing runs for a workflow                                  |
+| `--include-test`  | Include runs from `terse test` (hidden by default)                                                          |
 
 Use `--triggers` when you want the serialized input event for each run. Use `--events` when you want the full stored conversation, including the trigger payload.
 
