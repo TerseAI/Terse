@@ -89,6 +89,10 @@ Tool approvals add latency because the run waits for a human. Use them deliberat
 
 A common pattern is to start with approvals enabled during development and the first few production runs, then remove them once the workflow behaves correctly.
 
+## Custom input prompts
+
+Tool approvals gate specific tool calls the agent makes. When you need to ask a human a custom question with your own action buttons — approve, reject, request changes — use `waitForInput()` in a [durable workflow](/core-concepts/durability). Terse posts an interactive Slack message, suspends the run, and returns the respondent's choice when they respond. During `terse test`, the same flow runs as an interactive terminal prompt.
+
 ## Notification configuration
 
 Terse delivers approval requests through the notification settings on your Notifications page. To receive them, make sure:
