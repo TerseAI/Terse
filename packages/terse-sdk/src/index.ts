@@ -6,6 +6,7 @@ import type {
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
     SdkInputRequestDelivery,
+    SdkInputRequestOption,
     SdkInputRequestRegisterBody,
     SdkInputRequestTarget,
     SdkInputResponsePayload,
@@ -881,8 +882,30 @@ async function postInputRequestStep(route: string, body: unknown): Promise<Respo
 async function promptForInputLocally<Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
 ): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
+    const answer = await runLocalInputPrompt({
+        prompt: params.prompt,
+        details: params.details,
+        options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
+        targetDescription: describeInputTarget(params.via)
+    })
+    return {
+        choice: answer.choice as Options[number]["id"],
+        text: answer.text,
+        respondent: { provider: "local", userId: "local" },
+        delivery: localDelivery(params.via)
+    }
+}
+
+// A step so local durable tests prompt exactly once; replays return the journaled answer.
+async function runLocalInputPrompt(params: {
+    prompt: string
+    details?: Record<string, string>
+    options: SdkInputRequestOption[]
+    targetDescription: string
+}): Promise<{ choice: string; text?: string }> {
+    "use step"
     const { isCancel, select, text } = await import("@clack/prompts")
-    console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${describeInputTarget(params.via)}.`)
+    console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${params.targetDescription}.`)
     for (const [key, value] of Object.entries(params.details ?? {})) {
         console.log(`  ${key}: ${value}`)
     }
@@ -901,12 +924,7 @@ async function promptForInputLocally<Options extends readonly InputOption[], Tar
         freeTextAnswer = answer || undefined
     }
 
-    return {
-        choice: choice as Options[number]["id"],
-        text: freeTextAnswer,
-        respondent: { provider: "local", userId: "local" },
-        delivery: localDelivery(params.via)
-    }
+    return { choice: String(choice), text: freeTextAnswer }
 }
 
 function describeInputTarget(target: InputTarget): string {
