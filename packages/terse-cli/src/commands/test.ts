@@ -1,4 +1,4 @@
-import { cancel, intro, isCancel, log, outro, select, taskLog } from "@clack/prompts"
+import { cancel, intro, isCancel, log, outro, select } from "@clack/prompts"
 import chalk from "chalk"
 import { DateTime } from "luxon"
 import fs from "node:fs"
@@ -11,7 +11,7 @@ import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
 import { CliError } from "../cliError.js"
 import { isNonInteractive } from "../cliHelpers.js"
-import { createSpinner, interceptConsole } from "../cliUi.js"
+import { createRunIndicator, createSpinner, interceptConsole } from "../cliUi.js"
 import { loadJob } from "../loadJob.js"
 import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
@@ -64,14 +64,9 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
     const event = await chooseSampleEvent(candidates, apiKey)
 
     const projectId = readProjectConfigOrBail().projectId
-    const runLabel = `Running ${formatEventLabel(event)}`
-    const newRunLog = () => taskLog({ title: runLabel, limit: 10, retainLog: true })
-    let runLog = newRunLog()
-    let paused = false
-    const restoreConsole = interceptConsole(line => {
-        if (paused) log.message(chalk.dim(line))
-        else runLog.message(line)
-    })
+    const runView = createRunIndicator(`Running ${formatEventLabel(event)}`)
+    const restoreConsole = interceptConsole(line => runView.logLine(line))
+    runView.start()
     try {
         const { runId, local } = await runLocalTestJob(provider, job, event, {
             projectId,
@@ -79,23 +74,21 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
             verbose: !!verbose,
             entryFile,
             pauseUiAround: async fn => {
-                runLog.success("Awaiting input", { showLog: true })
-                paused = true
+                runView.pause("Awaiting input")
                 try {
                     return await fn()
                 } finally {
-                    runLog = newRunLog()
-                    paused = false
+                    runView.start()
                 }
             }
         })
         restoreConsole()
-        if (local) runLog.success("Run completed", { showLog: !!verbose })
-        else runLog.success(remoteDispatchNotice(runId))
+        if (local) runView.succeed("Run completed")
+        else runView.succeed(remoteDispatchNotice(runId))
         outro("Done")
     } catch (error) {
         restoreConsole()
-        runLog.error("Run failed")
+        runView.fail("Run failed")
         throw error
     }
 }
