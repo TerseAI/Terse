@@ -8,9 +8,7 @@ export enum StepCallKind {
     AsStep = "asStep"
 }
 
-export type StepCall =
-    | { kind: StepCallKind.AsStep; call: TS.CallExpression; receiver: TS.Expression }
-    | { kind: StepCallKind.JobStep; call: TS.CallExpression; config: TS.ObjectLiteralExpression }
+export type StepCall = { kind: StepCallKind.AsStep; call: TS.CallExpression; receiver: TS.Expression } | { kind: StepCallKind.JobStep; call: TS.CallExpression; config: TS.ObjectLiteralExpression }
 
 export function matchStepCall(ts: typeof TS, node: TS.Node): StepCall | null {
     if (!ts.isCallExpression(node)) return null
@@ -31,7 +29,8 @@ export function matchStepCall(ts: typeof TS, node: TS.Node): StepCall | null {
 export function transformAsStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<StepCall, { kind: StepCallKind.AsStep }>, fileName: string, index: number): { stepDef: StepDef; edit: StepEdit } {
     const { call, receiver } = step
     if (call.arguments.length > 0) throw stepMacroError(sf, call, fileName, "asStep() takes no arguments.")
-    if (!ts.isCallExpression(receiver)) throw stepMacroError(sf, call, fileName, "asStep() must be chained directly onto a call, e.g. client.method(args).asStep(). Storing the promise in a variable first is not supported.")
+    if (!ts.isCallExpression(receiver))
+        throw stepMacroError(sf, call, fileName, "asStep() must be chained directly onto a call, e.g. client.method(args).asStep(). Storing the promise in a variable first is not supported.")
     if (containsStepCall(ts, receiver)) throw stepMacroError(sf, call, fileName, "jobStep() and asStep() cannot be nested inside an asStep() call. Await each step separately.")
 
     const calleeNames: string[] = []
@@ -56,7 +55,13 @@ export function transformAsStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<
 
 // MARK: jobStep
 
-export function transformJobStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<StepCall, { kind: StepCallKind.JobStep }>, fileName: string, index: number): { stepDef: StepDef; edit: StepEdit } | null {
+export function transformJobStep(
+    ts: typeof TS,
+    sf: TS.SourceFile,
+    step: Extract<StepCall, { kind: StepCallKind.JobStep }>,
+    fileName: string,
+    index: number
+): { stepDef: StepDef; edit: StepEdit } | null {
     const isProp = (p: TS.ObjectLiteralElementLike, key: string): p is TS.PropertyAssignment => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === key
     const { call, config } = step
     const inputProp = config.properties.find(p => isProp(p, "input"))

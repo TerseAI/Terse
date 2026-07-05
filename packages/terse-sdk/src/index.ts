@@ -774,7 +774,9 @@ declare global {
 // "asStep is not a function".
 Object.defineProperty(Promise.prototype, "asStep", {
     value: function asStep(): never {
-        throw new DurableOnlyError("asStep() is only available in durable jobs. Add `durable: true` and chain .asStep() directly onto the call, e.g. client.method(args).asStep(). Note it is only transformed inside files that call createJob().")
+        throw new DurableOnlyError(
+            "asStep() is only available in durable jobs. Add `durable: true` and chain .asStep() directly onto the call, e.g. client.method(args).asStep(). Note it is only transformed inside files that call createJob()."
+        )
     },
     writable: true,
     configurable: true,
