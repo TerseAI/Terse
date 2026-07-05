@@ -1,4 +1,4 @@
-import { createJob, generateText, jobStep, slack, sleep, waitForInput } from "terse-sdk"
+import { createJob, generateText, jobStep, slack, sleep, step, waitForInput } from "terse-sdk"
 import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
@@ -150,15 +150,15 @@ async function fetchTodo(id: number) {
 }
 
 createJob({
-    name: "Basic Test - asStep macro",
+    name: "Basic Test - step macro",
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
     durable: true,
     onTrigger: async event => {
-        const todo = await fetchTodo(1).asStep()
+        const todo = await step(fetchTodo(1))
 
-        const todo2 = await fetchTodo(2).asStep()
+        const todo2 = await step(fetchTodo(2))
 
-        const todo3 = await fetchTodo(3).asStep()
+        const todo3 = await step(fetchTodo(3))
     }
 })
 

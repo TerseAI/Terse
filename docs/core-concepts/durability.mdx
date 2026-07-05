@@ -37,15 +37,17 @@ onTrigger: async (event, state) => {
 
 Every line above is a durable step. If the job resumes, completed calls replay from the journal: the model isn't re-prompted, the Slack message isn't sent twice.
 
-## Making your own calls durable with .asStep()
+## Making your own calls durable with step()
 
-Anything that is not a Terse SDK call becomes a durable step by chaining `.asStep()` onto it. That covers third-party SDKs like Octokit or Resend, a raw `fetch`, a database write, anything with a side effect.
+Anything that is not a Terse SDK call becomes a durable step by wrapping it in `step()`. That covers third-party SDKs like Octokit or Resend, a raw `fetch`, a database write, anything with a side effect.
 
 <Warning>
-Code outside a step runs again on **every replay**, not just once. If it has a side effect and is not idempotent (sending an email, charging a card, creating a record), it will happen multiple times and cause real problems. Chain `.asStep()` onto every side effect so it runs exactly once.
+Code outside a step runs again on **every replay**, not just once. If it has a side effect and is not idempotent (sending an email, charging a card, creating a record), it will happen multiple times and cause real problems. Wrap every side effect in `step()` so it runs exactly once.
 </Warning>
 
 ```ts
+import { createJob, sleep, step } from "terse-sdk"
+
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 createJob({
@@ -53,16 +55,16 @@ createJob({
     triggers: [Triggers.workOS.onUserCreated()],
     durable: true,
     onTrigger: async (event) => {
-        const { data: contact } = await resend.contacts
-            .create({ email: event.user.email, unsubscribed: false })
-            .asStep()
+        const { data: contact } = await step(
+            resend.contacts.create({ email: event.user.email, unsubscribed: false })
+        )
 
         await sleep("2d")
 
-        const { error } = await resend.emails.send(
+        const { error } = await step(resend.emails.send(
             { from: FROM, to: event.user.email, template: { id: TEMPLATE_ID } },
             { idempotencyKey: `onboarding/${event.user.id}` }
-        ).asStep()
+        ))
         if (error) throw new Error(`Onboarding email failed: ${error.message}`)
     }
 })
@@ -73,7 +75,7 @@ Two rules make a call steppable:
 - **The thing you call lives at module scope** (or is imported): a client like `resend`, or one of your own functions. Steps run in a separate bundle that rebuilds module scope from your source, so module-level values are always available there. A client created inside the handler is not, and the build will tell you to move it.
 - **The arguments are data.** They evaluate right where you wrote them, with full access to `event` and your locals, and the resulting values are serialized into the journal. A function value cannot cross that boundary, so callbacks in argument position are a build error (see below).
 
-For a step that is more than one call, write a module-scope function and chain `.asStep()` onto that. This is also the pattern for callback-taking APIs: the callback stays inside the step, and only data crosses.
+For a step that is more than one call, write a module-scope function and wrap the call to it. This is also the pattern for callback-taking APIs: the callback stays inside the step, and only data crosses.
 
 ```ts
 async function sendWithRetry(args: SendArgs) {
@@ -81,16 +83,16 @@ async function sendWithRetry(args: SendArgs) {
 }
 
 // in the handler:
-const result = await sendWithRetry(args).asStep()
+const result = await step(sendWithRetry(args))
 ```
 
 <Note>
-SDKs that return errors as values instead of throwing (Resend, Supabase) need their errors re-raised: `if (error) throw ...`. A run only fails when the handler throws, so an unchecked error value gets journaled as a successful step. Relatedly, if such an SDK returns a generic network error that makes no sense (Resend: "Unable to fetch data. The request could not be resolved."), check that the call has `.asStep()`. Workflow code runs in a sandbox without network access, and these SDKs catch the sandbox's descriptive "fetch is unavailable" error and rewrap it as their own.
+SDKs that return errors as values instead of throwing (Resend, Supabase) need their errors re-raised: `if (error) throw ...`. A run only fails when the handler throws, so an unchecked error value gets journaled as a successful step. Relatedly, if such an SDK returns a generic network error that makes no sense (Resend: "Unable to fetch data. The request could not be resolved."), check that the call is wrapped in `step()`. Workflow code runs in a sandbox without network access, and these SDKs catch the sandbox's descriptive "fetch is unavailable" error and rewrap it as their own.
 </Note>
 
 ## jobStep: the fully explicit form
 
-`jobStep` does the same thing with no rules about the call shape: you declare the `input`, and `run` receives it. Because the input object is the entire boundary contract, the body can be anything, including things `.asStep()` rejects: construct the client inside the step, use callbacks inline, write as many statements as you want. `.asStep()` is the cleaner spelling for the common case; `jobStep` always works.
+`jobStep` does the same thing with no rules about the call shape: you declare the `input`, and `run` receives it. Because the input object is the entire boundary contract, the body can be anything, including things `step()` rejects: construct the client inside the step, use callbacks inline, write as many statements as you want. `step()` is the cleaner spelling for the common case; `jobStep` always works.
 
 ```ts
 import { jobStep } from "terse-sdk"

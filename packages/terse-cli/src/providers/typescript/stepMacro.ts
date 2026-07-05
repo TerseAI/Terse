@@ -5,68 +5,82 @@ export type StepEdit = { start: number; end: number; text: string }
 
 export enum StepCallKind {
     JobStep = "jobStep",
-    AsStep = "asStep"
+    Step = "step"
 }
 
-export type StepCall = { kind: StepCallKind.AsStep; call: TS.CallExpression; receiver: TS.Expression } | { kind: StepCallKind.JobStep; call: TS.CallExpression; config: TS.ObjectLiteralExpression }
+export type StepCall = { kind: StepCallKind.Step; call: TS.CallExpression } | { kind: StepCallKind.JobStep; call: TS.CallExpression; config: TS.ObjectLiteralExpression }
 
-export function matchStepCall(ts: typeof TS, node: TS.Node): StepCall | null {
-    if (!ts.isCallExpression(node)) return null
-    if (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "asStep") {
-        return { kind: StepCallKind.AsStep, call: node, receiver: node.expression.expression }
+// The local binding of `import { step } from "terse-sdk"` (aliases included), so plain
+// `step` stays a safe name: user-defined step() functions never match the macro.
+export function findStepImportName(ts: typeof TS, sf: TS.SourceFile): string | null {
+    for (const statement of sf.statements) {
+        if (!ts.isImportDeclaration(statement) || !ts.isStringLiteralLike(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "terse-sdk") continue
+        const named = statement.importClause?.namedBindings
+        if (!named || !ts.isNamedImports(named)) continue
+        const element = named.elements.find(el => (el.propertyName ?? el.name).text === "step")
+        if (element) return element.name.text
     }
-    if (ts.isIdentifier(node.expression) && node.expression.text === "jobStep" && node.arguments.length > 0 && ts.isObjectLiteralExpression(node.arguments[0])) {
+    return null
+}
+
+export function matchStepCall(ts: typeof TS, node: TS.Node, stepName: string | null): StepCall | null {
+    if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return null
+    if (stepName !== null && node.expression.text === stepName) {
+        return { kind: StepCallKind.Step, call: node }
+    }
+    if (node.expression.text === "jobStep" && node.arguments.length > 0 && ts.isObjectLiteralExpression(node.arguments[0])) {
         return { kind: StepCallKind.JobStep, call: node, config: node.arguments[0] }
     }
     return null
 }
 
-// MARK: asStep
+// MARK: step
 
-// `client.method(args).asStep()` hoists only the callee into a "use step" function.
+// `step(client.method(args))` hoists only the callee into a "use step" function.
 // The argument expressions stay at the call site, where they evaluate in workflow
 // scope and cross the step boundary as serialized step arguments.
-export function transformAsStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<StepCall, { kind: StepCallKind.AsStep }>, fileName: string, index: number): { stepDef: StepDef; edit: StepEdit } {
-    const { call, receiver } = step
-    if (call.arguments.length > 0) throw stepMacroError(sf, call, fileName, "asStep() takes no arguments.")
-    if (!ts.isCallExpression(receiver))
-        throw stepMacroError(sf, call, fileName, "asStep() must be chained directly onto a call, e.g. client.method(args).asStep(). Storing the promise in a variable first is not supported.")
-    if (containsStepCall(ts, receiver)) throw stepMacroError(sf, call, fileName, "jobStep() and asStep() cannot be nested inside an asStep() call. Await each step separately.")
+export function transformStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<StepCall, { kind: StepCallKind.Step }>, fileName: string, index: number, stepName: string | null): { stepDef: StepDef; edit: StepEdit } {
+    const { call } = step
+    const inner = call.arguments.length === 1 ? call.arguments[0] : undefined
+    if (inner === undefined) throw stepMacroError(sf, call, fileName, "step() takes exactly one argument: a direct call, e.g. step(client.method(args)).")
+    if (!ts.isCallExpression(inner))
+        throw stepMacroError(sf, call, fileName, "step() must wrap a direct call, e.g. step(client.method(args)). Storing the promise in a variable first is not supported.")
+    if (containsStepCall(ts, inner, stepName)) throw stepMacroError(sf, call, fileName, "Steps cannot be nested inside a step() call. Await each step separately.")
 
     const calleeNames: string[] = []
     let optionalChain = false
-    let calleeRoot: TS.Expression = receiver.expression
+    let calleeRoot: TS.Expression = inner.expression
     while (ts.isPropertyAccessExpression(calleeRoot)) {
         calleeNames.unshift(calleeRoot.name.text)
         if (calleeRoot.questionDotToken) optionalChain = true
         calleeRoot = calleeRoot.expression
     }
     if (!ts.isIdentifier(calleeRoot)) {
-        throw stepMacroError(sf, call, fileName, "asStep() requires a plain property path like client.method(args). Computed access and intermediate calls are not supported.")
+        throw stepMacroError(sf, call, fileName, "step() requires a plain property path like step(client.method(args)). Computed access and intermediate calls are not supported.")
     }
     calleeNames.unshift(calleeRoot.text)
     if (isDeclaredInEnclosingScopes(ts, call, calleeRoot.text)) {
         throw stepMacroError(sf, call, fileName, `\`${calleeRoot.text}\` is declared inside the handler. The step runs in a separate bundle, so move \`${calleeRoot.text}\` to module scope.`)
     }
-    for (const arg of receiver.arguments) {
+    for (const arg of inner.arguments) {
         const fnArg = findLiteralFunctionArg(ts, arg)
         if (fnArg) {
             throw stepMacroError(
                 sf,
                 fnArg,
                 fileName,
-                "A function passed as a step argument cannot cross the step boundary, because step arguments are serialized into the journal. Move the whole call into a module-scope helper so the callback stays inside the step, then chain .asStep() onto the helper call."
+                "A function passed as a step argument cannot cross the step boundary, because step arguments are serialized into the journal. Move the whole call into a module-scope helper so the callback stays inside the step, then wrap the helper call in step()."
             )
         }
     }
 
     // `typeof` type queries reject `?.`, so optional-chain callees fall back to untyped args.
-    const calleeText = receiver.expression.getText(sf)
+    const calleeText = inner.expression.getText(sf)
     const paramsType = optionalChain ? "" : `: Parameters<typeof ${calleeText}>`
     const returnType = optionalChain ? "" : `: Promise<Awaited<ReturnType<typeof ${calleeText}>>>`
     const name = `terseStep_${calleeNames.join("_")}_${index}`
     const def = `export async function ${name}(...__terseArgs${paramsType})${returnType} {\n` + `  "use step"\n` + `  return await ${calleeText}(...__terseArgs)\n` + `}`
-    const text = `${name}(${receiver.arguments.map(a => a.getText(sf)).join(", ")})`
+    const text = `${name}(${inner.arguments.map(a => a.getText(sf)).join(", ")})`
     return { stepDef: { name, def }, edit: { start: call.getStart(sf), end: call.getEnd(), text } }
 }
 
@@ -77,7 +91,8 @@ export function transformJobStep(
     sf: TS.SourceFile,
     step: Extract<StepCall, { kind: StepCallKind.JobStep }>,
     fileName: string,
-    index: number
+    index: number,
+    stepName: string | null
 ): { stepDef: StepDef; edit: StepEdit } | null {
     const isProp = (p: TS.ObjectLiteralElementLike, key: string): p is TS.PropertyAssignment => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === key
     const { call, config } = step
@@ -87,7 +102,7 @@ export function transformJobStep(
     const run = config.properties.find(p => isProp(p, "run"))?.initializer
 
     if (!run || !(ts.isArrowFunction(run) || ts.isFunctionExpression(run))) return null
-    if (containsStepCall(ts, config)) throw stepMacroError(sf, call, fileName, "jobStep() and asStep() cannot be nested inside another jobStep(). Await each step separately.")
+    if (containsStepCall(ts, config, stepName)) throw stepMacroError(sf, call, fileName, "Steps cannot be nested inside a jobStep(). Await each step separately.")
 
     const name = `terseStep_${index}`
     const def = stepFunctionText(ts, sf, name, run, inputSchemaProp?.initializer, outputSchemaProp?.initializer)
@@ -146,8 +161,8 @@ function stepMacroError(sf: TS.SourceFile, node: TS.Node, fileName: string, mess
     return new Error(`${fileName}:${line}: ${message}`)
 }
 
-function containsStepCall(ts: typeof TS, node: TS.Node): boolean {
-    const walk = (n: TS.Node): true | undefined => (matchStepCall(ts, n) ? true : ts.forEachChild(n, walk))
+function containsStepCall(ts: typeof TS, node: TS.Node, stepName: string | null): boolean {
+    const walk = (n: TS.Node): true | undefined => (matchStepCall(ts, n, stepName) ? true : ts.forEachChild(n, walk))
     return ts.forEachChild(node, walk) ?? false
 }
 

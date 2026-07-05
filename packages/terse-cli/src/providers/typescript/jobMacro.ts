@@ -1,7 +1,7 @@
 import path from "node:path"
 import type TS from "typescript"
 
-import { StepCallKind, type StepDef, type StepEdit, matchStepCall, transformAsStep, transformJobStep } from "./stepMacro.js"
+import { StepCallKind, type StepDef, type StepEdit, findStepImportName, matchStepCall, transformJobStep, transformStep } from "./stepMacro.js"
 
 export type MacroJob = { name: string; fnName: string }
 export type MacroResult = { code: string; stepsCode: string | null; jobs: MacroJob[] }
@@ -75,20 +75,21 @@ function extractJobSteps(ts: typeof TS, source: string, fileName: string): { cod
     const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
     const stepDefs: StepDef[] = []
     const edits: StepEdit[] = []
+    const stepName = findStepImportName(ts, sf)
     let counter = 0
 
     const visit = (node: TS.Node): void => {
-        const step = matchStepCall(ts, node)
+        const step = matchStepCall(ts, node, stepName)
         if (step) {
             switch (step.kind) {
-                case StepCallKind.AsStep: {
-                    const { stepDef, edit } = transformAsStep(ts, sf, step, fileName, counter++)
+                case StepCallKind.Step: {
+                    const { stepDef, edit } = transformStep(ts, sf, step, fileName, counter++, stepName)
                     stepDefs.push(stepDef)
                     edits.push(edit)
                     return
                 }
                 case StepCallKind.JobStep: {
-                    const transformed = transformJobStep(ts, sf, step, fileName, counter)
+                    const transformed = transformJobStep(ts, sf, step, fileName, counter, stepName)
                     if (transformed) {
                         counter++
                         stepDefs.push(transformed.stepDef)

@@ -16,7 +16,7 @@ After `terse generate`, integration triggers and skills are grouped under top-le
 Import these from `terse-sdk`:
 
 - `createJob`, `CreateJobParameters`: register a workflow (call at module top level or from imported modules)
-- `sleep`, `jobStep`, `waitForInput`, `slack`: durable-only helpers for timed waits, custom steps, and human input prompts. `.asStep()` needs no import; it is available on every promise inside durable jobs. See [Durable helpers](#durable-helpers)
+- `sleep`, `step`, `jobStep`, `waitForInput`, `slack`: durable-only helpers for timed waits, custom steps, and human input prompts. See [Durable helpers](#durable-helpers)
 - `generateText`: the shorthand for agentic runs — one prompt in, final output out, with the model free to call any tool granted via `skills`. Use this for almost everything; see [`generateText`](#generatetext) below
 - `Terse`, `TERSE_JOB_WEBHOOK_TRIGGER_PATH`: client and mount path for `handleTrigger` when you self-host the data plane webhook endpoint
 - `TerseAgent`, `EventType`: the lower-level agent that `generateText` wraps. Reach for `TerseAgent.create()` directly only when you need to stream with `run()` or reuse one agent instance across calls; `EventType` enumerates values on streamed results
@@ -338,13 +338,13 @@ These functions are only available when `durable: true` is set on the job. Calli
 
 Suspends the run until the timer fires. Accepts `ms`-style strings (`"30s"`, `"5m"`, `"1h"`, `"3d"`), a millisecond number, or a `Date`. Locally (`terse test`, no `TERSE_RUN_ID`), the wait is skipped and a log line notes what production would have done.
 
-### `.asStep()`
+### `step(call)`
 
-Chained onto any call to a module-scope client or function, runs that call as a durable step: `resend.emails.send({...}).asStep()`. Arguments evaluate in the handler and cross the boundary as serialized data; the resolved value is journaled. Available on every `Promise` via a global type augmentation. See [Durability — Making your own calls durable with .asStep()](/core-concepts/durability#making-your-own-calls-durable-with-asstep).
+Wrapped around a direct call to a module-scope client or function, runs that call as a durable step: `step(resend.emails.send({...}))`. Arguments evaluate in the handler and cross the boundary as serialized data; the resolved value is journaled. See [Durability — Making your own calls durable with step()](/core-concepts/durability#making-your-own-calls-durable-with-step).
 
 ### `jobStep(...)`
 
-The fully explicit form of `.asStep()`: declared `input`, zod validation at the boundary, no restrictions on the step body. See [Durability — jobStep: the fully explicit form](/core-concepts/durability#jobstep-the-fully-explicit-form).
+The fully explicit form of `step()`: declared `input`, zod validation at the boundary, no restrictions on the step body. See [Durability — jobStep: the fully explicit form](/core-concepts/durability#jobstep-the-fully-explicit-form).
 
 ### `waitForInput(...)`
 
