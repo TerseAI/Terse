@@ -34,9 +34,11 @@ export function transformAsStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<
     if (containsStepCall(ts, receiver)) throw stepMacroError(sf, call, fileName, "jobStep() and asStep() cannot be nested inside an asStep() call. Await each step separately.")
 
     const calleeNames: string[] = []
+    let optionalChain = false
     let calleeRoot: TS.Expression = receiver.expression
     while (ts.isPropertyAccessExpression(calleeRoot)) {
         calleeNames.unshift(calleeRoot.name.text)
+        if (calleeRoot.questionDotToken) optionalChain = true
         calleeRoot = calleeRoot.expression
     }
     if (!ts.isIdentifier(calleeRoot)) {
@@ -47,8 +49,12 @@ export function transformAsStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<
         throw stepMacroError(sf, call, fileName, `\`${calleeRoot.text}\` is declared inside the handler. The step runs in a separate bundle, so move \`${calleeRoot.text}\` to module scope.`)
     }
 
+    // `typeof` type queries reject `?.`, so optional-chain callees fall back to untyped args.
+    const calleeText = receiver.expression.getText(sf)
+    const paramsType = optionalChain ? "" : `: Parameters<typeof ${calleeText}>`
+    const returnType = optionalChain ? "" : `: Promise<Awaited<ReturnType<typeof ${calleeText}>>>`
     const name = `terseStep_${calleeNames.join("_")}_${index}`
-    const def = `export async function ${name}(...__terseArgs) {\n` + `  "use step"\n` + `  return await ${receiver.expression.getText(sf)}(...__terseArgs)\n` + `}`
+    const def = `export async function ${name}(...__terseArgs${paramsType})${returnType} {\n` + `  "use step"\n` + `  return await ${calleeText}(...__terseArgs)\n` + `}`
     const text = `${name}(${receiver.arguments.map(a => a.getText(sf)).join(", ")})`
     return { stepDef: { name, def }, edit: { start: call.getStart(sf), end: call.getEnd(), text } }
 }
