@@ -48,6 +48,17 @@ export function transformAsStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<
     if (isDeclaredInEnclosingScopes(ts, call, calleeRoot.text)) {
         throw stepMacroError(sf, call, fileName, `\`${calleeRoot.text}\` is declared inside the handler. The step runs in a separate bundle, so move \`${calleeRoot.text}\` to module scope.`)
     }
+    for (const arg of receiver.arguments) {
+        const fnArg = findLiteralFunctionArg(ts, arg)
+        if (fnArg) {
+            throw stepMacroError(
+                sf,
+                fnArg,
+                fileName,
+                "A function passed as a step argument cannot cross the step boundary, because step arguments are serialized into the journal. Move the whole call into a module-scope helper so the callback stays inside the step, then chain .asStep() onto the helper call."
+            )
+        }
+    }
 
     // `typeof` type queries reject `?.`, so optional-chain callees fall back to untyped args.
     const calleeText = receiver.expression.getText(sf)
@@ -100,6 +111,35 @@ function stepFunctionText(
 }
 
 // MARK: Helpers
+
+// Finds a function expression that ends up inside the evaluated argument value,
+// where serialization would reject it: the argument itself, or a literal object
+// property / array element (recursively). Functions merely consumed while the
+// argument evaluates, like the arrow in `users.map(u => u.email)`, are fine since
+// only the resulting data crosses the boundary. Those sit inside call expressions,
+// which this deliberately does not descend into.
+function findLiteralFunctionArg(ts: typeof TS, node: TS.Node): TS.Node | null {
+    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return node
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node)) return findLiteralFunctionArg(ts, node.expression)
+    if (ts.isObjectLiteralExpression(node)) {
+        for (const property of node.properties) {
+            if (ts.isMethodDeclaration(property) || ts.isGetAccessorDeclaration(property) || ts.isSetAccessorDeclaration(property)) return property
+            if (ts.isPropertyAssignment(property)) {
+                const found = findLiteralFunctionArg(ts, property.initializer)
+                if (found) return found
+            }
+        }
+        return null
+    }
+    if (ts.isArrayLiteralExpression(node)) {
+        for (const element of node.elements) {
+            const found = findLiteralFunctionArg(ts, element)
+            if (found) return found
+        }
+        return null
+    }
+    return null
+}
 
 function stepMacroError(sf: TS.SourceFile, node: TS.Node, fileName: string, message: string): Error {
     const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
