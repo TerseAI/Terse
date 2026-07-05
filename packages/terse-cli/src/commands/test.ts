@@ -1,4 +1,4 @@
-import { cancel, intro, isCancel, log, outro, select } from "@clack/prompts"
+import { cancel, intro, isCancel, log, outro, select, taskLog } from "@clack/prompts"
 import chalk from "chalk"
 import { DateTime } from "luxon"
 import fs from "node:fs"
@@ -11,12 +11,12 @@ import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
 import { CliError } from "../cliError.js"
 import { isNonInteractive } from "../cliHelpers.js"
-import { createSpinner } from "../cliUi.js"
+import { createSpinner, interceptConsole } from "../cliUi.js"
 import { loadJob } from "../loadJob.js"
 import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
-import { runLocalTestJob } from "../runLocalTestJob.js"
+import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
 
 export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     if (isNonInteractive()) {
@@ -59,33 +59,43 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
         })
     }
 
-    log.info(`Testing job ${chalk.cyan(job.name)}`)
+    log.info(`Testing job ${chalk.cyan(job.name)} on the ${chalk.cyan(provider.runtimeName(job))} runtime`)
 
     const event = await chooseSampleEvent(candidates, apiKey)
 
     const projectId = readProjectConfigOrBail().projectId
-    const runSpinner = createSpinner()
-    const runSpinnerMessage = `Running ${formatEventLabel(event)}`
-    runSpinner.start(runSpinnerMessage)
+    const runLabel = `Running ${formatEventLabel(event)}`
+    const newRunLog = () => taskLog({ title: runLabel, limit: 10, retainLog: true })
+    let runLog = newRunLog()
+    let paused = false
+    const restoreConsole = interceptConsole(line => {
+        if (paused) log.message(chalk.dim(line))
+        else runLog.message(line)
+    })
     try {
-        await runLocalTestJob(provider, job, event, {
+        const { runId, local } = await runLocalTestJob(provider, job, event, {
             projectId,
             apiKey,
             verbose: !!verbose,
             entryFile,
             pauseUiAround: async fn => {
-                runSpinner.stop("Awaiting approval")
+                runLog.success("Awaiting input", { showLog: true })
+                paused = true
                 try {
                     return await fn()
                 } finally {
-                    runSpinner.start(runSpinnerMessage)
+                    runLog = newRunLog()
+                    paused = false
                 }
             }
         })
-        runSpinner.stop("Run completed")
+        restoreConsole()
+        if (local) runLog.success("Run completed", { showLog: !!verbose })
+        else runLog.success(remoteDispatchNotice(runId))
         outro("Done")
     } catch (error) {
-        runSpinner.stop("Run failed")
+        restoreConsole()
+        runLog.error("Run failed")
         throw error
     }
 }
@@ -177,7 +187,8 @@ export async function testRun(opts: TestRunOpts): Promise<void> {
 
     const apiKey = readApiKeyOrBail()
     const projectId = readProjectConfigOrBail().projectId
-    await runLocalTestJob(provider, job, event, { projectId, apiKey, verbose: !!opts.verbose, entryFile: opts.entryFile })
+    const { runId, local } = await runLocalTestJob(provider, job, event, { projectId, apiKey, verbose: !!opts.verbose, entryFile: opts.entryFile })
+    if (!local) console.log(chalk.cyan(`  ${remoteDispatchNotice(runId)}`))
 }
 
 async function resolveEventById(provider: LanguageProvider, id: string, jobNameHint: string | undefined, entryFile: string | undefined): Promise<SerializedEvent> {

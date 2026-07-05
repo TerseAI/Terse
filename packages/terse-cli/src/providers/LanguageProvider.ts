@@ -31,6 +31,7 @@ export interface LanguageProvider {
     typecheck(): Promise<void>
     loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>>
     prebuild(): Promise<void>
+    runtimeName(job: CreateJobParameters): "durable" | "direct"
     executeJob(
         job: CreateJobParameters,
         runId: string | null,
