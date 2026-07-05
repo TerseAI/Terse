@@ -1,6 +1,8 @@
 import path from "node:path"
 import type TS from "typescript"
 
+import { StepCallKind, type StepDef, type StepEdit, matchStepCall, transformAsStep, transformJobStep } from "./stepMacro.js"
+
 export type MacroJob = { name: string; fnName: string }
 export type MacroResult = { code: string; stepsCode: string | null; jobs: MacroJob[] }
 
@@ -11,7 +13,7 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
     const sf = ts.createSourceFile(fileName, withSteps, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
     const jobs: MacroJob[] = []
     const hoisted: string[] = []
-    const edits: Array<{ start: number; end: number; text: string }> = []
+    const edits: StepEdit[] = []
 
     const isProp = (p: TS.ObjectLiteralElementLike, key: string): p is TS.PropertyAssignment => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === key
 
@@ -63,34 +65,38 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
     let code = withSteps
     for (const e of edits.sort((a, b) => b.start - a.start)) code = code.slice(0, e.start) + e.text + code.slice(e.end)
 
-    const stepsCode = stepDefs.length > 0 ? buildStepsModule(ts, sf, imports, stepDefs) : null
+    const stepsCode = stepDefs.length > 0 ? buildStepsModule(ts, sf, stepDefs) : null
     return { code, stepsCode, jobs }
 }
 
 // MARK: Extract job steps
 
-type StepDef = { name: string; def: string }
-
 function extractJobSteps(ts: typeof TS, source: string, fileName: string): { code: string; stepDefs: StepDef[] } {
     const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
     const stepDefs: StepDef[] = []
-    const edits: Array<{ start: number; end: number; text: string }> = []
-    const isProp = (p: TS.ObjectLiteralElementLike, key: string): p is TS.PropertyAssignment => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === key
+    const edits: StepEdit[] = []
     let counter = 0
 
     const visit = (node: TS.Node): void => {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "jobStep" && node.arguments.length > 0 && ts.isObjectLiteralExpression(node.arguments[0])) {
-            const obj = node.arguments[0]
-            const inputProp = obj.properties.find(p => isProp(p, "input"))
-            const inputSchemaProp = obj.properties.find(p => isProp(p, "inputSchema"))
-            const outputSchemaProp = obj.properties.find(p => isProp(p, "outputSchema"))
-            const run = obj.properties.find(p => isProp(p, "run"))?.initializer
-
-            if (run && (ts.isArrowFunction(run) || ts.isFunctionExpression(run))) {
-                const name = `terseStep_${counter++}`
-                stepDefs.push({ name, def: stepFunctionText(ts, sf, name, run, inputSchemaProp?.initializer, outputSchemaProp?.initializer) })
-                edits.push({ start: node.getStart(sf), end: node.getEnd(), text: `${name}(${inputProp ? inputProp.initializer.getText(sf) : ""})` })
-                return
+        const step = matchStepCall(ts, node)
+        if (step) {
+            switch (step.kind) {
+                case StepCallKind.AsStep: {
+                    const { stepDef, edit } = transformAsStep(ts, sf, step, fileName, counter++)
+                    stepDefs.push(stepDef)
+                    edits.push(edit)
+                    return
+                }
+                case StepCallKind.JobStep: {
+                    const transformed = transformJobStep(ts, sf, step, fileName, counter)
+                    if (transformed) {
+                        counter++
+                        stepDefs.push(transformed.stepDef)
+                        edits.push(transformed.edit)
+                        return
+                    }
+                    break
+                }
             }
         }
         ts.forEachChild(node, visit)
@@ -103,25 +109,20 @@ function extractJobSteps(ts: typeof TS, source: string, fileName: string): { cod
     return { code, stepDefs }
 }
 
-function stepFunctionText(
-    ts: typeof TS,
-    sf: TS.SourceFile,
-    name: string,
-    run: TS.ArrowFunction | TS.FunctionExpression,
-    inputSchema: TS.Expression | undefined,
-    outputSchema: TS.Expression | undefined
-): string {
-    const param = inputSchema ? "__terseArgs" : ""
-    const parseInput = inputSchema ? `  const __terseInput = (${inputSchema.getText(sf)}).parse(__terseArgs)\n` : ""
-    const callRun = inputSchema ? `(${run.getText(sf)})(__terseInput)` : `(${run.getText(sf)})()`
-    const validated = outputSchema ? `(${outputSchema.getText(sf)}).parse(__terseResult)` : `__terseResult`
-    return `export async function ${name}(${param}) {\n` + `  "use step"\n` + parseInput + `  const __terseResult = await ${callRun}\n` + `  return ${validated}\n` + `}`
+// Steps execute from a separate bundle, so the module scope the hoisted code relies
+// on (clients, env guards, helpers) must exist there too, not just the imports.
+function buildStepsModule(ts: typeof TS, sf: TS.SourceFile, stepDefs: StepDef[]): string {
+    const moduleCode = sf.statements
+        .filter(s => !containsCreateJob(ts, s))
+        .map(s => s.getText(sf))
+        .join("\n")
+    const defs = stepDefs.map(s => s.def).join("\n\n")
+    return `${moduleCode}\n\n${defs}\n`
 }
 
-function buildStepsModule(ts: typeof TS, sf: TS.SourceFile, imports: TS.ImportDeclaration[], stepDefs: StepDef[]): string {
-    const importLines = imports.map(i => i.getText(sf)).join("\n")
-    const defs = stepDefs.map(s => s.def).join("\n\n")
-    return `${importLines}\n\n${defs}\n`
+function containsCreateJob(ts: typeof TS, node: TS.Node): boolean {
+    const walk = (n: TS.Node): true | undefined => (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "createJob" ? true : ts.forEachChild(n, walk))
+    return walk(node) ?? false
 }
 
 function stepsImportSpecifier(fileName: string): string {

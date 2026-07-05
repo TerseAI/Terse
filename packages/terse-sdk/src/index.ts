@@ -757,6 +757,30 @@ async function runJobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outp
     return opts.outputSchema ? opts.outputSchema.parse(result) : result
 }
 
+declare global {
+    interface Promise<T> {
+        /**
+         * Runs this call as a journaled durable step: `client.method(args).asStep()`.
+         * The durable build hoists the call into a step, so `asStep()` must be chained
+         * directly onto the call, and its arguments and resolved value must be
+         * serializable. Only available in durable jobs.
+         */
+        asStep(): Promise<T>
+    }
+}
+
+// The durable build rewrites every valid `.asStep()` call site away, so this body
+// only runs where the transform could not apply. Fail loudly instead of leaving
+// "asStep is not a function".
+Object.defineProperty(Promise.prototype, "asStep", {
+    value: function asStep(): never {
+        throw new DurableOnlyError("asStep() is only available in durable jobs. Add `durable: true` and chain .asStep() directly onto the call, e.g. client.method(args).asStep(). Note it is only transformed inside files that call createJob().")
+    },
+    writable: true,
+    configurable: true,
+    enumerable: false
+})
+
 export function sleep(duration: string | number | Date): Promise<void> {
     if (!isDurableExecution()) {
         throw new DurableOnlyError("sleep() is only available in durable jobs. Add `durable: true` to this job.")

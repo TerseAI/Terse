@@ -141,6 +141,27 @@ createJob({
     }
 })
 
+async function fetchTodo(id: number) {
+    console.log("fetching todo", id)
+    const response = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`)
+    let json = await response.json()
+    console.log("todo", json)
+    return json
+}
+
+createJob({
+    name: "Basic Test - asStep macro",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    durable: true,
+    onTrigger: async event => {
+        const todo = await fetchTodo(1).asStep()
+
+        const todo2 = await fetchTodo(2).asStep()
+
+        const todo3 = await fetchTodo(3).asStep()
+    }
+})
+
 createJob({
     name: "Basic Test - Success. sleep in durable job works",
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
