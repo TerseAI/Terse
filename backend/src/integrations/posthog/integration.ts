@@ -173,17 +173,16 @@ export class PosthogIntegrationManager
 
             if (!validationResponse.ok) {
                 const errorText = await validationResponse.text()
+                const error = describeKeyValidationFailure(validationResponse.status, errorText)
                 logger.error("Posthog API key validation failed", {
                     status: validationResponse.status,
-                    error: errorText
+                    error: errorText,
+                    userMessage: error
                 })
                 return {
                     success: false,
-                    error: "Invalid API key",
-                    statusCode: 400,
-                    data: {
-                        details: validationResponse.status === 401 ? "Authentication failed" : "API key validation failed"
-                    }
+                    error,
+                    statusCode: 400
                 }
             }
 
@@ -254,6 +253,30 @@ export class PosthogIntegrationManager
             }
         }
     }
+}
+
+/**
+ * Turns a PostHog auth failure into a message the user can act on. PostHog returns a
+ * JSON body whose `detail` names the problem — for scoped keys that's the exact missing
+ * scope (e.g. "API key missing required scope 'user:read'").
+ */
+function describeKeyValidationFailure(status: number, errorBody: string): string {
+    let detail: string | undefined
+    try {
+        const parsed = z.object({ detail: z.string() }).safeParse(JSON.parse(errorBody))
+        if (parsed.success) {
+            detail = parsed.data.detail
+        }
+    } catch {
+        // Non-JSON body — fall through to the generic messages below.
+    }
+    if (detail) {
+        return `PostHog rejected the API key: ${detail}`
+    }
+    if (status === 401) {
+        return "PostHog rejected the API key. Make sure it is a Personal API Key for US PostHog Cloud."
+    }
+    return `PostHog API key validation failed (HTTP ${status})`
 }
 
 /**
