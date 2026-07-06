@@ -17,7 +17,7 @@ icon: "house"
 
 Most AI workflows are easy to prototype and hard to keep running. An integration's schema drifts, a prompt quietly regresses, a step that called an LLM now needs a guardrail, and the agent that wrote the workflow can't fix it because it can't see the audit log.
 
-Terse handles the long tail of that work in one place: a typed TypeScript SDK with deterministic **ACL guardrails** on every integration call (the Slack guardrail, for example, only lets the agent post in channels the workspace has explicitly approved), a sandboxed runtime you ship to with `terse deploy`, an audit log that unifies deterministic and agent steps, and a Claude Code plugin that lets the coding agent in your editor build and maintain workflows with you.
+Terse handles the long tail of that work in one place: a typed TypeScript SDK with deterministic **ACL guardrails** on every integration call (the Slack guardrail, for example, only lets the agent post in channels the workspace has explicitly approved), a sandboxed runtime you ship to with `terse deploy`, an audit log that unifies deterministic and agent steps, and agent skills (`terse-create`, `terse-improve`, `terse-self-host`) you install with `npx terse-cli install` so the coding agent in your editor can build and maintain workflows with you.
 
 ## What a workflow looks like
 
