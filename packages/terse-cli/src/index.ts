@@ -203,6 +203,13 @@ program
         await deploy(resolveProvider(), opts?.entryFile)
     })
 
+program
+    .command("build")
+    .description("Build the durable workflow bundle into .terse/wf")
+    .action(async () => {
+        await resolveProvider().prebuild()
+    })
+
 program.commandsGroup("Build with workspace context:")
 
 const integrateCommand = program
@@ -425,12 +432,6 @@ if (isCliRunCommandEnabled()) {
         .option(...ENTRY_FILE_OPTION)
         .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
             await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile, opts?.verbose)
-        })
-    program
-        .command("build")
-        .description("Build the durable workflow bundle into .terse/wf")
-        .action(async () => {
-            await resolveProvider().prebuild()
         })
 }
 
