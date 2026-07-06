@@ -142,6 +142,7 @@ export class PosthogIntegrationManager
             url: "https://us.posthog.com/settings/user-api-keys",
             instructions: [
                 "Use a Personal API Key, not a Project API Key.",
+                "Grant these read-only scopes: query:read, logs:read, person:read, session_recording:read, user:read, project:read.",
                 "Use a key from an account with access to the target PostHog project.",
                 "This integration currently supports US PostHog Cloud only."
             ]
