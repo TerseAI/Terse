@@ -23,7 +23,6 @@ export async function install(opts?: NonInteractiveOpts): Promise<void> {
     await ensureGlobalCli(opts)
     const bundle = await fetchSkillBundle()
     await installSkillBundle(bundle)
-    writeInstalledBundleVersion(bundle.version)
     await offerClaudePermissions(opts)
     await ensureAuth(opts)
     outro("Terse is ready. Try `terse init <project>`, or ask your coding agent to create a Terse workflow.")
@@ -34,7 +33,6 @@ export async function update(): Promise<void> {
     await updateGlobalCli()
     const bundle = await fetchSkillBundle()
     await installSkillBundle(bundle)
-    writeInstalledBundleVersion(bundle.version)
     outro("Terse CLI and skills are up to date.")
 }
 
@@ -95,7 +93,7 @@ async function fetchJson(url: string): Promise<unknown> {
 async function installSkillBundle(bundle: SkillBundle): Promise<void> {
     log.step(`Installing Terse skills into your coding agents: ${bundle.skills.join(", ")}`)
     const skillFlags = bundle.skills.flatMap(skill => ["--skill", skill])
-    await runStreaming("npx", ["-y", "skills@latest", "add", REPO_SLUG, "--global", "-y", ...skillFlags])
+    await runStreaming("npx", ["-y", "skills@latest", "add", REPO_SLUG, "-y", ...skillFlags])
 }
 
 async function offerClaudePermissions(opts?: NonInteractiveOpts): Promise<void> {
@@ -146,12 +144,6 @@ async function ensureAuth(opts?: NonInteractiveOpts): Promise<void> {
         return
     }
     await loginAndPersist()
-}
-
-function writeInstalledBundleVersion(version: string): void {
-    const dir = path.join(os.homedir(), ".terse")
-    fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(path.join(dir, "skills-version"), `${version}\n`)
 }
 
 async function isOnPath(bin: string): Promise<boolean> {
