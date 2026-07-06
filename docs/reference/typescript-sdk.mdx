@@ -75,7 +75,7 @@ Duplicate `name` values throw an error when the second job registers. At most **
 | `states`    | `{ key, value }[]`                              | Optional typed persistent state. `value` is a Zod schema. See [job state](#job-state).            |
 | `filter`    | `(event, state) => boolean \| Promise<boolean>` | Optional function to skip the run for specific events. See [filtering events](#filtering-events).  |
 | `onTrigger` | `(event, state) => Promise<void>`               | The workflow handler. Called once per trigger event.                                              |
-| `durable`   | `boolean`                                       | Optional. When `true`, the job can use `sleep()`, `jobStep()`, and `waitForInput()`. See [Durability](/core-concepts/durability). |
+| `durable`   | `boolean`                                       | Optional. When `true`, the job can use `sleep()`, `step()`, `jobStep()`, and `waitForInput()`. See [Durability](/core-concepts/durability). |
 
 To point the SDK at a self-hosted control plane, set `TERSE_BACKEND_URL` (it defaults to `https://api.useterse.ai`). To route execution to a self-hosted data plane, set `remoteServerUrl` in `terse.config.json` instead.
 
@@ -340,7 +340,7 @@ Suspends the run until the timer fires. Accepts `ms`-style strings (`"30s"`, `"5
 
 ### `step(call)`
 
-Wrapped around a direct call to a module-scope client or function, runs that call as a durable step: `step(resend.emails.send({...}))`. Arguments evaluate in the handler and cross the boundary as serialized data; the resolved value is journaled. See [Durability — Making your own calls durable with step()](/core-concepts/durability#making-your-own-calls-durable-with-step).
+Wrapped around a direct call to a module-scope client or function, runs that call as a durable step: `step(resend.emails.send({...}))`. Import `step` from `terse-sdk` so the CLI can rewrite the call. Arguments evaluate in the handler and cross the boundary as serialized data; the resolved value is journaled. The macro only runs in files that call `createJob()`. See [Durability — Making your own calls durable with step()](/core-concepts/durability#making-your-own-calls-durable-with-step).
 
 ### `jobStep(...)`
 

@@ -72,6 +72,7 @@ createJob({
 
 Two rules make a call steppable:
 
+- **Import `step` from `terse-sdk`.** The CLI only rewrites that binding, so a user-defined `step()` elsewhere is left alone.
 - **The thing you call lives at module scope** (or is imported): a client like `resend`, or one of your own functions. Steps run in a separate bundle that rebuilds module scope from your source, so module-level values are always available there. A client created inside the handler is not, and the build will tell you to move it.
 - **The arguments are data.** They evaluate right where you wrote them, with full access to `event` and your locals, and the resulting values are serialized into the journal. A function value cannot cross that boundary, so callbacks in argument position are a build error (see below).
 
@@ -111,7 +112,7 @@ const pr = await jobStep({
 ```
 
 - `input` is the data the step needs. It is the only thing passed in, because steps run in isolation and cannot read variables from the surrounding handler.
-- `inputSchema` and `outputSchema` are zod schemas that validate the values crossing the durability boundary on every run, which `.asStep()` does not do. `outputSchema` is optional.
+- `inputSchema` and `outputSchema` are zod schemas that validate the values crossing the durability boundary on every run, which `step()` does not do. `outputSchema` is optional.
 - `run` receives the validated input and returns the result, which is journaled.
 
 For a side effect with no input or output, just pass `run`:
@@ -192,7 +193,7 @@ Each option has an `id` (returned as `result.choice`), a `label` shown on the bu
 During local testing with `terse test`, `waitForInput()` shows an interactive terminal prompt instead of posting to Slack. The run does not suspend locally. The prompt runs as a journaled step, so durable replays return your answer from the journal instead of asking again.
 
 <Note>
-`sleep()`, `waitForInput()`, and `jobStep()` are only available in durable jobs. Call them in a non-durable job and you get a clear error asking you to add `durable: true`.
+`sleep()`, `step()`, `waitForInput()`, and `jobStep()` are only available in durable jobs. Call them in a non-durable job and you get a clear error asking you to add `durable: true`.
 </Note>
 
 ## How it works
