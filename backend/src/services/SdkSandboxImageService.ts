@@ -414,6 +414,7 @@ export class SdkSandboxImageService {
             sb,
             projectDir,
             templateDir: sandboxService.getDependencyCachePath(sb, executor.runtime),
+            cliCachePath: sandboxService.getCliCachePath(sb),
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, executor.runtime)
             },

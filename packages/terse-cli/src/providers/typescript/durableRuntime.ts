@@ -194,6 +194,11 @@ function loadTypescript(cwd: string): typeof import("typescript") {
     try {
         return createRequire(path.join(cwd, "package.json"))("typescript")
     } catch {
-        throw new Error("Durable execution needs TypeScript in your project. Run: npm install --save-dev typescript")
+        // Sandbox installs are prod-only, so the project's typescript devDependency is absent there; use the CLI's own copy.
+        try {
+            return createRequire(import.meta.url)("typescript")
+        } catch {
+            throw new Error("Durable execution needs TypeScript in your project. Run: npm install --save-dev typescript")
+        }
     }
 }
