@@ -4,9 +4,9 @@ description: "Reference for the terse CLI"
 icon: "terminal"
 ---
 
-The `terse` CLI has one scaffold command and a shared workflow CLI.
+The `terse` CLI has setup commands (`terse install`, `terse update`), one scaffold command (`terse init`), and a shared workflow CLI.
 
-`terse init` scaffolds a new TypeScript project. The rest of the CLI auto-detects a Terse TypeScript project from the current directory and loads workflows from the default entry file unless you pass `--entry-file`.
+`terse install` is the recommended first step on a new machine. `terse init` scaffolds a new TypeScript project. The rest of the CLI auto-detects a Terse TypeScript project from the current directory and loads workflows from the default entry file unless you pass `--entry-file`.
 
 | Language   | Project markers                 | Default entry file                                                                  | Generated file           |
 | ---------- | ------------------------------- | ----------------------------------------------------------------------------------- | ------------------------ |
@@ -17,6 +17,39 @@ The CLI scaffolds, generates helpers for, and runs TypeScript workflows on Node.
 `terse test` and `terse deploy` discover every workflow registered with `createJob()` in the entry file's module graph, including files reached by side-effect imports. Keep workflow `name` values unique.
 
 ## Getting started
+
+### `terse install`
+
+One-command setup for a fresh machine.
+
+```bash
+npx terse-cli install
+```
+
+What it does, in order:
+
+1. Offers to install the Terse CLI globally (`npm install -g terse-cli`) if `terse` is not already on your `PATH`
+2. Installs the official Terse agent skills (`terse-create`, `terse-improve`, `terse-self-host`) into every coding agent detected on your machine via the [skills CLI](https://skills.sh)
+3. If `~/.claude` exists, optionally (prompted, never silent) adds `Bash(terse:*)` to `permissions.allow` in `~/.claude/settings.json` so Claude Code can run terse commands without prompting
+4. Runs `terse auth login` if you are not already logged in
+
+The skill list is fetched from `.claude-plugin/marketplace.json` on main at runtime, so skill renames and additions propagate to older CLIs without a new CLI release. If the manifest is unreachable, the command fails with an error (there is no baked-in fallback list).
+
+Options:
+
+| Flag                    | Description                                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `-y, --non-interactive` | Skip prompts. Does not edit Claude Code settings or log you in. Implied automatically when stdin is not a TTY. |
+
+### `terse update`
+
+Updates the globally installed CLI and re-syncs the Terse agent skills.
+
+```bash
+terse update
+```
+
+If `terse` is not installed globally, the command skips the CLI self-update and tells you to run `terse install`.
 
 ### `terse init [project-name]`
 
@@ -566,7 +599,7 @@ Options:
 | `--events`        | Also fetch the full model event stream for each listed run                                                |
 | `--run-id <id>`   | Show full chat events for one run instead of listing runs for a workflow                                  |
 
-Use `--triggers` when you want the serialized input event for each run. Use `--events` when you want the full stored conversation, including the trigger payload.
+Use `--triggers` when you want the serialized input event for each run (recommended when debugging with the `terse-improve` agent skill). Use `--events` when you want the full stored conversation, including the trigger payload.
 
 ### `terse dashboard`
 
