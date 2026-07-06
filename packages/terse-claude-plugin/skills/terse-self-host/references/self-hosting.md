@@ -2,7 +2,7 @@
 
 Boots a full local copy of the Terse control plane (backend + frontend + Postgres) inside Docker. This is not the same as scaffolding a job (`terse init`); it installs the platform itself.
 
-## B1. Verify prerequisites
+## 1. Verify prerequisites
 
 Don't run a long preflight, but quickly check the two things that *will* break the bootstrap if missing:
 
@@ -11,7 +11,7 @@ Don't run a long preflight, but quickly check the two things that *will* break t
 
 If Docker is missing or daemon isn't running, stop and ask the user to install / start Docker Desktop before re-running.
 
-## B2. Run `npx create-terse`
+## 2. Run `npx create-terse`
 
 ```bash
 npx create-terse                         # interactive
@@ -38,14 +38,14 @@ Then it does, in order:
 
 Set the Bash timeout to 600000 (10 minutes). The image pull is the slow step.
 
-## B3. React to errors
+## 3. React to errors
 
 - **`docker: command not found`** or **`Cannot connect to the Docker daemon`**: tell the user to install / start Docker Desktop, then re-run.
 - **`port is already allocated`**: another service is on the chosen frontend or backend port. Have the user re-run and pick different URLs (with non-default ports), or stop the conflicting service.
 - **Backend wait times out (`Backend at … never started responding`)**: run `docker compose logs backend` from the target directory and surface the error. Most common cause is migrations failing — usually a stale `terse_postgres` volume from a previous version. `docker compose down -v && docker compose up -d` clears it (destroys data).
 - **Image pull fails**: the prebuilt image lives at `us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest`. If the user is on a restricted network, they may need to allowlist that host or set `TERSE_IMAGE=` in `.env` to point at a mirror.
 
-## B4. Hand off
+## 4. Hand off
 
 When the script finishes the stack is **already running**. Do not run `pnpm dev` or any other start command — the doc warning here is critical: an old version of the docs told users to run `pnpm dev`, which does not apply.
 
@@ -56,7 +56,7 @@ Tell the user, in this order:
 3. From a new shell, `terse init <job-name>` scaffolds the user's first job against the local instance.
 4. Daily ops live in `<target-dir>/README.md` (logs, upgrade, backup, stop).
 
-## B5. Enabling integrations after bootstrap
+## 5. Enabling integrations after bootstrap
 
 A self-hosted instance has **one** config file: `<target-dir>/.env`. There is no per-integration config, no second admin panel, no separate secrets file. When the user says "Gmail isn't showing up in the dashboard" or "how do I connect GitHub" on a self-host install, the workflow is always the same shape:
 
@@ -88,7 +88,7 @@ Callbacks and redirects must be reachable from the user's browser. For a default
 
 If the OAuth provider rejects `localhost` (Google does for some scopes, Slack does for distributed apps), the user needs a public tunnel (ngrok, Cloudflare Tunnel). Point the callback URLs at the tunnel hostname, register that hostname with the provider, leave everything else alone.
 
-## B6. Critical caveats to surface
+## 6. Critical caveats to surface
 
 If the user looks like they're going to expose the instance off `localhost`, warn them — these are not negotiable:
 

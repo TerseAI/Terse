@@ -1,16 +1,22 @@
 ---
-name: create
-description: Create a new Terse SDK job. Use when the user wants to build a new automation, agent, or job that reacts to events (GitHub PRs, Slack messages, Linear issues, cron schedules, etc.) and takes actions.
-argument-hint: <job-description>
+name: terse-create
+description: Create a Terse workflow. Use when the user wants to build an automation that reacts to events (GitHub PRs, Slack messages, Linear issues, cron schedules, webhooks) and takes actions, or wants to get started with Terse. Bootstraps a new Terse project first when none exists.
+license: MIT
+metadata:
+  author: Terse AI
+  version: "0.2.0"
+  category: workflow
 ---
 
-# Create a Terse Job
+# Create a Terse Workflow
 
-Create a new Terse SDK job based on: **$ARGUMENTS**
+Create a Terse workflow based on: **$ARGUMENTS**
+
+A workflow is defined in code as a job (`createJob` in `src/terse.jobs.ts`).
 
 ## Reference docs
 
-The bundled [sdk-reference.md](../../reference/sdk-reference.md) covers the common path offline. Terse evolves fast, so pull the live docs whenever you reach past what the reference covers or aren't sure it's current:
+The bundled [sdk-reference.md](references/sdk-reference.md) covers the common path offline. Terse evolves fast, so pull the live docs whenever you reach past what the reference covers or aren't sure it's current:
 
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse deploy`, and friends.
@@ -19,7 +25,15 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 ## Steps
 
-**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](../../reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](references/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+
+### 0. Ensure a Terse project exists
+
+Look for `terse.config.json` or `src/terse.generated.ts` in the working directory. If either exists, the project is set up — skip to step 1.
+
+If neither exists, this is a fresh start: **read [references/bootstrap.md](references/bootstrap.md) now and follow it**, then come back and continue with step 1. The bootstrap runs `terse init` (scaffold, dependency install, browser login, remote project creation, `terse generate`) and covers error recovery.
+
+If the user asked to self-host Terse rather than build a workflow on Terse Cloud, that is a different flow — hand off to the `terse-self-host` skill instead.
 
 `src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it before choosing triggers or skills. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
@@ -172,7 +186,7 @@ Do not run `terse deploy` automatically. After the job is written and verified, 
 
 Example prompt:
 
-> The job is ready locally. Deploy it to production with `terse deploy`? (This syncs all jobs in the project — removed jobs are deleted remotely.)
+> The workflow is ready locally. Deploy it to production with `terse deploy`? (This syncs all jobs in the project — removed jobs are deleted remotely.)
 
 - If the user says yes, run `terse deploy` and report the outcome.
 - If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.

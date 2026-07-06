@@ -1,16 +1,22 @@
 ---
-name: improve
-description: Improve an existing Terse SDK job. Use when the user wants to fix, optimize, or refactor an automation they have already built.
-argument-hint: <job-name>
+name: terse-improve
+description: Improve an existing Terse workflow. Use when the user wants to fix, optimize, refactor, or debug an automation already built on Terse. Pulls production run history, analyzes tool usage, prompts, filters, and error handling, then verifies with replay.
+license: MIT
+metadata:
+  author: Terse AI
+  version: "0.2.0"
+  category: workflow
 ---
 
-# Improve a Terse Job
+# Improve a Terse Workflow
 
-Improve the Terse job named: **$ARGUMENTS**
+Improve the Terse workflow named: **$ARGUMENTS**
+
+A workflow is defined in code as a job (`createJob` in `src/terse.jobs.ts`); the CLI commands below take that job name.
 
 ## Reference docs
 
-The bundled [sdk-reference.md](../../reference/sdk-reference.md) covers the common path offline. Terse evolves fast, so pull the live docs whenever you reach past what the reference covers or aren't sure it's current:
+The bundled [sdk-reference.md](references/sdk-reference.md) covers the common path offline. Terse evolves fast, so pull the live docs whenever you reach past what the reference covers or aren't sure it's current:
 
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
@@ -19,15 +25,15 @@ If anything in the bundled reference disagrees with the live docs, trust the liv
 
 ## Steps
 
-**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](../../reference/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](references/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
 
 `src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
 If `src/terse.generated.ts` is missing or stale for the integrations the job uses, rerun `terse generate` instead of guessing at missing helpers. Never edit the generated file directly.
 
-### 1. Find the job
+### 1. Find the workflow
 
-Open `src/terse.jobs.ts` and `src/terse.generated.ts`. Find the job matching the requested name and read the full implementation — triggers, skills, filter, and handler.
+Open `src/terse.jobs.ts` and `src/terse.generated.ts`. Find the job matching the requested workflow name and read the full implementation — triggers, skills, filter, and handler.
 
 The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 

@@ -64,20 +64,20 @@ Get a workflow live in under 5 minutes — full guide at [docs.useterse.ai/quick
 
 With Code
 
+With your coding agent (Claude Code, Cursor, Codex, and more)
 ```bash
-npm install -g terse-cli
+npx terse-cli install         # one command: global CLI + agent skills + login
+
+# in claude
+/terse-create describe your workflow
+```
+
+```bash
+npx terse-cli install
 terse init my-project
 cd my-project
 code . # build some workflows
 terse deploy
-```
-
-With our Claude Code skill
-```bash
-npx skills add TerseAI/Terse
-
-# in claude
-/terse:create describe your workflow
 ```
 
 That's it. `terse deploy` ships to the Terse Cloud data plane — no infra to stand up.

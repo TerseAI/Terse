@@ -1,0 +1,31 @@
+name: Claude Plugin Check
+on:
+    pull_request:
+        paths:
+            - "packages/terse-claude-plugin/**"
+            - ".claude-plugin/**"
+            - ".github/workflows/claude-plugin-check.yml"
+permissions:
+    contents: read
+jobs:
+    validate:
+        runs-on: blacksmith-4vcpu-ubuntu-2404
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "22.19.0"
+            - name: Check vendored references are in sync
+              run: |
+                  node packages/terse-claude-plugin/scripts/sync-references.mjs
+                  git diff --exit-code -- packages/terse-claude-plugin/skills
+            - name: Validate plugin and marketplace manifests
+              run: |
+                  npm i -g @anthropic-ai/claude-code
+                  claude plugin validate . --strict
+                  claude plugin validate ./packages/terse-claude-plugin --strict
+            - name: Validate skills against the Agent Skills spec
+              run: |
+                  for skill in packages/terse-claude-plugin/skills/*/; do
+                      npx -y skills-ref@0.1.5 validate "$skill"
+                  done

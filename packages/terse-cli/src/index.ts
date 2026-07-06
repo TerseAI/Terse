@@ -18,6 +18,7 @@ import { generate } from "./commands/generate.js"
 import { history } from "./commands/history.js"
 import { applyImprovement, listImprovements } from "./commands/improvements.js"
 import { init } from "./commands/init.js"
+import { install, update } from "./commands/install.js"
 import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateWait } from "./commands/integrate.js"
 import { listen } from "./commands/listen.js"
 import { memoryGet, memoryList, memoryPut, memoryRemove } from "./commands/memory.js"
@@ -48,6 +49,27 @@ program.hook("preAction", (_thisCommand, actionCommand) => {
 })
 
 program.commandsGroup("Getting started:")
+program
+    .command("install")
+    .description("Set up Terse on this machine: global CLI, agent skills, and login")
+    .option(...NON_INTERACTIVE_OPTION)
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ npx terse-cli install                   # first-time setup on a fresh machine
+  $ terse install --non-interactive         # skip prompts (CI/agents); no settings edits, no login
+`
+    )
+    .action(async (opts?: NonInteractiveOpts) => {
+        await install(opts)
+    })
+program
+    .command("update")
+    .description("Update the Terse CLI and re-sync the Terse skills across your coding agents")
+    .action(async () => {
+        await update()
+    })
 program
     .command("init")
     .description("Create a new Terse project")
