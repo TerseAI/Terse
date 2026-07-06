@@ -1,6 +1,7 @@
 ---
 name: terse-self-host
 description: Self-host the Terse control plane. Use when the user wants to run Terse on their own infrastructure instead of Terse Cloud, or mentions self-hosting Terse, running the backend themselves, on-prem, or npx create-terse. Boots the full platform (backend, frontend, Postgres) in Docker.
+allowed-tools: Read
 license: MIT
 compatibility: Requires Docker with Compose v2 and Node 20+
 metadata:

@@ -1,6 +1,7 @@
 ---
 name: terse-create
 description: Create a Terse workflow. Use when the user wants to build an automation that reacts to events (GitHub PRs, Slack messages, Linear issues, cron schedules, webhooks) and takes actions, or wants to get started with Terse. Bootstraps a new Terse project first when none exists.
+allowed-tools: Read
 license: MIT
 metadata:
   author: Terse AI
