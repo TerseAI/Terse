@@ -1,7 +1,6 @@
 ---
 name: terse-improve
 description: Improve an existing Terse workflow. Use when the user wants to fix, optimize, refactor, or debug an automation already built on Terse. Pulls production run history, analyzes tool usage, prompts, filters, and error handling, then verifies with replay.
-allowed-tools: Read
 license: MIT
 metadata:
   author: Terse AI
