@@ -1,3 +1,4 @@
+import chalk from "chalk"
 import fs from "fs"
 import { serializedEventSchema } from "terse-types"
 import type { SerializedEvent } from "terse-types"
@@ -9,7 +10,7 @@ import { loadJob } from "../loadJob.js"
 import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
-import { runLocalTestJob } from "../runLocalTestJob.js"
+import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
 
 export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string, verbose?: boolean): Promise<void> {
     const hoistMarker = getLocalHoistMarker()
@@ -77,5 +78,6 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     }
 
     const projectId = readProjectConfigOrBail().projectId
-    await runLocalTestJob(provider, job, parsedEvent, { projectId, apiKey, verbose, entryFile })
+    const { runId: dispatchedRunId, local } = await runLocalTestJob(provider, job, parsedEvent, { projectId, apiKey, verbose, entryFile })
+    if (!local) console.log(chalk.cyan(`  ${remoteDispatchNotice(dispatchedRunId)}`))
 }

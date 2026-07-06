@@ -225,6 +225,13 @@ program
         await deploy(resolveProvider(), opts?.entryFile)
     })
 
+program
+    .command("build")
+    .description("Build the durable workflow bundle into .terse/wf")
+    .action(async () => {
+        await resolveProvider().prebuild()
+    })
+
 program.commandsGroup("Build with workspace context:")
 
 const integrateCommand = program

@@ -162,6 +162,10 @@ class TypeScriptProvider implements LanguageProvider {
         await buildWorkflowArtifacts(process.cwd())
     }
 
+    runtimeName(job: CreateJobParameters): "durable" | "direct" {
+        return isDurableJob(job) ? "durable" : "direct"
+    }
+
     async executeJob(
         job: CreateJobParameters,
         runId: string | null,
@@ -202,15 +206,18 @@ export const typeScriptProvider = new TypeScriptProvider()
 
 // Durability is opt-in per job and unavailable on self-hosted control planes.
 function selectRuntime(job: CreateJobParameters): JobRuntime {
-    const selfHosted = readProjectConfig()?.selfHosted === true
-    if (job.durable && selfHosted) {
+    if (job.durable && readProjectConfig()?.selfHosted === true) {
         throw new CliError("durable_self_hosted", `Job "${job.name}" is durable, but durability isn't available on self-hosted control planes yet.`, {
             detail: "Remove `durable: true` from this job, or run it on Terse cloud."
         })
     }
-    const durable = job.durable === true && !selfHosted
+    const durable = isDurableJob(job)
     console.log(chalk.dim(`  Runtime: ${durable ? "durable" : "direct"}`))
     return durable ? durableJobRuntime : directJobRuntime
+}
+
+function isDurableJob(job: CreateJobParameters): boolean {
+    return job.durable === true && readProjectConfig()?.selfHosted !== true
 }
 
 function isModuleNotFoundError(error: unknown): error is Error & { code: string } {

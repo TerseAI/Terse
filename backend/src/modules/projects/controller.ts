@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { UserSession } from "terse-types/types"
 import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from "terse-types/types"
 
+import { AnalyticsEvent, analytics } from "../../common/analytics"
 import logger from "../../common/logger"
 
 import {
@@ -61,6 +62,7 @@ export async function handleProjectDelete(req: Request, res: Response) {
     if (!id) return res.status(400).json({ error: "Project id is required" })
     try {
         await deleteProjectForOrganization(id, user.organizationId, user.id)
+        analytics.capture(user.id, AnalyticsEvent.PROJECT_DELETED, { projectId: id, organizationId: user.organizationId })
         res.status(204).send()
     } catch (error) {
         return handleServiceError(error, res, { projectId: id, userId: user.id })
@@ -112,6 +114,7 @@ export async function handleProjectCreate(req: Request, res: Response) {
     const { name } = sdkCreateProjectRequestBodySchema.parse(req.body)
     try {
         const { projectId, name: projectName } = await createProject(name, user.organizationId)
+        analytics.capture(user.id, AnalyticsEvent.PROJECT_CREATED, { projectId, projectName, organizationId: user.organizationId })
         const response: SdkCreateProjectResponseBody = { projectId, name: projectName }
         res.status(200).json(response)
     } catch (error) {

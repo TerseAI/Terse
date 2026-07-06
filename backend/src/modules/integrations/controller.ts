@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
 
+import { AnalyticsEvent, analytics } from "../../common/analytics"
 import logger from "../../common/logger"
 
 import {
@@ -57,6 +58,7 @@ export async function disconnectIntegration(req: Request, res: Response) {
     const { integrationType } = req.params
     try {
         await disconnectIntegrationForOrganization(integrationType, req.session.user.organizationId)
+        analytics.capture(req.session.user.id, AnalyticsEvent.INTEGRATION_REMOVED, { integrationType, organizationId: req.session.user.organizationId })
         res.json({ success: true })
     } catch (error: unknown) {
         if (error instanceof IntegrationNotFoundError) return res.status(404).json({ error: error.message })

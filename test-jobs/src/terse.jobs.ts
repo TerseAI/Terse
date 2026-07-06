@@ -1,4 +1,4 @@
-import { createJob, generateText, jobStep, slack, sleep, waitForInput } from "terse-sdk"
+import { createJob, generateText, jobStep, slack, sleep, step, waitForInput } from "terse-sdk"
 import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
@@ -20,7 +20,7 @@ createJob({
     // the trigger(s) above.
     onTrigger: async (event, state) => {
         const response = await generateText({
-            prompt: "Tell me a joke about Lord of the rings",
+            prompt: "Tell me a joke about Lord of the rings. With Gandalf in it",
             skills: [],
             outputSchema: z.object({ joke: z.string() })
         })
@@ -138,6 +138,27 @@ createJob({
                 return "work is done " + input
             }
         })
+    }
+})
+
+async function fetchTodo(id: number) {
+    console.log("fetching todo", id)
+    const response = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`)
+    let json = await response.json()
+    console.log("todo", json)
+    return json
+}
+
+createJob({
+    name: "Basic Test - step macro",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    durable: true,
+    onTrigger: async event => {
+        const todo = await step(fetchTodo(1))
+
+        const todo2 = await step(fetchTodo(2))
+
+        const todo3 = await step(fetchTodo(3))
     }
 })
 

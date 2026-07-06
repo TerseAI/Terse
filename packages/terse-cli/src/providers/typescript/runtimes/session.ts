@@ -1,5 +1,5 @@
 import chalk from "chalk"
-import { isAgentApprovalHandlingClaimed } from "terse-sdk"
+import { isAgentApprovalHandlingClaimed, setLocalPromptUiPause } from "terse-sdk"
 import type { SessionStreamEvent } from "terse-sdk"
 
 import { isCliRunCommandEnabled } from "../../../env.js"
@@ -54,9 +54,11 @@ export async function withSession<T>(apiKey: string, isVerbose: boolean, pauseUi
 
     const session = await openSessionStream(apiKey, { verbose: isVerbose, isPaused: () => sessionPaused, onEvent: handleSessionEvent })
 
+    setLocalPromptUiPause(pauseUiAround)
     try {
         return await action(session.sessionId)
     } finally {
+        setLocalPromptUiPause(undefined)
         session.close?.()
     }
 }

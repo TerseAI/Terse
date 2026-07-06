@@ -6,6 +6,7 @@ import type {
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
     SdkInputRequestDelivery,
+    SdkInputRequestOption,
     SdkInputRequestRegisterBody,
     SdkInputRequestTarget,
     SdkInputResponsePayload,
@@ -756,6 +757,20 @@ async function runJobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outp
     return opts.outputSchema ? opts.outputSchema.parse(result) : result
 }
 
+/**
+ * Runs the wrapped call as a journaled durable step: `step(client.method(args))`.
+ * The durable build hoists the call into a step, so `step()` must wrap the call
+ * directly, and its arguments and resolved value must be serializable. Only
+ * available in durable jobs.
+ */
+// The durable build rewrites every valid step() call site away, so this body only
+// runs where the transform could not apply. Fail loudly either way.
+export function step<T>(promise: Promise<T>): Promise<T> {
+    throw new DurableOnlyError(
+        "step() is only available in durable jobs. Add `durable: true` and wrap the call directly, e.g. step(client.method(args)). Note it is only transformed inside files that call createJob()."
+    )
+}
+
 export function sleep(duration: string | number | Date): Promise<void> {
     if (!isDurableExecution()) {
         throw new DurableOnlyError("sleep() is only available in durable jobs. Add `durable: true` to this job.")
@@ -881,32 +896,67 @@ async function postInputRequestStep(route: string, body: unknown): Promise<Respo
 async function promptForInputLocally<Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
 ): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
-    const { isCancel, select, text } = await import("@clack/prompts")
-    console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${describeInputTarget(params.via)}.`)
-    for (const [key, value] of Object.entries(params.details ?? {})) {
-        console.log(`  ${key}: ${value}`)
-    }
-
-    const choice = await select({
-        message: params.prompt,
-        options: params.options.map(o => ({ value: o.id, label: o.label, hint: o.description }))
+    const answer = await runLocalInputPrompt({
+        prompt: params.prompt,
+        details: params.details,
+        options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
+        targetDescription: describeInputTarget(params.via)
     })
-    if (isCancel(choice)) throw new Error("waitForInput: cancelled at local prompt")
-
-    const option = params.options.find(o => o.id === choice)
-    let freeTextAnswer: string | undefined
-    if (option?.freeText) {
-        const answer = await text({ message: `${option.label}:` })
-        if (isCancel(answer)) throw new Error("waitForInput: cancelled at local prompt")
-        freeTextAnswer = answer || undefined
-    }
-
     return {
-        choice: choice as Options[number]["id"],
-        text: freeTextAnswer,
+        choice: answer.choice as Options[number]["id"],
+        text: answer.text,
         respondent: { provider: "local", userId: "local" },
         delivery: localDelivery(params.via)
     }
+}
+
+// A step so local durable tests prompt exactly once; replays return the journaled answer.
+async function runLocalInputPrompt(params: {
+    prompt: string
+    details?: Record<string, string>
+    options: SdkInputRequestOption[]
+    targetDescription: string
+}): Promise<{ choice: string; text?: string }> {
+    "use step"
+    const { isCancel, select, text } = await import("@clack/prompts")
+    return localPromptUiPause()(async () => {
+        console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${params.targetDescription}.`)
+        for (const [key, value] of Object.entries(params.details ?? {})) {
+            console.log(`  ${key}: ${value}`)
+        }
+
+        const choice = await select({
+            message: params.prompt,
+            options: params.options.map(o => ({ value: o.id, label: o.label, hint: o.description }))
+        })
+        if (isCancel(choice)) throw new Error("waitForInput: cancelled at local prompt")
+
+        const option = params.options.find(o => o.id === choice)
+        let freeTextAnswer: string | undefined
+        if (option?.freeText) {
+            const answer = await text({ message: `${option.label}:` })
+            if (isCancel(answer)) throw new Error("waitForInput: cancelled at local prompt")
+            freeTextAnswer = answer || undefined
+        }
+
+        return { choice: String(choice), text: freeTextAnswer }
+    })
+}
+
+// Keyed by a process-global Symbol so the steps bundle's copy of this module and the
+// CLI reach the same slot; the CLI installs its spinner-pause here during local runs.
+const TERSE_UI_PAUSE_KEY = Symbol.for("terse.ui.pause")
+type UiPauseFn = <T>(fn: () => Promise<T>) => Promise<T>
+type GlobalWithUiPause = typeof globalThis & { [TERSE_UI_PAUSE_KEY]?: UiPauseFn }
+
+export function setLocalPromptUiPause(pause: UiPauseFn | undefined): void {
+    const g = globalThis as GlobalWithUiPause
+    g[TERSE_UI_PAUSE_KEY] = pause
+}
+
+function localPromptUiPause(): UiPauseFn {
+    const g = globalThis as GlobalWithUiPause
+    return g[TERSE_UI_PAUSE_KEY] ?? (async fn => fn())
 }
 
 function describeInputTarget(target: InputTarget): string {

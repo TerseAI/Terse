@@ -110,6 +110,7 @@ export async function buildWorkflowArtifacts(cwd: string): Promise<Map<string, {
     const out = path.join(cwd, ".terse", "wf")
     const scanDir = path.join(".terse", "macro")
     const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, scanDir, out).build())
+    fs.mkdirSync(out, { recursive: true })
     fs.writeFileSync(path.join(out, JOBS_MAP_FILE), JSON.stringify([...workflowFnByJob]))
     fs.writeFileSync(path.join(out, SOURCES_HASH_FILE), sourcesHash(cwd))
     return workflowFnByJob
@@ -193,6 +194,11 @@ function loadTypescript(cwd: string): typeof import("typescript") {
     try {
         return createRequire(path.join(cwd, "package.json"))("typescript")
     } catch {
-        throw new Error("Durable execution needs TypeScript in your project. Run: npm install --save-dev typescript")
+        // Sandbox installs are prod-only, so the project's typescript devDependency is absent there; use the CLI's own copy.
+        try {
+            return createRequire(import.meta.url)("typescript")
+        } catch {
+            throw new Error("Durable execution needs TypeScript in your project. Run: npm install --save-dev typescript")
+        }
     }
 }

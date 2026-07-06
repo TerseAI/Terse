@@ -95,6 +95,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             "copy cached node_modules",
             `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && cp -R ${context.escapeShellArg(`${context.templateDir}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
         )
+        // Older CLIs lack `terse build`; they always ship a prebuilt .terse/wf inside the source zip, so fall back to that.
+        const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
+        await context.ensureSandboxCommand("build workflow bundle", `cd ${context.escapeShellArg(context.projectDir)} && { ${cliBin} build || [ -d .terse/wf ]; }`)
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {

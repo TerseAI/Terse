@@ -37,13 +37,62 @@ onTrigger: async (event, state) => {
 
 Every line above is a durable step. If the job resumes, completed calls replay from the journal: the model isn't re-prompted, the Slack message isn't sent twice.
 
-## Wrapping your own code with jobStep
+## Making your own calls durable with step()
 
-Anything that is not a Terse SDK call needs to be wrapped in `jobStep` so it becomes a durable step too. That covers third-party SDKs like Octokit or Resend, a raw `fetch`, a database write, anything with a side effect.
+Anything that is not a Terse SDK call becomes a durable step by wrapping it in `step()`. That covers third-party SDKs like Octokit or Resend, a raw `fetch`, a database write, anything with a side effect.
 
 <Warning>
-Code outside a step runs again on **every replay**, not just once. If it has a side effect and is not idempotent (sending an email, charging a card, creating a record), it will happen multiple times and cause real problems. Wrap every side effect in `jobStep` so it runs exactly once.
+Code outside a step runs again on **every replay**, not just once. If it has a side effect and is not idempotent (sending an email, charging a card, creating a record), it will happen multiple times and cause real problems. Wrap every side effect in `step()` so it runs exactly once.
 </Warning>
+
+```ts
+import { createJob, sleep, step } from "terse-sdk"
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+createJob({
+    name: "New User Sequence",
+    triggers: [Triggers.workOS.onUserCreated()],
+    durable: true,
+    onTrigger: async (event) => {
+        const { data: contact } = await step(
+            resend.contacts.create({ email: event.user.email, unsubscribed: false })
+        )
+
+        await sleep("2d")
+
+        const { error } = await step(resend.emails.send(
+            { from: FROM, to: event.user.email, template: { id: TEMPLATE_ID } },
+            { idempotencyKey: `onboarding/${event.user.id}` }
+        ))
+        if (error) throw new Error(`Onboarding email failed: ${error.message}`)
+    }
+})
+```
+
+Two rules make a call steppable:
+
+- **The thing you call lives at module scope** (or is imported): a client like `resend`, or one of your own functions. Steps run in a separate bundle that rebuilds module scope from your source, so module-level values are always available there. A client created inside the handler is not, and the build will tell you to move it.
+- **The arguments are data.** They evaluate right where you wrote them, with full access to `event` and your locals, and the resulting values are serialized into the journal. A function value cannot cross that boundary, so callbacks in argument position are a build error (see below).
+
+For a step that is more than one call, write a module-scope function and wrap the call to it. This is also the pattern for callback-taking APIs: the callback stays inside the step, and only data crosses.
+
+```ts
+async function sendWithRetry(args: SendArgs) {
+    return pRetry(() => resend.emails.send(args), { retries: 3 })
+}
+
+// in the handler:
+const result = await step(sendWithRetry(args))
+```
+
+<Note>
+SDKs that return errors as values instead of throwing (Resend, Supabase) need their errors re-raised: `if (error) throw ...`. A run only fails when the handler throws, so an unchecked error value gets journaled as a successful step. Relatedly, if such an SDK returns a generic network error that makes no sense (Resend: "Unable to fetch data. The request could not be resolved."), check that the call is wrapped in `step()`. Workflow code runs in a sandbox without network access, and these SDKs catch the sandbox's descriptive "fetch is unavailable" error and rewrap it as their own.
+</Note>
+
+## jobStep: the fully explicit form
+
+`jobStep` does the same thing with no rules about the call shape: you declare the `input`, and `run` receives it. Because the input object is the entire boundary contract, the body can be anything, including things `step()` rejects: construct the client inside the step, use callbacks inline, write as many statements as you want. `step()` is the cleaner spelling for the common case; `jobStep` always works.
 
 ```ts
 import { jobStep } from "terse-sdk"
@@ -62,7 +111,7 @@ const pr = await jobStep({
 ```
 
 - `input` is the data the step needs. It is the only thing passed in, because steps run in isolation and cannot read variables from the surrounding handler.
-- `inputSchema` and `outputSchema` are zod schemas that validate the values crossing the durability boundary. `outputSchema` is optional.
+- `inputSchema` and `outputSchema` are zod schemas that validate the values crossing the durability boundary on every run, which `.asStep()` does not do. `outputSchema` is optional.
 - `run` receives the validated input and returns the result, which is journaled.
 
 For a side effect with no input or output, just pass `run`:
@@ -101,8 +150,49 @@ createJob({
 
 The model runs today, the job sleeps for three days, and the follow-up uses the exact text generated earlier. You never re-generate it. Durations are `ms`-style strings: `"30s"`, `"5m"`, `"1h"`, `"3d"`.
 
+During local testing with `terse test` (no `TERSE_RUN_ID`), `sleep()` skips the wait and logs what production would have done instead.
+
+### Waiting for human input
+
+Use `waitForInput()` when a durable job needs a human decision before it can continue. You define the prompt, optional detail fields, and a list of action buttons. In production, Terse posts an interactive Slack message and suspends the run until someone responds. The response is journaled like any other step, so the job never asks twice on replay.
+
+```ts
+import { slack, waitForInput } from "terse-sdk"
+
+import { SlackChannel } from "./terse.generated"
+
+const result = await waitForInput({
+    via: slack({ channel: SlackChannel.DealDesk.channelId }),
+    prompt: "Approve this contract summary?",
+    details: {
+        account: event.record.values.company_name,
+        summary: draft
+    },
+    options: [
+        { id: "approve", label: "Approve" },
+        { id: "reject", label: "Reject" },
+        { id: "changes", label: "Request changes", freeText: true }
+    ]
+})
+
+if (result.choice === "approve") {
+    await toolbox.slack.sendMessage({ channelId: SlackChannel.DealDesk.channelId, message: "Approved." })
+} else if (result.choice === "changes") {
+    const feedback = result.text ?? ""
+    // use feedback to revise the draft
+} else {
+    // rejected
+}
+```
+
+Each option has an `id` (returned as `result.choice`), a `label` shown on the button, and an optional `description`. Set `freeText: true` on an option to collect a follow-up text field after the user selects it; the value is available on `result.text`.
+
+`result.respondent` identifies who answered (`provider`, `userId`, and optional `displayName`). `result.delivery` includes provider-specific metadata (for Slack, the channel and message timestamp).
+
+During local testing with `terse test`, `waitForInput()` shows an interactive terminal prompt instead of posting to Slack. The run does not suspend locally. The prompt runs as a journaled step, so durable replays return your answer from the journal instead of asking again.
+
 <Note>
-`sleep()` and `jobStep()` are only available in durable jobs. Call them in a non-durable job and you get a clear error asking you to add `durable: true`.
+`sleep()`, `waitForInput()`, and `jobStep()` are only available in durable jobs. Call them in a non-durable job and you get a clear error asking you to add `durable: true`.
 </Note>
 
 ## How it works

@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
 import { apiTokenCreateRequestSchema, apiTokenUpdateRequestSchema } from "terse-types/types"
 
+import { AnalyticsEvent, analytics } from "../../common/analytics"
 import logger from "../../common/logger"
 
 import { ApiTokenNotFoundError, createApiTokenForUser, deleteApiTokenForUser, listApiTokensForUser, updateApiTokenForUser } from "./service"
@@ -28,6 +29,7 @@ export async function createApiToken(req: Request, res: Response) {
     const { name } = apiTokenCreateRequestSchema.parse(req.body)
     try {
         const response = await createApiTokenForUser(userId, organizationId, name)
+        analytics.capture(userId, AnalyticsEvent.API_TOKEN_CREATED, { organizationId, tokenName: name })
         res.status(201).json(response)
     } catch (error) {
         return handleError(error, res, "Failed to create API token", { userId })

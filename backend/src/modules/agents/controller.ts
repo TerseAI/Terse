@@ -4,6 +4,7 @@ import { AttioInputConfig, ConfigData, ConfigType, WebMonitorConfig } from "ters
 import { IntegrationType } from "terse-types/Integrations"
 import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, agentUpdateSchema } from "terse-types/types"
 
+import { AnalyticsEvent, analytics } from "../../common/analytics"
 import logger from "../../common/logger"
 import { parsePageParams } from "../../common/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
@@ -290,6 +291,14 @@ async function updateAgentForUser(userId: string, organizationId: string, agentI
     // Invalidate recent agents cache
     emitCacheInvalidationWithKey(organizationId, "recentAgents")
     emitCacheInvalidationWithWildcard(organizationId, "agent", agentId)
+
+    if (isActive !== undefined && isActive !== existingAgent.is_active) {
+        analytics.capture(userId, isActive ? AnalyticsEvent.JOB_ENABLED : AnalyticsEvent.JOB_DISABLED, {
+            jobId: agentId,
+            jobName: existingAgent.name,
+            organizationId
+        })
+    }
 
     return { id: agentId }
 }
