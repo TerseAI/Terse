@@ -104,6 +104,8 @@ Options:
 
 Loads your local workflow, lets you pick a real or synthesized sample event, and runs the handler in-process.
 
+Before the run starts, the CLI labels the runtime as **durable** or **direct** based on whether the workflow has `durable: true`. During the run, a progress indicator tracks execution while your workflow's `console.log` output scrolls cleanly above it — logs no longer collide with the spinner. When the run needs your input (tool approvals or `waitForInput()`), the indicator pauses with "Awaiting input" until you respond.
+
 If your workflow uses a webhook trigger but no deliveries are stored yet, the CLI prints a `curl` example against your webhook URL instead of opening an empty picker. Run `terse deploy` first so the CLI prints the URL, POST a test payload to it, then run `terse test` again.
 
 #### `terse test list [job-name]`
