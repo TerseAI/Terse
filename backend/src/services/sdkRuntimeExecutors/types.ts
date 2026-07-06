@@ -37,6 +37,7 @@ export interface SdkSourceImageBuildContext {
     sb: Sandbox
     projectDir: string
     templateDir: string
+    cliCachePath: string
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     escapeShellArg: (value: string) => string
 }
