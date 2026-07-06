@@ -1,4 +1,3 @@
-import chalk from "chalk"
 import type { CreateJobParameters } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 
@@ -19,16 +18,13 @@ export async function runLocalTestJob(
         entryFile?: string
         pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
     }
-): Promise<void> {
+): Promise<{ runId: string; local: boolean }> {
     const { runId, local } = await startTestRun(
         { projectId: opts.projectId, jobName: job.name, event, forceLocal: opts.forceLocal, isTest: opts.isTest, replayOfRunId: opts.replayOfRunId },
         opts.apiKey
     )
 
-    if (!local) {
-        console.log(chalk.cyan(`  Dispatched test event to your self-hosted data plane (run ${runId}). Watch it in the dashboard.`))
-        return
-    }
+    if (!local) return { runId, local }
 
     let failure: Error | null = null
     try {
@@ -44,4 +40,9 @@ export async function runLocalTestJob(
     } finally {
         await finalizeTestRun(runId, failure ? "failed" : "success", opts.apiKey, failure?.message)
     }
+    return { runId, local }
+}
+
+export function remoteDispatchNotice(runId: string): string {
+    return `Dispatched test event to your self-hosted data plane (run ${runId}). Watch it in the dashboard.`
 }

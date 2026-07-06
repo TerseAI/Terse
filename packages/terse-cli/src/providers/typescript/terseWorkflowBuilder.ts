@@ -24,25 +24,48 @@ export class TerseWorkflowBuilder extends BaseBuilder {
         this.outDir = outDir
     }
 
+    // Raw builder logs would corrupt the CLI's active clack rendering.
+    protected get shouldLogBaseBuilderInfo(): boolean {
+        return false
+    }
+
     async build(): Promise<void> {
-        const inputFiles = await this.getInputFiles()
-        fs.mkdirSync(this.outDir, { recursive: true })
+        await withSerdeWarningsSuppressed(async () => {
+            const inputFiles = await this.getInputFiles()
+            fs.mkdirSync(this.outDir, { recursive: true })
 
-        const { manifest: workflows } = await this.createWorkflowsBundle({ outfile: path.join(this.outDir, "workflows.cjs"), format: "cjs", inputFiles })
-        const { manifest: steps } = await this.createStepsBundle({ outfile: path.join(this.outDir, "steps.cjs"), format: "cjs", inputFiles })
-        await this.createWebhookBundle({ outfile: path.join(this.outDir, "webhook.cjs"), bundle: false })
+            const { manifest: workflows } = await this.createWorkflowsBundle({ outfile: path.join(this.outDir, "workflows.cjs"), format: "cjs", inputFiles })
+            const { manifest: steps } = await this.createStepsBundle({ outfile: path.join(this.outDir, "steps.cjs"), format: "cjs", inputFiles })
+            await this.createWebhookBundle({ outfile: path.join(this.outDir, "webhook.cjs"), bundle: false })
 
-        await this.createManifest({
-            workflowBundlePath: path.join(this.outDir, "workflows.cjs"),
-            manifestDir: this.outDir,
-            manifest: {
-                steps: { ...steps.steps, ...workflows.steps },
-                workflows: { ...steps.workflows, ...workflows.workflows },
-                classes: { ...steps.classes, ...workflows.classes }
-            }
+            await this.createManifest({
+                workflowBundlePath: path.join(this.outDir, "workflows.cjs"),
+                manifestDir: this.outDir,
+                manifest: {
+                    steps: { ...steps.steps, ...workflows.steps },
+                    workflows: { ...steps.workflows, ...workflows.workflows },
+                    classes: { ...steps.classes, ...workflows.classes }
+                }
+            })
+
+            // generated build output — keep it out of the user's git
+            fs.writeFileSync(path.join(this.outDir, ".gitignore"), "*\n")
         })
+    }
+}
 
-        // generated build output — keep it out of the user's git
-        fs.writeFileSync(path.join(this.outDir, ".gitignore"), "*\n")
+// False positive: the serde checker scans the pre-tree-shaken bundle and pins
+// @workflow/core's own Node-builtin imports on user classes. The builder's esbuild
+// plugin still fails the build on genuine violations after "use step" stripping.
+async function withSerdeWarningsSuppressed<T>(fn: () => Promise<T>): Promise<T> {
+    const originalWarn = console.warn
+    console.warn = (...args: unknown[]) => {
+        if (typeof args[0] === "string" && args[0].includes("Serde warning for")) return
+        originalWarn(...args)
+    }
+    try {
+        return await fn()
+    } finally {
+        console.warn = originalWarn
     }
 }

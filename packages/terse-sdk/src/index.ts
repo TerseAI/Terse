@@ -919,26 +919,44 @@ async function runLocalInputPrompt(params: {
 }): Promise<{ choice: string; text?: string }> {
     "use step"
     const { isCancel, select, text } = await import("@clack/prompts")
-    console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${params.targetDescription}.`)
-    for (const [key, value] of Object.entries(params.details ?? {})) {
-        console.log(`  ${key}: ${value}`)
-    }
+    return localPromptUiPause()(async () => {
+        console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${params.targetDescription}.`)
+        for (const [key, value] of Object.entries(params.details ?? {})) {
+            console.log(`  ${key}: ${value}`)
+        }
 
-    const choice = await select({
-        message: params.prompt,
-        options: params.options.map(o => ({ value: o.id, label: o.label, hint: o.description }))
+        const choice = await select({
+            message: params.prompt,
+            options: params.options.map(o => ({ value: o.id, label: o.label, hint: o.description }))
+        })
+        if (isCancel(choice)) throw new Error("waitForInput: cancelled at local prompt")
+
+        const option = params.options.find(o => o.id === choice)
+        let freeTextAnswer: string | undefined
+        if (option?.freeText) {
+            const answer = await text({ message: `${option.label}:` })
+            if (isCancel(answer)) throw new Error("waitForInput: cancelled at local prompt")
+            freeTextAnswer = answer || undefined
+        }
+
+        return { choice: String(choice), text: freeTextAnswer }
     })
-    if (isCancel(choice)) throw new Error("waitForInput: cancelled at local prompt")
+}
 
-    const option = params.options.find(o => o.id === choice)
-    let freeTextAnswer: string | undefined
-    if (option?.freeText) {
-        const answer = await text({ message: `${option.label}:` })
-        if (isCancel(answer)) throw new Error("waitForInput: cancelled at local prompt")
-        freeTextAnswer = answer || undefined
-    }
+// Keyed by a process-global Symbol so the steps bundle's copy of this module and the
+// CLI reach the same slot; the CLI installs its spinner-pause here during local runs.
+const TERSE_UI_PAUSE_KEY = Symbol.for("terse.ui.pause")
+type UiPauseFn = <T>(fn: () => Promise<T>) => Promise<T>
+type GlobalWithUiPause = typeof globalThis & { [TERSE_UI_PAUSE_KEY]?: UiPauseFn }
 
-    return { choice: String(choice), text: freeTextAnswer }
+export function setLocalPromptUiPause(pause: UiPauseFn | undefined): void {
+    const g = globalThis as GlobalWithUiPause
+    g[TERSE_UI_PAUSE_KEY] = pause
+}
+
+function localPromptUiPause(): UiPauseFn {
+    const g = globalThis as GlobalWithUiPause
+    return g[TERSE_UI_PAUSE_KEY] ?? (async fn => fn())
 }
 
 function describeInputTarget(target: InputTarget): string {
