@@ -4,7 +4,7 @@ description: Improve an existing Terse workflow. Use when the user wants to fix,
 license: MIT
 metadata:
   author: Terse AI
-  version: "0.2.0"
+  version: "0.3.0"
   category: workflow
 ---
 
@@ -21,7 +21,7 @@ The bundled [sdk-reference.md](references/sdk-reference.md) covers the common pa
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
 
-If anything in the bundled reference disagrees with the live docs, trust the live docs.
+Precedence: live docs win on facts (API signatures, CLI flags, availability). The bundled [code-conventions.md](references/code-conventions.md) wins on style — how job code is structured.
 
 ## Steps
 
@@ -69,6 +69,8 @@ If the user has not deployed the job yet (no agent found), skip this step and re
 
 Account for every area below before you finish: for each, either make a change or confirm it's already fine. Don't stop at the first easy win. Start with **Tool usage**, since moving work from the agent to `toolbox` is usually the highest-impact fix.
 
+Read [code-conventions.md](references/code-conventions.md) before this pass — the Conventions and Durability areas audit against it.
+
 #### Tool Usage
 
 - **Known calls vs judgment**: For actions with known parameters, use `toolbox`, not `generateText`. Read available methods in `src/terse.generated.ts`.
@@ -95,9 +97,20 @@ Account for every area below before you finish: for each, either make a change o
 
 #### Error Handling
 
-- **Missing data**: Does the code handle cases where event data might be missing? (e.g., PR with no body, push with no commits)
-- **Try/catch**: Are there try/catch blocks around critical tool calls?
+- **Missing data**: Does the code handle cases where event data might be missing? (e.g., PR with no body, push with no commits) Fail fast with a custom error rather than limping on.
+- **Error classes**: Errors are custom classes that `extend Error` and set `this.name` — no ad-hoc string throws or result objects.
+- **No nested try/catch**: When a `catch` body needs its own error handling, extract the catch body into a helper function.
 - **Prompt resilience**: Does the agent prompt explain what to do if a tool call fails?
+
+#### Conventions
+
+- Audit the job against [code-conventions.md](references/code-conventions.md): stray `as`/`any` casts, inline-ternary dispatch where an exhaustive `switch` belongs, nested try/catch, helper-above-handler ordering, types scattered mid-file, hand-rolled solutions where a popular library exists, missing zod at trust boundaries.
+- Report every violation you find. Fix only the ones on code paths you are already changing for this improvement; offer standalone style retrofits as an explicit opt-in.
+
+#### Durability
+
+- **Durable jobs**: every side effect lives inside a step; `step(client.method(args))` for direct calls and `jobStep` at trust boundaries; side-effecting branches extracted into helpers below the job in the same file; only serializable data crosses step boundaries; branch conditions derive from the trigger event or step results.
+- **Non-durable jobs**: check for durable signals that have crept in — human approvals, timed waits, or 3+ side-effecting stages where a mid-run crash leaves visible half-done work. If present, recommend flipping `durable: true` (and the step restructuring it requires) as an opt-in improvement.
 
 #### Skill Configuration
 
@@ -105,11 +118,17 @@ Account for every area below before you finish: for each, either make a change o
 - **Unnecessary skills**: Are there skills the agent doesn't actually use? Remove them to reduce confusion.
 - **Scope**: Are repos/channels/teams scoped correctly? Too broad gives the agent access to things it shouldn't touch. Too narrow prevents it from doing its job.
 
-### 4. Implement improvements
+### 4. Confirm behavior changes with the user
 
-Edit `src/terse.jobs.ts` (or the repo's configured `--entry-file`). Make the changes. If you connected a new integration or need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
+If any proposed improvement changes the job's observable behavior — a filter that skips events it used to process, a rewritten prompt, a changed output surface, a durability flip — put those decisions to the user before implementing. Provide a recommended answer for each, and batch related questions, at most four per interruption. Mechanical fixes (typing, error classes, file shape) don't need confirmation.
 
-### 5. Verify the changes locally
+If a *fact* can be found in the code, run history, or docs, look it up rather than asking. If you are running headless with no one to answer, take your recommended answers and state them with reasons in the final summary.
+
+### 5. Implement improvements
+
+Edit `src/terse.jobs.ts` (or the repo's configured `--entry-file`). Make the changes following [code-conventions.md](references/code-conventions.md). If you connected a new integration or need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
+
+### 6. Verify the changes locally
 
 Don't hand the change back without proving it still works. Two complementary loops:
 
@@ -138,7 +157,7 @@ Reserve bare `terse test` for manual interactive sessions only.
 
 For all of these commands, see https://docs.useterse.ai/reference/cli for the full option list.
 
-### 6. Typecheck the project
+### 7. Typecheck the project
 
 After local execution looks healthy, run the typechecker so the change is statically valid before deploy:
 
@@ -148,13 +167,15 @@ pnpm exec tsc --noEmit
 
 Use `npx tsc --noEmit` or `pnpm run build` if that matches how the project is set up. Fix any errors before reporting back.
 
-### 7. Explain changes
+### 8. Explain changes
 
 After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test list/show/run` invocations confirmed the fix.
 
-### 8. Ask before deploying
+### 9. Ask before deploying
 
 Do not run `terse deploy` automatically. After explaining the changes, ask the user whether to deploy them now.
+
+If you changed the step structure of a deployed **durable** job (added, removed, or reordered steps), warn the user in the same ask: in-flight runs will resume against a changed journal and can fail or misbehave, so deploy at a quiet moment.
 
 Example prompt:
 

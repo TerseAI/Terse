@@ -287,6 +287,46 @@ import type { GithubPROpenedTrigger } from "terse-sdk"
 onTrigger: async (event: GithubPROpenedTrigger) => { /* event.pullRequest, etc. */ }
 ```
 
+## Durability
+
+Durability is opt-in per job: add `durable: true` to `createJob`. A durable job can pause for long waits, survive restarts and redeploys, and never repeat completed work. Without the flag, a job runs start to finish in a single execution.
+
+**Replay model.** A durable job's handler is replayed from the top each time it advances. Completed steps return their journaled result instead of running again; only new work executes. Anything *outside* a step re-runs on every replay — keep it pure, and put every side effect inside a step.
+
+**SDK calls are already steps.** `toolbox.*`, `generateText()`, `runAndWait()`, and `state.get`/`state.set` journal automatically. On resume, the model is not re-prompted and messages are not re-sent.
+
+**`step()` — wrap your own calls.** Anything that isn't a Terse SDK call becomes a durable step by wrapping the call directly:
+
+```typescript
+import { step } from "terse-sdk"
+
+const { data: contact } = await step(
+    resend.contacts.create({ email: event.user.email, unsubscribed: false })
+)
+```
+
+Two rules make a call steppable: the callee lives at module scope (a client or one of your own functions), and the arguments are data — values are serialized into the journal, so callbacks and live objects cannot cross. For a multi-call unit or a callback-taking API, write a module-scope function and wrap the call to it: `await step(sendWithRetry(args))`. `step()` is only transformed inside files that call `createJob()`.
+
+**`jobStep()` — the fully explicit form.** No rules about call shape: declare the `input`, and `run` receives it. `inputSchema`/`outputSchema` are zod schemas validating the values crossing the durability boundary.
+
+```typescript
+import { jobStep } from "terse-sdk"
+import { z } from "zod"
+
+const pr = await jobStep({
+    input: { number: event.pullRequest.number },
+    inputSchema: z.object({ number: z.number() }),
+    outputSchema: z.object({ title: z.string() }),
+    run: async ({ number }) => { /* octokit, fetch, etc. */ },
+})
+```
+
+**`sleep(duration)`.** Suspends the run for `"30s"`, `"5m"`, `"1h"`, `"3d"`, a millisecond count, or a `Date`. Nothing runs and nothing is billed while waiting. During local testing (no `TERSE_RUN_ID`), `sleep()` skips the wait and logs what production would have done.
+
+**`waitForInput(params)`.** Posts an interactive prompt (e.g. Slack buttons via `slack({ channel })`) and suspends until a human answers. Returns `{ choice, text?, respondent, delivery }`, journaled like any step. During local testing it prompts in the terminal instead.
+
+`step()`, `jobStep()`, `sleep()`, and `waitForInput()` throw a clear error in non-durable jobs. Full docs: https://docs.useterse.ai/core-concepts/durability
+
 ## Terse CLI
 
 The authoritative reference for every command and flag lives at https://docs.useterse.ai/reference/cli — pull it whenever you need details. Quick summary:

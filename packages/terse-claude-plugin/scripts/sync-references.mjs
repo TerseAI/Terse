@@ -3,15 +3,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const canonical = join(packageRoot, "reference", "sdk-reference.md");
+const canonicalFiles = ["sdk-reference.md", "code-conventions.md"];
+const skillNames = ["terse-create", "terse-improve"];
 
-const targets = [
-    join(packageRoot, "skills", "terse-create", "references", "sdk-reference.md"),
-    join(packageRoot, "skills", "terse-improve", "references", "sdk-reference.md"),
-];
-
-for (const target of targets) {
-    mkdirSync(dirname(target), { recursive: true });
-    copyFileSync(canonical, target);
-    console.log(`synced ${target}`);
+for (const file of canonicalFiles) {
+    const canonical = join(packageRoot, "reference", file);
+    for (const skill of skillNames) {
+        const target = join(packageRoot, "skills", skill, "references", file);
+        mkdirSync(dirname(target), { recursive: true });
+        copyFileSync(canonical, target);
+        console.log(`synced ${target}`);
+    }
 }

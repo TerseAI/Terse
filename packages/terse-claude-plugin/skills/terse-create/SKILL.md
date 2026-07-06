@@ -4,7 +4,7 @@ description: Create a Terse workflow. Use when the user wants to build an automa
 license: MIT
 metadata:
   author: Terse AI
-  version: "0.2.0"
+  version: "0.3.0"
   category: workflow
 ---
 
@@ -12,20 +12,20 @@ metadata:
 
 Create a Terse workflow based on: **$ARGUMENTS**
 
-A workflow is defined in code as a job (`createJob` in `src/terse.jobs.ts`).
+A workflow is the thing being automated; in code it is defined as a job (`createJob` in `src/terse.jobs.ts`).
 
 ## Reference docs
 
 The bundled [sdk-reference.md](references/sdk-reference.md) covers the common path offline. Terse evolves fast, so pull the live docs whenever you reach past what the reference covers or aren't sure it's current:
 
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
-- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse deploy`, and friends.
+- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse secrets`, `terse deploy`, and friends.
 
-If anything in the bundled reference disagrees with the live docs, trust the live docs.
+Precedence: live docs win on facts (API signatures, CLI flags, availability). The bundled [code-conventions.md](references/code-conventions.md) wins on style — how job code is structured.
 
 ## Steps
 
-**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](references/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
 
 ### 0. Ensure a Terse project exists
 
@@ -39,7 +39,23 @@ If the user asked to self-host Terse rather than build a workflow on Terse Cloud
 
 If `src/terse.generated.ts` is missing in an existing project, run `terse generate` before inventing helpers. If it exists but does not expose the helper you need, rerun `terse generate`. Never edit the generated file directly.
 
-### 1. Open the entry file
+### 1. Reach a shared understanding of the workflow
+
+Interview the user relentlessly about the workflow until you reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one by one. For every question, provide a recommended answer.
+
+Batch related questions, at most four per interruption.
+
+If a *fact* can be found by exploring the codebase, `src/terse.generated.ts`, or the Terse docs, look it up rather than asking. The *decisions* are the user's: put each one to them and wait for the answer.
+
+While interviewing, sharpen the domain language:
+
+- When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
+- Stress-test domain relationships with concrete scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
+- When the user states how something works, check whether the code agrees. If you find a contradiction, surface it.
+
+Do not start building until the user confirms you share an understanding of the workflow. If you are running headless with no one to answer, skip the interview, take your recommended answers, and state them with reasons in the final summary.
+
+### 2. Open the entry file
 
 Open `src/terse.jobs.ts` (the canonical job entry file). The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 
@@ -52,13 +68,34 @@ If no runtime entry exists yet, create one:
 import { createJob, generateText } from "terse-sdk"
 ```
 
-### 2. Pick triggers
+### 3. Decide durability with the user
+
+Durability changes how the handler is structured, so settle it before writing any handler code.
+
+Form a recommendation first. Recommend `durable: true` when the workflow involves any of: human input or approval (`waitForInput`), timed waits (`sleep`), or three or more side-effecting milestones where a mid-run failure would leave visible half-done work. Otherwise recommend non-durable.
+
+Then ask, presenting your recommendation as the default. Use this copy:
+
+> **Should this job be durable?**
+>
+> - **Durable** — survives restarts, can pause and wait. e.g. "When a refund over $500 comes in, wait for manager approval in Slack, then process it." The job can sleep for days without losing state.
+> - **Non-durable** (default) — a closure in the cloud. e.g. "When a PR opens, post a summary to Slack." Runs once, fast, no constraints; a crash just means that one run failed.
+>
+> Tradeoff: durable requires every side effect to live in a `step()` and all step data to be serializable.
+>
+> Recommended for this workflow: \<your recommendation and one-line reason\>
+
+If you are running headless with no one to answer, take your recommendation silently and state the choice and its reason in the final summary.
+
+For durable jobs, the style rules in [code-conventions.md](references/code-conventions.md) ("Durable job style") govern the handler; the mechanics (`step()`, `jobStep`, `sleep`, `waitForInput`, replay model) are in [sdk-reference.md](references/sdk-reference.md) and https://docs.useterse.ai/core-concepts/durability.
+
+### 4. Pick triggers
 
 Choose triggers based on what events the job should respond to. Import trigger factories and resource constants from `./terse.generated`.
 
 Only use triggers and resources that actually exist in `src/terse.generated.ts`. Do not invent constants that are not defined there.
 
-### 3. Pick skills and connect missing integrations
+### 5. Pick skills and connect integrations
 
 **Skills shape what the model can do during a `generateText` run.** They scope the tools the model is allowed to pick. `toolbox.*` is unscoped and works without any skills at all.
 
@@ -66,7 +103,9 @@ Rules of thumb:
 - If a step is fully deterministic, call `toolbox.<integration>.<method>` directly. No skill required.
 - If the model needs to choose actions on an integration during a `generateText` run, that integration must be in `skills`.
 
-If a required integration is missing from `src/terse.generated.ts`:
+When the workflow needs a platform, work down the integration ladder in [code-conventions.md](references/code-conventions.md) ("Integrating with a platform") and stop at the first rung that works: built-in integration → connect a missing built-in type → official TypeScript SDK (validated as official) → the user's choice between a researched community wrapper and a hand-rolled typed fetch client.
+
+Connecting a missing built-in integration type:
 
 - For form installs, use `terse integrate connect <type> --field key=value --fields-stdin`
 - Put secrets on `--fields-stdin`, not `--field`
@@ -74,7 +113,9 @@ If a required integration is missing from `src/terse.generated.ts`:
 - If you need multiple OAuth integrations, do them one at a time: `connect <a> --json` → `wait <a>` → `connect <b> --json` → `wait <b>`. Do not batch the connect calls; the user can only authorize one browser tab at a time anyway.
 - After any connection or refresh, rerun `terse generate` and reopen `src/terse.generated.ts`
 
-### 4. Consider a filter
+For anything past the built-in rungs, credentials go through project secrets: store with `terse secrets add <NAME>`, read `process.env.<NAME>` at the top of the job, fail fast with a custom error when missing.
+
+### 6. Consider a filter
 
 Add a `filter` function if the job should skip certain events:
 - Bot-generated events (`event.sender.login.includes("[bot]")`)
@@ -83,81 +124,13 @@ Add a `filter` function if the job should skip certain events:
 
 Filters prevent unnecessary agent runs and save cost.
 
-### 5 Decide to be Durable Or Not
+### 7. Build the handler in milestones
 
-By default, Terse Jobs are non-durable (think of it like a closure in the cloud). By flipping the durable flag to true in createJob, you can run the job in a durable execution environment similar to Temporal.
+Read [code-conventions.md](references/code-conventions.md) now — it governs every line of handler code below.
 
-You would want to enable this to support Human in the loop approvals, pausing the jobs (ex: sleep for 2 hours) or for large long running multi step workflows that need to recover well in the event of a failure.
+Never build the whole handler and test at the end. Slice the workflow into milestones — logical groupings like gather context, decide, act — and prove each one green before starting the next. The worked example in code-conventions.md shows a full workflow sliced into milestones; anchor your slicing on it.
 
-Using sleep() of jobStep() in a non-durable job will result in a runtime crash!
-
-By default, all terse-sdk functions like state.get/set, toolbox.*, generateText are already durable steps so no changes needed there. However, this is a proper durable execution environment, if you have code that is not in a step, it will get re-run a bunch of times (remember, each step is queued and starts from the top of the function!!!). If the non-step code is non-indempotent, has side effects (ex: send an email), takes a long time or is just expensive you will have problems.
-
-You can fix this with the jobStep() api:
-
-```typescript
-const pr = await jobStep({
-  input: { number },
-  inputSchema: z.object({ number: z.number() }),
-  outputSchema: z.object({ title: z.string() }), // optional
-  run: async ({ number }) => { /* octokit, fetch, etc. */ }
-})
-```
-
-full docs at: https://docs.useterse.ai/core-concepts/durability
-
-### 6. Write the onTrigger handler
-
-Use the appropriate event type from `terse-sdk`. Plan the handler as a pipeline: filters and deterministic steps first, agent last (if at all).
-
-**Deterministic steps** — map each known action to `toolbox` (no agent) or `agent.tools.*` (when you already have an agent with that integration in `skills`):
-
-```typescript
-import { toolbox, SlackChannel } from "./terse.generated"
-
-// No agent required for a fixed Slack post
-await toolbox.slack.sendMessage({
-    channelId: SlackChannel.Engineering.channelId,
-    message: `New PR: ${event.pullRequest.title}`,
-    thread_ts: "",
-    blocks: "",
-})
-```
-
-**Agentic steps** — use `generateText` wherever judgment is required. The model runs a full agentic loop and can call any tool granted via `skills`. Include full event context via `event.formatForAgentRunner()`. Write clear, specific prompts; avoid vague instructions like "handle this event."
-
-```typescript
-import { generateText } from "terse-sdk"
-import { Skills, Repos } from "./terse.generated"
-
-const summary = await generateText({
-    prompt: `Summarize this PR. Context: ${event.formatForAgentRunner()}`,
-    skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
-})
-```
-
-Pass an `outputSchema` (a Zod schema) to get a typed, validated object back instead of a string. Reach for `TerseAgent.create()` directly only for streaming with `run()` or reusing one agent instance across several calls.
-
-**Combined pattern** — deterministic setup, then a narrow agent task:
-
-```typescript
-const message = await toolbox.slack.sendMessage({ ... })
-const summary = await generateText({
-    prompt:
-        `Summarize this PR and write a thread reply (thread_ts: ${message.message_ts}). ` +
-        `Context: ${event.formatForAgentRunner()}`,
-    skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
-})
-await toolbox.slack.sendMessage({ channelId: ..., message: summary, thread_ts: message.message_ts, blocks: "" })
-```
-
-If the user's request is fully deterministic (e.g. "post X to Slack when Y happens"), do not create an agent at all.
-
-### 7. Verify in an agent-friendly way
-
-Do not assume bare `terse test` is available. It needs an interactive terminal.
-
-In non-interactive contexts, prefer:
+**Milestone 0 — tracer bullet.** Wire the trigger, the filter, and a stub handler that just logs the event. Then pin a sample event and prove the wiring fires:
 
 ```bash
 terse test list "<job-name>" --json
@@ -165,13 +138,42 @@ terse test show <id> "<job-name>" --json
 terse test run "<job-name>" --id <id>
 ```
 
-Use `terse test show` when you need to inspect the selected event before running it.
-Use `terse test run --event-file <path>` or `--event <json>` when you already have the exact serialized trigger payload.
+Use `terse test show` to pick a representative event, then reuse that same `--id` for every later run so runs stay comparable. Use `terse test run --event-file <path>` or `--event <json>` when you already have the exact serialized trigger payload. If multiple jobs exist, pass the job name explicitly — non-interactive job loading cannot prompt. Reserve bare `terse test` for manual sessions with a TTY.
 
-If multiple jobs exist, pass the job name explicitly because non-interactive job loading cannot prompt.
-Reserve bare `terse test` for manual sessions with a TTY.
+**Test targets.** Before the first milestone that writes to an external surface, ask the user once: "Which channel/repo should I use for test runs? (I'll swap to the real targets at the end.)" Point side-effecting calls at those test resources while building. If the user says to use the real ones, proceed live.
 
-### 8. Final check
+**Each following milestone.** Plan the pipeline deterministic-first, agent-last:
+
+- **Deterministic milestones** — map each known action to `toolbox` (no agent):
+
+  ```typescript
+  import { toolbox, SlackChannel } from "./terse.generated"
+
+  await toolbox.slack.sendMessage({
+      channelId: SlackChannel.Engineering.channelId,
+      message: `New PR: ${event.pullRequest.title}`,
+      thread_ts: "",
+      blocks: "",
+  })
+  ```
+
+- **Agentic milestones** — use `generateText` wherever judgment is required (summarize, triage, draft). Include full event context via `event.formatForAgentRunner()`; write specific prompts, and pass an `outputSchema` (a Zod schema) to get a typed, validated object back. Reach for `TerseAgent.create()` only for streaming with `run()` or reusing one agent instance across calls.
+
+- If the user's request is fully deterministic (e.g. "post X to Slack when Y happens"), do not create an agent at all.
+
+After adding each milestone, take it to **green** — all three, in order:
+
+1. `pnpm exec tsc --noEmit` passes (use `npx tsc --noEmit` if that matches the project).
+2. `terse test run "<job-name>" --id <pinned-id>` completes without error.
+3. For agentic milestones, read the actual output (the message text, the summary) and judge it against the prompt's intent. Exit code 0 is not green on its own.
+
+Re-runs re-execute every earlier milestone, including its `generateText` calls; that cost is what makes green trustworthy. The test targets absorb the repeated side effects.
+
+### 8. Swap to real targets
+
+The swap is the final milestone. Enumerate every test resource you pointed at in step 7 and switch each back to the real one — list them explicitly so none is missed. Then run the full green check one last time. This run fires the real side effects once; tell the user before running it.
+
+### 9. Final check
 
 Verify the things that are easy to get wrong:
 - Every `Triggers.<integration>.…`, `Skills.<integration>(…)`, resource constant, and tool call exists in `src/terse.generated.ts`. Inventing constants that aren't there is the most common failure.
@@ -179,8 +181,11 @@ Verify the things that are easy to get wrong:
 - `skills` lists every integration the model must call during a `generateText` run.
 - Agent prompts include full event context via `event.formatForAgentRunner()`.
 - Imports resolve to real exports from `terse-sdk` and `./terse.generated`.
+- The code follows [code-conventions.md](references/code-conventions.md): no stray casts, exhaustive switches, custom error classes, stepdown ordering, types at the bottom.
+- Durable jobs: every side effect lives in a step, branch helpers sit below the job in the same file, only serializable data crosses step boundaries.
+- Every test target from step 7 is swapped back to the real resource.
 
-### 9. Ask before deploying
+### 10. Ask before deploying
 
 Do not run `terse deploy` automatically. After the job is written and verified, ask the user whether to deploy it now.
 
@@ -192,6 +197,8 @@ Example prompt:
 - If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
 
 ## Example
+
+A complete non-durable job (a durable worked example lives in [code-conventions.md](references/code-conventions.md)):
 
 ```typescript
 import { createJob, generateText, type GithubPROpenedTrigger } from "terse-sdk"
