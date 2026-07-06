@@ -39,7 +39,14 @@ export function matchStepCall(ts: typeof TS, node: TS.Node, stepName: string | n
 // `step(client.method(args))` hoists only the callee into a "use step" function.
 // The argument expressions stay at the call site, where they evaluate in workflow
 // scope and cross the step boundary as serialized step arguments.
-export function transformStep(ts: typeof TS, sf: TS.SourceFile, step: Extract<StepCall, { kind: StepCallKind.Step }>, fileName: string, index: number, stepName: string | null): { stepDef: StepDef; edit: StepEdit } {
+export function transformStep(
+    ts: typeof TS,
+    sf: TS.SourceFile,
+    step: Extract<StepCall, { kind: StepCallKind.Step }>,
+    fileName: string,
+    index: number,
+    stepName: string | null
+): { stepDef: StepDef; edit: StepEdit } {
     const { call } = step
     const inner = call.arguments.length === 1 ? call.arguments[0] : undefined
     if (inner === undefined) throw stepMacroError(sf, call, fileName, "step() takes exactly one argument: a direct call, e.g. step(client.method(args)).")
