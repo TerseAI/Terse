@@ -1,10 +1,25 @@
-# Terse Plugin for Claude Code
+# Terse Agent Skills & Claude Code Plugin
 
-Official Claude Code plugin for creating and improving [Terse](https://useterse.ai) SDK jobs.
+Official agent skills for [Terse](https://useterse.ai), the AI workflow platform for coding agents. The skills follow the [Agent Skills](https://agentskills.io) open standard and work in Claude Code, Cursor, Codex, and 70+ other agents; the package doubles as a Claude Code plugin.
 
 ## Installation
 
-### From the marketplace
+### Everything in one command (recommended)
+
+```shell
+npx terse-cli install
+```
+
+Installs the Terse CLI globally, installs the skills into every coding agent detected on your machine, and logs you in. Later, `terse update` refreshes both.
+
+### Skills only, via the skills CLI
+
+```shell
+npx skills add TerseAI/Terse            # all skills, all detected agents
+npx skills add TerseAI/Terse --skill terse-create   # just one
+```
+
+### As a Claude Code plugin
 
 ```shell
 /plugin marketplace add TerseAI/Terse
@@ -19,66 +34,46 @@ claude --plugin-dir ./packages/terse-claude-plugin
 
 ## Skills
 
-### `/terse:init [project-name]`
+Skills are model-invoked: describe what you want and the agent picks the right one. In Claude Code you can also call them directly (as `/terse-create` when installed via the skills CLI, or `/terse:terse-create` when installed as a plugin).
 
-Get set up on Terse from scratch. The skill:
+### `terse-create`
 
-1. Checks whether `terse-cli` is installed and offers `npm i -g terse-cli` if not.
-2. Decides whether to scaffold into the current directory (when empty) or a named subdirectory, and redirects to `terse attach` if you're inside an existing npm project.
-3. Runs `terse init` and walks you through the WorkOS browser login. The CLI then creates a remote Terse project, installs dependencies, and runs `terse generate`.
-4. Hands off with the next likely step (connect more integrations, `/terse:create` your first job, or `terse deploy`).
+Create a Terse workflow. If no Terse project exists yet, it bootstraps one first (`terse init`: scaffold, dependencies, browser login, `terse generate`), then:
 
-If you'd rather self-host the control plane than use Terse Cloud, the skill switches to the `npx create-terse` flow and walks you through the Docker bootstrap.
+1. Reads `src/terse.generated.ts` for connected integrations, triggers, skills, and resources
+2. Picks the right triggers and resources for the events you want to react to
+3. Connects missing integrations and configures skills in `src/terse.jobs.ts`
+4. Writes the `onTrigger` handler: typed events, specific prompts, and `toolbox` for known calls, reserving `generateText` for the steps that need judgment
+5. Verifies with `terse test list|show|run`, and asks before running `terse deploy`
 
-**Example:**
+**Example:** "build me a workflow that summarizes new PRs and posts to Slack"
 
-```
-/terse:init my-automations
-```
+### `terse-improve`
 
-### `/terse:create <job-description>`
+Improve an existing Terse workflow:
 
-Create a new Terse SDK job. Describe what the job should do and the skill will:
+1. Pulls past production runs with `terse history` to see what's actually been failing
+2. Analyzes tool usage, prompt quality, event filtering, error handling, and skill configuration
+3. Implements the changes in `src/terse.jobs.ts`
+4. Verifies locally with `terse replay <run-id>` against the failing run, or `terse test list|show|run`
+5. Runs `tsc --noEmit`, summarizes what changed, and asks before `terse deploy`
 
-1. Read `src/terse.generated.ts` for connected integrations, triggers, skills, and resources
-2. Pick the right triggers and resources for the events you want to react to
-3. Configure skills for the services the agent needs in `src/terse.jobs.ts`
-4. Write the `onTrigger` handler: typed events, specific prompts, and `toolbox` for known calls, reserving `generateText` for the steps that need judgment
-5. Verify with `terse test list|show|run` in non-interactive contexts, and reserve bare `terse test` for manual TTY sessions
-6. Ask whether to run `terse deploy` — never deploy without confirmation
+**Example:** "my pr-triage workflow keeps timing out, fix it"
 
-**Example:**
+### `terse-self-host`
 
-```
-/terse:create a job that summarizes new PRs and posts to Slack
-```
+Self-host the Terse control plane on your own infrastructure via `npx create-terse`: Docker prerequisites, the interactive and non-interactive bootstrap, post-install integration setup (OAuth env vars), and the caveats to know before exposing the instance beyond `localhost`.
 
-### `/terse:improve <job-name>`
+**Example:** "help me run Terse on my own server"
 
-Improve an existing Terse SDK job. The skill:
+## Repository layout
 
-1. Pulls past production runs with `terse history` (filterable by status, with the trigger payload attached) to see what's actually been failing.
-2. Analyzes the job across five areas, starting with the highest-impact one:
-   - **Tool usage**: moving known calls to `toolbox` and reserving `generateText` for steps that need judgment, plus multi-step workflows
-   - **Prompt quality**: specificity, event context, edge cases, output format
-   - **Event filtering**: bot events, drafts, cost optimization
-   - **Error handling**: missing data, try/catch, prompt resilience
-   - **Skill configuration**: completeness, scope, removing unused skills
-3. Implements the changes in `src/terse.jobs.ts` (or the repo's configured `--entry-file`).
-4. Verifies locally with `terse replay <run-id>` against the failing run, or `terse test list|show|run` against fresh sample events.
-5. Runs `tsc --noEmit`, then summarizes what changed and why
-6. Asks whether to run `terse deploy` — never deploy without confirmation
-
-**Example:**
-
-```
-/terse:improve Summarize PR
-```
+- `skills/<name>/SKILL.md` — one folder per skill, per the [Agent Skills spec](https://agentskills.io/specification)
+- `skills/<name>/references/` — per-skill reference docs. `sdk-reference.md` is vendored from `reference/sdk-reference.md`; edit the canonical copy and run `node scripts/sync-references.mjs` (CI fails on drift)
+- `.claude-plugin/marketplace.json` (repo root) is the single source of truth for the official skill set: Claude Code installs from it, and `terse install`/`terse update` fetch it from main to decide what to install
 
 ## What is Terse?
 
-Terse is the AI workflow platform for coding agents. Workflows run in TypeScript, react to events from integrated services (GitHub, Slack, Linear, Notion, Gmail, and more), and take actions using an AI-powered agent runner.
+Terse is the AI workflow platform for coding agents. Workflows run in TypeScript, react to events from integrated services (GitHub, Slack, Linear, Notion, Gmail, and more), and take actions using an AI-powered agent runner. In code, a workflow is a job: defined in `src/terse.jobs.ts` with `createJob()`, tested with `terse replay` or `terse test`, deployed with `terse deploy`.
 
-Jobs are typically defined in `src/terse.jobs.ts` using `createJob()`, tested with `terse replay` or `terse test list|show|run`, and deployed with `terse deploy`.
-
-Learn more at [useterse.ai](https://useterse.ai) or see the [SDK docs](https://github.com/TerseAI/Terse/tree/main/packages/terse-sdk).
+Learn more at [useterse.ai](https://useterse.ai) or the [docs](https://docs.useterse.ai).

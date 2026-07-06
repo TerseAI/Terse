@@ -6,16 +6,20 @@
     },
     "metadata": {
         "description": "Official Claude Code plugins for Terse, the AI workflow platform for coding agents — create and improve workflows.",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "pluginRoot": "./packages"
     },
     "plugins": [
         {
             "name": "terse",
-            "source": "terse-claude-plugin",
+            "source": "./terse-claude-plugin",
             "description": "Terse, the AI workflow platform for coding agents. Create and improve workflows that react to events and take actions across GitHub, Slack, Linear, and more.",
-            "version": "0.1.0",
-            "skills": ["./skills/init", "./skills/create", "./skills/improve"],
+            "version": "0.2.0",
+            "skills": [
+                "./skills/terse-create",
+                "./skills/terse-improve",
+                "./skills/terse-self-host"
+            ],
             "author": {
                 "name": "Terse AI",
                 "email": "support@useterse.ai"
