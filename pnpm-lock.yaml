@@ -614,6 +614,9 @@ importers:
       terse-types:
         specifier: workspace:*
         version: link:../../terse-types
+      workflow:
+        specifier: 5.0.0-beta.19
+        version: 5.0.0-beta.19(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3(@swc/helpers@0.5.20))(chokidar@5.0.0))(@swc/core@1.15.3(@swc/helpers@0.5.20))(@swc/helpers@0.5.20)(typescript@5.8.3)(ws@8.21.0)
     devDependencies:
       '@types/ms':
         specifier: ^2.1.0
@@ -624,9 +627,6 @@ importers:
       typescript:
         specifier: ^5.0.0
         version: 5.8.3
-      workflow:
-        specifier: 5.0.0-beta.19
-        version: 5.0.0-beta.19(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3(@swc/helpers@0.5.20))(chokidar@5.0.0))(@swc/core@1.15.3(@swc/helpers@0.5.20))(@swc/helpers@0.5.20)(typescript@5.8.3)(ws@8.21.0)
       zod:
         specifier: 4.3.6
         version: 4.3.6
