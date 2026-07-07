@@ -106,8 +106,22 @@ function lookupWorkflowId(manifest: any, fnName: string): string | undefined {
 
 const JOBS_MAP_FILE = "jobs.json"
 
+export function expectedWorkflowVersion(): string {
+    const cliPackageJson = new URL("../../../package.json", import.meta.url)
+    return JSON.parse(fs.readFileSync(cliPackageJson, "utf8")).dependencies.workflow
+}
+
+function ensureProjectWorkflowDependency(cwd: string): void {
+    try {
+        createRequire(path.join(cwd, "package.json")).resolve("workflow")
+    } catch {
+        throw new Error(`Durable execution needs the "workflow" package in your project. Run: npm install workflow@${expectedWorkflowVersion()}`)
+    }
+}
+
 export async function buildWorkflowArtifacts(cwd: string): Promise<Map<string, { fnName: string; file: string }>> {
     const out = path.join(cwd, ".terse", "wf")
+    ensureProjectWorkflowDependency(cwd)
     const scanDir = path.join(".terse", "macro")
     const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, scanDir, out).build())
     fs.mkdirSync(out, { recursive: true })
