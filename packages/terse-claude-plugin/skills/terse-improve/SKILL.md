@@ -8,6 +8,8 @@ metadata:
   category: workflow
 ---
 
+<!-- Generated from templates/terse-improve.md.hbs by scripts/build-skills.mjs. Edit the template, not this file. -->
+
 # Improve a Terse Workflow
 
 Improve the Terse workflow named: **$ARGUMENTS**
@@ -21,7 +23,7 @@ Terse evolves fast; the live docs are the source of truth for facts:
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
 
-Precedence: live docs win on facts (API signatures, CLI flags, availability). The bundled [code-conventions.md](references/code-conventions.md) wins on style — how job code is structured.
+Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured.
 
 ## Steps
 
@@ -77,7 +79,7 @@ If the user has not deployed the job yet (no agent found), skip this step and re
 
 Account for every area below before you finish: for each, either make a change or confirm it's already fine. Don't stop at the first easy win. Start with **Tool usage**, since moving work from the agent to `toolbox` is usually the highest-impact fix.
 
-Read [code-conventions.md](references/code-conventions.md) before this pass — the Conventions and Durability areas audit against it. For before/after shapes of the most common fixes, see [improvement-patterns.md](references/improvement-patterns.md).
+The "Terse Job Code Conventions" section at the bottom of this file is what the Conventions and Durability areas audit against. For before/after shapes of the most common fixes, see the "Common Improvement Patterns" section, also below.
 
 #### Tool Usage
 
@@ -110,13 +112,13 @@ Read [code-conventions.md](references/code-conventions.md) before this pass — 
 
 #### Conventions
 
-- Audit the job against every rule in [code-conventions.md](references/code-conventions.md); the file is the checklist.
+- Audit the job against every rule in the conventions section; it is the checklist.
 - Report every violation you find. Fix only the ones on code paths you are already changing for this improvement; offer standalone style retrofits as an explicit opt-in. For the one-file-per-job layout violation this means splitting out only the job(s) you are already touching, leaving the rest inline and flagged.
 
 #### Durability
 
-- **Durable jobs**: audit the handler against the "Durable job style" rules in [code-conventions.md](references/code-conventions.md) — step placement, serializable boundaries, branch helpers, journaled branch conditions.
-- **Non-durable jobs**: check for the durable signals in code-conventions.md ("When to be durable") that have crept in. If present, recommend flipping `durable: true` (and the step restructuring it requires) as an opt-in improvement.
+- **Durable jobs**: audit the handler against the "Durable job style" rules in the conventions section — step placement, serializable boundaries, branch helpers, journaled branch conditions.
+- **Non-durable jobs**: check for the durable signals in the conventions section ("When to be durable") that have crept in. If present, recommend flipping `durable: true` (and the step restructuring it requires) as an opt-in improvement.
 
 #### Skill Configuration
 
@@ -132,7 +134,7 @@ If a *fact* can be found in the code, run history, or docs, look it up rather th
 
 ### 5. Implement improvements
 
-Edit the job's file — `src/terse.jobs.ts` in a single-job project, its `src/jobs/<name>.ts` file under the manifest layout, or the repo's configured `--entry-file`. Make the changes following [code-conventions.md](references/code-conventions.md). If you connected a new integration or need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
+Edit the job's file — `src/terse.jobs.ts` in a single-job project, its `src/jobs/<name>.ts` file under the manifest layout, or the repo's configured `--entry-file`. Make the changes following the conventions section. If you connected a new integration or need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
 
 ### 6. Verify the changes locally
 
@@ -191,3 +193,359 @@ Example prompt:
 
 - If the user says yes, run `terse deploy` and report the outcome.
 - If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
+
+---
+
+# Common Improvement Patterns
+
+Before/after shapes for the fixes the analysis pass most often lands on. Method and constant names come from the project's `src/terse.generated.ts`; never invent them.
+
+## Add bot filtering
+
+```typescript
+// BEFORE: runs on every event
+onTrigger: async (event) => { ... }
+
+// AFTER: skip bot events
+filter: async (event: GithubPRTrigger) => {
+    return !event.sender.login.includes("[bot]") && !event.pullRequest.merged
+},
+onTrigger: async (event: GithubPRTrigger) => { ... }
+```
+
+## Improve prompt specificity
+
+```typescript
+// BEFORE: vague
+await generateText({ prompt: `Review this PR: ${event.formatForAgentRunner()}`, skills: [...] })
+
+// AFTER: specific instructions, format, edge cases
+await generateText({
+    prompt:
+        `Review PR "${event.pullRequest.title}" (${event.pullRequest.url}). ` +
+        `Look at the diff and leave a concise review comment. ` +
+        `Focus on: correctness, edge cases, and naming. ` +
+        `Skip style nits. If the PR looks good, approve it with a short note. ` +
+        `Context: ${event.formatForAgentRunner()}`,
+    skills: [...],
+})
+```
+
+## Split deterministic + AI actions
+
+```typescript
+// BEFORE: agent decides everything including the message send
+await generateText({ prompt: `Send a welcome message and summarize: ${event.formatForAgentRunner()}`, skills: [...] })
+
+// AFTER: deterministic send via toolbox (no skill needed), then AI analysis in thread
+import { generateText } from "terse-sdk"
+import { toolbox } from "./terse.generated"
+
+const message = await toolbox.slack.sendMessage({
+    channelId: SlackChannel.Engineering.channelId,
+    message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
+    thread_ts: "",
+    blocks: "",
+})
+
+const summary = await generateText({
+    prompt: `Summarize the changes in this PR. Context: ${event.formatForAgentRunner()}`,
+    skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
+})
+
+await toolbox.slack.sendMessage({
+    channelId: SlackChannel.Engineering.channelId,
+    message: summary,
+    thread_ts: message.message_ts,
+    blocks: "",
+})
+```
+
+## Add type safety
+
+```typescript
+// BEFORE: untyped event
+onTrigger: async (event) => {
+    await generateText({ prompt: `Handle: ${event.formatForAgentRunner()}`, skills: [...] })
+}
+
+// AFTER: annotate with the precise trigger type that matches your trigger factory.
+// `Triggers.github.onPROpened(...)` returns a typed trigger, so `event` infers
+// as `GithubPROpenedTrigger` — annotating just makes it explicit.
+import { GithubPROpenedTrigger, generateText } from "terse-sdk"
+
+onTrigger: async (event: GithubPROpenedTrigger) => {
+    const { title, url } = event.pullRequest
+    await generateText({
+        prompt: `Review PR "${title}" at ${url}. Context: ${event.formatForAgentRunner()}`,
+        skills: [...],
+    })
+}
+```
+
+---
+
+# Terse Job Code Conventions
+
+These conventions govern every line of job code you write or modify in a project's job files (`src/terse.jobs.ts` and `src/jobs/`). Precedence: live Terse docs win on facts (API signatures, CLI flags, availability); this file wins on style.
+
+Overrides the user gives in the session win over this file.
+
+## Type discipline
+
+**Type everything; rarely cast.** Reach for `as` or `any` almost never. A cast usually means the approach is wrong: refactor at a higher level, fix how the third-party dependency is wrapped, or ask the user what to do. Prefer type guards, generics, and `satisfies`.
+
+**Zod at trust boundaries.** A zod schema (with `z.infer` for the static type) is required exactly where data crosses a boundary you don't control:
+
+- responses from external APIs not typed by an official SDK
+- webhook trigger payloads
+- `jobStep` `inputSchema` / `outputSchema`
+- `generateText` `outputSchema`
+
+Internal shapes you construct yourself stay plain types. Official SDK types are trusted as-is; don't re-validate them at runtime.
+
+Derive the static type from the schema so there is one source of truth:
+
+```typescript
+const Classification = z.object({
+    severity: z.enum(["critical", "routine"]),
+    reason: z.string(),
+})
+type Classification = z.infer<typeof Classification>
+```
+
+## Control flow
+
+**Exhaustive discriminated unions.** Dispatch on the discriminant with a `switch`, and end the `default` with `throw x satisfies never`. Never dispatch with inline ternaries.
+
+```typescript
+switch (classification.severity) {
+    case "critical":
+        return escalateCritical(event, classification)
+    case "routine":
+        return fileRoutine(event, classification)
+    default:
+        throw classification.severity satisfies never
+}
+```
+
+**No nested try/catch.** When a `catch` body needs its own error handling, extract the catch body into a helper function and call it from the `catch`.
+
+**Functional iteration.** Prefer `map`/`filter`/`reduce` for transforms and `forEach` for synchronous side effects; reach for `for` loops sparingly. When the loop body awaits, use `Promise.all(items.map(...))` for parallel work or `for...of` for sequential awaits — never pass an async callback to `forEach`, which fires without awaiting and swallows rejections.
+
+**Async/await over `.then`.** Use `async`/`await` and the Promise combinators (`Promise.all`, `Promise.allSettled`, `Promise.race`) instead of `.then()` chains.
+
+**Errors are custom classes** that `extend Error` and set `this.name`:
+
+```typescript
+class MissingSecretError extends Error {
+    constructor(secretName: string) {
+        super(`Missing required secret: ${secretName}. Add it with \`terse secrets add ${secretName}\`.`)
+        this.name = "MissingSecretError"
+    }
+}
+```
+
+## File shape
+
+**Stepdown rule.** High-level logic at the top (`createJob` and its `onTrigger`), helper functions underneath, so the file reads like a newspaper article: big picture first, details later.
+
+**Types, interfaces, and zod schemas go at the bottom of the file**, below the implementation. Schemas referenced from handlers and helpers are only read when the job runs, so bottom placement is safe.
+
+**Minimize comments.** Add one only when a choice is non-obvious, odd, or a deliberate compromise.
+
+## Project layout
+
+**One job: define it in the entry file.** A single-job project keeps the job directly in `src/terse.jobs.ts`.
+
+**Two or more jobs: one file per job.** The moment a second job is added, every job (the existing one too) moves to its own file in `src/jobs/`, named in kebab-case after the job (`src/jobs/triage-bug-reports.ts`), and `src/terse.jobs.ts` becomes a pure manifest of side-effect imports:
+
+```typescript
+import "./jobs/triage-bug-reports"
+import "./jobs/weekly-digest"
+```
+
+`createJob()` registers by side effect, so a job file never imported from the entry file silently never runs or deploys. Every file in `src/jobs/` must have a matching import line in the manifest.
+
+Job files import generated helpers via `../terse.generated`. Pure, step-free helpers shared by several jobs may live in a shared module; a helper containing steps stays in its job's file (see "Branches become helpers" below), duplicated across job files when two jobs need it.
+
+## Libraries
+
+**Prefer a library over building it yourself** for common problems (retries, date math, parsing, validation). Pick popular, well-maintained ones; check downloads and recent releases before adopting.
+
+## Integrating with a platform
+
+Work down this ladder and stop at the first rung that can do the job:
+
+1. **Built-in Terse integration, already connected** — anything in `src/terse.generated.ts` (`toolbox.*`, `Skills.*`, `Triggers.*`).
+2. **Built-in integration type, not yet connected** — connect it with `terse integrate connect`, then rerun `terse generate`.
+3. **No built-in integration** — use the platform's official TypeScript SDK, after validating it is official: published under the vendor's npm org or linked from the vendor's official developer docs / GitHub org (e.g. `@slack/web-api`, `octokit`, `@linear/sdk`, `stripe`). Lean on its built-in types.
+4. **No official SDK** — research the leading community wrapper and present the user a choice between:
+   - the community wrapper, with concrete evidence: GitHub stars, years maintained, date of last release, weekly npm downloads, maintainer reputation
+   - a hand-rolled typed fetch client with zod schemas at the response boundary, built from the platform's REST API docs
+
+   Never adopt a community wrapper silently.
+
+**Credentials** for anything past rung 2 go through project secrets: store with `terse secrets add <NAME>`, read `process.env.<NAME>` at the top of the job, and fail fast with a custom error when missing.
+
+Scalar credentials (API keys, tokens) are stored as-is. File-shaped credentials — a Google service account JSON, a PEM key, anything multiline — are stored base64-encoded under a `_B64`-suffixed name, never pasted raw: raw JSON mangles the interactive prompt and turns shell quoting into a minefield, while base64 makes the value one safe token. Ask the user for the file's path and encode straight from the file, so the plaintext never appears in the conversation:
+
+```bash
+base64 -i service-account.json | terse secrets add GOOGLE_SERVICE_ACCOUNT_B64 --value-stdin
+```
+
+(On GNU coreutils, add `-w 0` to disable line wrapping.)
+
+Decode at the top of the job, validating the fields the job uses at the boundary:
+
+```typescript
+const encoded = process.env.GOOGLE_SERVICE_ACCOUNT_B64
+if (!encoded) throw new MissingSecretError("GOOGLE_SERVICE_ACCOUNT_B64")
+const parsed = serviceAccountSchema.safeParse(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")))
+if (!parsed.success) throw new InvalidSecretError("GOOGLE_SERVICE_ACCOUNT_B64", parsed.error)
+```
+
+For `_B64` secrets, put the full encode one-liner in the missing-secret error message so the fix is copy-pasteable.
+
+## Durable job style
+
+These rules apply when the job sets `durable: true`. The mechanics (replay model, `step()`, `jobStep`, `sleep`, `waitForInput`) live in https://docs.useterse.ai/core-concepts/durability; facts there win.
+
+**When to be durable.** Recommend `durable: true` when the workflow involves any of: human input or approval (`waitForInput`), timed waits (`sleep`), or three or more side-effecting milestones where a mid-run failure would leave visible half-done work. Otherwise recommend non-durable.
+
+**`step()` inline is the default.** Wrap each external call directly — `await step(client.method(args))` — so the handler reads as sequential blocks. Terse SDK calls (`toolbox.*`, `generateText`, `state.get`/`state.set`) are already durable steps; leave them bare.
+
+**Only data crosses the step boundary.** Arguments and resolved values are journaled, so they must be serializable: no closures, callbacks, streams, or live objects. The callee must live at module scope. For a multi-call unit or a callback-taking API, write a module-scope function and wrap the call to it: `await step(sendWithRetry(args))`.
+
+**`jobStep({ inputSchema, outputSchema, run })` is reserved for trust boundaries** — when the values crossing the durability boundary need runtime validation — or for a block that must journal as one unit and can't be expressed as a module-scope function call.
+
+**Branches become helpers.** A conditional path is extracted into a named helper function exactly when it contains steps (`step()`, `jobStep`, `toolbox.*`, `generateText`, `sleep`, `waitForInput`). Pure value-computing conditionals stay inline. Helpers sit below the job in the same file: `step()` is only transformed in files that call `createJob()`, so moving a helper to another file silently breaks it. The payoff is a handler you can read top-down, opening each branch only when you care about it.
+
+**Branch on journaled data.** Conditions that pick a branch must derive from the trigger event or step results, so every replay takes the same path.
+
+**Code outside steps re-runs on every replay.** Keep it pure and cheap; every side effect lives inside a step.
+
+## Worked examples
+
+Method and constant names in both examples come from your project's `src/terse.generated.ts`; never invent them.
+
+### Durable
+
+The job below shows the target durable shape: the handler at the top reading as sequential blocks, an exhaustive switch dispatching to side-effecting branch helpers, schemas and types at the bottom.
+
+It was built milestone by milestone, each proven green (`tsc --noEmit` passes, `terse test run` on the pinned sample event completes, agentic output inspected) before the next began:
+
+- **Milestone 0** — trigger + filter + a stub handler logging the event
+- **Milestone 1** — classify the issue (`generateText` with `outputSchema`)
+- **Milestone 2** — the routine branch (`fileRoutine`)
+- **Milestone 3** — the critical branch with approval and wait (`escalateCritical`)
+
+```typescript
+import { createJob, generateText, slack, sleep, waitForInput } from "terse-sdk"
+import type { LinearIssueCreatedTrigger } from "terse-sdk"
+import { z } from "zod"
+import { Triggers, LinearTeam, SlackChannel, toolbox } from "./terse.generated"
+
+createJob({
+    name: "Triage inbound bug reports",
+    triggers: [Triggers.linear.onIssueCreated({ team: LinearTeam.Support })],
+    durable: true,
+    filter: async event => !event.issue.title.startsWith("[test]"),
+    onTrigger: async event => {
+        const classification = await generateText({
+            prompt:
+                `Classify this bug report as critical (data loss, security, outage) or routine. ` +
+                `Explain your reasoning in one sentence. Context: ${event.formatForAgentRunner()}`,
+            skills: [],
+            outputSchema: Classification,
+        })
+
+        switch (classification.severity) {
+            case "critical":
+                return escalateCritical(event, classification)
+            case "routine":
+                return fileRoutine(event, classification)
+            default:
+                throw classification.severity satisfies never
+        }
+    },
+})
+
+async function escalateCritical(event: LinearIssueCreatedTrigger, classification: Classification) {
+    await toolbox.slack.sendMessage({
+        channelId: SlackChannel.OnCall.channelId,
+        message: `Critical bug: ${event.issue.title} — ${classification.reason}`,
+        thread_ts: "",
+        blocks: "",
+    })
+    const approval = await waitForInput({
+        via: slack({ channel: SlackChannel.OnCall.channelId }),
+        prompt: "Page the on-call engineer?",
+        details: { issue: event.issue.title, reason: classification.reason },
+        options: [
+            { id: "page", label: "Page now" },
+            { id: "hold", label: "Hold until morning" },
+        ],
+    })
+    if (approval.choice === "hold") {
+        await sleep("8h")
+    }
+    await toolbox.linear.updateIssue({ issueId: event.issue.id, priority: 1 })
+}
+
+async function fileRoutine(event: LinearIssueCreatedTrigger, classification: Classification) {
+    await toolbox.linear.createComment({
+        issueId: event.issue.id,
+        body: `Auto-triaged as routine: ${classification.reason}`,
+    })
+}
+
+const Classification = z.object({
+    severity: z.enum(["critical", "routine"]),
+    reason: z.string(),
+})
+type Classification = z.infer<typeof Classification>
+```
+
+### Non-durable
+
+A complete non-durable job: deterministic post, agentic summary, deterministic threaded reply.
+
+```typescript
+import { createJob, generateText, type GithubPROpenedTrigger } from "terse-sdk"
+import { Triggers, Skills, Repos, SlackChannel, toolbox } from "./terse.generated"
+
+createJob({
+    name: "Summarize PR and notify Slack",
+    triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
+    filter: async (event: GithubPROpenedTrigger) => {
+        return !event.sender.login.includes("[bot]")
+    },
+    onTrigger: async (event: GithubPROpenedTrigger) => {
+        // Deterministic: fixed channel, fixed opener — use toolbox, no agent needed
+        const message = await toolbox.slack.sendMessage({
+            channelId: SlackChannel.Engineering.channelId,
+            message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
+            thread_ts: "",
+            blocks: "",
+        })
+
+        // Agentic: only the summary needs judgment
+        const summary = await generateText({
+            prompt:
+                `Summarize the changes in this PR. ` +
+                `Focus on what changed, why it matters, and what reviewers should look at first. ` +
+                `Keep it concise. Context: ${event.formatForAgentRunner()}`,
+            skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
+        })
+
+        // Deterministic: post the result back in thread
+        await toolbox.slack.sendMessage({
+            channelId: SlackChannel.Engineering.channelId,
+            message: summary,
+            thread_ts: message.message_ts,
+            blocks: "",
+        })
+    },
+})
+```
