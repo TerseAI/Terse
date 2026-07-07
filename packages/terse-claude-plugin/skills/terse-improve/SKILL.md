@@ -1,10 +1,10 @@
 ---
 name: terse-improve
-description: Improve an existing Terse workflow. Use when the user wants to fix, optimize, refactor, or debug an automation already built on Terse. Pulls production run history, analyzes tool usage, prompts, filters, and error handling, then verifies with replay.
+description: Improve an existing Terse workflow. Use when the user wants to fix, speed up, or refactor an automation already built on Terse, or asks why a deployed job misbehaved. Diagnoses from production run history and verifies with replay.
 license: MIT
 metadata:
   author: Terse AI
-  version: "0.3.1"
+  version: "0.4.0"
   category: workflow
 ---
 
@@ -30,6 +30,14 @@ Precedence: live docs win on facts (API signatures, CLI flags, availability). Th
 `src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
 If `src/terse.generated.ts` is missing or stale for the integrations the job uses, rerun `terse generate` instead of guessing at missing helpers. Never edit the generated file directly.
+
+**Narrate the run.** Speak to the user in casual first person about the work itself: "I'm pulling production history to see what actually went wrong", "the replay passes now with the new filter". Announce each phase transition in one casual line — diagnosing, analyzing, implementing, verifying — never by step number.
+
+**Mark every CLI run.** The `terse` CLI doing something is an event the user must be able to see; harnesses often collapse tool calls, so the narration carries it. Immediately before each `terse` command, emit a marker line:
+
+> ⏵ `terse replay 01hq3v…` — re-running the failed production event against the fix
+
+One marker per command: the command verbatim in backticks, then the why in a few words. Back-to-back cheap reads (`terse test list`, `terse test show`) may share a single marker. When a state-changing or long-running command finishes (`generate`, `deploy`, `replay`, `test run`), report its outcome in the normal narration voice. Never bury a `terse` invocation inside a pipeline, subshell, or script where the user can't see it ran.
 
 ### 1. Find the workflow
 
@@ -69,7 +77,7 @@ If the user has not deployed the job yet (no agent found), skip this step and re
 
 Account for every area below before you finish: for each, either make a change or confirm it's already fine. Don't stop at the first easy win. Start with **Tool usage**, since moving work from the agent to `toolbox` is usually the highest-impact fix.
 
-Read [code-conventions.md](references/code-conventions.md) before this pass — the Conventions and Durability areas audit against it.
+Read [code-conventions.md](references/code-conventions.md) before this pass — the Conventions and Durability areas audit against it. For before/after shapes of the most common fixes, see [improvement-patterns.md](references/improvement-patterns.md).
 
 #### Tool Usage
 
@@ -98,19 +106,17 @@ Read [code-conventions.md](references/code-conventions.md) before this pass — 
 #### Error Handling
 
 - **Missing data**: Does the code handle cases where event data might be missing? (e.g., PR with no body, push with no commits) Fail fast with a custom error rather than limping on.
-- **Error classes**: Errors are custom classes that `extend Error` and set `this.name` — no ad-hoc string throws or result objects.
-- **No nested try/catch**: When a `catch` body needs its own error handling, extract the catch body into a helper function.
 - **Prompt resilience**: Does the agent prompt explain what to do if a tool call fails?
 
 #### Conventions
 
-- Audit the job against [code-conventions.md](references/code-conventions.md): stray `as`/`any` casts, inline-ternary dispatch where an exhaustive `switch` belongs, nested try/catch, helper-above-handler ordering, types scattered mid-file, hand-rolled solutions where a popular library exists, missing zod at trust boundaries, multiple jobs defined inline in `src/terse.jobs.ts` instead of one file per job under `src/jobs/`.
-- Report every violation you find. Fix only the ones on code paths you are already changing for this improvement; offer standalone style retrofits as an explicit opt-in. For the layout violation this means splitting out only the job(s) you are already touching, leaving the rest inline and flagged.
+- Audit the job against every rule in [code-conventions.md](references/code-conventions.md); the file is the checklist.
+- Report every violation you find. Fix only the ones on code paths you are already changing for this improvement; offer standalone style retrofits as an explicit opt-in. For the one-file-per-job layout violation this means splitting out only the job(s) you are already touching, leaving the rest inline and flagged.
 
 #### Durability
 
-- **Durable jobs**: every side effect lives inside a step; `step(client.method(args))` for direct calls and `jobStep` at trust boundaries; side-effecting branches extracted into helpers below the job in the same file; only serializable data crosses step boundaries; branch conditions derive from the trigger event or step results.
-- **Non-durable jobs**: check for durable signals that have crept in — human approvals, timed waits, or 3+ side-effecting stages where a mid-run crash leaves visible half-done work. If present, recommend flipping `durable: true` (and the step restructuring it requires) as an opt-in improvement.
+- **Durable jobs**: audit the handler against the "Durable job style" rules in [code-conventions.md](references/code-conventions.md) — step placement, serializable boundaries, branch helpers, journaled branch conditions.
+- **Non-durable jobs**: check for the durable signals in code-conventions.md ("When to be durable") that have crept in. If present, recommend flipping `durable: true` (and the step restructuring it requires) as an opt-in improvement.
 
 #### Skill Configuration
 
@@ -155,25 +161,7 @@ terse test run "<job-name>" --id <id>
 If multiple jobs exist, pass the job name explicitly because non-interactive job loading cannot prompt.
 Reserve bare `terse test` for manual interactive sessions only.
 
-To replay a specific payload, or when no sample events are available, hand-write an event file and run it with `terse test run --event-file <path>`. Use this exact envelope. Do not guess it field-by-field:
-
-```json
-{
-    "integrationType": "webhook",
-    "eventType": "webhook",
-    "formattedContent": "Webhook request received.",
-    "debugLog": "Webhook Trigger (POST)",
-    "data": {
-        "integrationType": "webhook",
-        "eventType": "webhook",
-        "body": { "note": "the provider payload (e.g. the Stripe event) goes here" },
-        "headers": { "content-type": "application/json" },
-        "method": "POST"
-    }
-}
-```
-
-Three rules the validator enforces: `integrationType` and `eventType` are both literally `"webhook"` at both layers; `formattedContent` and `debugLog` are required strings on the outer object; the provider payload lives at `data.body`, with required siblings `data.headers` (a string-to-string map) and `data.method`.
+To replay a specific payload, or when no sample events are available, hand-write an event file and run it with `terse test run --event-file <path>`: on a shape mismatch, the command prints the expected envelope and the exact validation issues — correct the file from that error output rather than guessing fields.
 
 For all of these commands, see https://docs.useterse.ai/reference/cli for the full option list.
 
@@ -203,84 +191,3 @@ Example prompt:
 
 - If the user says yes, run `terse deploy` and report the outcome.
 - If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
-
-## Common Improvement Patterns
-
-### Add bot filtering
-```typescript
-// BEFORE: runs on every event
-onTrigger: async (event) => { ... }
-
-// AFTER: skip bot events
-filter: async (event: GithubPRTrigger) => {
-    return !event.sender.login.includes("[bot]") && !event.pullRequest.merged
-},
-onTrigger: async (event: GithubPRTrigger) => { ... }
-```
-
-### Improve prompt specificity
-```typescript
-// BEFORE: vague
-await generateText({ prompt: `Review this PR: ${event.formatForAgentRunner()}`, skills: [...] })
-
-// AFTER: specific instructions, format, edge cases
-await generateText({
-    prompt:
-        `Review PR "${event.pullRequest.title}" (${event.pullRequest.url}). ` +
-        `Look at the diff and leave a concise review comment. ` +
-        `Focus on: correctness, edge cases, and naming. ` +
-        `Skip style nits. If the PR looks good, approve it with a short note. ` +
-        `Context: ${event.formatForAgentRunner()}`,
-    skills: [...],
-})
-```
-
-### Split deterministic + AI actions
-```typescript
-// BEFORE: agent decides everything including the message send
-await generateText({ prompt: `Send a welcome message and summarize: ${event.formatForAgentRunner()}`, skills: [...] })
-
-// AFTER: deterministic send via toolbox (no skill needed), then AI analysis in thread
-import { generateText } from "terse-sdk"
-import { toolbox } from "./terse.generated"
-
-const message = await toolbox.slack.sendMessage({
-    channelId: SlackChannel.Engineering.channelId,
-    message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
-    thread_ts: "",
-    blocks: "",
-})
-
-const summary = await generateText({
-    prompt: `Summarize the changes in this PR. Context: ${event.formatForAgentRunner()}`,
-    skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
-})
-
-await toolbox.slack.sendMessage({
-    channelId: SlackChannel.Engineering.channelId,
-    message: summary,
-    thread_ts: message.message_ts,
-    blocks: "",
-})
-```
-
-### Add type safety
-```typescript
-// BEFORE: untyped event
-onTrigger: async (event) => {
-    await generateText({ prompt: `Handle: ${event.formatForAgentRunner()}`, skills: [...] })
-}
-
-// AFTER: annotate with the precise trigger type that matches your trigger factory.
-// `Triggers.github.onPROpened(...)` returns a typed trigger, so `event` infers
-// as `GithubPROpenedTrigger` — annotating just makes it explicit.
-import { GithubPROpenedTrigger, generateText } from "terse-sdk"
-
-onTrigger: async (event: GithubPROpenedTrigger) => {
-    const { title, url } = event.pullRequest
-    await generateText({
-        prompt: `Review PR "${title}" at ${url}. Context: ${event.formatForAgentRunner()}`,
-        skills: [...],
-    })
-}
-```

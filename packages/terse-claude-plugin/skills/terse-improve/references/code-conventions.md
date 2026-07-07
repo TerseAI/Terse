@@ -44,6 +44,10 @@ switch (classification.severity) {
 
 **No nested try/catch.** When a `catch` body needs its own error handling, extract the catch body into a helper function and call it from the `catch`.
 
+**Functional iteration.** Prefer `map`/`filter`/`reduce` for transforms and `forEach` for synchronous side effects; reach for `for` loops sparingly. When the loop body awaits, use `Promise.all(items.map(...))` for parallel work or `for...of` for sequential awaits — never pass an async callback to `forEach`, which fires without awaiting and swallows rejections.
+
+**Async/await over `.then`.** Use `async`/`await` and the Promise combinators (`Promise.all`, `Promise.allSettled`, `Promise.race`) instead of `.then()` chains.
+
 **Errors are custom classes** that `extend Error` and set `this.name`:
 
 ```typescript
@@ -97,9 +101,30 @@ Work down this ladder and stop at the first rung that can do the job:
 
 **Credentials** for anything past rung 2 go through project secrets: store with `terse secrets add <NAME>`, read `process.env.<NAME>` at the top of the job, and fail fast with a custom error when missing.
 
+Scalar credentials (API keys, tokens) are stored as-is. File-shaped credentials — a Google service account JSON, a PEM key, anything multiline — are stored base64-encoded under a `_B64`-suffixed name, never pasted raw: raw JSON mangles the interactive prompt and turns shell quoting into a minefield, while base64 makes the value one safe token. Ask the user for the file's path and encode straight from the file, so the plaintext never appears in the conversation:
+
+```bash
+base64 -i service-account.json | terse secrets add GOOGLE_SERVICE_ACCOUNT_B64 --value-stdin
+```
+
+(On GNU coreutils, add `-w 0` to disable line wrapping.)
+
+Decode at the top of the job, validating the fields the job uses at the boundary:
+
+```typescript
+const encoded = process.env.GOOGLE_SERVICE_ACCOUNT_B64
+if (!encoded) throw new MissingSecretError("GOOGLE_SERVICE_ACCOUNT_B64")
+const parsed = serviceAccountSchema.safeParse(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")))
+if (!parsed.success) throw new InvalidSecretError("GOOGLE_SERVICE_ACCOUNT_B64", parsed.error)
+```
+
+For `_B64` secrets, put the full encode one-liner in the missing-secret error message so the fix is copy-pasteable.
+
 ## Durable job style
 
 These rules apply when the job sets `durable: true`. The mechanics (replay model, `step()`, `jobStep`, `sleep`, `waitForInput`) live in https://docs.useterse.ai/core-concepts/durability; facts there win.
+
+**When to be durable.** Recommend `durable: true` when the workflow involves any of: human input or approval (`waitForInput`), timed waits (`sleep`), or three or more side-effecting milestones where a mid-run failure would leave visible half-done work. Otherwise recommend non-durable.
 
 **`step()` inline is the default.** Wrap each external call directly — `await step(client.method(args))` — so the handler reads as sequential blocks. Terse SDK calls (`toolbox.*`, `generateText`, `state.get`/`state.set`) are already durable steps; leave them bare.
 
@@ -113,9 +138,13 @@ These rules apply when the job sets `durable: true`. The mechanics (replay model
 
 **Code outside steps re-runs on every replay.** Keep it pure and cheap; every side effect lives inside a step.
 
-## Worked example
+## Worked examples
 
-The job below shows the target shape: the handler at the top reading as sequential blocks, an exhaustive switch dispatching to side-effecting branch helpers, schemas and types at the bottom. Method and constant names come from your project's `src/terse.generated.ts`; never invent them.
+Method and constant names in both examples come from your project's `src/terse.generated.ts`; never invent them.
+
+### Durable
+
+The job below shows the target durable shape: the handler at the top reading as sequential blocks, an exhaustive switch dispatching to side-effecting branch helpers, schemas and types at the bottom.
 
 It was built milestone by milestone, each proven green (`tsc --noEmit` passes, `terse test run` on the pinned sample event completes, agentic output inspected) before the next began:
 
@@ -189,4 +218,47 @@ const Classification = z.object({
     reason: z.string(),
 })
 type Classification = z.infer<typeof Classification>
+```
+
+### Non-durable
+
+A complete non-durable job: deterministic post, agentic summary, deterministic threaded reply.
+
+```typescript
+import { createJob, generateText, type GithubPROpenedTrigger } from "terse-sdk"
+import { Triggers, Skills, Repos, SlackChannel, toolbox } from "./terse.generated"
+
+createJob({
+    name: "Summarize PR and notify Slack",
+    triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
+    filter: async (event: GithubPROpenedTrigger) => {
+        return !event.sender.login.includes("[bot]")
+    },
+    onTrigger: async (event: GithubPROpenedTrigger) => {
+        // Deterministic: fixed channel, fixed opener — use toolbox, no agent needed
+        const message = await toolbox.slack.sendMessage({
+            channelId: SlackChannel.Engineering.channelId,
+            message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
+            thread_ts: "",
+            blocks: "",
+        })
+
+        // Agentic: only the summary needs judgment
+        const summary = await generateText({
+            prompt:
+                `Summarize the changes in this PR. ` +
+                `Focus on what changed, why it matters, and what reviewers should look at first. ` +
+                `Keep it concise. Context: ${event.formatForAgentRunner()}`,
+            skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
+        })
+
+        // Deterministic: post the result back in thread
+        await toolbox.slack.sendMessage({
+            channelId: SlackChannel.Engineering.channelId,
+            message: summary,
+            thread_ts: message.message_ts,
+            blocks: "",
+        })
+    },
+})
 ```

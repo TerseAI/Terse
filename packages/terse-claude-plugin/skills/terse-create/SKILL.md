@@ -19,7 +19,7 @@ A workflow is the thing being automated; in code it is defined as a job (`create
 Terse evolves fast; the live docs are the source of truth for facts:
 
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
-- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse secrets`, `terse deploy`, and friends.
+- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse secrets`, `terse deploy`.
 
 Precedence: live docs win on facts (API signatures, CLI flags, availability). The bundled [code-conventions.md](references/code-conventions.md) wins on style — how job code is structured.
 
@@ -27,13 +27,19 @@ Precedence: live docs win on facts (API signatures, CLI flags, availability). Th
 
 **Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/jobs/`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
 
-**Narrate the run.** The steps below group into phases: bootstrap (step 0), interview (1), research (2), shared understanding (3), design (4–8), build (9), swap and verify (10–11), deploy (12). Phases and step numbers are internal structure — never say "phase 2" or "step 9" to the user.
+**Narrate the run.** Speak to the user in casual first person about the work itself: "I'm going to check if the project is set up", "I need some help understanding this use case better", "I'm launching some research agents to figure out how to build this for you", "Based on the research, I have a few more questions". The steps below group into phases — bootstrap (step 0), interview (1), research (2), shared understanding (3), design (4–8), build (9), swap and verify (10–11), deploy (12) — but phases and step numbers are internal structure the user never hears.
 
-If your harness has a task-tracking tool the user can see (a todo/task list), that checklist is the progress channel: create it right after step 0 with casually worded items — research how to build this, agree on the design, build the job, swap test targets and verify, ask about deploying — and check items off as phases complete. When the milestone plan lands in step 9, replace the build item with one item per milestone.
+If your harness has a task-tracking tool the user can see (a todo/task list), that checklist is the progress channel: create it right after step 0 with casually worded items — research how to build this, agree on the design, build the job, swap test targets and verify, ask about deploying — and check items off as phases complete. When the milestone plan lands in step 9, replace the build item with one item per milestone. Without such a tool, announce each phase transition instead: one casual line saying what you are about to do and why.
 
-Without such a tool, announce each phase transition instead: one casual first-person line saying what you are about to do and why, e.g. "I'm going to check if the project is set up", "I need some help understanding this use case better", "I'm launching some research agents to figure out how to build this for you", "Based on the research, I have a few more questions".
+**Mark every CLI run.** The `terse` CLI doing something is an event the user must be able to see; harnesses often collapse tool calls, so the narration carries it. Immediately before each `terse` command, emit a marker line:
 
-Narration is non-blocking: never wait for a reply to an announcement; the run only pauses at the questions the steps themselves define. Headless runs narrate inline the same way.
+> ⏵ `terse test run pr-triage --id 3f2c` — proving the trigger wiring fires
+
+One marker per command: the command verbatim in backticks, then the why in a few words. Back-to-back cheap reads (`terse test list`, `terse test show`) may share a single marker. When a state-changing or long-running command finishes (`integrate connect`/`wait`, `generate`, `deploy`, `test run`), report its outcome in the normal narration voice. Never bury a `terse` invocation inside a pipeline, subshell, or script where the user can't see it ran.
+
+Narration is non-blocking: never wait for a reply to an announcement; the run only pauses at the questions the steps themselves define.
+
+**Headless runs.** With no one to answer, skip every question the steps define, take your recommended answer, and state each choice with its reason in the final summary. Narrate inline the same way.
 
 ### 0. Ensure a Terse project exists
 
@@ -59,8 +65,6 @@ While interviewing, sharpen the domain language:
 
 - When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
 - Stress-test domain relationships with concrete scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
-
-If you are running headless with no one to answer, skip the interview, take your recommended answers, and state them with reasons in the final summary.
 
 ### 2. Dispatch researchers
 
@@ -90,7 +94,7 @@ Read the briefs, then bring the user everything that changes the design:
 
 The same interview rules apply: batch at most four questions, recommend an answer for each, look up facts instead of asking. Walk down each branch of the design tree, resolving dependencies between decisions one by one.
 
-Do not start building until the user confirms you share an understanding of the workflow. If you are running headless, take your recommended answers and state them with reasons in the final summary.
+Do not start building until the user confirms you share an understanding of the workflow.
 
 ### 4. Open the entry file
 
@@ -109,7 +113,7 @@ import { createJob, generateText } from "terse-sdk"
 
 Durability changes how the handler is structured, so settle it before writing any handler code.
 
-Form a recommendation first. Recommend `durable: true` when the workflow involves any of: human input or approval (`waitForInput`), timed waits (`sleep`), or three or more side-effecting milestones where a mid-run failure would leave visible half-done work. Otherwise recommend non-durable.
+Form a recommendation first, from the durable signals in [code-conventions.md](references/code-conventions.md) ("When to be durable").
 
 Then ask, presenting your recommendation as the default. Use this copy:
 
@@ -121,8 +125,6 @@ Then ask, presenting your recommendation as the default. Use this copy:
 > Tradeoff: durable requires every side effect to live in a `step()` and all step data to be serializable.
 >
 > Recommended for this workflow: \<your recommendation and one-line reason\>
-
-If you are running headless with no one to answer, take your recommendation silently and state the choice and its reason in the final summary.
 
 For durable jobs, the style rules in [code-conventions.md](references/code-conventions.md) ("Durable job style") govern the handler; the mechanics (`step()`, `jobStep`, `sleep`, `waitForInput`, replay model) are in https://docs.useterse.ai/core-concepts/durability.
 
@@ -146,11 +148,15 @@ Connecting a missing built-in integration type:
 
 - For form installs, use `terse integrate connect <type> --field key=value --fields-stdin`
 - Put secrets on `--fields-stdin`, not `--field`
-- For OAuth installs, run `terse integrate connect <type> --json`. The CLI opens the user's browser automatically and exits 2 with a `handoff` payload that includes a `waitCommand`. Run that `waitCommand` (e.g. `terse integrate wait gmail`) to block until the user finishes authorization — it exits 0 when the connection is live. Only then continue. Do not dump the URL back to the user; the browser is already open.
-- If you need multiple OAuth integrations, do them one at a time: `connect <a> --json` → `wait <a>` → `connect <b> --json` → `wait <b>`. Do not batch the connect calls; the user can only authorize one browser tab at a time anyway.
+- For OAuth installs, you are the user's only messenger: in `--json` mode the CLI's own "ACTION REQUIRED" line is suppressed, and the browser open is best-effort (it fails silently over SSH or in a container). So, in order:
+  1. Tell the user first, casually, what is about to happen and that the run pauses until they act: "I'm connecting Gmail now — a browser tab will pop up; finish the sign-in there and I'll pick it back up."
+  2. Run `terse integrate connect <type> --json`. It opens the browser and exits 2 with a `handoff` payload containing the authorization `url` and a `waitCommand`.
+  3. Give the user the `url` from the payload as a clickable fallback: "If no tab appeared, here's the link: <url>".
+  4. Run the `waitCommand` (e.g. `terse integrate wait gmail`) to block until they finish authorization — it exits 0 when the connection is live. Only then continue.
+- If you need multiple OAuth integrations, do them one at a time: announce → `connect <a> --json` → `wait <a>` → announce → `connect <b> --json` → `wait <b>`. Do not batch the connect calls; the user can only authorize one browser tab at a time anyway.
 - After any connection or refresh, rerun `terse generate` and reopen `src/terse.generated.ts`
 
-For anything past the built-in rungs, credentials go through project secrets: store with `terse secrets add <NAME>`, read `process.env.<NAME>` at the top of the job, fail fast with a custom error when missing.
+For anything past the built-in rungs, credentials follow the Credentials rule in [code-conventions.md](references/code-conventions.md) ("Integrating with a platform").
 
 ### 8. Consider a filter
 
@@ -165,7 +171,7 @@ Filters prevent unnecessary agent runs and save cost.
 
 Read [code-conventions.md](references/code-conventions.md) now — it governs every line of handler code below. Before writing code that imports from `./terse.generated`, read `src/terse.generated.ts` yourself: the workspace brief guided the design, but exact names and signatures come from the file.
 
-Never build the whole handler and test at the end. Slice the workflow into milestones — logical groupings like gather context, decide, act — and prove each one green before starting the next. The worked example in code-conventions.md shows a full workflow sliced into milestones; anchor your slicing on it.
+Never build the whole handler and test at the end. Slice the workflow into milestones — logical groupings like gather context, decide, act — and prove each one green before starting the next. The worked examples in code-conventions.md (durable and non-durable) show the target shape; the durable one is sliced into milestones — anchor your slicing on it.
 
 Present the milestone plan before writing Milestone 0: one line per milestone naming what it does and whether it is deterministic or agentic — as checklist items when a task tool is active, plain text otherwise. Milestone numbers are internal; name the slices by what they do. Do not wait for approval — step 3 already confirmed the design — but this roadmap is what every green report below tracks against.
 
@@ -179,25 +185,7 @@ terse test run "<job-name>" --id <id>
 
 Use `terse test show` to pick a representative event, then reuse that same `--id` for every later run so runs stay comparable. Use `terse test run --event-file <path>` or `--event <json>` when you already have the exact serialized trigger payload. If multiple jobs exist, pass the job name explicitly — non-interactive job loading cannot prompt. Reserve bare `terse test` for manual sessions with a TTY.
 
-To test a specific payload, or when the sample buffer is empty (a fresh webhook has no stored deliveries), hand-write the event file once from this exact envelope. Do not guess it field-by-field:
-
-```json
-{
-    "integrationType": "webhook",
-    "eventType": "webhook",
-    "formattedContent": "Webhook request received.",
-    "debugLog": "Webhook Trigger (POST)",
-    "data": {
-        "integrationType": "webhook",
-        "eventType": "webhook",
-        "body": { "note": "the provider payload (e.g. the Stripe event) goes here" },
-        "headers": { "content-type": "application/json" },
-        "method": "POST"
-    }
-}
-```
-
-Three rules the validator enforces: `integrationType` and `eventType` are both literally `"webhook"` at both layers; `formattedContent` and `debugLog` are required strings on the outer object; the provider payload lives at `data.body`, with required siblings `data.headers` (a string-to-string map) and `data.method`.
+To test a specific payload, or when the sample buffer is empty (a fresh webhook has no stored deliveries), hand-write the event file and run it: on a shape mismatch, `terse test run` prints the expected envelope and the exact validation issues — correct the file from that error output rather than guessing fields.
 
 **Test targets.** Before the first milestone that writes to an external surface, ask the user once: "Which channel/repo should I use for test runs? (I'll swap to the real targets at the end.)" Point side-effecting calls at those test resources while building. If the user says to use the real ones, proceed live.
 
@@ -226,11 +214,11 @@ After adding each milestone, take it to **green** — all three, in order:
 2. `terse test run "<job-name>" --id <pinned-id>` completes without error.
 3. For agentic milestones, read the actual output (the message text, the summary) and judge it against the prompt's intent. Exit code 0 is not green on its own.
 
-When a milestone goes green, tell the user before starting the next one — casually, by what it does, never as "milestone N complete":
+When a milestone goes green, tell the user before starting the next one — casually, by what it does, never as "milestone N complete", carrying the three green checks as evidence:
 
 > Triage agent just finished: typecheck and the test run both pass, and the summary it wrote reads well.
 
-Always carry the same evidence: the typecheck, the pinned test run, and for agentic milestones a one-line judgment of the actual output against the prompt's intent (omit the judgment for deterministic milestones). If the milestone deviated from the presented plan, say what changed and why in the same breath. Do not wait for a reply; if a checklist is active, also check the item off.
+If the milestone deviated from the presented plan, say what changed and why in the same breath. Do not wait for a reply; if a checklist is active, also check the item off.
 
 Re-runs re-execute every earlier milestone, including its `generateText` calls; that cost is what makes green trustworthy. The test targets absorb the repeated side effects.
 
@@ -260,46 +248,3 @@ Example prompt:
 
 - If the user says yes, run `terse deploy` and report the outcome.
 - If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
-
-## Example
-
-A complete non-durable job (a durable worked example lives in [code-conventions.md](references/code-conventions.md)):
-
-```typescript
-import { createJob, generateText, type GithubPROpenedTrigger } from "terse-sdk"
-import { Triggers, Skills, Repos, SlackChannel, toolbox } from "./terse.generated"
-
-createJob({
-    name: "Summarize PR and notify Slack",
-    triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
-    filter: async (event: GithubPROpenedTrigger) => {
-        return !event.sender.login.includes("[bot]")
-    },
-    onTrigger: async (event: GithubPROpenedTrigger) => {
-        // Deterministic: fixed channel, fixed opener — use toolbox, no agent needed
-        const message = await toolbox.slack.sendMessage({
-            channelId: SlackChannel.Engineering.channelId,
-            message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
-            thread_ts: "",
-            blocks: "",
-        })
-
-        // Agentic: only the summary needs judgment
-        const summary = await generateText({
-            prompt:
-                `Summarize the changes in this PR. ` +
-                `Focus on what changed, why it matters, and what reviewers should look at first. ` +
-                `Keep it concise. Context: ${event.formatForAgentRunner()}`,
-            skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })],
-        })
-
-        // Deterministic: post the result back in thread
-        await toolbox.slack.sendMessage({
-            channelId: SlackChannel.Engineering.channelId,
-            message: summary,
-            thread_ts: message.message_ts,
-            blocks: "",
-        })
-    },
-})
-```

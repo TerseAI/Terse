@@ -15,7 +15,7 @@ If the user named a project directory, pass it; otherwise scaffold into the curr
 
 Set the Bash timeout to 600000 (10 minutes). Dependency install and browser-side auth can both take a while.
 
-`terse init` handles auth itself: if the user is not logged in, it opens the browser to WorkOS and waits for them to authorize. Tell the user a browser tab may pop up. The single command scaffolds files, installs dependencies, logs in if needed, creates the remote Terse project, writes `terse.config.json`, and runs `terse generate`.
+`terse init` handles auth itself: if the user is not logged in, it opens the browser to WorkOS and waits for them to authorize. Before running it, tell the user casually that a browser tab may pop up and that the setup pauses until they finish signing in there. If the CLI prints a login URL and the user seems stuck, relay that URL as a clickable fallback — the automatic browser open fails silently over SSH or in a container. The single command scaffolds files, installs dependencies, logs in if needed, creates the remote Terse project, writes `terse.config.json`, and runs `terse generate`.
 
 ## 2. React to errors
 
