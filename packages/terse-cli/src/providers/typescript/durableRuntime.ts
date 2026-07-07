@@ -106,8 +106,29 @@ function lookupWorkflowId(manifest: any, fnName: string): string | undefined {
 
 const JOBS_MAP_FILE = "jobs.json"
 
+// The durable build's bundler resolves bare "workflow/runtime" imports from the
+// project root, so the project must depend on "workflow" itself. npm's flat
+// hoisting hides a missing dependency; pnpm and Yarn PnP do not.
+export function expectedWorkflowVersion(): string {
+    // "workflow/package.json" is not require-able (blocked by its exports map),
+    // so read the CLI's own exact pin instead.
+    const cliPackageJson = new URL("../../../package.json", import.meta.url)
+    return JSON.parse(fs.readFileSync(cliPackageJson, "utf8")).dependencies.workflow
+}
+
+function ensureProjectWorkflowDependency(cwd: string): void {
+    try {
+        createRequire(path.join(cwd, "package.json")).resolve("workflow")
+    } catch {
+        throw new Error(
+            `Durable execution needs the "workflow" package in your project. Run: npm install workflow@${expectedWorkflowVersion()}`
+        )
+    }
+}
+
 export async function buildWorkflowArtifacts(cwd: string): Promise<Map<string, { fnName: string; file: string }>> {
     const out = path.join(cwd, ".terse", "wf")
+    ensureProjectWorkflowDependency(cwd)
     const scanDir = path.join(".terse", "macro")
     const workflowFnByJob = await withMacroedSources(cwd, () => new TerseWorkflowBuilder(cwd, scanDir, out).build())
     fs.mkdirSync(out, { recursive: true })
