@@ -1,4 +1,4 @@
-import { log, spinner, type SpinnerResult } from "@clack/prompts"
+import { type SpinnerResult, log, spinner } from "@clack/prompts"
 import chalk from "chalk"
 import { format } from "node:util"
 
@@ -26,9 +26,7 @@ export function interceptConsole(onLine: (line: string) => void): () => void {
 // each one, so colored output never collides with clack's repaint.
 export function createRunIndicator(title: string) {
     const interactive = isInteractiveOutput()
-    const spin = interactive
-        ? spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame), withGuide: false })
-        : new StaticSpinner()
+    const spin = interactive ? spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame), withGuide: false }) : new StaticSpinner()
     let live = false
 
     return {
