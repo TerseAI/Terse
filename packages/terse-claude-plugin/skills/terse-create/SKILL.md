@@ -4,7 +4,7 @@ description: Create a Terse workflow. Use when the user wants to build an automa
 license: MIT
 metadata:
   author: Terse AI
-  version: "0.4.0"
+  version: "0.5.0"
   category: workflow
 ---
 
@@ -27,7 +27,13 @@ Precedence: live docs win on facts (API signatures, CLI flags, availability). Th
 
 **Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/jobs/`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
 
-**Narrate the run.** The steps below group into phases: bootstrap (step 0), interview (1), research (2), shared understanding (3), design (4–8), build (9), swap and verify (10–11), deploy (12). Announce each phase transition in one line — what is about to happen and why — so the user always knows where the run is. Narration is non-blocking: never wait for a reply to an announcement; the run only pauses at the questions the steps themselves define. Headless runs emit the same narration.
+**Narrate the run.** The steps below group into phases: bootstrap (step 0), interview (1), research (2), shared understanding (3), design (4–8), build (9), swap and verify (10–11), deploy (12). Phases and step numbers are internal structure — never say "phase 2" or "step 9" to the user.
+
+If your harness has a task-tracking tool the user can see (a todo/task list), that checklist is the progress channel: create it right after step 0 with casually worded items — research how to build this, agree on the design, build the job, swap test targets and verify, ask about deploying — and check items off as phases complete. When the milestone plan lands in step 9, replace the build item with one item per milestone.
+
+Without such a tool, announce each phase transition instead: one casual first-person line saying what you are about to do and why, e.g. "I'm going to check if the project is set up", "I need some help understanding this use case better", "I'm launching some research agents to figure out how to build this for you", "Based on the research, I have a few more questions".
+
+Narration is non-blocking: never wait for a reply to an announcement; the run only pauses at the questions the steps themselves define. Headless runs narrate inline the same way.
 
 ### 0. Ensure a Terse project exists
 
@@ -67,7 +73,7 @@ Gather context through researchers — focused, read-only research tasks defined
 **Dispatching a researcher.** For each one:
 
 1. Read its template file from `references/`.
-2. Replace the "Context from the orchestrator" comment block with real content: the workflow in one paragraph, the platforms/events/actions involved, and the interview answers that narrow the search.
+2. Replace the "Context from the orchestrator" comment block with real content: the workflow in one paragraph, the platforms/events/actions involved, and the interview answers that narrow the search. Where the template has an "Objectives" block, fill it with the specific questions this run needs answered — researchers answer the objectives with the fewest fetches that settle them, so vague objectives buy back the over-reading.
 3. If your harness can spawn subagents (an Agent/Task tool), pass the entire filled-in template as the subagent's prompt, using a read-only agent type — web-capable for the docs and integration researchers. The template is self-contained: the subagent needs no other context, and its reply is the research brief.
 4. If it cannot, follow the filled-in template yourself, inline, and write out the same brief before moving on.
 
@@ -161,7 +167,7 @@ Read [code-conventions.md](references/code-conventions.md) now — it governs ev
 
 Never build the whole handler and test at the end. Slice the workflow into milestones — logical groupings like gather context, decide, act — and prove each one green before starting the next. The worked example in code-conventions.md shows a full workflow sliced into milestones; anchor your slicing on it.
 
-Present the milestone plan before writing Milestone 0: one line per milestone naming what it does and whether it is deterministic or agentic. Do not wait for approval — step 3 already confirmed the design — but this roadmap is what every green announcement below reports against.
+Present the milestone plan before writing Milestone 0: one line per milestone naming what it does and whether it is deterministic or agentic — as checklist items when a task tool is active, plain text otherwise. Milestone numbers are internal; name the slices by what they do. Do not wait for approval — step 3 already confirmed the design — but this roadmap is what every green report below tracks against.
 
 **Milestone 0 — tracer bullet.** Wire the trigger, the filter, and a stub handler that just logs the event. Then pin a sample event and prove the wiring fires:
 
@@ -220,11 +226,11 @@ After adding each milestone, take it to **green** — all three, in order:
 2. `terse test run "<job-name>" --id <pinned-id>` completes without error.
 3. For agentic milestones, read the actual output (the message text, the summary) and judge it against the prompt's intent. Exit code 0 is not green on its own.
 
-When a milestone goes green, tell the user before starting the next one, in this shape:
+When a milestone goes green, tell the user before starting the next one — casually, by what it does, never as "milestone N complete":
 
-> Milestone \<n\> (\<name\>) green — tsc passed, test run \<pinned-id\> passed, output: \<one-line judgment of the agent output against the prompt's intent\>
+> Triage agent just finished: typecheck and the test run both pass, and the summary it wrote reads well.
 
-Omit the output clause for deterministic milestones. If the milestone deviated from the presented plan, say what changed and why in the same announcement. Do not wait for a reply.
+Always carry the same evidence: the typecheck, the pinned test run, and for agentic milestones a one-line judgment of the actual output against the prompt's intent (omit the judgment for deterministic milestones). If the milestone deviated from the presented plan, say what changed and why in the same breath. Do not wait for a reply; if a checklist is active, also check the item off.
 
 Re-runs re-execute every earlier milestone, including its `generateText` calls; that cost is what makes green trustworthy. The test targets absorb the repeated side effects.
 

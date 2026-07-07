@@ -6,10 +6,14 @@ A read-only research task over the live Terse docs: report the features relevant
 
 <!-- Replace this block when dispatching: the workflow in one paragraph, every platform involved, and the capabilities in question (e.g. human approval, timed waits, scheduling, observability). -->
 
+## Objectives
+
+<!-- Replace this block when dispatching: the specific questions this brief must answer, e.g. "Does Terse ship a built-in Linear integration?", "Which GitHub triggers fire on review comments?", "What does durability require of the handler?". Every fetch must serve one of these. -->
+
 ## Instructions
 
 1. Fetch https://docs.useterse.ai/llms.txt first — it indexes every docs page.
-2. Fetch every page plausibly relevant to the context block (triggers, skills, durability, integrations, CLI, observability, ...). Prefer fetching one page too many over guessing from the index alone.
+2. Research the minimum that answers the objectives: from the index, fetch only the pages that bear on an objective, and stop fetching once every objective is answered. Do not read the docs generally; an unanswered objective goes in Open questions, not into another sweep of the index.
 3. Judge relevance against this specific workflow, not Terse in general. A feature belongs in the brief only if it would change how this job is designed, built, or tested.
 4. Web fetches only: do not edit files or run commands.
 
@@ -26,3 +30,6 @@ Limits, prerequisites, or behaviors in the docs that would surprise someone desi
 
 ### Relevant CLI commands
 Exact commands and flags from https://docs.useterse.ai/reference/cli the orchestrator will need for this workflow.
+
+### Open questions
+Objectives the docs could not settle, each with the pages checked. Omit the section when every objective is answered.

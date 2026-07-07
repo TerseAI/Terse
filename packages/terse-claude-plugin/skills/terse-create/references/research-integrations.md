@@ -6,8 +6,13 @@ A read-only research task on third-party platforms that Terse does not cover wit
 
 <!-- Replace this block when dispatching: for each gap service, what the workflow needs from it (events consumed, actions performed, data read or written), plus any interview answers that constrain the choice. -->
 
+## Objectives
+
+<!-- Replace this block when dispatching: the specific questions this brief must answer, e.g. "Is there an official Notion TypeScript SDK and what auth does it need?", "Which endpoint creates a database row?". Every search and fetch must serve one of these. -->
+
 ## Instructions
 
+0. Research the minimum that answers the objectives: stop as soon as each service's brief section can be filled. An unanswered objective goes in that section as an open question, not into more searching.
 1. For each service, find the platform's official TypeScript SDK. Validate that it is official: published under the vendor's npm org or linked from the vendor's developer docs or GitHub org.
 2. If no official SDK exists, research the leading community wrapper and gather the adoption evidence code-conventions.md requires (GitHub stars, years maintained, date of last release, weekly npm downloads, maintainer reputation), and locate the REST API docs a hand-rolled typed fetch client would be built from. Recommend nothing silently — the orchestrator puts that choice to the user.
 3. Identify the auth model: credential type, required scopes, and where a user obtains it.
