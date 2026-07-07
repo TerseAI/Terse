@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const canonicalFiles = ["sdk-reference.md", "code-conventions.md"];
+const canonicalFiles = ["code-conventions.md"];
 const skillNames = ["terse-create", "terse-improve"];
 
 for (const file of canonicalFiles) {

@@ -1,6 +1,6 @@
 # Terse Job Code Conventions
 
-These conventions govern every line of job code you write or modify in `src/terse.jobs.ts`. Precedence: live Terse docs win on facts (API signatures, CLI flags, availability); this file wins on style.
+These conventions govern every line of job code you write or modify in a project's job files (`src/terse.jobs.ts` and `src/jobs/`). Precedence: live Terse docs win on facts (API signatures, CLI flags, availability); this file wins on style.
 
 Overrides the user gives in the session win over this file.
 
@@ -63,6 +63,21 @@ class MissingSecretError extends Error {
 
 **Minimize comments.** Add one only when a choice is non-obvious, odd, or a deliberate compromise.
 
+## Project layout
+
+**One job: define it in the entry file.** A single-job project keeps the job directly in `src/terse.jobs.ts`.
+
+**Two or more jobs: one file per job.** The moment a second job is added, every job (the existing one too) moves to its own file in `src/jobs/`, named in kebab-case after the job (`src/jobs/triage-bug-reports.ts`), and `src/terse.jobs.ts` becomes a pure manifest of side-effect imports:
+
+```typescript
+import "./jobs/triage-bug-reports"
+import "./jobs/weekly-digest"
+```
+
+`createJob()` registers by side effect, so a job file never imported from the entry file silently never runs or deploys. Every file in `src/jobs/` must have a matching import line in the manifest.
+
+Job files import generated helpers via `../terse.generated`. Pure, step-free helpers shared by several jobs may live in a shared module; a helper containing steps stays in its job's file (see "Branches become helpers" below), duplicated across job files when two jobs need it.
+
 ## Libraries
 
 **Prefer a library over building it yourself** for common problems (retries, date math, parsing, validation). Pick popular, well-maintained ones; check downloads and recent releases before adopting.
@@ -84,7 +99,7 @@ Work down this ladder and stop at the first rung that can do the job:
 
 ## Durable job style
 
-These rules apply when the job sets `durable: true`. The mechanics (replay model, `step()`, `jobStep`, `sleep`, `waitForInput`) live in the sdk-reference and https://docs.useterse.ai/core-concepts/durability; facts there win.
+These rules apply when the job sets `durable: true`. The mechanics (replay model, `step()`, `jobStep`, `sleep`, `waitForInput`) live in https://docs.useterse.ai/core-concepts/durability; facts there win.
 
 **`step()` inline is the default.** Wrap each external call directly — `await step(client.method(args))` — so the handler reads as sequential blocks. Terse SDK calls (`toolbox.*`, `generateText`, `state.get`/`state.set`) are already durable steps; leave them bare.
 

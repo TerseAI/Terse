@@ -4,7 +4,7 @@ description: Improve an existing Terse workflow. Use when the user wants to fix,
 license: MIT
 metadata:
   author: Terse AI
-  version: "0.3.0"
+  version: "0.3.1"
   category: workflow
 ---
 
@@ -16,7 +16,7 @@ A workflow is defined in code as a job (`createJob` in `src/terse.jobs.ts`); the
 
 ## Reference docs
 
-The bundled [sdk-reference.md](references/sdk-reference.md) covers the common path offline. Terse evolves fast, so pull the live docs whenever you reach past what the reference covers or aren't sure it's current:
+Terse evolves fast; the live docs are the source of truth for facts:
 
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
@@ -25,7 +25,7 @@ Precedence: live docs win on facts (API signatures, CLI flags, availability). Th
 
 ## Steps
 
-**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/terse.generated.ts`, the bundled [sdk-reference.md](references/sdk-reference.md), and live Terse docs — not inside dependency install dirs.
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/jobs/`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
 
 `src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
 
@@ -33,7 +33,7 @@ If `src/terse.generated.ts` is missing or stale for the integrations the job use
 
 ### 1. Find the workflow
 
-Open `src/terse.jobs.ts` and `src/terse.generated.ts`. Find the job matching the requested workflow name and read the full implementation — triggers, skills, filter, and handler.
+Open `src/terse.jobs.ts` and `src/terse.generated.ts`. If the entry file is a manifest of side-effect imports, follow them into `src/jobs/`. Find the job matching the requested workflow name and read the full implementation — triggers, skills, filter, and handler.
 
 The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 
@@ -104,8 +104,8 @@ Read [code-conventions.md](references/code-conventions.md) before this pass — 
 
 #### Conventions
 
-- Audit the job against [code-conventions.md](references/code-conventions.md): stray `as`/`any` casts, inline-ternary dispatch where an exhaustive `switch` belongs, nested try/catch, helper-above-handler ordering, types scattered mid-file, hand-rolled solutions where a popular library exists, missing zod at trust boundaries.
-- Report every violation you find. Fix only the ones on code paths you are already changing for this improvement; offer standalone style retrofits as an explicit opt-in.
+- Audit the job against [code-conventions.md](references/code-conventions.md): stray `as`/`any` casts, inline-ternary dispatch where an exhaustive `switch` belongs, nested try/catch, helper-above-handler ordering, types scattered mid-file, hand-rolled solutions where a popular library exists, missing zod at trust boundaries, multiple jobs defined inline in `src/terse.jobs.ts` instead of one file per job under `src/jobs/`.
+- Report every violation you find. Fix only the ones on code paths you are already changing for this improvement; offer standalone style retrofits as an explicit opt-in. For the layout violation this means splitting out only the job(s) you are already touching, leaving the rest inline and flagged.
 
 #### Durability
 
@@ -126,7 +126,7 @@ If a *fact* can be found in the code, run history, or docs, look it up rather th
 
 ### 5. Implement improvements
 
-Edit `src/terse.jobs.ts` (or the repo's configured `--entry-file`). Make the changes following [code-conventions.md](references/code-conventions.md). If you connected a new integration or need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
+Edit the job's file — `src/terse.jobs.ts` in a single-job project, its `src/jobs/<name>.ts` file under the manifest layout, or the repo's configured `--entry-file`. Make the changes following [code-conventions.md](references/code-conventions.md). If you connected a new integration or need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
 
 ### 6. Verify the changes locally
 
@@ -154,6 +154,26 @@ terse test run "<job-name>" --id <id>
 
 If multiple jobs exist, pass the job name explicitly because non-interactive job loading cannot prompt.
 Reserve bare `terse test` for manual interactive sessions only.
+
+To replay a specific payload, or when no sample events are available, hand-write an event file and run it with `terse test run --event-file <path>`. Use this exact envelope. Do not guess it field-by-field:
+
+```json
+{
+    "integrationType": "webhook",
+    "eventType": "webhook",
+    "formattedContent": "Webhook request received.",
+    "debugLog": "Webhook Trigger (POST)",
+    "data": {
+        "integrationType": "webhook",
+        "eventType": "webhook",
+        "body": { "note": "the provider payload (e.g. the Stripe event) goes here" },
+        "headers": { "content-type": "application/json" },
+        "method": "POST"
+    }
+}
+```
+
+Three rules the validator enforces: `integrationType` and `eventType` are both literally `"webhook"` at both layers; `formattedContent` and `debugLog` are required strings on the outer object; the provider payload lives at `data.body`, with required siblings `data.headers` (a string-to-string map) and `data.method`.
 
 For all of these commands, see https://docs.useterse.ai/reference/cli for the full option list.
 

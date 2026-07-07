@@ -4,7 +4,7 @@ import { DateTime } from "luxon"
 import fs from "node:fs"
 import type { CreateJobParameters } from "terse-sdk"
 import { IntegrationType } from "terse-sdk"
-import { ApiRoutes, debugTrigger, displayTrigger, formatTriggerForAgent, serializedEventSchema } from "terse-types"
+import { ApiRoutes, debugTrigger, displayTrigger, formatTriggerForAgent } from "terse-types"
 import type { SdkSampleEventsResponse, SerializedEvent, Trigger } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
@@ -17,6 +17,7 @@ import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
+import { parseSerializedEventJson } from "../serializedEvent.js"
 
 export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     if (isNonInteractive()) {
@@ -175,7 +176,7 @@ export async function testRun(opts: TestRunOpts): Promise<void> {
         event = await resolveEventByIdForJob(job, opts.id)
     } else {
         const rawJson = opts.eventJson ?? readEventFile(opts.eventFile!)
-        event = parseEventJson(rawJson)
+        event = parseSerializedEventJson(rawJson, "--event / --event-file")
     }
 
     const apiKey = readApiKeyOrBail()
@@ -205,24 +206,6 @@ function readEventFile(filePath: string): string {
         return fs.readFileSync(filePath, "utf-8")
     } catch (err) {
         throw new CliError("event_file_unreadable", `Could not read event file: ${filePath}`, {
-            detail: err instanceof Error ? err.message : String(err)
-        })
-    }
-}
-
-function parseEventJson(raw: string): SerializedEvent {
-    let parsed: unknown
-    try {
-        parsed = JSON.parse(raw)
-    } catch (err) {
-        throw new CliError("invalid_event_json", "--event / --event-file must be valid JSON.", {
-            detail: err instanceof Error ? err.message : String(err)
-        })
-    }
-    try {
-        return serializedEventSchema.parse(parsed)
-    } catch (err) {
-        throw new CliError("invalid_event_shape", "Event JSON does not match the canonical Trigger schema.", {
             detail: err instanceof Error ? err.message : String(err)
         })
     }
