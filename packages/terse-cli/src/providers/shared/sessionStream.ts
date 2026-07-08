@@ -15,23 +15,44 @@ type SessionStreamOptions = {
     onEvent?: (event: SessionStreamEvent) => Promise<void> | void
 }
 
+const SESSION_CAP_RETRY_BUDGET_MS = 120_000
+const SESSION_CAP_DEFAULT_RETRY_SECONDS = 30
+
 export async function openSessionStream(apiKey: string, options: SessionStreamOptions = {}): Promise<SessionHandle> {
-    try {
-        return await connectTerseSessionStream(BACKEND_URL, apiKey, {
-            onEvent: async (event: SessionStreamEvent) => {
-                if (options.onEvent) {
-                    try {
-                        await options.onEvent(event)
-                    } catch (error) {
-                        console.error(chalk.red(`  Session event handler failed: ${(error as Error).message}`))
-                    }
-                }
-                logSessionEvent(event, options)
-            }
-        })
-    } catch (error) {
-        throw mapSessionStreamError(error)
+    let waitedMs = 0
+    while (true) {
+        try {
+            return await connectSessionStream(apiKey, options)
+        } catch (error) {
+            const retryDelayMs = sessionCapRetryDelayMs(error, waitedMs)
+            if (retryDelayMs === null) throw mapSessionStreamError(error)
+            console.log(chalk.dim(`  Terse session limit reached; waiting ${Math.round(retryDelayMs / 1000)}s for a free slot...`))
+            await new Promise(resolve => setTimeout(resolve, retryDelayMs))
+            waitedMs += retryDelayMs
+        }
     }
+}
+
+async function connectSessionStream(apiKey: string, options: SessionStreamOptions): Promise<SessionHandle> {
+    return connectTerseSessionStream(BACKEND_URL, apiKey, {
+        onEvent: async (event: SessionStreamEvent) => {
+            if (options.onEvent) {
+                try {
+                    await options.onEvent(event)
+                } catch (error) {
+                    console.error(chalk.red(`  Session event handler failed: ${(error as Error).message}`))
+                }
+            }
+            logSessionEvent(event, options)
+        }
+    })
+}
+
+function sessionCapRetryDelayMs(error: unknown, waitedMs: number): number | null {
+    if (!(error instanceof SessionStreamError) || error.status !== 429) return null
+    const delayMs = (error.retryAfterSeconds ?? SESSION_CAP_DEFAULT_RETRY_SECONDS) * 1000
+    if (waitedMs + delayMs > SESSION_CAP_RETRY_BUDGET_MS) return null
+    return delayMs
 }
 
 export async function submitApprovalDecision(apiKey: string, params: SdkApprovalDecisionRequestBody): Promise<void> {
@@ -128,6 +149,11 @@ function mapSessionStreamError(error: unknown): unknown {
                 detail: "Your TERSE_API_KEY is missing, expired, or invalid. Run `terse auth login` to re-authenticate, or set a valid TERSE_API_KEY in your environment.",
                 actionRequired: true,
                 exitCode: ErrorCode.BAD_ARGUMENTS
+            })
+        }
+        if (error.status === 429) {
+            return new CliError("session_limit_reached", "Too many open Terse sessions.", {
+                detail: `${error.message}\n  Close other running terse processes, or wait a couple of minutes for stale sessions to expire, then retry.\n  Backend: ${BACKEND_URL}`
             })
         }
         return new CliError("session_stream_failed", "Could not start a Terse session.", {

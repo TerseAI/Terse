@@ -30,11 +30,13 @@ export type OpenListenStreamOptions = {
 
 export class SessionStreamError extends Error {
     readonly status: number
+    readonly retryAfterSeconds?: number
 
-    constructor(status: number, message?: string) {
+    constructor(status: number, message?: string, retryAfterSeconds?: number) {
         super(message ?? `Failed to open SSE stream (HTTP ${status})`)
         this.name = "SessionStreamError"
         this.status = status
+        this.retryAfterSeconds = retryAfterSeconds
     }
 }
 
@@ -90,10 +92,27 @@ async function openSseReader(apiBaseUrl: string, route: string, apiKey: string):
     })
 
     if (!response.ok || !response.body) {
-        throw new SessionStreamError(response.status)
+        throw await sessionStreamErrorFromResponse(response)
     }
 
     return response.body.getReader()
+}
+
+async function sessionStreamErrorFromResponse(response: Response): Promise<SessionStreamError> {
+    const body: unknown = await response.json().catch(() => null)
+    return new SessionStreamError(response.status, extractBodyError(body), parseRetryAfterSeconds(response.headers.get("retry-after")))
+}
+
+function extractBodyError(body: unknown): string | undefined {
+    if (typeof body !== "object" || body === null) return undefined
+    if (!("error" in body) || typeof body.error !== "string") return undefined
+    return body.error
+}
+
+function parseRetryAfterSeconds(header: string | null): number | undefined {
+    if (!header) return undefined
+    const seconds = Number(header)
+    return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined
 }
 
 async function readUntilEvent<TEvent extends { type: string }>(

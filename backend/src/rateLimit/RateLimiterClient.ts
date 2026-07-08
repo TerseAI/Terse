@@ -1,4 +1,5 @@
 import { Request, RequestHandler, Response } from "express"
+import { Redis } from "ioredis"
 import { type RateLimiterAbstract, RateLimiterRedis, RateLimiterRes } from "rate-limiter-flexible"
 import { type RedisClientType, createClient } from "redis"
 
@@ -20,8 +21,8 @@ export interface RateLimitOptions {
 export interface ConnectionCapOptions {
     name: string
     max: number
-    keyTtlSeconds: number
-    heartbeatIntervalMs: number
+    lockTimeoutMs: number
+    refreshIntervalMs: number
 }
 
 export interface KeyLimitOptions {
@@ -38,6 +39,7 @@ export interface KeyLimiter {
 export class RateLimiterClient {
     private static instance: RateLimiterClient
     private redisClient!: RedisClientType
+    private semaphoreRedisClient!: Redis
     private initialized = false
 
     public static getInstance(): RateLimiterClient {
@@ -57,6 +59,10 @@ export class RateLimiterClient {
         client.on("error", err => logger.error("Rate-limit Redis error", { err }))
         await client.connect()
         this.redisClient = client
+
+        // redis-semaphore only speaks ioredis, so the connection cap gets its own client.
+        this.semaphoreRedisClient = new Redis(redis.url)
+        this.semaphoreRedisClient.on("error", err => logger.error("Connection-cap Redis error", { err }))
         logger.info("✅ Rate-limit Redis connected")
 
         this.initialized = true
@@ -90,7 +96,7 @@ export class RateLimiterClient {
 
     public createConnectionCap(opts: ConnectionCapOptions): ConnectionCap {
         this.assertInitialized()
-        return new ConnectionCap(this.redisClient, opts)
+        return new ConnectionCap(this.semaphoreRedisClient, opts)
     }
 
     /**
