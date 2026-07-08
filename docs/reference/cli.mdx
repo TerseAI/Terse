@@ -221,11 +221,22 @@ What happens:
 - Workflows removed from your code are removed from Terse
 - For each workflow that includes a webhook trigger, the CLI prints a Webhook URL line after deploy so you can wire up external systems without opening the app
 - For managed projects (Terse Cloud data plane) with a local `.env`, the CLI offers to upload any variables not already stored as project secrets before the deploy runs. Use [`terse secrets`](#terse-secrets) for finer-grained control.
+- For durable workflows (`durable: true`), Terse builds the workflow bundle on the server while preparing your source image. The deploy upload stays limited to your source code.
 
 Data plane targets:
 
-- Managed (Terse Cloud data plane): the CLI zips the current project directory, uploads it, and the control plane runs the workflow on Terse Cloud sandboxes
+- Managed (Terse Cloud data plane): the CLI zips the current project directory, uploads it, and the control plane builds a source image (including the durable workflow bundle when needed) before running workflows on Terse Cloud sandboxes
 - Self-hosted data plane: the CLI reads `remoteServerUrl` from `terse.config.json` and configures the control plane to call your own server instead of uploading source. On the first deploy with a self-hosted data plane, the CLI prints a new `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` — save these into your data plane environment, they will not be shown again.
+
+### `terse build`
+
+Builds the durable workflow bundle for every `durable: true` job into `.terse/wf`.
+
+```bash
+terse build
+```
+
+The bundle contains the transformed workflow source, step handlers, and manifest Terse needs to suspend and resume runs. You do not need to run this before `terse deploy` — on managed deploys, Terse builds it on the server. Run `terse build` locally to inspect or debug a durable build error before deploying.
 
 ## Build with workspace context
 
