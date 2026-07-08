@@ -22,6 +22,7 @@ import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
+import { fetchIntegrations } from "../integrationApi.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import {
     type AttioAttributeData,
@@ -85,6 +86,16 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
         throw new CliError("fetch_integrations_failed", message || "Failed to fetch integrations.")
     }
 
+    s.message("Fetching integration catalog")
+
+    let availableIntegrations: string[] = []
+    try {
+        const catalog = await fetchIntegrations(apiKey)
+        availableIntegrations = [...new Set(catalog.map(entry => entry.integrationType))].sort()
+    } catch {
+        log.warn("Skipped integration catalog fetch; proceeding without the available-integrations list")
+    }
+
     s.message("Fetching tool definitions")
 
     let toolDefs: ToolDefinition[] = []
@@ -105,6 +116,7 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
     s.message("Fetching integration details")
 
     const input: CodegenInput = {
+        availableIntegrations,
         github: [],
         slack: [],
         gmail: [],

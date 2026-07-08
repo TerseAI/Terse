@@ -27,6 +27,16 @@ const Classification = z.object({
 type Classification = z.infer<typeof Classification>
 ```
 
+**Explicit return types.** Every function declaration and named arrow function gets an explicit return type, helpers included. Inline callbacks — `map`/`filter` lambdas, the `filter` and `onTrigger` functions passed inline to `createJob` — stay inferred.
+
+**Discovered values are typed constants.** Values discovered by probing external state (an audience ID, a verified domain, a channel ID) land as named constants with explicit types, never as bare string literals inline in a call. Use the SDK's type when it has one, otherwise a narrow alias:
+
+```typescript
+const WAITLIST_AUDIENCE_ID: AudienceId = "78261eea-8f8b-4381-83c6-79fa7120f1cf"
+
+type AudienceId = string
+```
+
 ## Control flow
 
 **Exhaustive discriminated unions.** Dispatch on the discriminant with a `switch`, and end the `default` with `throw x satisfies never`. Never dispatch with inline ternaries.
@@ -57,6 +67,15 @@ class MissingSecretError extends Error {
         this.name = "MissingSecretError"
     }
 }
+```
+
+**Fail on fabricated absence.** When a contract implies a value exists — the SDK call's error was already handled, the schema marks the field required — do not smuggle absence through as data with `?.` or `?? null`; throw a custom error naming the violated invariant. Absence that is a legitimate domain state (a lookup miss, a genuinely optional field) is fine, but model it explicitly: type it `| null` so every caller branches.
+
+```typescript
+const { data, error } = await resend.emails.send({ from, to, subject, html })
+if (error) throw new ResendApiError("emails.send", error.message)
+if (!data) throw new ResendApiError("emails.send", "no data in response")
+return { emailId: data.id }
 ```
 
 ## File shape
@@ -184,7 +203,7 @@ createJob({
     },
 })
 
-async function escalateCritical(event: LinearIssueCreatedTrigger, classification: Classification) {
+async function escalateCritical(event: LinearIssueCreatedTrigger, classification: Classification): Promise<void> {
     await toolbox.slack.sendMessage({
         channelId: SlackChannel.OnCall.channelId,
         message: `Critical bug: ${event.issue.title} — ${classification.reason}`,
@@ -206,7 +225,7 @@ async function escalateCritical(event: LinearIssueCreatedTrigger, classification
     await toolbox.linear.updateIssue({ issueId: event.issue.id, priority: 1 })
 }
 
-async function fileRoutine(event: LinearIssueCreatedTrigger, classification: Classification) {
+async function fileRoutine(event: LinearIssueCreatedTrigger, classification: Classification): Promise<void> {
     await toolbox.linear.createComment({
         issueId: event.issue.id,
         body: `Auto-triaged as routine: ${classification.reason}`,

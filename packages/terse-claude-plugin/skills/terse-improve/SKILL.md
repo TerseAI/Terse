@@ -23,23 +23,25 @@ Terse evolves fast; the live docs are the source of truth for facts:
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
 
-Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured.
+Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured — and the "Testing Safety Conventions" section wins on how test runs, replays, and probes are conducted.
 
 ## Steps
 
 **Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/jobs/`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
 
-`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
+`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the file lists every integration currently available in Terse — never plan around an integration that is not in that list. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas.
 
 If `src/terse.generated.ts` is missing or stale for the integrations the job uses, rerun `terse generate` instead of guessing at missing helpers. Never edit the generated file directly.
 
-**Narrate the run.** Speak to the user in casual first person about the work itself: "I'm pulling production history to see what actually went wrong", "the replay passes now with the new filter". Announce each phase transition in one casual line — diagnosing, analyzing, implementing, verifying — never by step number.
+**Narrate the run.** Speak to the user in casual first person about the work itself: "I'm pulling production history to see what actually went wrong", "the replay passes now with the new filter". At every phase transition, name the phase in plain casual words with its place in the sequence — diagnose, analyze, implement, verify — "Diagnosis is done — that's 1 of 4. Next I'll comb the job for improvements." Never speak internal step numbers; the user should always know where the work stands from the prose alone.
 
 **Mark every CLI run.** The `terse` CLI doing something is an event the user must be able to see; harnesses often collapse tool calls, so the narration carries it. Immediately before each `terse` command, emit a marker line:
 
 > ⏵ `terse replay 01hq3v…` — re-running the failed production event against the fix
 
 One marker per command: the command verbatim in backticks, then the why in a few words. Back-to-back cheap reads (`terse test list`, `terse test show`) may share a single marker. When a state-changing or long-running command finishes (`generate`, `deploy`, `replay`, `test run`), report its outcome in the normal narration voice. Never bury a `terse` invocation inside a pipeline, subshell, or script where the user can't see it ran.
+
+**Explain every test before it runs.** A marker line is not enough for `terse replay` or `terse test run`: immediately before one, say in one to three casual sentences what the run exercises, why now, and what a good result looks like — "This replay re-runs the exact production event that failed on Tuesday; with the new filter I expect it to skip the bot comment instead of crashing." When it finishes, give the verdict against that stated expectation in the same voice. Cheap reads (`terse test list`, `terse test show`) keep just the marker.
 
 ### 1. Find the workflow
 
@@ -134,11 +136,19 @@ If a *fact* can be found in the code, run history, or docs, look it up rather th
 
 ### 5. Implement improvements
 
-Edit the job's file — `src/terse.jobs.ts` in a single-job project, its `src/jobs/<name>.ts` file under the manifest layout, or the repo's configured `--entry-file`. Make the changes following the conventions section. If you connected a new integration or need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
+Edit the job's file — `src/terse.jobs.ts` in a single-job project, its `src/jobs/<name>.ts` file under the manifest layout, or the repo's configured `--entry-file`. Make the changes following the conventions section.
+
+If an improvement needs a new integration, describe before connecting: `terse integrate describe <type> --json` returns the `installationType` (form or OAuth) and, for form installs, the exact fields `connect` requires — never guess field names. Form installs take values via `--field key=value` with secrets on `--fields-stdin`; OAuth installs open a browser and exit 2 with a handoff, so tell the user first and follow with `terse integrate wait <type>`.
+
+After connecting a new integration or when you need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
 
 ### 6. Verify the changes locally
 
-Don't hand the change back without proving it still works. Two complementary loops:
+Don't hand the change back without proving it still works.
+
+Replays and test runs execute the real handler with real credentials, against real production events. Before the first local run of a job that writes to an external surface, follow the "Testing Safety Conventions" section at the bottom of this file: point writes at test targets or a test-mode key, and ask the user before writing to any production surface.
+
+Two complementary loops:
 
 **Replay the exact production run that failed.** If you used `terse history` in step 2 to find a bad run, replay it locally with the new code:
 
@@ -285,6 +295,48 @@ onTrigger: async (event: GithubPROpenedTrigger) => {
 
 ---
 
+# Testing Safety Conventions
+
+These conventions govern every local execution of a job — `terse test run`, `terse replay`, and any probe. Local runs execute the real handler with real credentials: nothing about a test run is sandboxed unless you point it somewhere safe.
+
+## Real events in, test targets out
+
+Sample events (`terse test list`, `terse replay`) are real production data; using them as *inputs* is the point — realistic payloads catch real bugs. The line is side effects: a test run must never land writes on real people or real surfaces. Emails, messages, ticket updates, CRM writes — during test runs these go to the test targets the user named, never to the customer, channel, or record in the event.
+
+The one sanctioned exception is the single verification run after swapping to real targets, announced to the user before it fires.
+
+## Test API keys
+
+When the work touches an external API that bills or has customer-visible effects (Stripe, Resend, …), ask the user once — fold it into the test-targets question — whether the platform has a test or sandbox key: "Does this have a test-mode key I should use while building? If so, add it with `terse secrets add <NAME>`." Use the test key for every local run; swapping to the live secret is part of the final swap to real targets.
+
+Secret values are write-only: never try to read a stored secret to check whether it is a test or live key. Discovery is by asking, not inspecting.
+
+## No test key: reads are free, writes ask first
+
+Without a test key, local runs share credentials with production:
+
+- **Reads never need permission.** Listing, fetching, and querying production data during a test run is always fine.
+- **Writes ask per surface.** Before the first local run that writes to a production surface (a real repo, a live audience, a customer record), ask the user explicitly about that surface. One ask covers later runs against the same surface; a new surface is a new ask.
+
+## Probing external state
+
+A probe is a read-only discovery run against an external API — list the audiences in Resend, find the verified domain — whose result feeds job code.
+
+**Never probe by temporarily rewriting a job's function body.** Mutating job code that must be restored afterwards is how probe scaffolding leaks into production.
+
+Probe with a scratch probe job instead:
+
+1. Create `src/jobs/_probe.ts`: a throwaway job with a cron trigger whose handler does the reads and logs the results.
+2. Add its side-effect import to `src/terse.jobs.ts`. This import line is the only sanctioned temporary edit to existing files, and the probe does not count as a second job for the project-layout rule.
+3. Run it with `terse test run` (cron triggers get synthetic sample events), so secrets hydrate exactly as they do for real jobs.
+4. Record what it found, then delete both the probe file and its import line.
+
+A probe must never be deployed — `terse deploy` syncs every job in the project, so delete the probe before any deploy. Probes are read-only; a probe that needs to write is not a probe, it is a milestone.
+
+What a probe finds lands in job code as named, explicitly typed constants — see "Discovered values are typed constants" in the code conventions.
+
+---
+
 # Terse Job Code Conventions
 
 These conventions govern every line of job code you write or modify in a project's job files (`src/terse.jobs.ts` and `src/jobs/`). Precedence: live Terse docs win on facts (API signatures, CLI flags, availability); this file wins on style.
@@ -312,6 +364,16 @@ const Classification = z.object({
     reason: z.string(),
 })
 type Classification = z.infer<typeof Classification>
+```
+
+**Explicit return types.** Every function declaration and named arrow function gets an explicit return type, helpers included. Inline callbacks — `map`/`filter` lambdas, the `filter` and `onTrigger` functions passed inline to `createJob` — stay inferred.
+
+**Discovered values are typed constants.** Values discovered by probing external state (an audience ID, a verified domain, a channel ID) land as named constants with explicit types, never as bare string literals inline in a call. Use the SDK's type when it has one, otherwise a narrow alias:
+
+```typescript
+const WAITLIST_AUDIENCE_ID: AudienceId = "78261eea-8f8b-4381-83c6-79fa7120f1cf"
+
+type AudienceId = string
 ```
 
 ## Control flow
@@ -344,6 +406,15 @@ class MissingSecretError extends Error {
         this.name = "MissingSecretError"
     }
 }
+```
+
+**Fail on fabricated absence.** When a contract implies a value exists — the SDK call's error was already handled, the schema marks the field required — do not smuggle absence through as data with `?.` or `?? null`; throw a custom error naming the violated invariant. Absence that is a legitimate domain state (a lookup miss, a genuinely optional field) is fine, but model it explicitly: type it `| null` so every caller branches.
+
+```typescript
+const { data, error } = await resend.emails.send({ from, to, subject, html })
+if (error) throw new ResendApiError("emails.send", error.message)
+if (!data) throw new ResendApiError("emails.send", "no data in response")
+return { emailId: data.id }
 ```
 
 ## File shape
@@ -471,7 +542,7 @@ createJob({
     },
 })
 
-async function escalateCritical(event: LinearIssueCreatedTrigger, classification: Classification) {
+async function escalateCritical(event: LinearIssueCreatedTrigger, classification: Classification): Promise<void> {
     await toolbox.slack.sendMessage({
         channelId: SlackChannel.OnCall.channelId,
         message: `Critical bug: ${event.issue.title} — ${classification.reason}`,
@@ -493,7 +564,7 @@ async function escalateCritical(event: LinearIssueCreatedTrigger, classification
     await toolbox.linear.updateIssue({ issueId: event.issue.id, priority: 1 })
 }
 
-async function fileRoutine(event: LinearIssueCreatedTrigger, classification: Classification) {
+async function fileRoutine(event: LinearIssueCreatedTrigger, classification: Classification): Promise<void> {
     await toolbox.linear.createComment({
         issueId: event.issue.id,
         body: `Auto-triaged as routine: ${classification.reason}`,

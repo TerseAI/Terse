@@ -29,4 +29,4 @@ If `terse init` fails, read the error and recover:
 
 ## 3. Continue
 
-The CLI prints a "Next steps" block at the end of a successful `terse init`. Don't repeat it verbatim. Connect any integrations the requested workflow needs (`terse integrate connect <type>`), then return to SKILL.md step 1 and build the workflow the user asked for.
+The CLI prints a "Next steps" block at the end of a successful `terse init`. Don't repeat it verbatim. Connect any integrations the requested workflow needs — run `terse integrate describe <type> --json` first to learn whether the install is form or OAuth and which fields it requires, then `terse integrate connect <type>` per SKILL.md step 7. Then return to SKILL.md step 1 and build the workflow the user asked for.

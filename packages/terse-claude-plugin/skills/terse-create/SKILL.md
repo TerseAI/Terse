@@ -23,21 +23,23 @@ Terse evolves fast; the live docs are the source of truth for facts:
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse secrets`, `terse deploy`.
 
-Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured.
+Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured — and the "Testing Safety Conventions" section wins on how test runs and probes are conducted.
 
 ## Steps
 
 **Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/jobs/`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
 
-**Narrate the run.** Speak to the user in casual first person about the work itself: "I'm going to check if the project is set up", "I need some help understanding this use case better", "I'm launching some research agents to figure out how to build this for you", "Based on the research, I have a few more questions". The steps below group into phases — bootstrap (step 0), interview (1), research (2), shared understanding (3), design (4–8), build (9), swap and verify (10–11), deploy (12) — but phases and step numbers are internal structure the user never hears.
+**Narrate the run.** Speak to the user in casual first person about the work itself: "I'm going to check if the project is set up", "I need some help understanding this use case better", "I'm launching some research agents to figure out how to build this for you", "Based on the research, I have a few more questions". The steps below group into phases — bootstrap (step 0), interview (1), research (2), shared understanding (3), design (4–8), build (9), swap and verify (10–11), deploy (12). Step numbers are internal and never spoken, but the phases are not: at every phase transition, say in plain casual words which phase just finished and which comes next, with its place in the overall sequence — "Research is done — that's 1 of 5 for this build. Next up: agreeing on the design." The user should always know where the build stands from the prose alone.
 
-If your harness has a task-tracking tool the user can see (a todo/task list), that checklist is the progress channel: create it right after step 0 with casually worded items — research how to build this, agree on the design, build the job, swap test targets and verify, ask about deploying — and check items off as phases complete. When the milestone plan lands in step 9, replace the build item with one item per milestone. Without such a tool, announce each phase transition instead: one casual line saying what you are about to do and why.
+If your harness has a task-tracking tool the user can see (a todo/task list), keep a checklist too: create it right after step 0 with casually worded items — research how to build this, agree on the design, build the job, swap test targets and verify, ask about deploying — and check items off as phases complete. When the milestone plan lands in step 9, replace the build item with one item per milestone. The checklist supplements the spoken phase transitions; it never replaces them.
 
 **Mark every CLI run.** The `terse` CLI doing something is an event the user must be able to see; harnesses often collapse tool calls, so the narration carries it. Immediately before each `terse` command, emit a marker line:
 
 > ⏵ `terse test run pr-triage --id 3f2c` — proving the trigger wiring fires
 
 One marker per command: the command verbatim in backticks, then the why in a few words. Back-to-back cheap reads (`terse test list`, `terse test show`) may share a single marker. When a state-changing or long-running command finishes (`integrate connect`/`wait`, `generate`, `deploy`, `test run`), report its outcome in the normal narration voice. Never bury a `terse` invocation inside a pipeline, subshell, or script where the user can't see it ran.
+
+**Explain every test before it runs.** A marker line is not enough for `terse test run` or `terse replay`: immediately before one, say in one to three casual sentences what the run exercises, why now, and what a good result looks like — "Now I want to prove the trigger wiring fires before writing any real logic: I'll run the pinned sample PR through the stub handler and expect it to log the event with no errors." When it finishes, give the verdict against that stated expectation in the same voice. Cheap reads (`terse test list`, `terse test show`) keep just the marker.
 
 Narration is non-blocking: never wait for a reply to an announcement; the run only pauses at the questions the steps themselves define.
 
@@ -51,7 +53,7 @@ If neither exists, this is a fresh start: **read [references/bootstrap.md](refer
 
 If the user asked to self-host Terse rather than build a workflow on Terse Cloud, that is a different flow — hand off to the `terse-self-host` skill instead.
 
-`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected.
+`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the file lists every integration currently available in Terse — never plan around an integration that is not in that list. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas.
 
 If `src/terse.generated.ts` is missing in an existing project, run `terse generate` before inventing helpers. If it exists but does not expose the helper you need, rerun `terse generate`. Never edit the generated file directly.
 
@@ -148,7 +150,8 @@ When the workflow needs a platform, the briefs have already walked the integrati
 
 Connecting a missing built-in integration type:
 
-- For form installs, use `terse integrate connect <type> --field key=value --fields-stdin`
+- **Always describe before connecting.** Run `terse integrate describe <type> --json` first: it returns the `installationType` (form or OAuth), and for form installs the exact fields the connect command requires — each field's name, type, whether it is required, and a hint — plus any setup URL for console work the user must do first. Never guess field names.
+- For form installs, collect a value for every required field from the describe output — ask the user for the ones you cannot derive, relaying the field hints and any setup URL — then run `terse integrate connect <type> --field key=value --fields-stdin`
 - Put secrets on `--fields-stdin`, not `--field`
 - For OAuth installs, you are the user's only messenger: in `--json` mode the CLI's own "ACTION REQUIRED" line is suppressed, and the browser open is best-effort (it fails silently over SSH or in a container). So, in order:
   1. Tell the user first, casually, what is about to happen and that the run pauses until they act: "I'm connecting Gmail now — a browser tab will pop up; finish the sign-in there and I'll pick it back up."
@@ -191,7 +194,7 @@ Use `terse test show` to pick a representative event, then reuse that same `--id
 
 To test a specific payload, or when the sample buffer is empty (a fresh webhook has no stored deliveries), hand-write the event file and run it: on a shape mismatch, `terse test run` prints the expected envelope and the exact validation issues — correct the file from that error output rather than guessing fields.
 
-**Test targets.** Before the first milestone that writes to an external surface, ask the user once: "Which channel/repo should I use for test runs? (I'll swap to the real targets at the end.)" Point side-effecting calls at those test resources while building. If the user says to use the real ones, proceed live.
+**Test targets.** Before the first milestone that writes to an external surface, ask the user once: "Which channel/repo should I use for test runs? (I'll swap to the real targets at the end.)" In the same ask, when an involved API bills or has customer-visible effects, ask whether it has a test-mode key to use while building (`terse secrets add <NAME>`). Point side-effecting calls at those test resources while building. If the user says to use the real ones, proceed live. The "Testing Safety Conventions" section at the bottom of this file governs every test run — real data, test keys, production writes, probing.
 
 **Each following milestone.** Plan the pipeline deterministic-first, agent-last:
 
@@ -228,7 +231,12 @@ Re-runs re-execute every earlier milestone, including its `generateText` calls; 
 
 ### 10. Swap to real targets
 
-The swap is the final milestone. Enumerate every test resource you pointed at in step 9 and switch each back to the real one — list them explicitly so none is missed. Then run the full green check one last time. This run fires the real side effects once; tell the user before running it.
+The swap is the final milestone. 
+Enumerate every test resource and test-mode secret you pointed at in step 9 and switch each back to the real one — list them explicitly so none is missed. 
+
+Ask the user if they want to run a full green check one last time with real production data or just deploy the workflow. 
+
+This run fires the real side effects once; tell the user before running it.
 
 ### 11. Final check
 
@@ -252,6 +260,48 @@ Example prompt:
 
 - If the user says yes, run `terse deploy` and report the outcome.
 - If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
+
+---
+
+# Testing Safety Conventions
+
+These conventions govern every local execution of a job — `terse test run`, `terse replay`, and any probe. Local runs execute the real handler with real credentials: nothing about a test run is sandboxed unless you point it somewhere safe.
+
+## Real events in, test targets out
+
+Sample events (`terse test list`, `terse replay`) are real production data; using them as *inputs* is the point — realistic payloads catch real bugs. The line is side effects: a test run must never land writes on real people or real surfaces. Emails, messages, ticket updates, CRM writes — during test runs these go to the test targets the user named, never to the customer, channel, or record in the event.
+
+The one sanctioned exception is the single verification run after swapping to real targets, announced to the user before it fires.
+
+## Test API keys
+
+When the work touches an external API that bills or has customer-visible effects (Stripe, Resend, …), ask the user once — fold it into the test-targets question — whether the platform has a test or sandbox key: "Does this have a test-mode key I should use while building? If so, add it with `terse secrets add <NAME>`." Use the test key for every local run; swapping to the live secret is part of the final swap to real targets.
+
+Secret values are write-only: never try to read a stored secret to check whether it is a test or live key. Discovery is by asking, not inspecting.
+
+## No test key: reads are free, writes ask first
+
+Without a test key, local runs share credentials with production:
+
+- **Reads never need permission.** Listing, fetching, and querying production data during a test run is always fine.
+- **Writes ask per surface.** Before the first local run that writes to a production surface (a real repo, a live audience, a customer record), ask the user explicitly about that surface. One ask covers later runs against the same surface; a new surface is a new ask.
+
+## Probing external state
+
+A probe is a read-only discovery run against an external API — list the audiences in Resend, find the verified domain — whose result feeds job code.
+
+**Never probe by temporarily rewriting a job's function body.** Mutating job code that must be restored afterwards is how probe scaffolding leaks into production.
+
+Probe with a scratch probe job instead:
+
+1. Create `src/jobs/_probe.ts`: a throwaway job with a cron trigger whose handler does the reads and logs the results.
+2. Add its side-effect import to `src/terse.jobs.ts`. This import line is the only sanctioned temporary edit to existing files, and the probe does not count as a second job for the project-layout rule.
+3. Run it with `terse test run` (cron triggers get synthetic sample events), so secrets hydrate exactly as they do for real jobs.
+4. Record what it found, then delete both the probe file and its import line.
+
+A probe must never be deployed — `terse deploy` syncs every job in the project, so delete the probe before any deploy. Probes are read-only; a probe that needs to write is not a probe, it is a milestone.
+
+What a probe finds lands in job code as named, explicitly typed constants — see "Discovered values are typed constants" in the code conventions.
 
 ---
 
@@ -284,6 +334,16 @@ const Classification = z.object({
 type Classification = z.infer<typeof Classification>
 ```
 
+**Explicit return types.** Every function declaration and named arrow function gets an explicit return type, helpers included. Inline callbacks — `map`/`filter` lambdas, the `filter` and `onTrigger` functions passed inline to `createJob` — stay inferred.
+
+**Discovered values are typed constants.** Values discovered by probing external state (an audience ID, a verified domain, a channel ID) land as named constants with explicit types, never as bare string literals inline in a call. Use the SDK's type when it has one, otherwise a narrow alias:
+
+```typescript
+const WAITLIST_AUDIENCE_ID: AudienceId = "78261eea-8f8b-4381-83c6-79fa7120f1cf"
+
+type AudienceId = string
+```
+
 ## Control flow
 
 **Exhaustive discriminated unions.** Dispatch on the discriminant with a `switch`, and end the `default` with `throw x satisfies never`. Never dispatch with inline ternaries.
@@ -314,6 +374,15 @@ class MissingSecretError extends Error {
         this.name = "MissingSecretError"
     }
 }
+```
+
+**Fail on fabricated absence.** When a contract implies a value exists — the SDK call's error was already handled, the schema marks the field required — do not smuggle absence through as data with `?.` or `?? null`; throw a custom error naming the violated invariant. Absence that is a legitimate domain state (a lookup miss, a genuinely optional field) is fine, but model it explicitly: type it `| null` so every caller branches.
+
+```typescript
+const { data, error } = await resend.emails.send({ from, to, subject, html })
+if (error) throw new ResendApiError("emails.send", error.message)
+if (!data) throw new ResendApiError("emails.send", "no data in response")
+return { emailId: data.id }
 ```
 
 ## File shape
@@ -441,7 +510,7 @@ createJob({
     },
 })
 
-async function escalateCritical(event: LinearIssueCreatedTrigger, classification: Classification) {
+async function escalateCritical(event: LinearIssueCreatedTrigger, classification: Classification): Promise<void> {
     await toolbox.slack.sendMessage({
         channelId: SlackChannel.OnCall.channelId,
         message: `Critical bug: ${event.issue.title} — ${classification.reason}`,
@@ -463,7 +532,7 @@ async function escalateCritical(event: LinearIssueCreatedTrigger, classification
     await toolbox.linear.updateIssue({ issueId: event.issue.id, priority: 1 })
 }
 
-async function fileRoutine(event: LinearIssueCreatedTrigger, classification: Classification) {
+async function fileRoutine(event: LinearIssueCreatedTrigger, classification: Classification): Promise<void> {
     await toolbox.linear.createComment({
         issueId: event.issue.id,
         body: `Auto-triaged as routine: ${classification.reason}`,

@@ -8,10 +8,10 @@ A read-only research task: determine what the current Terse workspace already pr
 
 ## Instructions
 
-1. Read `src/terse.generated.ts` in full. It is the source of truth for connected integrations, triggers, skills, resources, and deterministic `toolbox` wrappers. Do not read `node_modules/`.
+1. Read `src/terse.generated.ts` in full. It is the source of truth for connected integrations, triggers, skills, resources, and deterministic `toolbox` wrappers. The comment at the top lists every integration currently available in Terse; the generated sections below it reflect what is connected. Do not read `node_modules/`.
 2. Read `src/terse.jobs.ts` (or the project's custom entry file, or the legacy `src/index.ts`) to see which jobs already exist.
 3. For each platform, event, and action in the context block, find the exact matching exports: trigger factories (`Triggers.*`), skill factories (`Skills.*`), `toolbox.<integration>.<method>` signatures, and resource constants (repos, channels, teams, projects).
-4. Anything the workflow needs that the generated file does not provide is a gap. Do not guess whether Terse ships a built-in integration type for a gap — the generated file only shows what is *connected*; report the gap and leave built-in coverage to the docs brief.
+4. Anything the workflow needs that the generated file does not provide is a gap. Check the available-integrations comment before reporting it: if the platform appears in the list but has no generated section, report it as a connectable built-in (`terse integrate tool <type> --json` lists its tools); if it does not appear in the list at all, Terse has no built-in for it — report the gap and leave external options to the docs and integration briefs. Never report an integration that is absent from the list as available.
 
 Rules: do not edit any file; do not run `terse integrate`, `terse generate`, or any other state-changing command; report only names that literally appear in the files you read — never invent constants.
 
@@ -19,6 +19,9 @@ Rules: do not edit any file; do not run `terse integrate`, `terse generate`, or 
 
 ### Connected integrations
 The integrations present in `src/terse.generated.ts`, one line each.
+
+### Connectable built-ins
+Catalog integrations relevant to this workflow that exist but are not yet connected.
 
 ### Matching triggers
 Exact `Triggers.*` factory names relevant to this workflow, with their option and event payload types.
