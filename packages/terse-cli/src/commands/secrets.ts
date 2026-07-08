@@ -8,6 +8,7 @@ import type { ProjectSecretSummary, ProjectSecretUpsertRequest, ProjectSecretsIm
 
 import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
+import { mirrorSecretToLocalEnv, removeSecretFromLocalEnv } from "../envMirror.js"
 import { readProjectConfigOrBail } from "../projectConfig.js"
 
 export async function secretsList(opts: { json?: boolean } = {}): Promise<void> {
@@ -53,6 +54,7 @@ export async function secretsAdd(name: string, opts: { valueStdin?: boolean } = 
     await fetchWithAuth<ProjectSecretSummary>(buildRoute(ApiRoutes.PROJECT_SECRETS.UPSERT, { id: config.projectId }), apiKey, body, "POST")
 
     process.stdout.write(chalk.green(`Secret ${name} saved.\n`))
+    mirrorSecretToLocalEnv(name, value)
 }
 
 export async function secretsRemove(name: string, opts: { yes?: boolean } = {}): Promise<void> {
@@ -89,6 +91,7 @@ export async function secretsRemove(name: string, opts: { yes?: boolean } = {}):
     }
 
     process.stdout.write(chalk.green(`Secret ${name} removed.\n`))
+    removeSecretFromLocalEnv(name)
 }
 
 export async function secretsImport(filePath: string, opts: { overwrite?: boolean } = {}): Promise<void> {
