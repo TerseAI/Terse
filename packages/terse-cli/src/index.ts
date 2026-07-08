@@ -26,6 +26,7 @@ import { replay } from "./commands/replay.js"
 import { resume } from "./commands/resume.js"
 import { run } from "./commands/run.js"
 import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./commands/secrets.js"
+import { stateGet, stateList, stateRemove, stateReset } from "./commands/state.js"
 import { targetClear, targetStatus, targetUse } from "./commands/target.js"
 import { test, testList, testRun, testShow } from "./commands/test.js"
 import { isCliRunCommandEnabled } from "./env.js"
@@ -103,6 +104,7 @@ const testCommand = program
     .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
     .option("-v, --verbose", "Show job stream output", true)
     .option("--no-verbose", "Hide job stream output")
+    .option("--fresh-state", "Reset the job's test state before running")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -110,6 +112,7 @@ const testCommand = program
 Examples:
   $ terse test                              # interactive picker
   $ terse test my-job                       # test a specific job
+  $ terse test my-job --fresh-state         # reset test state first (e.g. to re-test dedupe)
 
 Non-interactive subcommands (for AI agents and CI):
   $ terse test list --json                  # enumerate sample events with ids
@@ -118,8 +121,8 @@ Non-interactive subcommands (for AI agents and CI):
   $ terse test run --event-file sample.json # run a sample event from disk
 `
     )
-    .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean }) => {
-        await test(jobName, opts?.verbose, resolveProvider(), opts?.entryFile)
+    .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean; freshState?: boolean }) => {
+        await test(jobName, opts?.verbose, resolveProvider(), opts?.entryFile, opts?.freshState)
     })
 
 testCommand
@@ -152,6 +155,7 @@ testCommand
     .option("--event-file <path>", "Path to a JSON file containing the serialized event")
     .option("-v, --verbose", "Show job stream output", true)
     .option("--no-verbose", "Hide job stream output")
+    .option("--fresh-state", "Reset the job's test state before running")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -159,16 +163,18 @@ testCommand
 Examples:
   $ terse test list --json | jq -r '.events[0].id' | xargs -I{} terse test run --id {}
   $ terse test run --event-file fixture.json
+  $ terse test run --id <id> --fresh-state
 `
     )
-    .action(async (jobName?: string, opts?: { id?: string; event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
+    .action(async (jobName?: string, opts?: { id?: string; event?: string; eventFile?: string; verbose?: boolean; entryFile?: string; freshState?: boolean }) => {
         await testRun({
             jobName,
             id: opts?.id,
             eventJson: opts?.event,
             eventFile: opts?.eventFile,
             verbose: opts?.verbose,
-            entryFile: opts?.entryFile
+            entryFile: opts?.entryFile,
+            freshState: opts?.freshState
         })
     })
 
@@ -432,6 +438,70 @@ memoryCommand
     .option(...ENTRY_FILE_OPTION)
     .action(async (path: string, opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
         await memoryRemove(path, { job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
+    })
+
+const stateCommand = program
+    .command("state")
+    .description("Inspect and manage a job's typed persistent state")
+    .addHelpText(
+        "after",
+        `
+State is written by \`state.set(...)\` in a job's filter/onTrigger handlers. Deployed runs and
+\`terse test\` runs use separate state: commands default to the deployed state (read-only) and
+target the test state with --test.
+
+Examples:
+  $ terse state list --job my-job
+  $ terse state list --job my-job --test
+  $ terse state get lastProcessedId --job my-job
+  $ terse state rm lastProcessedId --job my-job --test --yes
+  $ terse state reset --job my-job --test --yes
+`
+    )
+
+stateCommand
+    .command("list")
+    .description("List state keys for a job")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` state instead of deployed state")
+    .option("--json", "Emit JSON")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (opts: JsonEntryFileOpts & { job?: string; test?: boolean }) => {
+        await stateList({ job: opts.job, test: opts.test, json: opts.json, entryFile: opts.entryFile })
+    })
+
+stateCommand
+    .command("get")
+    .description("Print a state value as JSON")
+    .argument("<key>", "State key (as declared in the job's `states`)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` state instead of deployed state")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (key: string, opts: EntryFileOpts & { job?: string; test?: boolean }) => {
+        await stateGet(key, { job: opts.job, test: opts.test, entryFile: opts.entryFile })
+    })
+
+stateCommand
+    .command("rm")
+    .description("Delete one test state key (deployed state is read-only)")
+    .argument("<key>", "State key (as declared in the job's `states`)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` state (required)")
+    .option("--yes", "Confirm deletion")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (key: string, opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
+        await stateRemove(key, { job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
+    })
+
+stateCommand
+    .command("reset")
+    .description("Delete all test state for a job (deployed state is read-only)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` state (required)")
+    .option("--yes", "Confirm deletion")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
+        await stateReset({ job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
     })
 
 program
