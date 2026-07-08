@@ -33,7 +33,7 @@ Most users land on one of these:
 
 ## Managed
 
-The default when you scaffold a project with `terse init`. `terse deploy` zips your code, uploads it, registers every job's triggers on the control plane, and from then on each run lands on an isolated [Modal](https://modal.com) sandbox in the Terse Cloud data plane, provisioned per execution.
+The default when you scaffold a project with `terse init`. `terse deploy` zips your code, uploads it, registers every job's triggers on the control plane, and builds a source image on Terse Cloud. Durable workflows get their workflow bundle built during that step, so large projects are not limited by upload size. From then on each run lands on an isolated [Modal](https://modal.com) sandbox in the Terse Cloud data plane, provisioned per execution.
 
 ### Security
 
@@ -58,7 +58,7 @@ After deploy, `terse secrets add <NAME>` overwrites a value, `terse secrets remo
 The CLI respects standard ignore patterns. The following are always excluded:
 
 <Tabs>
-    <Tab title="TypeScript">`node_modules`, `.git`, `dist`, `.next`, `.turbo`, `.env`, `.DS_Store`</Tab>
+    <Tab title="TypeScript">`node_modules`, `.git`, `dist`, `.next`, `.turbo`, `.terse`, `.env`, `.DS_Store`</Tab>
 </Tabs>
 
 Everything else in your project directory is included in the deploy.
