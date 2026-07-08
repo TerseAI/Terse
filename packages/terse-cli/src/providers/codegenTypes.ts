@@ -122,6 +122,7 @@ export interface HeyReachInstanceData extends IntegrationInstanceData {
 }
 
 export interface CodegenInput {
+    availableIntegrations: string[]
     github: GitHubInstanceData[]
     slack: SlackInstanceData[]
     gmail: IntegrationInstanceData[]
