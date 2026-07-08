@@ -98,18 +98,64 @@ Read the briefs, then bring the user everything that changes the design:
 
 The same interview rules apply: batch at most four questions, recommend an answer for each, look up facts instead of asking. Walk down each branch of the design tree, resolving dependencies between decisions one by one.
 
-Once the decisions are resolved, draw the workflow as a small ASCII diagram: the trigger at the top, then the filter, each major step (marked `agent:` where judgment is involved), any branches, and the side effects at the end. Use the domain words from the interview, not code identifiers, and keep it narrow enough for a terminal:
+Once the decisions are resolved, draw the workflow as an ASCII diagram: one box per step with its title and the one or two details that matter (marked `agent:` where judgment is involved), the trigger at the top, the side effects at the end. Decisions live on the edges, not in boxes: a filter is a label on the connector, a stop is a `├─►` exit off the spine, and a real branch is two side-by-side boxes that merge back into the spine. Use the domain words from the interview, not code identifiers, and keep it narrow enough for a terminal:
 
 ```
-  Linear issue created (Support)
-        │  filter: skip [test] titles
-        ▼
-  agent: classify severity
-        ├─ critical ─► alert #on-call ─► wait for approval ─► escalate in Linear
-        └─ routine ──► auto-triage comment on the issue
+┌──────────────────────────────────────────────┐
+│ Attio deal record updated                    │
+│ object: Deals                                │
+└──────────────────────┬───────────────────────┘
+                       │ filter: stage = "Negotiation"
+                       ▼
+┌──────────────────────────────────────────────┐
+│ Does #war-<deal-name> already exist?         │
+└──────────────────────┬───────────────────────┘
+        already exists ├─► stop, the war room is already up
+                       ▼ new deal
+┌──────────────────────────────────────────────┐
+│ Create private channel #war-<deal-name>      │
+└──────────────────────┬───────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────┐
+│ Resolve the invite list                      │
+│ fixed group: Olivier + Thomas                │
+│ deal owner matched to Slack by email?        │
+└──────────┬───────────────────────────┬───────┘
+           │ matched                   │ unmatched
+           ▼                           ▼
+┌─────────────────────────┐  ┌─────────────────────────┐
+│ Add the owner to the    │  │ Invite the fixed group  │
+│ invite list             │  │ and post a heads-up     │
+└────────────┬────────────┘  └────────────┬────────────┘
+             │                            │
+             └──────────────┬─────────────┘
+                            ▼
+┌──────────────────────────────────────────────┐
+│ Invite the deal team to the channel          │
+└──────────────────────┬───────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────┐
+│ agent: write the deal brief                  │
+│ pull value, stage, contacts from Attio       │
+│ post and pin the brief in the channel        │
+└──────────────────────┬───────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────┐
+│ Schedule the kickoff call                    │
+│ location: Google Meet                        │
+│ invites emailed to the deal team             │
+└──────────────────────┬───────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────┐
+│ Post the calendar link in the channel        │
+└──────────────────────────────────────────────┘
 ```
 
-Present the diagram with the confirmation ask — it is the shared understanding made visible, and the overall goal every later milestone works toward. Do not start building until the user confirms it.
+The diagram is a separate step from the design questions: resolve every remaining decision through the question batches first, and only then draw it. Send it as its own message with the confirmation ask in plain prose ("Does this match what you have in mind?") and end the turn there, with no tool call in that turn — a question dialog takes over the screen and buries same-turn text, and its preview pane clips tall content on small terminals, so the question tool is never used for this confirmation. The diagram is the shared understanding made visible, and the overall goal every later milestone works toward. Do not start building until the user replies confirming a diagram they have actually seen.
 
 ### 4. Open the entry file
 
