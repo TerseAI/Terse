@@ -3,14 +3,13 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const partialsDir = join(packageRoot, "reference");
 const templatesDir = join(packageRoot, "templates");
 const skillsDir = join(packageRoot, "skills");
 
 const partials = new Map(
-    readdirSync(partialsDir)
-        .filter(file => file.endsWith(".md"))
-        .map(file => [basename(file, ".md"), readFileSync(join(partialsDir, file), "utf8").trimEnd()])
+    readdirSync(templatesDir)
+        .filter(file => file.endsWith(".md") && !file.endsWith(".md.hbs"))
+        .map(file => [basename(file, ".md"), readFileSync(join(templatesDir, file), "utf8").trimEnd()])
 );
 
 for (const file of readdirSync(templatesDir)) {

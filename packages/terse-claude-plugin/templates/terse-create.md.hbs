@@ -158,6 +158,8 @@ Connecting a missing built-in integration type:
 
 For anything past the built-in rungs, credentials follow the Credentials rule in the conventions section ("Integrating with a platform").
 
+When those credentials take manual console work (creating a service account, generating a key, sharing a resource), deliver the integration brief's setup walkthrough at the moment the user actually needs to act — not earlier, not compressed. Relay its numbered steps with their links and role/scope grants intact; do not paraphrase them into vaguer steps. Append the exact `terse secrets add` command for each secret, following the Credentials rule (the base64 one-liner for file credentials). Steps the brief marked `(unverified)` keep that marker when relayed, so the user knows which links or role names to double-check instead of trusting them blindly.
+
 ### 8. Consider a filter
 
 Add a `filter` function if the job should skip certain events:
