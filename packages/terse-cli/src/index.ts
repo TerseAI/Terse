@@ -671,6 +671,20 @@ try {
     throw error
 }
 
+// Commands import user job code in-process, so any handle it leaves open (a db
+// pool, a keep-alive agent, a timer) would keep the event loop alive forever
+// after a successful command. Force the exit instead of waiting for the loop to
+// drain. Sandbox runs (TERSE_CLI_ENABLE_RUN) are excluded: `terse run` returns
+// while the durable queue is still executing in-process.
+if (!isCliRunCommandEnabled()) {
+    await flushStdio()
+    process.exit(0)
+}
+
+async function flushStdio(): Promise<void> {
+    await Promise.all([new Promise<void>(resolve => process.stdout.write("", () => resolve())), new Promise<void>(resolve => process.stderr.write("", () => resolve()))])
+}
+
 // Types
 
 type JsonOpts = {
