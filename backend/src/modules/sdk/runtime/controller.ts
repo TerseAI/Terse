@@ -318,7 +318,7 @@ export async function handleSdkListen(req: Request, res: Response) {
 
 // SESSION events SSE
 
-const SSE_SESSION_CAP = { name: "sse-session", max: 5, keyTtlSeconds: 120, heartbeatIntervalMs: 30_000 }
+const SSE_SESSION_CAP = { name: "sse-session", max: 100, keyTtlSeconds: 300, heartbeatIntervalMs: 30_000 }
 
 let sessionCap: ReturnType<typeof RateLimiterClient.prototype.createConnectionCap> | null = null
 function getSseCap() {
