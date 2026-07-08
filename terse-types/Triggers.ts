@@ -1005,7 +1005,7 @@ export const serializedEventDisplaySchema = z.object({
 })
 export type SerializedEventDisplay = z.infer<typeof serializedEventDisplaySchema>
 
-export const serializedEventSchema = z.object({
+export const serializedEventBaseSchema = z.object({
     integrationType: integrationTypeEnum,
     eventType: TriggerTypeSchema,
     formattedContent: z.string(),
@@ -1013,4 +1013,49 @@ export const serializedEventSchema = z.object({
     display: serializedEventDisplaySchema.optional(),
     data: TriggerSchema
 })
+
+export const serializedEventSchema = serializedEventBaseSchema.superRefine((event, ctx) => {
+    if (event.integrationType !== event.data.integrationType) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["integrationType"],
+            message: `integrationType "${event.integrationType}" does not match data.integrationType "${event.data.integrationType}"`
+        })
+    }
+    if (event.eventType !== event.data.eventType) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["eventType"],
+            message: `eventType "${event.eventType}" does not match data.eventType "${event.data.eventType}"`
+        })
+    }
+})
 export type SerializedEvent = z.infer<typeof serializedEventSchema>
+
+export const eventFixtureOverridesSchema = z.object({
+    formattedContent: z.string().optional(),
+    debugLog: z.string().optional()
+})
+export const eventFixtureSchema = z.intersection(TriggerSchema, eventFixtureOverridesSchema)
+export type EventFixture = z.infer<typeof eventFixtureSchema>
+
+export function hydrateSerializedEvent(fixture: EventFixture): SerializedEvent {
+    // re-parse through TriggerSchema so override keys are stripped from data
+    const trigger = TriggerSchema.parse(fixture)
+    return {
+        integrationType: trigger.integrationType,
+        eventType: trigger.eventType,
+        formattedContent: fixture.formattedContent ?? formatTriggerForAgent(trigger),
+        debugLog: fixture.debugLog ?? debugTrigger(trigger),
+        display: displayTrigger(trigger),
+        data: trigger
+    }
+}
+
+export function toEventFixture(event: SerializedEvent): EventFixture {
+    return {
+        ...event.data,
+        formattedContent: event.formattedContent,
+        debugLog: event.debugLog
+    }
+}
