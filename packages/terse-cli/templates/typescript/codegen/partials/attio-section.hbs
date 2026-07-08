@@ -1,5 +1,9 @@
 {{sectionHeader "Attio"}}
 
+{{#each valueTypeLines}}
+{{{this}}}
+{{/each}}
+
 export type AttioAttributeDefinition<TSlug extends string = string, TType extends string = string> = {
     apiSlug: TSlug
     title?: string
