@@ -98,7 +98,18 @@ Read the briefs, then bring the user everything that changes the design:
 
 The same interview rules apply: batch at most four questions, recommend an answer for each, look up facts instead of asking. Walk down each branch of the design tree, resolving dependencies between decisions one by one.
 
-Do not start building until the user confirms you share an understanding of the workflow.
+Once the decisions are resolved, draw the workflow as a small ASCII diagram: the trigger at the top, then the filter, each major step (marked `agent:` where judgment is involved), any branches, and the side effects at the end. Use the domain words from the interview, not code identifiers, and keep it narrow enough for a terminal:
+
+```
+  Linear issue created (Support)
+        │  filter: skip [test] titles
+        ▼
+  agent: classify severity
+        ├─ critical ─► alert #on-call ─► wait for approval ─► escalate in Linear
+        └─ routine ──► auto-triage comment on the issue
+```
+
+Present the diagram with the confirmation ask — it is the shared understanding made visible, and the overall goal every later milestone works toward. Do not start building until the user confirms it.
 
 ### 4. Open the entry file
 
@@ -180,7 +191,7 @@ The "Terse Job Code Conventions" section at the bottom of this file governs ever
 
 Never build the whole handler and test at the end. Slice the workflow into milestones — logical groupings like gather context, decide, act — and prove each one green before starting the next. The worked examples in the conventions section (durable and non-durable) show the target shape; the durable one is sliced into milestones — anchor your slicing on it.
 
-Present the milestone plan before writing Milestone 0: one line per milestone naming what it does and whether it is deterministic or agentic — as checklist items when a task tool is active, plain text otherwise. Milestone numbers are internal; name the slices by what they do. Do not wait for approval — step 3 already confirmed the design — but this roadmap is what every green report below tracks against.
+Present the milestone plan before writing Milestone 0: one line per milestone naming what it does and whether it is deterministic or agentic — as checklist items when a task tool is active, plain text otherwise. Each milestone should map to a recognizable region of the step 3 diagram, so the user can see the goal being approached slice by slice. Milestone numbers are internal; name the slices by what they do. Do not wait for approval — step 3 already confirmed the design — but this roadmap is what every green report below tracks against.
 
 **Milestone 0 — tracer bullet.** Wire the trigger, the filter, and a stub handler that just logs the event. Then pin a sample event and prove the wiring fires:
 
