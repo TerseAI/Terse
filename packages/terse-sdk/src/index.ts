@@ -780,9 +780,9 @@ export function step<T>(promise: Promise<T>): Promise<T> {
  */
 // The durable build rewrites every log() call site in job files away, so this
 // body runs everywhere else: non-durable jobs, helper files, and step bodies.
-export function log(...args: unknown[]): Promise<void> {
+export function log(...args: unknown[]): void {
+    "use step"
     console.log(...args)
-    return Promise.resolve()
 }
 
 export function sleep(duration: string | number | Date): Promise<void> {
