@@ -634,16 +634,23 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
 
     static async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
         "use step"
-        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
-            method: "POST",
-            headers: await buildSdkRequestHeaders(),
-            body: JSON.stringify({ toolName, params })
-        })
-        const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
-        if (!data.success) {
-            throw new Error(data.error ?? "Tool execution failed")
+        notifyLocalToolCall({ phase: "start", toolName })
+        try {
+            const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
+                method: "POST",
+                headers: await buildSdkRequestHeaders(),
+                body: JSON.stringify({ toolName, params })
+            })
+            const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
+            if (!data.success) {
+                throw new Error(data.error ?? "Tool execution failed")
+            }
+            notifyLocalToolCall({ phase: "end", toolName, status: "completed", result: data.result })
+            return data.result as TOutput
+        } catch (error) {
+            notifyLocalToolCall({ phase: "end", toolName, status: "failed", errorMessage: error instanceof Error ? error.message : String(error) })
+            throw error
         }
-        return data.result as TOutput
     }
 
     private static async buildHeaders(): Promise<Record<string, string>> {
@@ -958,6 +965,30 @@ function localPromptUiPause(): UiPauseFn {
     const g = globalThis as GlobalWithUiPause
     return g[TERSE_UI_PAUSE_KEY] ?? (async fn => fn())
 }
+
+const TERSE_TOOL_CALL_OBSERVER_KEY = Symbol.for("terse.toolCall.observer")
+type GlobalWithToolCallObserver = typeof globalThis & { [TERSE_TOOL_CALL_OBSERVER_KEY]?: LocalToolCallObserver }
+
+export function setLocalToolCallObserver(observer: LocalToolCallObserver | undefined): void {
+    const g = globalThis as GlobalWithToolCallObserver
+    g[TERSE_TOOL_CALL_OBSERVER_KEY] = observer
+}
+
+function notifyLocalToolCall(event: LocalToolCallEvent): void {
+    const g = globalThis as GlobalWithToolCallObserver
+    try {
+        g[TERSE_TOOL_CALL_OBSERVER_KEY]?.(event)
+    } catch {
+        // Observers are display-only; a broken observer must not fail the tool call.
+    }
+}
+
+export type LocalToolCallEvent =
+    | { phase: "start"; toolName: string }
+    | { phase: "end"; toolName: string; status: "completed"; result: unknown }
+    | { phase: "end"; toolName: string; status: "failed"; errorMessage: string }
+
+export type LocalToolCallObserver = (event: LocalToolCallEvent) => void
 
 function describeInputTarget(target: InputTarget): string {
     switch (target.provider) {

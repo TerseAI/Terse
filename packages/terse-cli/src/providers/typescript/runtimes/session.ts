@@ -1,9 +1,9 @@
 import chalk from "chalk"
-import { isAgentApprovalHandlingClaimed, setLocalPromptUiPause } from "terse-sdk"
+import { isAgentApprovalHandlingClaimed, setLocalPromptUiPause, setLocalToolCallObserver } from "terse-sdk"
 import type { SessionStreamEvent } from "terse-sdk"
 
 import { isCliRunCommandEnabled } from "../../../env.js"
-import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../../shared/sessionStream.js"
+import { createToolCallEchoDedup, openSessionStream, printLocalToolCallEvent, promptForToolApproval, submitApprovalDecision } from "../../shared/sessionStream.js"
 
 let sessionPaused = false
 
@@ -52,13 +52,20 @@ export async function withSession<T>(apiKey: string, isVerbose: boolean, pauseUi
         }
     }
 
-    const session = await openSessionStream(apiKey, { verbose: isVerbose, isPaused: () => sessionPaused, onEvent: handleSessionEvent })
+    const toolEchoDedup = createToolCallEchoDedup()
+    const session = await openSessionStream(apiKey, { verbose: isVerbose, isPaused: () => sessionPaused, onEvent: handleSessionEvent, toolEchoDedup })
 
     setLocalPromptUiPause(pauseUiAround)
+    setLocalToolCallObserver(event => {
+        toolEchoDedup.expect(event.phase, event.toolName)
+        if (!isVerbose || sessionPaused) return
+        printLocalToolCallEvent(event)
+    })
     try {
         return await action(session.sessionId)
     } finally {
         setLocalPromptUiPause(undefined)
+        setLocalToolCallObserver(undefined)
         session.close?.()
     }
 }
