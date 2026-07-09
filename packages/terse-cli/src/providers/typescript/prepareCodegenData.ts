@@ -115,6 +115,7 @@ interface AttioSectionContext {
     id: string
     skillToolType: string
     objects: AttioObjectContext[]
+    valueTypeLines: string[]
     runtimeLines: string[]
 }
 
@@ -298,6 +299,17 @@ function attioAttributeBaseType(attr: AttioAttributeData): string {
     return "unknown"
 }
 
+function attioValueTypeLines(): string[] {
+    return ["export type AttioSelectOption = {", "    id: string", "    title: string", "    is_archived: boolean", "}"]
+}
+
+function attioAttributeRecordBaseType(attr: AttioAttributeData): string {
+    const type = (attr.type || "").toLowerCase()
+
+    if (type.includes("select") || type.includes("status")) return "AttioSelectOption"
+    return attioAttributeBaseType(attr)
+}
+
 function attioAttributeInputTsType(attr: AttioAttributeData): string {
     const baseType = attioAttributeBaseType(attr)
     if (!isProbablyAttioMultiValue(attr)) return baseType
@@ -305,7 +317,7 @@ function attioAttributeInputTsType(attr: AttioAttributeData): string {
 }
 
 function attioAttributeRecordTsType(attr: AttioAttributeData): string {
-    const baseType = attioAttributeBaseType(attr)
+    const baseType = attioAttributeRecordBaseType(attr)
     if (!isProbablyAttioMultiValue(attr)) return baseType
     return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
 }
@@ -665,6 +677,8 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     lines.push("    if (Array.isArray(value)) return value.map(entry => __flattenAttioLeafValue(entry))")
     lines.push('    if (typeof value !== "object") return value')
     lines.push("    const rawObject = value as Record<string, unknown>")
+    lines.push('    if (rawObject.attribute_type === "status") return __toAttioSelectOption(rawObject.status)')
+    lines.push('    if (rawObject.attribute_type === "select") return __toAttioSelectOption(rawObject.option)')
     lines.push('    if (typeof rawObject.full_name === "string") return rawObject.full_name')
     lines.push('    if (typeof rawObject.email_address === "string") return rawObject.email_address')
     lines.push('    if (typeof rawObject.domain === "string") return rawObject.domain')
@@ -674,6 +688,18 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     lines.push("    if (dataEntries.length === 0) return rawObject")
     lines.push("    if (dataEntries.length === 1) return __flattenAttioLeafValue(dataEntries[0][1])")
     lines.push("    return Object.fromEntries(dataEntries.map(([key, entryValue]) => [key, __flattenAttioLeafValue(entryValue)]))")
+    lines.push("}")
+    lines.push("")
+    lines.push("function __toAttioSelectOption(option: unknown): unknown {")
+    lines.push('    if (!option || typeof option !== "object") return option')
+    lines.push("    const rawOption = option as Record<string, unknown>")
+    lines.push('    const rawId = rawOption.id && typeof rawOption.id === "object" ? (rawOption.id as Record<string, unknown>) : undefined')
+    lines.push("    const id = rawId?.status_id ?? rawId?.option_id ?? rawOption.id")
+    lines.push("    return {")
+    lines.push('        id: typeof id === "string" ? id : "",')
+    lines.push('        title: typeof rawOption.title === "string" ? rawOption.title : "",')
+    lines.push("        is_archived: rawOption.is_archived === true,")
+    lines.push("    } satisfies AttioSelectOption")
     lines.push("}")
     lines.push("")
     lines.push("function __flattenAttioAttributeValue(rawValue: unknown, preferArray: boolean): unknown {")
@@ -751,6 +777,7 @@ function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefiniti
             id: instances[0].id,
             skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
             objects,
+            valueTypeLines: attioValueTypeLines(),
             runtimeLines: buildAttioRuntimeLines(objects)
         }
     )
@@ -881,10 +908,15 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     const attioGeneratedObjects = buildGeneratedAttioObjects(input.attio)
 
     if (tools.some(isAttioTool)) {
+        if (input.attio.length === 0) {
+            attioPreludeLines.push(...attioValueTypeLines())
+            attioPreludeLines.push("")
+        }
         attioPreludeLines.push("type __AttioPrimitive = string | number | boolean | null")
         attioPreludeLines.push("type __AttioStructuredValue = Record<string, unknown>")
         attioPreludeLines.push("type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
-        attioPreludeLines.push("type __AttioFilterShorthand<T> = T extends (infer U)[] ? U | T : T")
+        attioPreludeLines.push("type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T")
+        attioPreludeLines.push("type __AttioFilterShorthand<T> = T extends (infer U)[] ? __AttioFilterAtom<U> | __AttioFilterAtom<U>[] : __AttioFilterAtom<T>")
         attioPreludeLines.push(
             "type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>"
         )
