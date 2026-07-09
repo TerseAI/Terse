@@ -3,10 +3,17 @@
 {{#each attioPreludeLines}}
 {{{this}}}
 {{/each}}
-{{#each paramTypes}}
-{{#if description}}/** {{description}} */
-{{/if}}export type {{typeName}} = {{{tsType}}}
+{{#if runHistoryActionDeclaration}}
+{{{runHistoryActionDeclaration}}}
 
+{{/if}}
+{{#each toolTypeGroups}}
+{{sectionHeader label}}
+
+{{#each declarations}}
+{{{this}}}
+
+{{/each}}
 {{/each}}
 {{#if githubRepoMappings.length}}
 const __githubRepoNameToFullName = new Map<string, string>([

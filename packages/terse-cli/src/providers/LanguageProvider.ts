@@ -27,7 +27,7 @@ export interface LanguageProvider {
     detectPackageManager(): string
     installDependencies(targetDir: string): Promise<void>
     resolveGeneratedCodePath(cwd: string): string
-    renderGeneratedCode(input: CodegenInput): string
+    renderGeneratedCode(input: CodegenInput): Promise<string>
     typecheck(): Promise<void>
     loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>>
     prebuild(): Promise<void>

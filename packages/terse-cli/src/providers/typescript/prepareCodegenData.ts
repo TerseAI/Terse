@@ -1,4 +1,4 @@
-import { type ToolDefinition, toolsWithIntegrationId } from "terse-types"
+import { type ToolDefinition, ToolDefinitions, isProjectedTriggerName, isValidToolName, runHistoryActionBaseSchema, toolsWithIntegrationId, triggerPayloadProjections } from "terse-types"
 
 import type {
     AttioAttributeData,
@@ -15,6 +15,8 @@ import type {
     SlackInstanceData,
     SnowflakeInstanceData
 } from "../codegenTypes.js"
+
+import { type HoistedProjection, printProjectedType, projectionTypeName } from "./projectionPrinter.js"
 
 interface ResourceFieldMapping {
     classField: string
@@ -127,12 +129,6 @@ interface HeyReachSectionContext {
     campaignClass: ResourceClassContext
 }
 
-interface ToolParamTypeContext {
-    description?: string
-    typeName: string
-    tsType: string
-}
-
 interface ToolMethodContext {
     description?: string
     generatedSignature: string
@@ -145,11 +141,26 @@ interface ToolGroupContext {
     methods: ToolMethodContext[]
 }
 
+interface ToolTypeGroupContext {
+    label: string
+    declarations: string[]
+}
+
 interface ToolsSectionContext {
     attioPreludeLines: string[]
-    paramTypes: ToolParamTypeContext[]
+    runHistoryActionDeclaration?: string
+    toolTypeGroups: ToolTypeGroupContext[]
     githubRepoMappings: Array<{ name: string; fullName: string }>
     groups: ToolGroupContext[]
+}
+
+interface TriggerPayloadGroupContext {
+    label: string
+    declarations: string[]
+}
+
+interface TriggerPayloadsSectionContext {
+    groups: TriggerPayloadGroupContext[]
 }
 
 interface SystemSectionContext {}
@@ -157,7 +168,9 @@ interface SystemSectionContext {}
 export interface TemplateContext {
     imports: string[]
     useMultilineImports: boolean
+    toc: string[]
     availableIntegrations?: string
+    triggerPayloads?: TriggerPayloadsSectionContext
     github?: GitHubSectionContext
     gmail?: GmailSectionContext
     slack?: SlackSectionContext
@@ -200,14 +213,7 @@ function toCamelCase(value: string): string {
     return pascal.charAt(0).toLowerCase() + pascal.slice(1)
 }
 
-function toolNameToInterfaceName(name: string): string {
-    return (
-        name
-            .split("_")
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join("") + "Params"
-    )
-}
+const RUN_HISTORY_ACTION_HOIST: HoistedProjection[] = [{ name: "RunHistoryAction", schema: runHistoryActionBaseSchema }]
 
 function buildResourceClassContext(className: string, fields: ResourceFieldMapping[], staticNameField: string, items: object[]): ResourceClassContext {
     const constructorParams = fields.map(field => `public readonly ${field.classField}: ${field.type}`).join(", ")
@@ -798,10 +804,11 @@ function prepareHeyReachSection(instances: HeyReachInstanceData[]): SectionConte
     )
 }
 
-function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionContext<ToolsSectionContext> {
+async function prepareToolsSection(allTools: ToolDefinition[], input: CodegenInput): Promise<SectionContext<ToolsSectionContext>> {
+    const tools = allTools.filter(tool => isValidToolName(tool.name))
     if (tools.length === 0) return sectionData([])
 
-    const imports = new Set(["TerseAgent", "ToolInputByName", "ToolOutputByName"])
+    const imports = new Set(["TerseAgent"])
     const attioPreludeLines: string[] = []
 
     const instanceMap = new Map<string, { id: string; displayName: string }[]>()
@@ -879,6 +886,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     const attioGeneratedObjects = buildGeneratedAttioObjects(input.attio)
 
     if (tools.some(isAttioTool)) {
+        imports.add("ToolOutputByName")
         attioPreludeLines.push("type __AttioPrimitive = string | number | boolean | null")
         attioPreludeLines.push("type __AttioStructuredValue = Record<string, unknown>")
         attioPreludeLines.push("type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
@@ -996,16 +1004,23 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("")
     }
 
-    const paramTypes: ToolParamTypeContext[] = []
-    for (const tool of tools) {
-        if (isAttioTool(tool)) continue
-        const key = `"${escapeString(tool.name)}"`
-        const tsType = hasAutoFillId(tool) ? `Omit<ToolInputByName[${key}], "integrationId">` : `ToolInputByName[${key}]`
-        paramTypes.push({
+    const projectToolTypes = async (tool: ToolDefinition): Promise<string[]> => {
+        if (!isValidToolName(tool.name)) return []
+        const definition = ToolDefinitions[tool.name]
+        const params = await printProjectedType({
+            typeName: projectionTypeName(tool.name, "Params"),
+            schema: definition.inputSchema,
+            io: "input",
             description: tool.description || undefined,
-            typeName: toolNameToInterfaceName(tool.name),
-            tsType
+            omitFields: hasAutoFillId(tool) ? ["integrationId"] : undefined
         })
+        const result = await printProjectedType({
+            typeName: projectionTypeName(tool.name, "Result"),
+            schema: definition.outputSchema,
+            io: "output",
+            hoisted: RUN_HISTORY_ACTION_HOIST
+        })
+        return [params, result]
     }
 
     const rawGroups: Array<{ key: string; integration: string; tools: ToolDefinition[]; integrationId?: string }> = []
@@ -1020,6 +1035,26 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         }
     }
     rawGroups.sort((a, b) => a.key.localeCompare(b.key))
+
+    const nonAttioGroups = rawGroups.filter(group => group.integration !== "attio")
+    const toolTypeGroups = (
+        await Promise.all(
+            nonAttioGroups.map(async group => ({
+                label: `${group.key} tool types`,
+                declarations: (await Promise.all(group.tools.map(projectToolTypes))).flat()
+            }))
+        )
+    ).filter(group => group.declarations.length > 0)
+
+    const runHistoryActionDeclaration =
+        toolTypeGroups.length > 0
+            ? await printProjectedType({
+                  typeName: "RunHistoryAction",
+                  schema: runHistoryActionBaseSchema,
+                  io: "output",
+                  description: "Audit-log entry describing an action a tool performed; included on tool results as `actions`."
+              })
+            : undefined
 
     const githubRepoMappings: Array<{ name: string; fullName: string }> = []
     if (rawGroups.some(group => group.integration === "github")) {
@@ -1049,8 +1084,12 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         integrationType: toolIntegrationToIntegrationType(group.integration),
         methods: group.tools.map(tool => {
             const methodName = toCamelCase(tool.displayName)
-            const paramsType = toolNameToInterfaceName(tool.name)
+            const paramsType = projectionTypeName(tool.name, "Params")
+            const resultType = projectionTypeName(tool.name, "Result")
             const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
+            // Projected interfaces have no implicit index signature, so params must be
+            // spread into a fresh object literal to satisfy executeTool's Record bound.
+            const runtimeParamsExpr = normalizedParamsExpr === "params" ? "{ ...params }" : normalizedParamsExpr
 
             let generatedSignature: string
             if (group.integration === "attio" && tool.name === "attio_query_records") {
@@ -1060,7 +1099,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             } else if (group.integration === "attio" && tool.name === "attio_list_objects") {
                 generatedSignature = `${methodName}(params?: AttioListObjectsParams): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
             } else {
-                generatedSignature = `${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
+                generatedSignature = `${methodName}(params: ${paramsType}): Promise<${resultType}>`
             }
 
             let runtimeLines: string[]
@@ -1082,13 +1121,10 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             } else if (group.integrationId && hasAutoFillId(tool)) {
                 runtimeLines = [
                     `${methodName}: (params: ${paramsType}) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
+                    `    TerseAgent.executeTool<${resultType}>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
                 ]
             } else {
-                runtimeLines = [
-                    `${methodName}: (params: ${paramsType}) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", ${normalizedParamsExpr}),`
-                ]
+                runtimeLines = [`${methodName}: (params: ${paramsType}) =>`, `    TerseAgent.executeTool<${resultType}>("${escapeString(tool.name)}", ${runtimeParamsExpr}),`]
             }
 
             return {
@@ -1103,11 +1139,86 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         imports,
         data: {
             attioPreludeLines,
-            paramTypes,
+            runHistoryActionDeclaration,
+            toolTypeGroups,
             githubRepoMappings,
             groups
         }
     }
+}
+
+async function buildTriggerPayloadsSection(
+    labeledSections: Array<{ label: string; imports: Set<string> }>
+): Promise<{ section?: TriggerPayloadsSectionContext; declaredNames: Set<string>; extraImports: Set<string> }> {
+    const declaredNames = new Set<string>()
+    const extraImports = new Set<string>()
+    const groups: TriggerPayloadGroupContext[] = []
+
+    const collectNames = (names: string[], collected: string[]): string[] => {
+        for (const name of names) {
+            if (declaredNames.has(name) || !isProjectedTriggerName(name)) continue
+            declaredNames.add(name)
+            const projection = triggerPayloadProjections[name]
+            // Union members must be declared for the union alias to compile, even
+            // when a section does not import them individually.
+            if (projection.kind === "union") collectNames(projection.members, collected)
+            collected.push(name)
+        }
+        return collected
+    }
+
+    for (const { label, imports } of labeledSections) {
+        const names = collectNames([...imports].filter(isProjectedTriggerName), [])
+        if (names.length === 0) continue
+
+        const declarations = await Promise.all(names.map(name => renderTriggerPayloadDeclaration(name, extraImports)))
+        groups.push({ label, declarations: declarations.flat() })
+    }
+
+    if (groups.length > 0) extraImports.add("SDKTrigger")
+    return { section: groups.length > 0 ? { groups } : undefined, declaredNames, extraImports }
+}
+
+async function renderTriggerPayloadDeclaration(name: string, extraImports: Set<string>): Promise<string[]> {
+    if (!isProjectedTriggerName(name)) return []
+    const projection = triggerPayloadProjections[name]
+
+    if (projection.kind === "union") {
+        return [`export type ${name} = ${projection.members.join(" | ")}`]
+    }
+
+    projection.sdkImports?.forEach(value => extraImports.add(value))
+    const payloadName = `${name}Payload`
+    const payloadInterface = await printProjectedType({
+        typeName: payloadName,
+        schema: projection.schema,
+        io: "output",
+        typeParams: projection.typeParams,
+        fieldOverrides: projection.fieldOverrides
+    })
+    const typeArgs = projection.typeParams ? genericArgsFromParams(projection.typeParams) : ""
+    return [payloadInterface, `export type ${name}${projection.typeParams ?? ""} = SDKTrigger<${payloadName}${typeArgs}>`]
+}
+
+function genericArgsFromParams(typeParams: string): string {
+    // Split on top-level commas only; defaults like Record<string, unknown> contain nested commas.
+    const params: string[] = []
+    let depth = 0
+    let current = ""
+    for (const char of typeParams.slice(1, -1)) {
+        if (char === "<") depth++
+        if (char === ">") depth--
+        if (char === "," && depth === 0) {
+            params.push(current)
+            current = ""
+        } else {
+            current += char
+        }
+    }
+    params.push(current)
+
+    const names = params.map(param => param.trim().split(/[\s=]/)[0]).filter(Boolean)
+    return `<${names.join(", ")}>`
 }
 
 function prepareSystemSection(): SectionContext<SystemSectionContext> {
@@ -1131,7 +1242,7 @@ function prepareSystemSection(): SectionContext<SystemSectionContext> {
     )
 }
 
-export function prepareTemplateContext(input: CodegenInput): TemplateContext {
+export async function prepareTemplateContext(input: CodegenInput): Promise<TemplateContext> {
     const allImports = new Set<string>()
 
     const github = prepareGitHubSection(input.github, input.tools)
@@ -1146,7 +1257,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const attio = prepareAttioSection(input.attio, input.tools)
     const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
     const heyreach = prepareHeyReachSection(input.heyreach)
-    const tools = prepareToolsSection(input.tools, input)
+    const tools = await prepareToolsSection(input.tools, input)
     const system = prepareSystemSection()
 
     const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
@@ -1155,12 +1266,41 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         section.imports.forEach(value => allImports.add(value))
     }
 
+    const triggerPayloads = await buildTriggerPayloadsSection([
+        { label: "GitHub trigger payloads", imports: github.imports },
+        { label: "Slack trigger payloads", imports: slack.imports },
+        { label: "Linear trigger payloads", imports: linear.imports },
+        { label: "Gmail trigger payloads", imports: gmail.imports },
+        { label: "WorkOS trigger payloads", imports: workos.imports },
+        { label: "Attio trigger payloads", imports: attio.imports },
+        { label: "HeyReach trigger payloads", imports: heyreach.imports },
+        { label: "Schedule / webhook / web monitor trigger payloads", imports: system.imports }
+    ])
+
+    // Names projected locally are declared in the generated file instead of imported.
+    triggerPayloads.declaredNames.forEach(name => allImports.delete(name))
+    triggerPayloads.extraImports.forEach(name => allImports.add(name))
+
     const imports = [...allImports].sort()
 
     return {
         imports,
         useMultilineImports: imports.length > 3,
+        toc: buildToc({
+            github: !!github.data,
+            slack: !!slack.data,
+            linear: !!linear.data,
+            notion: !!notion.data,
+            posthog: !!posthog.data,
+            datadog: !!datadog.data,
+            launchdarkly: !!launchdarkly.data,
+            attio: !!attio.data,
+            heyreach: !!heyreach.data,
+            triggerPayloads: !!triggerPayloads.section,
+            tools: !!tools.data
+        }),
         availableIntegrations: input.availableIntegrations.length > 0 ? input.availableIntegrations.join(", ") : undefined,
+        triggerPayloads: triggerPayloads.section,
         github: github.data,
         gmail: gmail.data,
         slack: slack.data,
@@ -1176,4 +1316,25 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         tools: tools.data,
         system: system.data!
     }
+}
+
+function buildToc(present: Record<string, boolean>): string[] {
+    const resourceLabels: Array<[string, string]> = [
+        ["github", "GitHub resources (repos)"],
+        ["slack", "Slack resources (channels, users)"],
+        ["linear", "Linear resources (teams, projects)"],
+        ["notion", "Notion resources (databases, pages)"],
+        ["posthog", "PostHog resources (projects)"],
+        ["datadog", "Datadog resources (indexes)"],
+        ["launchdarkly", "LaunchDarkly resources (projects)"],
+        ["attio", "Attio objects (per-workspace record types)"],
+        ["heyreach", "HeyReach resources (campaigns)"]
+    ]
+
+    const lines = resourceLabels.filter(([key]) => present[key]).map(([, label]) => label)
+    if (present.triggerPayloads) lines.push("Trigger Payloads - event shapes handlers receive, grep the event name")
+    lines.push("Triggers - factories for createJob({ triggers: [...] })")
+    lines.push("Skills - factories for agent skills: [...]")
+    if (present.tools) lines.push("Tools - <ToolName>Params / <ToolName>Result types, agent.tools and toolbox methods")
+    return lines
 }

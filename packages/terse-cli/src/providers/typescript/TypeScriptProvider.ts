@@ -79,8 +79,8 @@ class TypeScriptProvider implements LanguageProvider {
         return path.join(cwd, fs.existsSync(path.join(cwd, "src")) ? "src/terse.generated.ts" : "terse.generated.ts")
     }
 
-    renderGeneratedCode(input: CodegenInput): string {
-        return renderGeneratedCode(prepareTemplateContext(input))
+    async renderGeneratedCode(input: CodegenInput): Promise<string> {
+        return renderGeneratedCode(await prepareTemplateContext(input))
     }
 
     async typecheck(): Promise<void> {

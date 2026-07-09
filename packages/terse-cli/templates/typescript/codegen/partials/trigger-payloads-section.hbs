@@ -1,0 +1,17 @@
+{{sectionHeader "Trigger Payloads"}}
+
+/**
+ * Fully resolved event shapes your trigger handlers receive.
+ *
+ * Each `<Name>Payload` interface lists every field on the event; the matching
+ * `<Name>` alias wraps it in `SDKTrigger`, which only adds `formatForAgentRunner()`
+ * and `debugLog()`. Annotate handler params with the `<Name>` types below.
+ */
+{{#each groups}}
+{{sectionHeader label}}
+
+{{#each declarations}}
+{{{this}}}
+
+{{/each}}
+{{/each}}

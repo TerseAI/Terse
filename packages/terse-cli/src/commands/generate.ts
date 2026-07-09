@@ -366,7 +366,7 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
     s.message("Generating code")
 
     const codegenStart = performance.now()
-    const code = provider.renderGeneratedCode(input)
+    const code = await provider.renderGeneratedCode(input)
     const codegenMs = performance.now() - codegenStart
 
     s.message("Writing generated file")
