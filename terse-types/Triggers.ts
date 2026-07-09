@@ -44,6 +44,8 @@ const slackTriggerBaseSchema = TriggerHeaderSchema.extend({
     timestamp: z.string(),
     // Default keeps stored events from before the field parseable.
     threadTs: z.string().nullable().default(null),
+    // Deprecated duplicate of threadTs; deployed jobs still read it, so producers keep setting both.
+    threadTimestamp: z.string().nullable().default(null),
     teamId: z.string(),
     permalink: z.string().nullable(),
     channelType: z.enum(SlackChannelType).nullable(),
@@ -54,22 +56,21 @@ const slackTriggerBaseSchema = TriggerHeaderSchema.extend({
 export const slackMessageTriggerSchema = slackTriggerBaseSchema.extend({
     eventType: z.literal("message")
 })
-type SlackMessageTriggerSchemaShape = z.infer<typeof slackMessageTriggerSchema>
-export type SlackMessageTrigger = Omit<SlackMessageTriggerSchemaShape, "blocks" | "attachments" | "files"> & {
+type SlackTriggerOverrides = {
     blocks: SlackBlocks | null
     attachments: SlackAttachments | null
     files: SlackFiles | null
+    /** @deprecated Use `threadTs` instead. */
+    threadTimestamp: string | null
 }
+type SlackMessageTriggerSchemaShape = z.infer<typeof slackMessageTriggerSchema>
+export type SlackMessageTrigger = Omit<SlackMessageTriggerSchemaShape, keyof SlackTriggerOverrides> & SlackTriggerOverrides
 
 export const slackAppMentionTriggerSchema = slackTriggerBaseSchema.extend({
     eventType: z.literal("app_mention")
 })
 type SlackAppMentionTriggerSchemaShape = z.infer<typeof slackAppMentionTriggerSchema>
-export type SlackAppMentionTrigger = Omit<SlackAppMentionTriggerSchemaShape, "blocks" | "attachments" | "files"> & {
-    blocks: SlackBlocks | null
-    attachments: SlackAttachments | null
-    files: SlackFiles | null
-}
+export type SlackAppMentionTrigger = Omit<SlackAppMentionTriggerSchemaShape, keyof SlackTriggerOverrides> & SlackTriggerOverrides
 
 export const slackReactionAddedTriggerSchema = slackTriggerBaseSchema.extend({
     eventType: z.literal("reaction_added"),
@@ -80,11 +81,7 @@ export const slackReactionAddedTriggerSchema = slackTriggerBaseSchema.extend({
     itemTimestamp: z.string().nullable()
 })
 type SlackReactionAddedTriggerSchemaShape = z.infer<typeof slackReactionAddedTriggerSchema>
-export type SlackReactionAddedTrigger = Omit<SlackReactionAddedTriggerSchemaShape, "blocks" | "attachments" | "files"> & {
-    blocks: SlackBlocks | null
-    attachments: SlackAttachments | null
-    files: SlackFiles | null
-}
+export type SlackReactionAddedTrigger = Omit<SlackReactionAddedTriggerSchemaShape, keyof SlackTriggerOverrides> & SlackTriggerOverrides
 
 export const slackTriggerSchema = z.discriminatedUnion("eventType", [slackMessageTriggerSchema, slackAppMentionTriggerSchema, slackReactionAddedTriggerSchema])
 export type SlackTrigger = SlackMessageTrigger | SlackAppMentionTrigger | SlackReactionAddedTrigger

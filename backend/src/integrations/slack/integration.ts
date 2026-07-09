@@ -1404,6 +1404,7 @@ function buildSlackTriggerData(params: {
         text: params.text,
         timestamp: params.timestamp,
         threadTs: params.threadTs || null,
+        threadTimestamp: params.threadTs || null,
         teamId: params.teamId,
         permalink: params.permalink || null,
         channelType: params.channelType || null,
