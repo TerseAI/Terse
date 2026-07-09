@@ -1,8 +1,8 @@
 import { eventFixtureSchema, hydrateSerializedEvent } from "terse-types"
 import type { SerializedEvent } from "terse-types"
-import { z } from "zod"
 
 import { CliError } from "./cliError.js"
+import { explainTriggerParseFailure } from "./triggerParseDetail.js"
 
 export function parseEventFixtureJson(raw: string, sourceLabel: string): SerializedEvent {
     const parsed = parseJson(raw, sourceLabel)
@@ -11,7 +11,7 @@ export function parseEventFixtureJson(raw: string, sourceLabel: string): Seriali
         return hydrateSerializedEvent(result.data)
     }
     throw new CliError("invalid_event_shape", `${sourceLabel} does not match the canonical Trigger schema.`, {
-        detail: `${z.prettifyError(result.error)}\n\n${EXPECTED_FIXTURE_HINT}`
+        detail: `${explainTriggerParseFailure(parsed, result.error)}\n\n${EXPECTED_FIXTURE_HINT}`
     })
 }
 
