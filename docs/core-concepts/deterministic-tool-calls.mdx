@@ -60,6 +60,25 @@ await toolbox.slack.sendMessage({
 })
 ```
 
+### Replying in a thread
+
+Every send returns a `thread_ts`: the thread root's timestamp. Pass it to later sends to keep the conversation in one thread instead of flooding the channel. Add `replyBroadcast: true` on a reply to also surface it in the channel.
+
+```ts
+const sent = await toolbox.slack.sendMessage({
+    channelId: SlackChannel.DealDesk.channelId,
+    message: "Starting the nightly pipeline run."
+})
+
+await toolbox.slack.sendMessage({
+    channelId: SlackChannel.DealDesk.channelId,
+    message: "Run finished: 42 records updated.",
+    thread_ts: sent.thread_ts
+})
+```
+
+Always thread off the root's `thread_ts` (returned by every send, and present on trigger events and `readConversation` messages), never a reply's own `message_ts`.
+
 ## Mixing deterministic and agentic calls
 
 The real power is combining both in a single workflow. Use deterministic calls for predictable operations and hand off to the model when you need reasoning.

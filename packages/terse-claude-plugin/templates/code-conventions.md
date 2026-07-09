@@ -207,8 +207,6 @@ async function escalateCritical(event: LinearIssueCreatedTrigger, classification
     await toolbox.slack.sendMessage({
         channelId: SlackChannel.OnCall.channelId,
         message: `Critical bug: ${event.issue.title} — ${classification.reason}`,
-        thread_ts: "",
-        blocks: "",
     })
     const approval = await waitForInput({
         via: slack({ channel: SlackChannel.OnCall.channelId }),
@@ -258,8 +256,6 @@ createJob({
         const message = await toolbox.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
-            thread_ts: "",
-            blocks: "",
         })
 
         // Agentic: only the summary needs judgment
@@ -275,8 +271,7 @@ createJob({
         await toolbox.slack.sendMessage({
             channelId: SlackChannel.Engineering.channelId,
             message: summary,
-            thread_ts: message.message_ts,
-            blocks: "",
+            thread_ts: message.thread_ts,
         })
     },
 })

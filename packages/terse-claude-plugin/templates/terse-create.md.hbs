@@ -261,8 +261,6 @@ To test a specific payload, or when the sample buffer is empty (a fresh webhook 
   await toolbox.slack.sendMessage({
       channelId: SlackChannel.Engineering.channelId,
       message: `New PR: ${event.pullRequest.title}`,
-      thread_ts: "",
-      blocks: "",
   })
   ```
 

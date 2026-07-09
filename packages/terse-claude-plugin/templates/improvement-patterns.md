@@ -46,8 +46,6 @@ import { toolbox } from "./terse.generated"
 const message = await toolbox.slack.sendMessage({
     channelId: SlackChannel.Engineering.channelId,
     message: `New PR from ${event.sender.login}: ${event.pullRequest.title}`,
-    thread_ts: "",
-    blocks: "",
 })
 
 const summary = await generateText({
@@ -58,8 +56,7 @@ const summary = await generateText({
 await toolbox.slack.sendMessage({
     channelId: SlackChannel.Engineering.channelId,
     message: summary,
-    thread_ts: message.message_ts,
-    blocks: "",
+    thread_ts: message.thread_ts,
 })
 ```
 

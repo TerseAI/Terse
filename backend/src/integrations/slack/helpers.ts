@@ -41,6 +41,12 @@ export function describeSlackPostMessageError(error: unknown): string | null {
             return "This channel is archived, so messages can't be posted to it."
         case "msg_too_long":
             return "The message is too long for Slack (4000 character limit)."
+        case "cannot_reply_to_message":
+            return "This message type cannot have thread replies. Send without thread_ts instead."
+        case "restricted_action_thread_locked":
+            return "This thread has been locked by admins, so replies can't be posted to it."
+        case "restricted_action_thread_only_channel":
+            return "This channel only allows thread replies. Provide a thread_ts to reply to an existing thread."
         case "rate_limited":
         case "ratelimited":
             return "Slack rate-limited this request. Try again in a few seconds."

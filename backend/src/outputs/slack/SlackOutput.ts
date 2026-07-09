@@ -106,8 +106,10 @@ FORMATTING (mrkdwn):
 THREAD REPLIES:
 - When sending a message, the tool returns a \`thread_ts\` value in the result
 - To reply in the same thread, use the \`thread_ts\` from the previous message's result as the \`thread_ts\` parameter in your next message
-- The \`thread_ts\` represents the root message timestamp of the thread - use it consistently for all replies in that thread
+- The \`thread_ts\` represents the root message timestamp of the thread - use it consistently for all replies in that thread; never use a reply's own \`message_ts\`
 - If no \`thread_ts\` is provided, a new thread is started (the returned \`thread_ts\` will be the new message's timestamp)
+- \`thread_ts\` must be a real Slack message ts (e.g. \`1712345678.123456\`); a malformed value makes the send fail
+- Set \`replyBroadcast: true\` on a thread reply to also show it in the main channel
 
 BEST PRACTICES:
 - Always provide \`message\` (fallback text for Block Kit)

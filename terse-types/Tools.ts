@@ -676,8 +676,9 @@ export const slackSendMessageInputSchema = z
             .nullable()
             .optional()
             .describe(
-                "Thread timestamp to reply to existing thread. If sending a message to a thread, this should be the timestamp of the thread to reply to. If sending an unthreaded message, this should be set to null."
+                "The parent message's ts to reply in its thread (Slack ts format, e.g. \"1712345678.123456\" — use the thread root's ts, not a reply's). Comes from a previous send result, a trigger event, or slack_read_conversation. A malformed value fails the send. Set to null for an unthreaded message."
             ),
+        replyBroadcast: z.boolean().nullable().optional().describe("Only with thread_ts: also show the thread reply in the main channel (Slack reply_broadcast). Defaults to false."),
         blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts")
     })
     .superRefine((data, ctx) => {
@@ -1203,10 +1204,11 @@ export const slackSendMessageTool = defineTool({
     inputSchema: slackSendMessageInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         message_ts: z.string().optional(),
-        channel: z.string(),
-        thread_ts: z.string().optional(),
-        summary: z.string(),
-        has_blocks: z.boolean()
+        channel: z.string().describe('Display name of the destination (e.g. "#deal-desk" or the DM counterpart\'s name).'),
+        channelId: z.string().describe("Slack channel ID the message was sent to. Use this for follow-up sends or reads."),
+        thread_ts: z.string().optional().describe("Thread root ts. Pass this as thread_ts on later sends to reply in the same thread."),
+        permalink: z.string().optional().describe("Permalink URL to the sent message."),
+        summary: z.string()
     })
 })
 

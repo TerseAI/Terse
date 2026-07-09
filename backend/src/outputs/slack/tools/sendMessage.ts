@@ -4,7 +4,6 @@ import { IntegrationType, SlackOutputConfig } from "terse-types"
 import { TERSE_AGENT_MESSAGE_EVENT_TYPE, TerseAgentMessageMetadata } from "terse-types"
 
 import logger from "../../../common/logger"
-import { isValidEpochTimestamp } from "../../../common/strings"
 import { initializeSlackWebClient } from "../../../integrations/slack/client"
 import { describeSlackPostMessageError, resolveSlackChannelIdForDestination, resolveSlackDmCounterpartUser } from "../../../integrations/slack/helpers"
 import { db } from "../../../loaders/prisma"
@@ -17,10 +16,18 @@ import { ToolACLValidationResult, ToolACLValidator, denyToolACL, findConfigsByIn
  */
 export const slackSendMessageTool = defineSessionTool({
     name: "slack_send_message",
-    description: `Send message to a Slack channel or DM. Provide channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). If both are set, channelId is used.`,
-    execute: async ({ integrationId, channelId, slackUserId, message, thread_ts, blocks: blocksJson }, runContext) => {
+    description: `Send message to a Slack channel or DM. Provide channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). If both are set, channelId is used. Reply in a thread by passing the thread root's ts as thread_ts.`,
+    execute: async ({ integrationId, channelId, slackUserId, message, thread_ts, replyBroadcast, blocks: blocksJson }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")
+        }
+
+        let validThreadTs: string | undefined
+        if (thread_ts) {
+            if (!SLACK_MESSAGE_TS_PATTERN.test(thread_ts)) {
+                throw new InvalidThreadTimestampError(thread_ts)
+            }
+            validThreadTs = thread_ts
         }
 
         // Parse and validate Block Kit blocks if provided
@@ -98,22 +105,10 @@ export const slackSendMessageTool = defineSessionTool({
                 // Keep channelName as resolvedChannelId fallback
             }
 
-            let validThreadTs
-            if (thread_ts && thread_ts.length > 0) {
-                if (isValidEpochTimestamp(thread_ts)) {
-                    validThreadTs = thread_ts
-                } else {
-                    logger.warn("Invalid thread timestamp", { thread_ts })
-                }
-            } else {
-                validThreadTs = undefined
-            }
-
-            const result = await client.chat.postMessage({
+            const baseMessageArgs = {
                 channel: resolvedChannelId,
                 text: message,
                 blocks: blocks,
-                thread_ts: validThreadTs,
                 unfurl_links: true,
                 unfurl_media: true,
                 metadata: {
@@ -124,7 +119,10 @@ export const slackSendMessageTool = defineSessionTool({
                         organization_id: organizationId
                     }
                 } satisfies TerseAgentMessageMetadata
-            })
+            }
+            const result = validThreadTs
+                ? await client.chat.postMessage({ ...baseMessageArgs, thread_ts: validThreadTs, reply_broadcast: replyBroadcast ?? false })
+                : await client.chat.postMessage(baseMessageArgs)
 
             if (!result.ok) {
                 throw new Error(`Failed to send message: ${result.error}`)
@@ -177,9 +175,10 @@ export const slackSendMessageTool = defineSessionTool({
                 success: true,
                 message_ts: result.ts,
                 channel: channelName,
-                thread_ts: validThreadTs || result.ts,
+                channelId: resolvedChannelId,
+                thread_ts: result.message?.thread_ts ?? result.ts,
+                permalink: slackPermalink,
                 summary: `${messageType} message sent to ${channelName}: "${messagePreview}"`,
-                has_blocks: !!blocks,
                 actions: [action]
             }
         } catch (error: any) {
@@ -198,6 +197,17 @@ export const slackSendMessageTool = defineSessionTool({
         }
     }
 })
+
+const SLACK_MESSAGE_TS_PATTERN = /^\d+\.\d+$/
+
+export class InvalidThreadTimestampError extends Error {
+    constructor(threadTs: string) {
+        super(
+            `Invalid thread_ts "${threadTs}". Expected a Slack message ts like "1712345678.123456". Use the thread root's ts from a previous send result, a trigger event, or slack_read_conversation, or omit thread_ts to send an unthreaded message.`
+        )
+        this.name = "InvalidThreadTimestampError"
+    }
+}
 
 export const validateSlackSendMessage: ToolACLValidator<"slack_send_message", SlackOutputConfig> = ({ args, configs }) =>
     validateSlackChannelOrUser(args.integrationId, args.channelId, args.slackUserId, configs)
