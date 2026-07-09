@@ -19,7 +19,7 @@ import { history } from "./commands/history.js"
 import { applyImprovement, listImprovements } from "./commands/improvements.js"
 import { init } from "./commands/init.js"
 import { install, update } from "./commands/install.js"
-import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateWait } from "./commands/integrate.js"
+import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateTool, integrateWait } from "./commands/integrate.js"
 import { listen } from "./commands/listen.js"
 import { memoryGet, memoryList, memoryPut, memoryRemove } from "./commands/memory.js"
 import { replay } from "./commands/replay.js"
@@ -244,6 +244,8 @@ Examples:
   $ terse integrate                                   # interactive picker
   $ terse integrate list --json                       # enumerate integrations
   $ terse integrate describe snowflake --json         # see required fields
+  $ terse integrate tool slack --json                 # list an integration's tools
+  $ terse integrate tool slack slack_send_message --json  # one tool's input/output schemas
   $ terse integrate connect snowflake --field account=x --field username=y --fields-stdin <<< '{"password":"'"$PW"'"}'
   $ terse integrate connect slack                     # OAuth → opens browser, exit 2 (follow up with 'wait')
   $ terse integrate wait slack --timeout 300          # block until OAuth completes
@@ -310,6 +312,25 @@ integrateCommand
     .option("--json", "Emit JSON")
     .action(async (type: string, opts: JsonOpts) => {
         await integrateDisconnect({ integrationType: type, json: opts.json })
+    })
+
+integrateCommand
+    .command("tool")
+    .description("List an integration's tools, or show one tool's description and input/output schemas")
+    .argument("<type>", "Integration type (e.g. slack, snowflake)")
+    .argument("[tool-name]", "Tool name (e.g. slack_send_message); omit to list every tool")
+    .option("--json", "Emit JSON")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse integrate tool slack                             # list Slack's tools
+  $ terse integrate tool slack --json
+  $ terse integrate tool slack slack_send_message --json   # one tool's description and input/output schemas
+`
+    )
+    .action(async (type: string, toolName: string | undefined, opts: JsonOpts) => {
+        await integrateTool({ integrationType: type, toolName, json: opts.json })
     })
 
 integrateCommand

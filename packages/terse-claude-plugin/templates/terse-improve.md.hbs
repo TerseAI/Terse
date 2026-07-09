@@ -1,0 +1,215 @@
+---
+name: terse-improve
+description: Improve an existing Terse workflow. Use when the user wants to fix, speed up, or refactor an automation already built on Terse, or asks why a deployed job misbehaved. Diagnoses from production run history and verifies with replay.
+license: MIT
+metadata:
+  author: Terse AI
+  version: "0.4.0"
+  category: workflow
+---
+
+# Improve a Terse Workflow
+
+Improve the Terse workflow named: **$ARGUMENTS**
+
+A workflow is defined in code as a job (`createJob` in `src/terse.jobs.ts`); the CLI commands below take that job name.
+
+## Reference docs
+
+Terse evolves fast; the live docs are the source of truth for facts:
+
+- Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
+- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
+
+Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured — and the "Testing Safety Conventions" section wins on how test runs, replays, and probes are conducted.
+
+## Steps
+
+**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/jobs/`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
+
+`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the file lists every integration currently available in Terse — never plan around an integration that is not in that list. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas.
+
+If `src/terse.generated.ts` is missing or stale for the integrations the job uses, rerun `terse generate` instead of guessing at missing helpers. Never edit the generated file directly.
+
+**Narrate the run.** Speak to the user in casual first person about the work itself: "I'm pulling production history to see what actually went wrong", "the replay passes now with the new filter". At every phase transition, name the phase in plain casual words with its place in the sequence — diagnose, analyze, implement, verify — "Diagnosis is done — that's 1 of 4. Next I'll comb the job for improvements." Never speak internal step numbers; the user should always know where the work stands from the prose alone.
+
+**Mark every CLI run.** The `terse` CLI doing something is an event the user must be able to see; harnesses often collapse tool calls, so the narration carries it. Immediately before each `terse` command, emit a marker line:
+
+> ⏵ `terse replay 01hq3v…` — re-running the failed production event against the fix
+
+One marker per command: the command verbatim in backticks, then the why in a few words. Back-to-back cheap reads (`terse test list`, `terse test show`) may share a single marker. When a state-changing or long-running command finishes (`generate`, `deploy`, `replay`, `test run`), report its outcome in the normal narration voice. Never bury a `terse` invocation inside a pipeline, subshell, or script where the user can't see it ran.
+
+**Explain every test before it runs.** A marker line is not enough for `terse replay` or `terse test run`: immediately before one, say in one to three casual sentences what the run exercises, why now, and what a good result looks like — "This replay re-runs the exact production event that failed on Tuesday; with the new filter I expect it to skip the bot comment instead of crashing." When it finishes, give the verdict against that stated expectation in the same voice. Cheap reads (`terse test list`, `terse test show`) keep just the marker.
+
+### 1. Find the workflow
+
+Open `src/terse.jobs.ts` and `src/terse.generated.ts`. If the entry file is a manifest of side-effect imports, follow them into `src/jobs/`. Find the job matching the requested workflow name and read the full implementation — triggers, skills, filter, and handler.
+
+The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
+
+### 2. Pull production run history
+
+Before guessing at improvements, look at how the job has actually behaved in production. The `terse history` CLI command fetches past runs from the deployed agent so you can see what went wrong.
+
+Recommended invocations (see https://docs.useterse.ai/reference/cli for the full flag list):
+
+```bash
+# Recent runs as JSON, with the trigger event payload for each one (cheap, ideal for this skill)
+terse history "<job-name>" --json --triggers --limit 20
+
+# Narrow to failures only
+terse history "<job-name>" --json --triggers --status failed,cancelled --limit 20
+
+# Full chat history (model events + trigger event) for a single run — heavier, use when you need to see exactly what the agent decided
+terse history --run-id <run-id> --json
+```
+
+If a JSON-mode command returns a structured `{ "error": ... }` envelope with `actionRequired: true`, or exits with code `2`, stop and surface the required next step or URL instead of treating it as a code bug.
+
+What to look for:
+
+- **Failed or cancelled runs** — the trigger event shows the input that broke the job.
+- **Repeated patterns** — the same kind of event misbehaving suggests a missing filter, a vague prompt, or a missing skill.
+- **Wasted runs** — bot events, drafts, or no-op events that should have been filtered out.
+- **Agentic overreach** — `generateText` doing deterministic work (`toolbox` would be correct). Check chat history for wrong tool picks or hallucinated parameters.
+
+If the user has not deployed the job yet (no agent found), skip this step and rely on the source code plus sample events from `terse test list`.
+
+### 3. Analyze for improvements
+
+Account for every area below before you finish: for each, either make a change or confirm it's already fine. Don't stop at the first easy win. Start with **Tool usage**, since moving work from the agent to `toolbox` is usually the highest-impact fix.
+
+The "Terse Job Code Conventions" section at the bottom of this file is what the Conventions and Durability areas audit against. For before/after shapes of the most common fixes, see the "Common Improvement Patterns" section, also below.
+
+#### Tool Usage
+
+- **Known calls vs judgment**: For actions with known parameters, use `toolbox`, not `generateText`. Read available methods in `src/terse.generated.ts`.
+- **Unnecessary agents**: If the handler only runs deterministic tools, drop `generateText` entirely and call `toolbox` directly.
+- **Prompts doing integration work**: Phrases like "post to Slack", "create a Linear issue", or "add label X" in a prompt usually mean that step should be code. Keep prompts for judgment only (summarize, triage, draft).
+- **Skill scoping**: `skills` controls what tools the model can pick during a `generateText` run. `toolbox.<integration>` is unaffected by `skills` — use it when you want a deterministic call without configuring an agent.
+- **Multi-step**: Known setup first (`toolbox.slack.sendMessage`), then a narrow `generateText` call for the part that needs judgment, then post the result back with `toolbox`.
+- **Tool results**: Capture return values from deterministic calls when later steps need them (e.g. `message.message_ts` for threading).
+
+#### Prompt Quality
+
+- **Specificity**: Does the prompt tell the agent exactly what to do? Vague prompts like "handle this event" waste tokens and produce inconsistent results. Be specific: "Summarize the PR changes in 3 bullet points and post to Slack."
+- **Event context**: Does it include the full event payload via `event.formatForAgentRunner()`?
+- **Edge cases**: Does the prompt explain what to do when things are ambiguous? E.g., "If the PR has no description, summarize from the diff only."
+- **Format instructions**: Does it specify the output format? "Format as Block Kit JSON" vs leaving it open.
+- **Length**: Is the prompt too long? Split multi-step instructions into separate agent runs or use deterministic tool calls for the predictable parts.
+
+#### Event Filtering
+
+- **Bot events**: Should bot-generated events be skipped? (`event.sender.login.includes("[bot]")`)
+- **Draft/WIP**: Should draft PRs or WIP items be ignored?
+- **Specific sources**: Should events from certain users, repos, or channels be filtered?
+- **Cost**: Every unfiltered event triggers an agent run. Filters save real money.
+
+#### Error Handling
+
+- **Missing data**: Does the code handle cases where event data might be missing? (e.g., PR with no body, push with no commits) Fail fast with a custom error rather than limping on.
+- **Prompt resilience**: Does the agent prompt explain what to do if a tool call fails?
+
+#### Conventions
+
+- Audit the job against every rule in the conventions section; it is the checklist.
+- Report every violation you find. Fix only the ones on code paths you are already changing for this improvement; offer standalone style retrofits as an explicit opt-in. For the one-file-per-job layout violation this means splitting out only the job(s) you are already touching, leaving the rest inline and flagged.
+
+#### Durability
+
+- **Durable jobs**: audit the handler against the "Durable job style" rules in the conventions section — step placement, serializable boundaries, branch helpers, journaled branch conditions.
+- **Non-durable jobs**: check for the durable signals in the conventions section ("When to be durable") that have crept in. If present, recommend flipping `durable: true` (and the step restructuring it requires) as an opt-in improvement.
+
+#### Skill Configuration
+
+- **Missing skills**: Are all integrations the model needs during a `generateText` run listed? If the prompt tells the model to post to Slack but Slack isn't in `skills`, that agentic step will fail.
+- **Unnecessary skills**: Are there skills the agent doesn't actually use? Remove them to reduce confusion.
+- **Scope**: Are repos/channels/teams scoped correctly? Too broad gives the agent access to things it shouldn't touch. Too narrow prevents it from doing its job.
+
+### 4. Confirm behavior changes with the user
+
+If any proposed improvement changes the job's observable behavior — a filter that skips events it used to process, a rewritten prompt, a changed output surface, a durability flip — put those decisions to the user before implementing. Provide a recommended answer for each, and batch related questions, at most four per interruption. Mechanical fixes (typing, error classes, file shape) don't need confirmation.
+
+If a *fact* can be found in the code, run history, or docs, look it up rather than asking. If you are running headless with no one to answer, take your recommended answers and state them with reasons in the final summary.
+
+### 5. Implement improvements
+
+Edit the job's file — `src/terse.jobs.ts` in a single-job project, its `src/jobs/<name>.ts` file under the manifest layout, or the repo's configured `--entry-file`. Make the changes following the conventions section.
+
+If an improvement needs a new integration, describe before connecting: `terse integrate describe <type> --json` returns the `installationType` (form or OAuth) and, for form installs, the exact fields `connect` requires — never guess field names. Form installs take values via `--field key=value` with secrets on `--fields-stdin`; OAuth installs open a browser and exit 2 with a handoff, so tell the user first and follow with `terse integrate wait <type>`.
+
+After connecting a new integration or when you need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
+
+### 6. Verify the changes locally
+
+Don't hand the change back without proving it still works.
+
+Replays and test runs execute the real handler with real credentials, against real production events. Before the first local run of a job that writes to an external surface, follow the "Testing Safety Conventions" section at the bottom of this file: point writes at test targets or a test-mode key, and ask the user before writing to any production surface.
+
+Two complementary loops:
+
+**Replay the exact production run that failed.** If you used `terse history` in step 2 to find a bad run, replay it locally with the new code:
+
+```bash
+terse replay <run-id>
+```
+
+`terse replay` fetches the original serialized trigger event from the Terse backend and runs your job's `onTrigger` against it locally with verbose agent output. This is the fastest way to confirm the bug you saw in production is actually fixed.
+
+**Or run against fresh sample events non-interactively.** When there is no specific run to reproduce, or to make sure you didn't regress the happy path:
+
+```bash
+terse test list "<job-name>" --json
+terse test show <id> "<job-name>" --json
+terse test run "<job-name>" --id <id>
+```
+
+`terse test list` pulls real sample events from the backend (or generates synthetic ones for cron and webhook triggers) and assigns content-addressed ids.
+`terse test show` lets you inspect a specific cached sample before running it.
+`terse test run` executes the handler without requiring a TTY.
+
+If multiple jobs exist, pass the job name explicitly because non-interactive job loading cannot prompt.
+Reserve bare `terse test` for manual interactive sessions only.
+
+To replay a specific payload, or when no sample events are available, hand-write an event file and run it with `terse test run --event-file <path>`: on a shape mismatch, the command prints the expected envelope and the exact validation issues — correct the file from that error output rather than guessing fields.
+
+For all of these commands, see https://docs.useterse.ai/reference/cli for the full option list.
+
+### 7. Typecheck the project
+
+After local execution looks healthy, run the typechecker so the change is statically valid before deploy:
+
+```bash
+pnpm exec tsc --noEmit
+```
+
+Use `npx tsc --noEmit` or `pnpm run build` if that matches how the project is set up. Fix any errors before reporting back.
+
+### 8. Explain changes
+
+After implementing and verifying, summarize what you changed and why. Where it helps, cite the production runs from `terse history` that motivated each change and note which `terse replay` / `terse test list/show/run` invocations confirmed the fix.
+
+### 9. Ask before deploying
+
+Do not run `terse deploy` automatically. After explaining the changes, ask the user whether to deploy them now.
+
+If you changed the step structure of a deployed **durable** job (added, removed, or reordered steps), warn the user in the same ask: in-flight runs will resume against a changed journal and can fail or misbehave, so deploy at a quiet moment.
+
+Example prompt:
+
+> The improvements are verified locally. Deploy to production with `terse deploy`? (This syncs all jobs in the project — removed jobs are deleted remotely.)
+
+- If the user says yes, run `terse deploy` and report the outcome.
+- If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
+
+---
+
+{{> improvement-patterns}}
+
+---
+
+{{> testing-conventions}}
+
+---
+
+{{> code-conventions}}
