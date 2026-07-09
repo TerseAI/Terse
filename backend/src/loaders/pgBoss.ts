@@ -21,7 +21,6 @@ const PREVIEW_INSTANCE_TUNING = {
     bamIntervalSeconds: 300,
     flowIntervalSeconds: 300,
     clockMonitorIntervalSeconds: 600,
-    // pg-boss asserts the two cron intervals stay within 1-45s
     cronWorkerIntervalSeconds: 45,
     cronMonitorIntervalSeconds: 45
 }
