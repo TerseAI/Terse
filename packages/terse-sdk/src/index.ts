@@ -778,13 +778,7 @@ export function step<T>(promise: Promise<T>): Promise<T> {
  * would. Arguments cross the step boundary, so they must be serializable.
  * Inside step bodies and non-durable jobs it simply forwards to `console.log`.
  */
-<<<<<<< HEAD
-// The durable build rewrites every log() call site in job files away, so this
-// body runs everywhere else: non-durable jobs, helper files, and step bodies.
-export function log(...args: unknown[]): void {
-=======
 export async function log(...args: unknown[]): Promise<void> {
->>>>>>> 34100406961ef0bf97106ebac8fed73210b6d849
     "use step"
     console.log(...args)
 }
