@@ -219,8 +219,6 @@ The prompt-facing text returned by `event.formatForAgentRunner()` and the log li
 
 `terse test show <id> --json` prints any stored sample event in this shape, so a recorded event is always a valid starting point for a hand-edited fixture.
 
-Fixtures that wrap the trigger in a `data` envelope with hand-written `formattedContent` and `debugLog` (the pre-fixture format) are no longer accepted: move the fields inside `data` to the top level and drop the rest.
-
 ### `terse deploy`
 
 Packages your local project and syncs workflows to Terse. [Learn more about how deployment works.](/hosting)
