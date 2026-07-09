@@ -1075,44 +1075,59 @@ export const posthogPropertyFilterValueSchema = z.union([z.string(), z.number(),
 
 export const posthogPropertyFilterOperatorSchema = z.enum(["exact", "is_not", "icontains", "not_icontains", "gt", "lt", "gte", "lte"])
 
+export const posthogPropertyFilterTypeSchema = z.enum(["event", "person"])
+
 export const posthogPropertyFilterSchema = z.object({
-    key: z.string().describe("Property key to filter on"),
+    key: z.string().describe('Property key to filter on (e.g. "$current_url", "plan", "email").'),
     value: posthogPropertyFilterValueSchema.describe("Property value to match"),
-    operator: posthogPropertyFilterOperatorSchema.default("exact").describe("Comparison operator")
+    operator: posthogPropertyFilterOperatorSchema.optional().describe('Comparison operator (default: "exact")'),
+    type: posthogPropertyFilterTypeSchema
+        .optional()
+        .describe('"event" (default) matches a property on the event itself; "person" matches a property on the person who sent it (e.g. {key: "email", value: "user@example.com", type: "person"}).')
+})
+
+export type PosthogPropertyFilter = z.infer<typeof posthogPropertyFilterSchema>
+
+const posthogDistinctIdSchema = z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Optional: only include events sent by this user, matched against the event's distinct ID (the ID your app passes to posthog.identify(), often your internal user ID).")
+
+const posthogPropertyFiltersSchema = z
+    .union([z.array(posthogPropertyFilterSchema), z.null()])
+    .optional()
+    .describe('Optional: property filters. To filter by a user\'s email use {key: "email", value: "user@example.com", type: "person"}.')
+
+const posthogDateFromSchema = z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Optional: start of the time range. UTC "YYYY-MM-DD HH:mm:ss" or "YYYY-MM-DD", or relative like "-30m", "-24h", "-7d", "-2w". If omitted, no lower bound.')
+
+const posthogDateToSchema = z.string().nullable().optional().describe("Optional: end of the time range, same formats as dateFrom. Defaults to now.")
+
+export const listPosthogEventNamesInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
+    projectId: z.string().describe("The PostHog project ID."),
+    customEventsOnly: z.boolean().optional().describe("If true (default), exclude PostHog built-in events (names starting with $, e.g. $pageview) and list only the project's custom-tracked events."),
+    distinctId: posthogDistinctIdSchema,
+    propertyFilters: posthogPropertyFiltersSchema,
+    dateFrom: posthogDateFromSchema,
+    dateTo: posthogDateToSchema
 })
 
 export const searchPosthogEventsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the PostHog skill to use."),
     projectId: z.string().describe("The PostHog project ID."),
-    countByEventNameOnly: z.boolean().default(true).describe("If true (default), returns only event names and their counts. If false, returns full event list (larger response)."),
-    customEventsOnly: z
-        .boolean()
-        .default(true)
-        .describe(
-            "If true (default), only include custom events (exclude PostHog built-in events whose names start with $, e.g. $pageview, $autocapture). If false, include all events. Use true to get counts for events the project actually tracks (works for any user's project)."
-        ),
-    userEmail: z.string().nullable().optional().describe('Optional: User email to filter events by (e.g., "user@example.com").'),
-    eventName: z.string().nullable().optional().describe('Optional: Specific event name to filter by (e.g., "$pageview", "button_clicked", "form_submitted").'),
-    propertyFilters: z
-        .union([z.array(posthogPropertyFilterSchema), z.null()])
-        .optional()
-        .describe("Optional: Array of property filters to apply. Each filter has a key, value, and operator."),
-    limit: z.number().int().default(50).describe("Maximum number of events to return when countByEventNameOnly is false (default: 50, max: 100). Ignored when countByEventNameOnly is true."),
-    offset: z.number().int().default(0).describe("Offset for pagination when countByEventNameOnly is false (default: 0). Ignored when countByEventNameOnly is true."),
-    last7Days: z
-        .boolean()
-        .default(false)
-        .describe("If true and dateFrom is not provided, filters events from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided."),
-    dateFrom: z
-        .union([z.string(), z.null()])
-        .describe(
-            'Start date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-06 14:00:00"). Do NOT use ISO format with T/Z (e.g. 2026-02-07T22:52:34Z) and do NOT use relative strings like "-7d". If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'
-        ),
-    dateTo: z
-        .union([z.string(), z.null()])
-        .describe(
-            'End date for filtering. MUST be formatted as "YYYY-MM-DD HH:mm:ss" in UTC (e.g. "2026-02-07 14:00:00"). Do NOT use ISO format with T/Z and do NOT use relative strings like "now". If not provided, defaults to now.'
-        )
+    eventName: z.string().nullable().optional().describe('Optional: specific event name to filter by (e.g., "$pageview", "button_clicked"). Use listPosthogEventNames to discover available names.'),
+    customEventsOnly: z.boolean().optional().describe("If true (default), exclude PostHog built-in events (names starting with $). Ignored when eventName is provided."),
+    distinctId: posthogDistinctIdSchema,
+    propertyFilters: posthogPropertyFiltersSchema,
+    limit: z.number().int().optional().describe("Maximum number of events to return (default: 50, max: 100)."),
+    cursor: z.string().nullable().optional().describe("Pagination cursor: pass nextCursor from the previous response to fetch the next (older) page."),
+    dateFrom: posthogDateFromSchema,
+    dateTo: posthogDateToSchema
 })
 
 export const linearCreateTicketTool = defineTool({
@@ -1455,30 +1470,26 @@ export const getPosthogSessionEventsTool = defineTool({
     })
 })
 
-export const searchPosthogEventsCountSummarySchema = toolOutputSuccessSchema.extend({
-    countByEventNameOnly: z.literal(true),
-    customEventsOnly: z.boolean(),
-    eventCounts: z.array(posthogEventCountSchema),
-    totalEventTypes: z.number().int(),
-    eventsLink: z.string(),
-    message: z.string()
-})
-
-export const searchPosthogEventsEventListSchema = toolOutputSuccessSchema.extend({
-    userEmail: z.string().nullable(),
-    eventName: z.string().nullable(),
-    projectId: z.string(),
-    totalEvents: z.number().int(),
-    events: z.array(posthogEventSummarySchema),
-    eventsLink: z.string(),
-    pagination: posthogOffsetPaginationSchema,
-    message: z.string()
+export const listPosthogEventNamesTool = defineTool({
+    name: "listPosthogEventNames",
+    inputSchema: listPosthogEventNamesInputSchema,
+    outputSchema: toolOutputSuccessSchema.extend({
+        eventCounts: z.array(posthogEventCountSchema),
+        totalEventTypes: z.number().int(),
+        eventsLink: z.string()
+    })
 })
 
 export const searchPosthogEventsTool = defineTool({
     name: "searchPosthogEvents",
     inputSchema: searchPosthogEventsInputSchema,
-    outputSchema: z.union([searchPosthogEventsCountSummarySchema, searchPosthogEventsEventListSchema])
+    outputSchema: toolOutputSuccessSchema.extend({
+        events: z.array(posthogEventSummarySchema),
+        totalEvents: z.number().int(),
+        hasMore: z.boolean(),
+        nextCursor: z.string().nullable(),
+        eventsLink: z.string()
+    })
 })
 
 // Datadog schemas
@@ -2222,6 +2233,7 @@ export const ToolDefinitions = {
     [searchPosthogSessionsTool.name]: searchPosthogSessionsTool,
     [searchPosthogLogsTool.name]: searchPosthogLogsTool,
     [getPosthogSessionEventsTool.name]: getPosthogSessionEventsTool,
+    [listPosthogEventNamesTool.name]: listPosthogEventNamesTool,
     [searchPosthogEventsTool.name]: searchPosthogEventsTool,
     [attioListObjectsTool.name]: attioListObjectsTool,
     [attioQueryRecordsTool.name]: attioQueryRecordsTool,
