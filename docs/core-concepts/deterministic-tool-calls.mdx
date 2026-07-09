@@ -77,7 +77,7 @@ await toolbox.slack.sendMessage({
 })
 ```
 
-Always thread off the root's `thread_ts` (returned by every send, and present on trigger events and `readConversation` messages), never a reply's own `message_ts`.
+Always thread off the root's `thread_ts` (returned by every send), never a reply's own `message_ts`. To reply in the thread of a message that triggered your job, pass `event.threadTs ?? event.timestamp`; messages from `readConversation` carry the same value as `threadTs`.
 
 ## Mixing deterministic and agentic calls
 

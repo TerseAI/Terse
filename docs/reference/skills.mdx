@@ -48,7 +48,7 @@ For `slack_send_message`, pass either `channelId` (a public or private channel i
 | Parameter        | Description |
 | ---------------- | ----------- |
 | `message`        | Message text ([mrkdwn](https://docs.slack.dev/messaging/formatting-message-text)). When `blocks` is set, this becomes the notification fallback text. |
-| `thread_ts`      | Reply in a thread. Pass the thread root's `ts` (e.g. `"1712345678.123456"`), never a reply's own `ts`. Every send returns a `thread_ts` you can pass to later sends to keep replying in the same thread; trigger events and `slack_read_conversation` also carry it. A malformed value fails the send instead of posting an unthreaded message. |
+| `thread_ts`      | Reply in a thread. Pass the thread root's `ts` (e.g. `"1712345678.123456"`), never a reply's own `ts`. Every send returns a `thread_ts` you can pass to later sends to keep replying in the same thread; Slack trigger events carry it as `event.threadTs` and `slack_read_conversation` messages as `threadTs`. A malformed value fails the send instead of posting an unthreaded message. |
 | `replyBroadcast` | With `thread_ts`: also show the reply in the main channel (Slack's `reply_broadcast`). Defaults to `false`. |
 | `blocks`         | A JSON array string of [Block Kit](https://docs.slack.dev/block-kit) blocks for buttons and structured layouts. |
 
