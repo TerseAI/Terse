@@ -19,13 +19,14 @@ import { history } from "./commands/history.js"
 import { applyImprovement, listImprovements } from "./commands/improvements.js"
 import { init } from "./commands/init.js"
 import { install, update } from "./commands/install.js"
-import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateWait } from "./commands/integrate.js"
+import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateTool, integrateWait } from "./commands/integrate.js"
 import { listen } from "./commands/listen.js"
 import { memoryGet, memoryList, memoryPut, memoryRemove } from "./commands/memory.js"
 import { replay } from "./commands/replay.js"
 import { resume } from "./commands/resume.js"
 import { run } from "./commands/run.js"
 import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./commands/secrets.js"
+import { stateGet, stateList, stateRemove, stateReset } from "./commands/state.js"
 import { targetClear, targetStatus, targetUse } from "./commands/target.js"
 import { test, testList, testRun, testShow } from "./commands/test.js"
 import { isCliRunCommandEnabled } from "./env.js"
@@ -103,6 +104,7 @@ const testCommand = program
     .argument("[job-name]", "Name of the job to test (auto-selects if only one exists)")
     .option("-v, --verbose", "Show job stream output", true)
     .option("--no-verbose", "Hide job stream output")
+    .option("--fresh-state", "Reset the job's test state before running")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -110,6 +112,7 @@ const testCommand = program
 Examples:
   $ terse test                              # interactive picker
   $ terse test my-job                       # test a specific job
+  $ terse test my-job --fresh-state         # reset test state first (e.g. to re-test dedupe)
 
 Non-interactive subcommands (for AI agents and CI):
   $ terse test list --json                  # enumerate sample events with ids
@@ -118,8 +121,8 @@ Non-interactive subcommands (for AI agents and CI):
   $ terse test run --event-file sample.json # run a sample event from disk
 `
     )
-    .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean }) => {
-        await test(jobName, opts?.verbose, resolveProvider(), opts?.entryFile)
+    .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean; freshState?: boolean }) => {
+        await test(jobName, opts?.verbose, resolveProvider(), opts?.entryFile, opts?.freshState)
     })
 
 testCommand
@@ -148,10 +151,11 @@ testCommand
     .description("Run a job against a sample event non-interactively")
     .argument("[job-name]", "Name of the job (auto-selects if only one exists)")
     .option("--id <id>", "Sample event id from `terse test list`")
-    .option("--event <json>", "Inline serialized event JSON string")
-    .option("--event-file <path>", "Path to a JSON file containing the serialized event")
+    .option("--event <json>", "Inline trigger event fixture JSON")
+    .option("--event-file <path>", "Path to a JSON file containing the trigger event fixture")
     .option("-v, --verbose", "Show job stream output", true)
     .option("--no-verbose", "Hide job stream output")
+    .option("--fresh-state", "Reset the job's test state before running")
     .option(...ENTRY_FILE_OPTION)
     .addHelpText(
         "after",
@@ -159,16 +163,18 @@ testCommand
 Examples:
   $ terse test list --json | jq -r '.events[0].id' | xargs -I{} terse test run --id {}
   $ terse test run --event-file fixture.json
+  $ terse test run --id <id> --fresh-state
 `
     )
-    .action(async (jobName?: string, opts?: { id?: string; event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
+    .action(async (jobName?: string, opts?: { id?: string; event?: string; eventFile?: string; verbose?: boolean; entryFile?: string; freshState?: boolean }) => {
         await testRun({
             jobName,
             id: opts?.id,
             eventJson: opts?.event,
             eventFile: opts?.eventFile,
             verbose: opts?.verbose,
-            entryFile: opts?.entryFile
+            entryFile: opts?.entryFile,
+            freshState: opts?.freshState
         })
     })
 
@@ -244,6 +250,8 @@ Examples:
   $ terse integrate                                   # interactive picker
   $ terse integrate list --json                       # enumerate integrations
   $ terse integrate describe snowflake --json         # see required fields
+  $ terse integrate tool slack --json                 # list an integration's tools
+  $ terse integrate tool slack slack_send_message --json  # one tool's input/output schemas
   $ terse integrate connect snowflake --field account=x --field username=y --fields-stdin <<< '{"password":"'"$PW"'"}'
   $ terse integrate connect slack                     # OAuth → opens browser, exit 2 (follow up with 'wait')
   $ terse integrate wait slack --timeout 300          # block until OAuth completes
@@ -313,6 +321,25 @@ integrateCommand
     })
 
 integrateCommand
+    .command("tool")
+    .description("List an integration's tools, or show one tool's description and input/output schemas")
+    .argument("<type>", "Integration type (e.g. slack, snowflake)")
+    .argument("[tool-name]", "Tool name (e.g. slack_send_message); omit to list every tool")
+    .option("--json", "Emit JSON")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse integrate tool slack                             # list Slack's tools
+  $ terse integrate tool slack --json
+  $ terse integrate tool slack slack_send_message --json   # one tool's description and input/output schemas
+`
+    )
+    .action(async (type: string, toolName: string | undefined, opts: JsonOpts) => {
+        await integrateTool({ integrationType: type, toolName, json: opts.json })
+    })
+
+integrateCommand
     .command("wait")
     .description("Block until an OAuth integration finishes connecting (run after `connect` emits a handoff)")
     .argument("<type>", "Integration type (e.g. slack, gmail)")
@@ -350,8 +377,9 @@ secretsCommand
     .description("Add or update a project secret")
     .argument("<NAME>", "Secret environment variable name")
     .option("--value-stdin", "Read the secret value from stdin")
-    .action(async (name: string, opts: { valueStdin?: boolean }) => {
-        await secretsAdd(name, { valueStdin: opts.valueStdin })
+    .option("--skip-local-sync", "Skip syncing the secret to the local environment", false)
+    .action(async (name: string, opts: { valueStdin?: boolean; skipLocalSync?: boolean }) => {
+        await secretsAdd(name, { valueStdin: opts.valueStdin, skipLocalSync: opts.skipLocalSync })
     })
 
 secretsCommand
@@ -359,8 +387,9 @@ secretsCommand
     .description("Remove a project secret")
     .argument("<NAME>", "Secret environment variable name")
     .option("--yes", "Confirm removal")
-    .action(async (name: string, opts: { yes?: boolean }) => {
-        await secretsRemove(name, { yes: opts.yes })
+    .option("--skip-local-sync", "Skip syncing the secret to the local environment")
+    .action(async (name: string, opts: { yes?: boolean; skipLocalSync?: boolean }) => {
+        await secretsRemove(name, { yes: opts.yes, skipLocalSync: opts.skipLocalSync })
     })
 
 secretsCommand
@@ -434,6 +463,70 @@ memoryCommand
         await memoryRemove(path, { job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
     })
 
+const stateCommand = program
+    .command("state")
+    .description("Inspect and manage a job's typed persistent state")
+    .addHelpText(
+        "after",
+        `
+State is written by \`state.set(...)\` in a job's filter/onTrigger handlers. Deployed runs and
+\`terse test\` runs use separate state: commands default to the deployed state (read-only) and
+target the test state with --test.
+
+Examples:
+  $ terse state list --job my-job
+  $ terse state list --job my-job --test
+  $ terse state get lastProcessedId --job my-job
+  $ terse state rm lastProcessedId --job my-job --test --yes
+  $ terse state reset --job my-job --test --yes
+`
+    )
+
+stateCommand
+    .command("list")
+    .description("List state keys for a job")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` state instead of deployed state")
+    .option("--json", "Emit JSON")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (opts: JsonEntryFileOpts & { job?: string; test?: boolean }) => {
+        await stateList({ job: opts.job, test: opts.test, json: opts.json, entryFile: opts.entryFile })
+    })
+
+stateCommand
+    .command("get")
+    .description("Print a state value as JSON")
+    .argument("<key>", "State key (as declared in the job's `states`)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` state instead of deployed state")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (key: string, opts: EntryFileOpts & { job?: string; test?: boolean }) => {
+        await stateGet(key, { job: opts.job, test: opts.test, entryFile: opts.entryFile })
+    })
+
+stateCommand
+    .command("rm")
+    .description("Delete one test state key (deployed state is read-only)")
+    .argument("<key>", "State key (as declared in the job's `states`)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` state (required)")
+    .option("--yes", "Confirm deletion")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (key: string, opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
+        await stateRemove(key, { job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
+    })
+
+stateCommand
+    .command("reset")
+    .description("Delete all test state for a job (deployed state is read-only)")
+    .option("--job <name>", "Job name (auto-selects if only one exists)")
+    .option("--test", "Target the isolated `terse test` state (required)")
+    .option("--yes", "Confirm deletion")
+    .option(...ENTRY_FILE_OPTION)
+    .action(async (opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
+        await stateReset({ job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
+    })
+
 program
     .command("generate")
     .description("Autogenerate context from your connected workspaces")
@@ -447,8 +540,8 @@ if (isCliRunCommandEnabled()) {
         .command("run")
         .description("Execute a job with payload")
         .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
-        .option("--event <json>", "Serialized event JSON string")
-        .option("--event-file <path>", "Path to a JSON file containing the serialized event")
+        .option("--event <json>", "Trigger event fixture JSON string")
+        .option("--event-file <path>", "Path to a JSON file containing the trigger event fixture")
         .option("-v, --verbose", "Show job stream output (use --no-verbose to silence)", true)
         .option("--no-verbose", "Hide job stream output")
         .option(...ENTRY_FILE_OPTION)

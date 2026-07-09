@@ -5,7 +5,7 @@ import { RunHistoryStatus } from "terse-types"
 import { analytics } from "./common/analytics"
 import logger from "./common/logger"
 import { CronJobIntegrationManager } from "./integrations/cronJob/integration"
-import { Boss } from "./loaders/pgBoss"
+import { Boss, WORK_POLLING } from "./loaders/pgBoss"
 import { db } from "./loaders/prisma"
 import { WorkerSocketEmitter } from "./loaders/workerSocket"
 import { markRunFailed } from "./modules/agents/AgentRunner/runHistory"
@@ -40,7 +40,7 @@ async function registerWorkers(): Promise<void> {
 
     await boss.work<ScheduleJobData>(
         QueueName.Schedule,
-        { localConcurrency: 10 },
+        { localConcurrency: 10, ...WORK_POLLING.latencySensitive },
         withJobLogging(QueueName.Schedule, async data => {
             await new CronJobIntegrationManager().processWebhookEvent({
                 inputId: data.inputId,
@@ -52,12 +52,12 @@ async function registerWorkers(): Promise<void> {
 
     for (const job of Object.values(MaintenanceJob)) {
         const queue = maintenanceQueueName(job)
-        await boss.work(queue, { localConcurrency: 1 }, withJobLogging(queue, MAINTENANCE_HANDLERS[job]))
+        await boss.work(queue, { localConcurrency: 1, ...WORK_POLLING.background }, withJobLogging(queue, MAINTENANCE_HANDLERS[job]))
     }
 
     await boss.work<RunExecutionJobData>(
         QueueName.SdkRunExecution,
-        { localConcurrency: SDK_RUN_CONCURRENCY },
+        { localConcurrency: SDK_RUN_CONCURRENCY, ...WORK_POLLING.latencySensitive },
         withJobLogging(QueueName.SdkRunExecution, data => handleRunExecution(data))
     )
 }

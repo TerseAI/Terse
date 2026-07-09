@@ -14,13 +14,14 @@ export async function runLocalTestJob(
         forceLocal?: boolean
         isTest?: boolean
         replayOfRunId?: string
+        freshState?: boolean
         verbose?: boolean
         entryFile?: string
         pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
     }
 ): Promise<{ runId: string; local: boolean }> {
     const { runId, local } = await startTestRun(
-        { projectId: opts.projectId, jobName: job.name, event, forceLocal: opts.forceLocal, isTest: opts.isTest, replayOfRunId: opts.replayOfRunId },
+        { projectId: opts.projectId, jobName: job.name, event, forceLocal: opts.forceLocal, isTest: opts.isTest, replayOfRunId: opts.replayOfRunId, freshState: opts.freshState },
         opts.apiKey
     )
 

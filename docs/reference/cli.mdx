@@ -133,6 +133,7 @@ Options:
 | --------------------- | ---------------------------------------- | -------------------- |
 | `-v, --verbose`       | Show agent stream output during the run  | Enabled              |
 | `--no-verbose`        | Hide agent stream output                 |                      |
+| `--fresh-state`       | Reset the job's test state before running |                     |
 | `--entry-file <path>` | Override the default workflow entry file | `src/terse.jobs.ts`  |
 
 Loads your local workflow, lets you pick a real or synthesized sample event, and runs the handler in-process.
@@ -175,7 +176,7 @@ Options:
 | `--json`              | Emit JSON instead of the rendered text view |
 | `--entry-file <path>` | Override the default workflow entry file    |
 
-The CLI refetches the workflow's current sample events and resolves the id against them.
+The CLI refetches the workflow's current sample events and resolves the id against them. With `--json`, the event is printed as a trigger event fixture: save it to a file, edit it, and replay it with `terse test run --event-file`.
 
 #### `terse test run [job-name]`
 
@@ -193,11 +194,35 @@ Options:
 | Flag                  | Description                                                 |
 | --------------------- | ----------------------------------------------------------- |
 | `--id <id>`           | Run a sample event by its `terse test list` id              |
-| `--event <json>`      | Inline serialized trigger event JSON                        |
-| `--event-file <path>` | Path to a JSON file containing the serialized trigger event |
+| `--event <json>`      | Inline trigger event fixture JSON                           |
+| `--event-file <path>` | Path to a JSON file containing a trigger event fixture      |
 | `-v, --verbose`       | Show agent stream output during the run (default: enabled)  |
 | `--no-verbose`        | Hide agent stream output                                    |
+| `--fresh-state`       | Reset the job's test state before running                   |
 | `--entry-file <path>` | Override the default workflow entry file                    |
+
+Test runs read and write an isolated copy of the job's [state](/reference/typescript-sdk#job-state) that persists across `terse test` invocations, so dedupe and cooldown logic behaves the same way it will in production. Pass `--fresh-state` to reset that test state before the run, for example to re-test a `filter` that already fired. `--fresh-state` never touches the state of the deployed job, and is not yet supported for projects with a remote data plane.
+
+
+##### Trigger event fixtures
+
+`--event` and `--event-file` take a flat trigger event fixture: the same fields your handler reads, and nothing else. For a webhook trigger:
+
+```json
+{
+  "integrationType": "webhook",
+  "eventType": "webhook",
+  "method": "POST",
+  "headers": { "content-type": "application/json" },
+  "body": { "lead": "acme" }
+}
+```
+
+The available fields per trigger type match what your handler receives at runtime (for webhooks: `body`, `headers`, `method`).
+
+The prompt-facing text returned by `event.formatForAgentRunner()` and the log line returned by `event.debugLog()` are derived from the fixture exactly the way production derives them from a live event. To test a custom rendering, add a top-level `formattedContent` or `debugLog` string to the fixture and it overrides the derived value.
+
+`terse test show <id> --json` prints any stored sample event in this shape, so a recorded event is always a valid starting point for a hand-edited fixture.
 
 ### `terse deploy`
 
@@ -275,14 +300,30 @@ Options:
 
 #### `terse integrate describe <type>`
 
-Shows the current status, installation type, required fields, and any setup URL for one integration type.
+Shows the current status, installation type, required fields, any setup URL, and a summary of the tools the integration exposes to jobs (name, description, read-only flag, approval support).
 
 ```bash
 terse integrate describe snowflake
 terse integrate describe slack --json
 ```
 
-Use this command to inspect the schema before you build a `connect` command.
+Use this command to inspect the schema before you build a `connect` command. For a tool's input/output schemas, use `terse integrate tool <type> <tool-name>`.
+
+Options:
+
+| Flag     | Description                |
+| -------- | -------------------------- |
+| `--json` | Emit machine-readable JSON |
+
+#### `terse integrate tool <type> [tool-name]`
+
+With only an integration type, lists every tool that integration exposes to jobs, with descriptions. With a tool name, shows that tool's full details: description, read-only flag, approval support, input schema, and output schema.
+
+```bash
+terse integrate tool slack
+terse integrate tool slack --json
+terse integrate tool slack slack_send_message --json
+```
 
 Options:
 
@@ -345,7 +386,7 @@ Options:
 | `--timeout <seconds>` | Timeout in seconds. Defaults to 300 and caps at 900 |
 | `--json`              | Emit machine-readable JSON                          |
 
-The `list`, `describe`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
+The `list`, `describe`, `tool`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
 
 ### `terse secrets`
 
@@ -365,7 +406,7 @@ Lists secret names (not values) stored on the linked Terse project.
 
 #### `terse secrets add <NAME>`
 
-Adds or updates one secret. Prompts for the value as a hidden input by default, or reads it from stdin so secrets don't end up in shell history.
+Adds or updates one secret. Prompts for the value as a hidden input by default, or reads it from stdin so secrets don't end up in shell history. Also writes the value to the project's local `.env` file, so `terse test` runs use the same value that deployed runs will see.
 
 ```bash
 terse secrets add OPENAI_API_KEY
@@ -378,7 +419,7 @@ printf '%s' "$OPENAI_API_KEY" | terse secrets add OPENAI_API_KEY --value-stdin
 
 #### `terse secrets remove <NAME>`
 
-Removes one secret. Prompts for confirmation in a terminal; pass `--yes` in scripts.
+Removes one secret. Prompts for confirmation in a terminal; pass `--yes` in scripts. Also deletes the matching line from the project's local `.env` file, so a job that would fail on the next deploy doesn't keep passing locally.
 
 ```bash
 terse secrets remove OPENAI_API_KEY --yes
@@ -415,6 +456,7 @@ What the generated file contains:
 
 | Category                    | Example                                                              |
 | --------------------------- | -------------------------------------------------------------------- |
+| Available integrations      | A header comment listing every integration currently available in Terse |
 | Resource constants          | `SlackChannel.Engineering`                                           |
 | Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.schedule.cron()`           |
 | Skill constructors          | `Skills.github({ repos: [...] })`                                    |
@@ -535,6 +577,82 @@ Options:
 | `--test`              | Target the isolated `terse test` memory instead of production |
 | `--yes`               | Skip the confirmation prompt                               |
 | `--entry-file <path>` | Override the default workflow entry file                   |
+
+## State
+
+If a job declares typed [state](/reference/typescript-sdk#job-state), these commands let you inspect it from the terminal and reset the copy used by `terse test` runs.
+
+Deployed runs and `terse test` runs each have their own state, so testing never pollutes production. Every command resolves the job by `--job <name>`, or auto-selects when the project has only one workflow. Commands default to the deployed state, which is read-only from the CLI; pass `--test` to target the test state. Test state persists across `terse test` invocations until you reset it.
+
+### `terse state list`
+
+Lists the state keys for a job with their sizes.
+
+```bash
+terse state list --job my-job
+terse state list --job my-job --test
+terse state list --job my-job --json
+```
+
+Options:
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)           |
+| `--test`              | Target the isolated `terse test` state instead of deployed state |
+| `--json`              | Emit JSON                                                       |
+| `--entry-file <path>` | Override the default workflow entry file                        |
+
+### `terse state get <key>`
+
+Prints one state value as JSON. `key` is a key declared in the job's `states`.
+
+```bash
+terse state get lastProcessedId --job my-job
+terse state get lastProcessedId --job my-job --test
+```
+
+Options:
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)           |
+| `--test`              | Target the isolated `terse test` state instead of deployed state |
+| `--entry-file <path>` | Override the default workflow entry file                        |
+
+### `terse state rm <key>`
+
+Deletes one test state key. Deployed state is read-only, so `--test` is required. Prompts for confirmation in a terminal; pass `--yes` in scripts.
+
+```bash
+terse state rm lastProcessedId --job my-job --test --yes
+```
+
+Options:
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)           |
+| `--test`              | Target the isolated `terse test` state (required)               |
+| `--yes`               | Skip the confirmation prompt                                    |
+| `--entry-file <path>` | Override the default workflow entry file                        |
+
+### `terse state reset`
+
+Deletes all test state for a job, the same reset `terse test run --fresh-state` performs before a run. Deployed state is read-only, so `--test` is required.
+
+```bash
+terse state reset --job my-job --test --yes
+```
+
+Options:
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)           |
+| `--test`              | Target the isolated `terse test` state (required)               |
+| `--yes`               | Skip the confirmation prompt                                    |
+| `--entry-file <path>` | Override the default workflow entry file                        |
 
 ## Observability
 ### `terse listen [job-name]`

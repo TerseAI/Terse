@@ -20,6 +20,7 @@ import {
     submitIntegrationForm
 } from "../integrationApi.js"
 import { openUrlInBrowser } from "../openBrowser.js"
+import { type ToolDetails, fetchToolDetails } from "../toolCatalog.js"
 
 import { generate } from "./generate.js"
 
@@ -513,7 +514,7 @@ export async function integrateDescribe(opts: IntegrateDescribeOpts): Promise<vo
     const type = parseIntegrationTypeOrThrow(opts.integrationType)
     const apiKey = readApiKeyOrBail()
 
-    const [integrations, fieldsResponse] = await Promise.all([fetchIntegrations(apiKey), fetchIntegrationFields(apiKey, type)])
+    const [integrations, fieldsResponse, toolCatalog] = await Promise.all([fetchIntegrations(apiKey), fetchIntegrationFields(apiKey, type), fetchToolDetails(apiKey).catch(() => null)])
     const match = integrations.find(i => i.integrationType === type)
 
     const payload = {
@@ -522,7 +523,8 @@ export async function integrateDescribe(opts: IntegrateDescribeOpts): Promise<vo
         status: match?.isActive ? "connected" : "disconnected",
         installationType: fieldsResponse.installationType,
         fields: fieldsResponse.fields,
-        setup: fieldsResponse.setup ?? null
+        setup: fieldsResponse.setup ?? null,
+        tools: toolCatalog ? toolCatalog.filter(tool => tool.integration === type).map(toToolSummary) : null
     }
 
     if (opts.json) {
@@ -545,6 +547,93 @@ export async function integrateDescribe(opts: IntegrateDescribeOpts): Promise<vo
     } else {
         process.stdout.write("OAuth — use `terse integrate connect <type>` in an interactive terminal, or open the auth URL manually and poll with `terse integrate wait`.\n")
     }
+    printToolSummary(payload.tools)
+}
+
+export async function integrateTool(opts: IntegrateToolOpts): Promise<void> {
+    const type = parseIntegrationTypeOrThrow(opts.integrationType)
+    const apiKey = readApiKeyOrBail()
+
+    const catalog = await fetchToolDetails(apiKey)
+    const tools = catalog.filter(tool => tool.integration === type)
+
+    if (opts.toolName === undefined) {
+        printToolList(type, tools, opts.json)
+        return
+    }
+
+    const match = tools.find(tool => tool.name === opts.toolName)
+    if (!match) {
+        throw new CliError("unknown_tool", `Unknown tool '${opts.toolName}' for integration '${type}'.`, {
+            detail: tools.length > 0 ? `Available tools: ${tools.map(tool => tool.name).join(", ")}` : `Integration '${type}' exposes no tools.`
+        })
+    }
+
+    if (opts.json) {
+        process.stdout.write(JSON.stringify(match, null, 2) + "\n")
+        return
+    }
+
+    printToolDetails(match)
+}
+
+function printToolList(type: IntegrationType, tools: ToolDetails[], json: boolean | undefined): void {
+    if (json) {
+        process.stdout.write(JSON.stringify({ type, tools: tools.map(toToolSummary) }, null, 2) + "\n")
+        return
+    }
+
+    if (tools.length === 0) {
+        process.stdout.write(`Integration '${type}' exposes no tools.\n`)
+        return
+    }
+
+    process.stdout.write("Tools:\n")
+    for (const tool of tools) {
+        const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : ""
+        process.stdout.write(`  ${chalk.cyan(tool.name)}${readOnly} — ${tool.description}\n`)
+    }
+    process.stdout.write(chalk.dim(`\nRun \`terse integrate tool ${type} <tool-name> --json\` for a tool's input/output schemas.\n`))
+}
+
+function printToolDetails(tool: ToolDetails): void {
+    const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : ""
+    process.stdout.write(`${chalk.bold(tool.displayName)} ${chalk.dim(`[${tool.name}]`)}${readOnly}\n`)
+    process.stdout.write(`Integration: ${tool.integration}\n`)
+    process.stdout.write(`Supports approval: ${tool.supportsApproval ? "yes" : "no"}\n\n`)
+    process.stdout.write(`${tool.description}\n`)
+    process.stdout.write(`\nInput schema:\n${formatToolSchema(tool.inputSchema)}\n`)
+    process.stdout.write(`\nOutput schema:\n${formatToolSchema(tool.outputSchema)}\n`)
+}
+
+function formatToolSchema(schema: unknown): string {
+    if (schema === null) return chalk.dim("  (not available in this CLI version — update terse-cli)")
+    return JSON.stringify(schema, null, 2)
+}
+
+function toToolSummary(tool: ToolDetails): ToolSummary {
+    return {
+        name: tool.name,
+        displayName: tool.displayName,
+        description: tool.description,
+        isReadOnly: tool.isReadOnly,
+        supportsApproval: tool.supportsApproval
+    }
+}
+
+function printToolSummary(tools: ToolSummary[] | null): void {
+    if (tools === null) {
+        process.stdout.write(chalk.dim("\nTools: unavailable (tool definitions could not be fetched)\n"))
+        return
+    }
+    if (tools.length === 0) return
+
+    process.stdout.write("\nTools:\n")
+    for (const tool of tools) {
+        const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : ""
+        process.stdout.write(`  ${chalk.cyan(tool.name)}${readOnly} — ${tool.description}\n`)
+    }
+    process.stdout.write(chalk.dim("\nRun `terse integrate tool <type> <tool-name> --json` for a tool's input/output schemas.\n"))
 }
 
 async function collectRawFields(opts: Pick<IntegrateConnectOpts, "fieldFlags" | "fieldsStdin">): Promise<Record<string, string>> {
@@ -721,6 +810,20 @@ export type IntegrateListOpts = {
 export type IntegrateDescribeOpts = {
     integrationType: string
     json?: boolean
+}
+
+export type IntegrateToolOpts = {
+    integrationType: string
+    toolName?: string
+    json?: boolean
+}
+
+type ToolSummary = {
+    name: string
+    displayName: string
+    description: string
+    isReadOnly: boolean
+    supportsApproval: boolean
 }
 
 export type IntegrateConnectOpts = {

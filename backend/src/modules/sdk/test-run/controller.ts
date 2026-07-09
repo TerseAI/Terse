@@ -12,6 +12,7 @@ import { SyntheticTriggerRuntime } from "../../../modules/triggers/syntheticTrig
 import { deleteSubtrees } from "../../../services/memory/memorySnapshots"
 import { replayMemorySubtreeKey, replayStateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { settings } from "../../../settings"
+import { resetJobTestState } from "../state/service"
 import { ensureTestAutomation, userOwnsProject } from "../testRunContext"
 
 export async function handleSdkTestRunStart(req: Request, res: Response) {
@@ -27,8 +28,12 @@ export async function handleSdkTestRunStart(req: Request, res: Response) {
     try {
         const project = await db().projects.findUnique({ where: { id: projectId }, select: { remote_server_url: true } })
         const localDataPlane = parsed.data.forceLocal === true || !project?.remote_server_url
+        if (parsed.data.freshState && !localDataPlane) {
+            return res.status(400).json({ success: false, error: "--fresh-state is not supported for projects with a remote data plane yet." })
+        }
 
         const agentId = await ensureTestAutomation(user, projectId, parsed.data.jobName)
+        if (parsed.data.freshState) await resetJobTestState(projectId, agentId)
         const synthetic = new SyntheticTriggerRuntime(parsed.data.event.data)
         const processor = new EventProcessor(synthetic, user, { isManuallyTriggered: true, isTest: parsed.data.isTest ?? true, localDataPlane, replayOfRunId: parsed.data.replayOfRunId })
         const { runId } = await processor.triggerSingleAgent(agentId)

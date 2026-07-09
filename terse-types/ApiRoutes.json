@@ -65,7 +65,8 @@
     },
     "POSTHOG": {
         "INTEGRATIONS": "/posthog/integrations",
-        "PROJECTS": "/posthog/projects"
+        "PROJECTS": "/posthog/projects",
+        "EVENTS": "/posthog/events"
     },
     "LAUNCHDARKLY": {
         "INTEGRATIONS": "/launchdarkly/integrations",
@@ -157,6 +158,10 @@
         "MEMORY_DELETE": "/sdk/memory/delete",
         "STATE_GET": "/sdk/state/get",
         "STATE_PUT": "/sdk/state/put",
+        "STATE_LIST": "/sdk/state/list",
+        "STATE_READ": "/sdk/state/read",
+        "STATE_DELETE": "/sdk/state/delete",
+        "STATE_RESET": "/sdk/state/reset",
         "APPROVAL_DECISION": "/sdk/approval-decision",
         "SESSION_EVENTS": "/sdk/session-events",
         "LISTEN": "/sdk/listen",

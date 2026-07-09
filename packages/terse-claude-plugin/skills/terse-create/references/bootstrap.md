@@ -15,7 +15,7 @@ If the user named a project directory, pass it; otherwise scaffold into the curr
 
 Set the Bash timeout to 600000 (10 minutes). Dependency install and browser-side auth can both take a while.
 
-`terse init` handles auth itself: if the user is not logged in, it opens the browser to WorkOS and waits for them to authorize. Tell the user a browser tab may pop up. The single command scaffolds files, installs dependencies, logs in if needed, creates the remote Terse project, writes `terse.config.json`, and runs `terse generate`.
+`terse init` handles auth itself: if the user is not logged in, it opens the browser to WorkOS and waits for them to authorize. Before running it, tell the user casually that a browser tab may pop up and that the setup pauses until they finish signing in there. If the CLI prints a login URL and the user seems stuck, relay that URL as a clickable fallback — the automatic browser open fails silently over SSH or in a container. The single command scaffolds files, installs dependencies, logs in if needed, creates the remote Terse project, writes `terse.config.json`, and runs `terse generate`.
 
 ## 2. React to errors
 
@@ -29,4 +29,4 @@ If `terse init` fails, read the error and recover:
 
 ## 3. Continue
 
-The CLI prints a "Next steps" block at the end of a successful `terse init`. Don't repeat it verbatim. Connect any integrations the requested workflow needs (`terse integrate connect <type>`), then return to SKILL.md step 1 and build the workflow the user asked for.
+The CLI prints a "Next steps" block at the end of a successful `terse init`. Don't repeat it verbatim. Connect any integrations the requested workflow needs — run `terse integrate describe <type> --json` first to learn whether the install is form or OAuth and which fields it requires, then `terse integrate connect <type>` per SKILL.md step 7. Then return to SKILL.md step 1 and build the workflow the user asked for.

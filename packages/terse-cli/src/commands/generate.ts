@@ -16,12 +16,13 @@ import type {
     SnowflakeIntegration,
     WorkOSIntegration
 } from "terse-types"
-import { ApiRoutes, IntegrationType, type ToolDefinition, buildRoute, isValidToolName, toolDefinitionsResponseSchema } from "terse-types"
+import { ApiRoutes, IntegrationType, type ToolDefinition, buildRoute, isValidToolName, posthogProjectEventsResponseSchema, toolDefinitionsResponseSchema } from "terse-types"
 
 import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
+import { fetchIntegrations } from "../integrationApi.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import {
     type AttioAttributeData,
@@ -85,6 +86,16 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
         throw new CliError("fetch_integrations_failed", message || "Failed to fetch integrations.")
     }
 
+    s.message("Fetching integration catalog")
+
+    let availableIntegrations: string[] = []
+    try {
+        const catalog = await fetchIntegrations(apiKey)
+        availableIntegrations = [...new Set(catalog.map(entry => entry.integrationType))].sort()
+    } catch {
+        log.warn("Skipped integration catalog fetch; proceeding without the available-integrations list")
+    }
+
     s.message("Fetching tool definitions")
 
     let toolDefs: ToolDefinition[] = []
@@ -105,6 +116,7 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
     s.message("Fetching integration details")
 
     const input: CodegenInput = {
+        availableIntegrations,
         github: [],
         slack: [],
         gmail: [],
@@ -230,7 +242,13 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
                         const resp = await fetchWithAuth<{ projects: Array<{ id: string; name: string }> }>(`${ApiRoutes.POSTHOG.PROJECTS}?integrationId=${encodeURIComponent(inst.id)}`, apiKey).catch(
                             () => ({ projects: [] })
                         )
-                        return { id: inst.id, displayName: inst.orgName || inst.email || inst.id, projects: resp.projects || [] }
+                        const projects = await Promise.all(
+                            (resp.projects || []).map(async project => {
+                                const events = await fetchPosthogProjectEventNames(inst.id, project.id, apiKey)
+                                return { ...project, events }
+                            })
+                        )
+                        return { id: inst.id, displayName: inst.orgName || inst.email || inst.id, projects }
                     })
                 )
             })
@@ -379,6 +397,16 @@ async function safely(fn: () => Promise<void>): Promise<void> {
         await fn()
     } catch {
         /* skip failed integrations */
+    }
+}
+
+async function fetchPosthogProjectEventNames(integrationId: string, projectId: string, apiKey: string): Promise<string[]> {
+    try {
+        const raw = await fetchWithAuth<unknown>(`${ApiRoutes.POSTHOG.EVENTS}?integrationId=${encodeURIComponent(integrationId)}&projectId=${encodeURIComponent(projectId)}`, apiKey)
+        return posthogProjectEventsResponseSchema.parse(raw).events.map(event => event.name)
+    } catch {
+        log.warn(`Could not fetch PostHog event names for project ${projectId}; eventName stays untyped until the next successful terse generate`)
+        return []
     }
 }
 

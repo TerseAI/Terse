@@ -15,9 +15,9 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: "22.19.0"
-            - name: Check vendored references are in sync
+            - name: Check generated skills are in sync
               run: |
-                  node packages/terse-claude-plugin/scripts/sync-references.mjs
+                  node packages/terse-claude-plugin/scripts/build-skills.mjs
                   git diff --exit-code -- packages/terse-claude-plugin/skills
             - name: Validate plugin and marketplace manifests
               run: |
