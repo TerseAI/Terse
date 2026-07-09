@@ -771,6 +771,20 @@ export function step<T>(promise: Promise<T>): Promise<T> {
     )
 }
 
+/**
+ * Replay-safe logging for durable jobs: `await log("processed", count)`.
+ * The durable build hoists the call into a journaled step, so the line prints
+ * exactly once instead of once per replay like a bare `console.log` outside a
+ * step would. Arguments cross the step boundary, so they must be serializable.
+ * Outside durable job files it simply forwards to `console.log`.
+ */
+// The durable build rewrites every log() call site in job files away, so this
+// body runs everywhere else: non-durable jobs, helper files, and step bodies.
+export function log(...args: unknown[]): Promise<void> {
+    console.log(...args)
+    return Promise.resolve()
+}
+
 export function sleep(duration: string | number | Date): Promise<void> {
     if (!isDurableExecution()) {
         throw new DurableOnlyError("sleep() is only available in durable jobs. Add `durable: true` to this job.")

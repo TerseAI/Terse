@@ -42,7 +42,7 @@ Every line above is a durable step. If the job resumes, completed calls replay f
 Anything that is not a Terse SDK call becomes a durable step by wrapping it in `step()`. That covers third-party SDKs like Octokit or Resend, a raw `fetch`, a database write, anything with a side effect.
 
 <Warning>
-Code outside a step runs again on **every replay**, not just once. If it has a side effect and is not idempotent (sending an email, charging a card, creating a record), it will happen multiple times and cause real problems. Wrap every side effect in `step()` so it runs exactly once.
+Code outside a step runs again on **every replay**, not just once. If it has a side effect and is not idempotent (sending an email, charging a card, creating a record), it will happen multiple times and cause real problems. Wrap every side effect in `step()` so it runs exactly once. This includes `console.log`, which repeats once per replay; use [`log()`](#logging) for output that should print once.
 </Warning>
 
 ```ts
@@ -123,6 +123,25 @@ await jobStep({
     }
 })
 ```
+
+## Logging
+
+Because the handler replays from the top, a bare `console.log` outside a step prints once per replay: a summary logged before three steps shows up four times in `terse test` output. That repetition is real execution behavior and can be a useful window into how replay works, but it makes output hard to read.
+
+Use `log()` for lines that should print exactly once. It is a journaled step, so it prints when first executed and is skipped on every replay after that:
+
+```ts
+import { log } from "terse-sdk"
+
+onTrigger: async event => {
+    await log("scan started for", event.repository.name)
+    const findings = await step(scanRepository(event.repository))
+    await log(`${findings.length} findings`)  // prints once, even though later steps replay this line
+    // ...
+}
+```
+
+Arguments are serialized into the journal like any step input, so log data, not functions. Inside a step body, plain `console.log` is already fine: the body runs once, so its logs print once. `log()` also works in non-durable jobs, where it simply forwards to `console.log`.
 
 ## Waiting
 
