@@ -30,26 +30,11 @@ export const slackSendMessageTool = defineSessionTool({
             validThreadTs = thread_ts
         }
 
-        // Parse and validate Block Kit blocks if provided
         let blocks: KnownBlock[] | undefined
         if (blocksJson) {
             try {
-                const parsed = JSON.parse(blocksJson)
-                if (!Array.isArray(parsed)) {
-                    throw new Error("Blocks must be a JSON array")
-                }
-                // Basic validation: ensure each block has a type
-                for (const block of parsed) {
-                    if (!block || typeof block !== "object" || !block.type) {
-                        throw new Error("Each block must be an object with a 'type' property")
-                    }
-                }
-                blocks = parsed as KnownBlock[]
+                blocks = JSON.parse(blocksJson)
             } catch (error: any) {
-                logger.error(`[Slack Output] Invalid Block Kit JSON`, {
-                    error: error.message,
-                    blocksJson: blocksJson.substring(0, 200) // Log first 200 chars for debugging
-                })
                 throw new Error(`Invalid Block Kit JSON: ${error.message}. Blocks must be a valid JSON array of Block Kit blocks.`)
             }
         }

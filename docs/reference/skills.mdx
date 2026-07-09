@@ -41,14 +41,14 @@ skills: [Skills.slack({ channel: SlackChannel.Engineering })]
 | `slack_list_channels`     | List channels                    | Read   |
 | `slack_read_conversation` | Read conversation history        | Read   |
 
-For `slack_send_message`, pass either `channelId` (a public or private channel id, or an existing DM channel id) or `slackUserId` (a member id, `U…`). Terse opens the DM if needed. If you pass both, `channelId` wins and the message goes there. After `terse generate`, use `SlackChannel.*.channelId` and `SlackUser.*.userId` from `src/terse.generated.ts` instead of hand-copying ids.
-
-`slack_send_message` also accepts:
+`slack_send_message` inputs:
 
 | Parameter        | Description |
 | ---------------- | ----------- |
+| `channelId`      | Destination channel id (public, private, or an existing DM). Use `SlackChannel.*.channelId` from `src/terse.generated.ts`. If both `channelId` and `slackUserId` are set, `channelId` wins. |
+| `slackUserId`    | Member id (`U…`) to DM instead of a channel; Terse opens the DM if needed. Use `SlackUser.*.userId` from `src/terse.generated.ts`. |
 | `message`        | Message text ([mrkdwn](https://docs.slack.dev/messaging/formatting-message-text)). When `blocks` is set, this becomes the notification fallback text. |
-| `thread_ts`      | Reply in a thread. Pass the thread root's `ts` (e.g. `"1712345678.123456"`), never a reply's own `ts`. Every send returns a `thread_ts` you can pass to later sends to keep replying in the same thread; Slack trigger events carry it as `event.threadTs` and `slack_read_conversation` messages as `threadTs`. A malformed value fails the send instead of posting an unthreaded message. |
+| `thread_ts`      | Reply in a thread. Pass the thread root's `ts` (e.g. `"1712345678.123456"`), never a reply's own `ts`. Every send returns a `thread_ts` for follow-up replies; Slack trigger events carry it as `event.threadTs`. A malformed value fails the send instead of posting an unthreaded message. |
 | `replyBroadcast` | With `thread_ts`: also show the reply in the main channel (Slack's `reply_broadcast`). Defaults to `false`. |
 | `blocks`         | A JSON array string of [Block Kit](https://docs.slack.dev/block-kit) blocks for buttons and structured layouts. |
 

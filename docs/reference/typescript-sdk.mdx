@@ -246,7 +246,6 @@ await TerseAgent.executeTool("slack_send_message", {
 
 The same tool accepts `slackUserId` (Slack member `U…`) to send a 1:1 DM; Terse opens the conversation if one does not exist yet. If you pass both `channelId` and `slackUserId`, the message is sent to `channelId`. With codegen, prefer `SlackUser.*.userId` from `src/terse.generated.ts` for member ids.
 
-To reply in a thread, pass `thread_ts` with the thread root's `ts` (each send returns the `thread_ts` to use for follow-ups); add `replyBroadcast: true` to also show the reply in the channel. See [Skills & Tools](/reference/skills#slack) for the full parameter list.
 
 Use `TerseAgent.executeTool` when you want guaranteed execution of a specific tool by name (for example when the name is only known at runtime).
 
