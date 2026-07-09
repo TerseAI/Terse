@@ -7,6 +7,7 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 
 import { getSessionEventsTool, validateGetPosthogSessionEvents } from "./tools/getSessionEvents"
+import { listEventNamesTool, validateListPosthogEventNames } from "./tools/listEventNames"
 import { searchEventsTool, validateSearchPosthogEvents } from "./tools/searchEvents"
 import { searchLogsTool, validateSearchPosthogLogs } from "./tools/searchLogs"
 import { searchSessionsTool, validateSearchPosthogSessions } from "./tools/searchSessions"
@@ -17,6 +18,7 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
             { tool: searchLogsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search logs", validateACL: validateSearchPosthogLogs },
             { tool: searchSessionsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search sessions", validateACL: validateSearchPosthogSessions },
             { tool: getSessionEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Get session events", validateACL: validateGetPosthogSessionEvents },
+            { tool: listEventNamesTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "List event names", validateACL: validateListPosthogEventNames },
             { tool: searchEventsTool, isReadOnly: true, integration: IntegrationType.POSTHOG, displayName: "Search events", validateACL: validateSearchPosthogEvents }
         ])
     }
@@ -49,7 +51,7 @@ export class PosthogSkillOutput extends Output<PosthogConfig> {
         }
 
         sections.push("\nWhen calling PostHog tools, include integrationId and projectId from a configured entry.")
-        sections.push("Tools: searchPosthogLogs, searchPosthogSessions, getPosthogSessionEvents, searchPosthogEvents")
+        sections.push("Tools: searchPosthogLogs, searchPosthogSessions, getPosthogSessionEvents, listPosthogEventNames, searchPosthogEvents")
         sections.push("Use these tools for investigation and evidence gathering; they are read-only.")
 
         return sections.join("\n")

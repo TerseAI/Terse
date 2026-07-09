@@ -526,21 +526,34 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
         }
     },
 
-    searchPosthogEvents: {
-        preparing: "Looking through events",
+    listPosthogEventNames: {
+        preparing: "Listing event types",
         executing: params => {
-            const eventName = params?.eventName as string | undefined
-            const userEmail = params?.userEmail as string | undefined
-            if (eventName) return `Looking for "${truncate(eventName)}" events`
-            if (userEmail) return `Looking for events from ${truncate(userEmail, 30)}`
-            return "Looking through events"
+            const distinctId = params?.distinctId as string | undefined
+            if (distinctId) return `Listing event types for ${truncate(distinctId, 30)}`
+            return "Listing event types"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const totalEventTypes = parsed?.totalEventTypes as number | undefined
+            if (totalEventTypes !== undefined) return `Found ${totalEventTypes} event type${totalEventTypes !== 1 ? "s" : ""}`
+            return "Event types listed"
+        }
+    },
+
+    searchPosthogEvents: {
+        preparing: "Looking through events",
+        executing: params => {
+            const eventName = params?.eventName as string | undefined
+            const distinctId = params?.distinctId as string | undefined
+            if (eventName) return `Looking for "${truncate(eventName)}" events`
+            if (distinctId) return `Looking for events from ${truncate(distinctId, 30)}`
+            return "Looking through events"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
             const totalEvents = parsed?.totalEvents as number | undefined
             const eventName = params?.eventName as string | undefined
-            if (totalEventTypes !== undefined) return `Found ${totalEventTypes} event type${totalEventTypes !== 1 ? "s" : ""}`
             if (totalEvents !== undefined && eventName) return `Found ${totalEvents} "${truncate(eventName, 25)}" event${totalEvents !== 1 ? "s" : ""}`
             if (totalEvents !== undefined) return `Found ${totalEvents} event${totalEvents !== 1 ? "s" : ""}`
             return "Event search complete"

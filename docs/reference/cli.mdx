@@ -133,6 +133,7 @@ Options:
 | --------------------- | ---------------------------------------- | -------------------- |
 | `-v, --verbose`       | Show agent stream output during the run  | Enabled              |
 | `--no-verbose`        | Hide agent stream output                 |                      |
+| `--fresh-state`       | Reset the job's test state before running |                     |
 | `--entry-file <path>` | Override the default workflow entry file | `src/terse.jobs.ts`  |
 
 Loads your local workflow, lets you pick a real or synthesized sample event, and runs the handler in-process.
@@ -197,7 +198,11 @@ Options:
 | `--event-file <path>` | Path to a JSON file containing a trigger event fixture      |
 | `-v, --verbose`       | Show agent stream output during the run (default: enabled)  |
 | `--no-verbose`        | Hide agent stream output                                    |
+| `--fresh-state`       | Reset the job's test state before running                   |
 | `--entry-file <path>` | Override the default workflow entry file                    |
+
+Test runs read and write an isolated copy of the job's [state](/reference/typescript-sdk#job-state) that persists across `terse test` invocations, so dedupe and cooldown logic behaves the same way it will in production. Pass `--fresh-state` to reset that test state before the run, for example to re-test a `filter` that already fired. `--fresh-state` never touches the state of the deployed job, and is not yet supported for projects with a remote data plane.
+
 
 ##### Trigger event fixtures
 
@@ -572,6 +577,82 @@ Options:
 | `--test`              | Target the isolated `terse test` memory instead of production |
 | `--yes`               | Skip the confirmation prompt                               |
 | `--entry-file <path>` | Override the default workflow entry file                   |
+
+## State
+
+If a job declares typed [state](/reference/typescript-sdk#job-state), these commands let you inspect it from the terminal and reset the copy used by `terse test` runs.
+
+Deployed runs and `terse test` runs each have their own state, so testing never pollutes production. Every command resolves the job by `--job <name>`, or auto-selects when the project has only one workflow. Commands default to the deployed state, which is read-only from the CLI; pass `--test` to target the test state. Test state persists across `terse test` invocations until you reset it.
+
+### `terse state list`
+
+Lists the state keys for a job with their sizes.
+
+```bash
+terse state list --job my-job
+terse state list --job my-job --test
+terse state list --job my-job --json
+```
+
+Options:
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)           |
+| `--test`              | Target the isolated `terse test` state instead of deployed state |
+| `--json`              | Emit JSON                                                       |
+| `--entry-file <path>` | Override the default workflow entry file                        |
+
+### `terse state get <key>`
+
+Prints one state value as JSON. `key` is a key declared in the job's `states`.
+
+```bash
+terse state get lastProcessedId --job my-job
+terse state get lastProcessedId --job my-job --test
+```
+
+Options:
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)           |
+| `--test`              | Target the isolated `terse test` state instead of deployed state |
+| `--entry-file <path>` | Override the default workflow entry file                        |
+
+### `terse state rm <key>`
+
+Deletes one test state key. Deployed state is read-only, so `--test` is required. Prompts for confirmation in a terminal; pass `--yes` in scripts.
+
+```bash
+terse state rm lastProcessedId --job my-job --test --yes
+```
+
+Options:
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)           |
+| `--test`              | Target the isolated `terse test` state (required)               |
+| `--yes`               | Skip the confirmation prompt                                    |
+| `--entry-file <path>` | Override the default workflow entry file                        |
+
+### `terse state reset`
+
+Deletes all test state for a job, the same reset `terse test run --fresh-state` performs before a run. Deployed state is read-only, so `--test` is required.
+
+```bash
+terse state reset --job my-job --test --yes
+```
+
+Options:
+
+| Flag                  | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
+| `--job <name>`        | Job name (auto-selects when only one workflow exists)           |
+| `--test`              | Target the isolated `terse test` state (required)               |
+| `--yes`               | Skip the confirmation prompt                                    |
+| `--entry-file <path>` | Override the default workflow entry file                        |
 
 ## Observability
 ### `terse listen [job-name]`
