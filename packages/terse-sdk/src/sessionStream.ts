@@ -45,8 +45,8 @@ export async function openSessionStream(apiBaseUrl: string, apiKey: string, opti
     const decoder = new TextDecoder()
 
     const handshake = await readUntilEvent<SessionStreamEvent>(reader, decoder, "", event => event.type === "session_started")
-    const startedEvent = handshake.event as SessionStartedEvent
-    if (typeof startedEvent.sessionId !== "string") {
+    const startedEvent = handshake.event
+    if (startedEvent.type !== "session_started" || typeof startedEvent.sessionId !== "string") {
         throw new SessionStreamError(0, "Session stream did not return a sessionId")
     }
 

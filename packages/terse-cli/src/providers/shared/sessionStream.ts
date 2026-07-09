@@ -15,21 +15,11 @@ type SessionStreamOptions = {
     onEvent?: (event: SessionStreamEvent) => Promise<void> | void
 }
 
-const SESSION_CAP_RETRY_BUDGET_MS = 120_000
-const SESSION_CAP_DEFAULT_RETRY_SECONDS = 30
-
 export async function openSessionStream(apiKey: string, options: SessionStreamOptions = {}): Promise<SessionHandle> {
-    let waitedMs = 0
-    while (true) {
-        try {
-            return await connectSessionStream(apiKey, options)
-        } catch (error) {
-            const retryDelayMs = sessionCapRetryDelayMs(error, waitedMs)
-            if (retryDelayMs === null) throw mapSessionStreamError(error)
-            console.log(chalk.dim(`  Terse session limit reached; waiting ${Math.round(retryDelayMs / 1000)}s for a free slot...`))
-            await new Promise(resolve => setTimeout(resolve, retryDelayMs))
-            waitedMs += retryDelayMs
-        }
+    try {
+        return await connectSessionStream(apiKey, options)
+    } catch (error) {
+        throw mapSessionStreamError(error)
     }
 }
 
@@ -46,13 +36,6 @@ async function connectSessionStream(apiKey: string, options: SessionStreamOption
             logSessionEvent(event, options)
         }
     })
-}
-
-function sessionCapRetryDelayMs(error: unknown, waitedMs: number): number | null {
-    if (!(error instanceof SessionStreamError) || error.status !== 429) return null
-    const delayMs = (error.retryAfterSeconds ?? SESSION_CAP_DEFAULT_RETRY_SECONDS) * 1000
-    if (waitedMs + delayMs > SESSION_CAP_RETRY_BUDGET_MS) return null
-    return delayMs
 }
 
 export async function submitApprovalDecision(apiKey: string, params: SdkApprovalDecisionRequestBody): Promise<void> {
