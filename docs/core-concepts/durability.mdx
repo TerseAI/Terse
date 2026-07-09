@@ -141,7 +141,7 @@ onTrigger: async event => {
 }
 ```
 
-Arguments are serialized into the journal like any step input, so log data, not functions. Inside a step body, plain `console.log` is already fine: the body runs once, so its logs print once. `log()` also works in non-durable jobs, where it simply forwards to `console.log`.
+Arguments are serialized into the journal like any step input, so log data, not functions. Inside a step body, plain `console.log` is already fine: the body runs once, so its logs print once. Unlike `step()`, `log()` is not compiled per-file, so it works from helper files too, and in non-durable jobs it simply forwards to `console.log`.
 
 ## Waiting
 
