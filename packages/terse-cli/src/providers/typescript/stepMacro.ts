@@ -5,35 +5,28 @@ export type StepEdit = { start: number; end: number; text: string }
 
 export enum StepCallKind {
     JobStep = "jobStep",
-    Step = "step",
-    Log = "log"
+    Step = "step"
 }
 
-export type StepCall =
-    | { kind: StepCallKind.Step; call: TS.CallExpression }
-    | { kind: StepCallKind.JobStep; call: TS.CallExpression; config: TS.ObjectLiteralExpression }
-    | { kind: StepCallKind.Log; call: TS.CallExpression }
+export type StepCall = { kind: StepCallKind.Step; call: TS.CallExpression } | { kind: StepCallKind.JobStep; call: TS.CallExpression; config: TS.ObjectLiteralExpression }
 
 // The local binding of `import { step } from "terse-sdk"` (aliases included), so plain
 // `step` stays a safe name: user-defined step() functions never match the macro.
-export function findSdkImportName(ts: typeof TS, sf: TS.SourceFile, exportedName: string): string | null {
+export function findStepImportName(ts: typeof TS, sf: TS.SourceFile): string | null {
     for (const statement of sf.statements) {
         if (!ts.isImportDeclaration(statement) || !ts.isStringLiteralLike(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "terse-sdk") continue
         const named = statement.importClause?.namedBindings
         if (!named || !ts.isNamedImports(named)) continue
-        const element = named.elements.find(el => (el.propertyName ?? el.name).text === exportedName)
+        const element = named.elements.find(el => (el.propertyName ?? el.name).text === "step")
         if (element) return element.name.text
     }
     return null
 }
 
-export function matchStepCall(ts: typeof TS, node: TS.Node, stepName: string | null, logName: string | null): StepCall | null {
+export function matchStepCall(ts: typeof TS, node: TS.Node, stepName: string | null): StepCall | null {
     if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return null
     if (stepName !== null && node.expression.text === stepName) {
         return { kind: StepCallKind.Step, call: node }
-    }
-    if (logName !== null && node.expression.text === logName) {
-        return { kind: StepCallKind.Log, call: node }
     }
     if (node.expression.text === "jobStep" && node.arguments.length > 0 && ts.isObjectLiteralExpression(node.arguments[0])) {
         return { kind: StepCallKind.JobStep, call: node, config: node.arguments[0] }
@@ -139,25 +132,6 @@ function stepFunctionText(
     return `export async function ${name}(${param}) {\n` + `  "use step"\n` + parseInput + `  const __terseResult = await ${callRun}\n` + `  return ${validated}\n` + `}`
 }
 
-// MARK: log
-
-// `log(...args)` becomes a journaled step whose body prints the arguments, so
-// the line is emitted once when the step first runs instead of once per replay.
-export function transformLog(ts: typeof TS, sf: TS.SourceFile, log: Extract<StepCall, { kind: StepCallKind.Log }>, fileName: string, index: number): { stepDef: StepDef; edit: StepEdit } {
-    const { call } = log
-    for (const arg of call.arguments) {
-        const fnArg = findLiteralFunctionArg(ts, arg)
-        if (fnArg) {
-            throw stepMacroError(sf, fnArg, fileName, "A function cannot be passed to log(), because log arguments are serialized into the journal. Log the data the function would produce instead.")
-        }
-    }
-
-    const name = `terseLog_${index}`
-    const def = `export async function ${name}(...__terseArgs: unknown[]) {\n` + `  "use step"\n` + `  console.log(...__terseArgs)\n` + `}`
-    const text = `${name}(${call.arguments.map(a => a.getText(sf)).join(", ")})`
-    return { stepDef: { name, def }, edit: { start: call.getStart(sf), end: call.getEnd(), text } }
-}
-
 // MARK: Helpers
 
 // Finds a function expression that ends up inside the evaluated argument value,
@@ -194,10 +168,8 @@ function stepMacroError(sf: TS.SourceFile, node: TS.Node, fileName: string, mess
     return new Error(`${fileName}:${line}: ${message}`)
 }
 
-// Passes logName as null: log() nested inside a step is legal — it hoists with
-// the step body and prints once when the step runs.
 function containsStepCall(ts: typeof TS, node: TS.Node, stepName: string | null): boolean {
-    const walk = (n: TS.Node): true | undefined => (matchStepCall(ts, n, stepName, null) ? true : ts.forEachChild(n, walk))
+    const walk = (n: TS.Node): true | undefined => (matchStepCall(ts, n, stepName) ? true : ts.forEachChild(n, walk))
     return ts.forEachChild(node, walk) ?? false
 }
 
