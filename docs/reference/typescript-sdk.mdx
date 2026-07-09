@@ -396,6 +396,7 @@ It exports:
 - `Triggers`: per-integration trigger builders for every connected integration, plus the always-available `Triggers.schedule`, `Triggers.webhook`, and `Triggers.webMonitor`.
 - `Skills`: per-integration skill factories for every connected integration, plus the built-in `Skills.web()` and `Skills.imageEdit()`.
 - Workspace resource constants generated from your workspace (for example `Repos`, `SlackChannel`, `SlackUser`, `LinearTeam`, `LinearProject`, `NotionDatabase`, `PosthogProject`, `DatadogIndex`, `LaunchDarklyProject`, `HeyReachCampaign`, and `AttioObject.*`).
+- `PosthogEventName`: a union of the custom event names observed in your PostHog project over the last 180 days, so `eventName` filters on `searchPosthogEvents` are checked at compile time.
 - `toolbox`: deterministic tool wrappers you can call without constructing an agent or listing `skills`.
 - `agent.tools.*`: the same wrappers attached to a `TerseAgent`, filtered by the `skills` you passed.
 

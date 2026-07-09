@@ -116,6 +116,23 @@ export const posthogProjectsResponseSchema = z.object({
 })
 export type PosthogProjectsResponse = z.infer<typeof posthogProjectsResponseSchema>
 
+export const posthogProjectEventsQuerySchema = z.object({
+    integrationId: z.string(),
+    projectId: z.string()
+})
+export type PosthogProjectEventsQuery = z.infer<typeof posthogProjectEventsQuerySchema>
+
+export const posthogProjectEventSchema = z.object({
+    name: z.string(),
+    count: z.number()
+})
+export type PosthogProjectEvent = z.infer<typeof posthogProjectEventSchema>
+
+export const posthogProjectEventsResponseSchema = z.object({
+    events: z.array(posthogProjectEventSchema)
+})
+export type PosthogProjectEventsResponse = z.infer<typeof posthogProjectEventsResponseSchema>
+
 export const launchDarklyProjectSchema = z.object({
     key: z.string(),
     name: z.string()

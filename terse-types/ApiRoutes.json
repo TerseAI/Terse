@@ -65,7 +65,8 @@
     },
     "POSTHOG": {
         "INTEGRATIONS": "/posthog/integrations",
-        "PROJECTS": "/posthog/projects"
+        "PROJECTS": "/posthog/projects",
+        "EVENTS": "/posthog/events"
     },
     "LAUNCHDARKLY": {
         "INTEGRATIONS": "/launchdarkly/integrations",
