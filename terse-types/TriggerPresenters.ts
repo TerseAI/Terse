@@ -268,7 +268,7 @@ function formatSlackTrigger(event: SlackTrigger): string {
     const blockContent = JSON.stringify(event.blocks)
     const attachmentContent = JSON.stringify(event.attachments)
     const messageText = event.text || "(no plain text)"
-    const threadTs = event.threadTs ?? event.threadTimestamp ?? null
+    const threadTs = event.threadTs ?? null
     const eventLabel =
         event.eventType === "app_mention" ? "Incoming Slack App Mention Event." : event.eventType === "reaction_added" ? "Incoming Slack Reaction Added Event." : "Incoming Slack Message Event."
     const reactionInfo =

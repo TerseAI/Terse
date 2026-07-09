@@ -79,7 +79,7 @@ triggers: [Triggers.slack.onMessage({ channel: SlackChannel.Engineering })]
   - `userId`, `userName` - who sent it
   - `text` - message content
   - `timestamp` - this message's Slack `ts`
-  - `threadTimestamp` - parent message's `ts` when this message is in a thread, otherwise `null`
+  - `threadTs` - the thread root's `ts` when this message is in a thread, otherwise `null`. Pass it back to `slack_send_message` as `thread_ts` to reply in the same thread
   - `permalink` - link to the message
   - `teamId` - the Slack workspace id
   - `channelType` - `"channel"`, `"group"`, `"mpim"`, or `"im"`

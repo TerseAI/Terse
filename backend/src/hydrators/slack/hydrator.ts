@@ -169,7 +169,6 @@ export class SlackEventHydrator extends Hydrator<SlackTriggerRuntime> {
                 text: message.text || "",
                 timestamp: message.ts || timestamp,
                 threadTs: message.thread_ts || null,
-                threadTimestamp: message.thread_ts || null,
                 teamId: userSlackIntegration.slack_integration.team_id,
                 permalink,
                 blocks: message.blocks || null,

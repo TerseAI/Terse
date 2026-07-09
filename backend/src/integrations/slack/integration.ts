@@ -758,7 +758,7 @@ export class SlackIntegrationManager
                 userName: enrichedMessage.userName || null,
                 text: enrichedMessage.text,
                 timestamp: msg.ts,
-                threadTimestamp: msg.thread_ts || null,
+                threadTs: msg.thread_ts || null,
                 teamId,
                 permalink: enrichedMessage.permalink || null,
                 channelType: inferSlackChannelType(msg.channel, msg.channel_type || null),
@@ -1382,7 +1382,7 @@ function buildSlackTriggerData(params: {
     userName?: string | null
     text: string
     timestamp: string
-    threadTimestamp?: string | null
+    threadTs?: string | null
     teamId: string
     permalink?: string | null
     channelType?: SlackChannelType | null
@@ -1403,8 +1403,7 @@ function buildSlackTriggerData(params: {
         userName: params.userName || null,
         text: params.text,
         timestamp: params.timestamp,
-        threadTs: params.threadTimestamp || null,
-        threadTimestamp: params.threadTimestamp || null,
+        threadTs: params.threadTs || null,
         teamId: params.teamId,
         permalink: params.permalink || null,
         channelType: params.channelType || null,
@@ -1700,7 +1699,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             userName: enrichedMessage.userName || null,
             text: enrichedMessage.text,
             timestamp: messageEvent.ts!,
-            threadTimestamp: messageEvent.thread_ts || null,
+            threadTs: messageEvent.thread_ts || null,
             teamId,
             permalink: enrichedMessage.permalink || null,
             channelType: inferSlackChannelType(messageEvent.channel!, messageEvent.channel_type || null),
@@ -1771,7 +1770,7 @@ async function handleSlackReactionAdded(event: SimplifiedSlackEvent, teamId: str
             userName: null,
             text: enrichedMessage.text,
             timestamp: reactionEvent.event_ts || reactionEvent.item.ts,
-            threadTimestamp: null,
+            threadTs: null,
             teamId,
             permalink: enrichedMessage.permalink || null,
             channelType: inferSlackChannelType(reactionEvent.item.channel, null),
