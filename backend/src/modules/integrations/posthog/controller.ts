@@ -8,7 +8,7 @@ import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/I
 import { PosthogIntegrationManager } from "../../../integrations/posthog/integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
-import { runPosthogHogqlQuery } from "../../../utility/posthog"
+import { fetchPosthogEventCounts } from "../../../utility/posthog"
 
 export async function getPosthogIntegrations(req: Request, res: Response) {
     if (!req.session?.user) return res.status(401).json({ error: "Unauthorized" })
@@ -80,9 +80,8 @@ export const getPosthogProjectEvents = async (req: Request, res: Response) => {
  */
 export const fetchPosthogProjectEvents = async (organizationId: string, integrationId: string, projectId: string): Promise<PosthogProjectEventsResponse> => {
     const apiKey = await getPosthogApiKeyForOrganization(organizationId, integrationId)
-    const hogql = "SELECT event, count() AS count FROM events WHERE timestamp >= now() - INTERVAL 180 DAY AND event NOT LIKE '$%' GROUP BY event ORDER BY count DESC LIMIT 1000"
-    const rows = await runPosthogHogqlQuery(projectId, apiKey, hogql, {})
-    return { events: rows.map(row => ({ name: String(row[0] ?? ""), count: Number(row[1] ?? 0) })).filter(event => event.name) }
+    const eventCounts = await fetchPosthogEventCounts(projectId, apiKey, { customEventsOnly: true, dateFrom: "-180d" }, 1000)
+    return { events: eventCounts.map(event => ({ name: event.eventName, count: event.count })) }
 }
 
 export const fetchPosthogProjects = async (organizationId: string, integrationId: string, search: string = ""): Promise<PosthogProjectsResponse> => {

@@ -3,7 +3,7 @@ import { IntegrationType, PosthogConfig } from "terse-types"
 
 import logger from "../../../common/logger"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { buildPosthogEventsWhere, posthogEventsLink, runPosthogHogqlQuery } from "../../../utility/posthog"
+import { fetchPosthogEventCounts, posthogEventsLink } from "../../../utility/posthog"
 import { ToolACLValidator } from "../../abstract/acl"
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
 
@@ -25,11 +25,7 @@ export const listEventNamesTool = defineSessionTool({
 
         logger.info("Listing PostHog event names", { projectId, customEventsOnly, distinctId, propertyFilterCount: propertyFilters?.length ?? 0, dateFrom, dateTo })
 
-        const { whereClause, values } = buildPosthogEventsWhere({ customEventsOnly, distinctId, propertyFilters, dateFrom, dateTo })
-        const hogql = `SELECT event, count() AS count FROM events${whereClause} GROUP BY event ORDER BY count DESC LIMIT 500`
-        const rows = await runPosthogHogqlQuery(projectId, posthogApiKey, hogql, values)
-
-        const eventCounts = rows.map(row => ({ eventName: String(row[0] ?? "unknown"), count: Number(row[1] ?? 0) }))
+        const eventCounts = await fetchPosthogEventCounts(projectId, posthogApiKey, { customEventsOnly, distinctId, propertyFilters, dateFrom, dateTo }, 500)
         const eventsLink = posthogEventsLink(projectId)
 
         const action = {

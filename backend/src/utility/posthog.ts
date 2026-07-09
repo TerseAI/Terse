@@ -58,6 +58,18 @@ export function buildPosthogEventsWhere(filters: PosthogEventFilters): { whereCl
     return { whereClause: whereParts.length > 0 ? ` WHERE ${whereParts.join(" AND ")}` : "", values }
 }
 
+export interface PosthogEventCount {
+    eventName: string
+    count: number
+}
+
+export async function fetchPosthogEventCounts(projectId: string, apiKey: string, filters: PosthogEventFilters, limit: number): Promise<PosthogEventCount[]> {
+    const { whereClause, values } = buildPosthogEventsWhere(filters)
+    const hogql = `SELECT event, count() AS count FROM events${whereClause} GROUP BY event ORDER BY count DESC LIMIT ${limit}`
+    const rows = await runPosthogHogqlQuery(projectId, apiKey, hogql, values)
+    return rows.map(row => ({ eventName: String(row[0] ?? ""), count: Number(row[1] ?? 0) })).filter(event => event.eventName)
+}
+
 export async function runPosthogHogqlQuery(projectId: string, apiKey: string, hogql: string, values: Record<string, string | number>): Promise<unknown[][]> {
     const response = await fetch(`${POSTHOG_HOST}/api/projects/${projectId}/query/`, {
         method: "POST",
