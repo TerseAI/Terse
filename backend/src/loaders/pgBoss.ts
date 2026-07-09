@@ -21,8 +21,8 @@ const PREVIEW_INSTANCE_TUNING = {
     bamIntervalSeconds: 300,
     flowIntervalSeconds: 300,
     clockMonitorIntervalSeconds: 600,
-    cronWorkerIntervalSeconds: 60,
-    cronMonitorIntervalSeconds: 300
+    cronWorkerIntervalSeconds: 45,
+    cronMonitorIntervalSeconds: 45
 }
 
 /**
