@@ -1,16 +1,17 @@
 import chalk from "chalk"
 import fs from "fs"
-import { serializedEventSchema } from "terse-types"
 import type { SerializedEvent } from "terse-types"
 
 import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
 import { getLocalHoistMarker } from "../cliVersion.js"
+import { parseEventFixtureJson } from "../eventFixture.js"
 import { loadJob } from "../loadJob.js"
 import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
+import { parseSerializedEventJson } from "../serializedEvent.js"
 
 export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string, verbose?: boolean): Promise<void> {
     const hoistMarker = getLocalHoistMarker()
@@ -38,28 +39,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 
     let parsedEvent: SerializedEvent
     if (eventJson) {
-        let rawEvent: unknown
-        try {
-            rawEvent = JSON.parse(eventJson)
-        } catch (error) {
-            throw new CliError("invalid_event_json", "--event must be valid JSON.", {
-                detail: error instanceof Error ? error.message : String(error)
-            })
-        }
-
-        if (!rawEvent) {
-            throw new CliError("missing_event", "Provide --event <json> or --event-file <path>.", {
-                detail: 'Usage: terse run --event \'{"integrationType":"...","eventType":"...","formattedContent":"...","debugLog":"...","data":{...}}\'\n       terse run --event-file ./event.json\nTip:   Use `terse test` to interactively pick a sample event.'
-            })
-        }
-
-        try {
-            parsedEvent = serializedEventSchema.parse(rawEvent)
-        } catch (error) {
-            throw new CliError("invalid_event_shape", "--event does not match the canonical Trigger schema.", {
-                detail: error instanceof Error ? error.message : String(error)
-            })
-        }
+        parsedEvent = parseEventFixtureJson(eventJson, "--event / --event-file")
     } else if (runId) {
         const resolvedEvent = await resolveEventFromRunId(runId, apiKey)
         if (!resolvedEvent) {

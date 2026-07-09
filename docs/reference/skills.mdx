@@ -158,7 +158,7 @@ skills: [Skills.datadog({ indexes: [DatadogIndex.Main] })]
 
 ## PostHog
 
-Read-only access to product analytics.
+Read-only access to product analytics. Supports US PostHog Cloud (`us.posthog.com`) only; EU-hosted PostHog is not supported.
 
 ```ts
 import { PosthogProject, Skills } from "./terse.generated"
@@ -166,12 +166,15 @@ import { PosthogProject, Skills } from "./terse.generated"
 skills: [Skills.posthog({ project: PosthogProject.MyTeam })]
 ```
 
-| Tool                       | Description              | Access |
-| -------------------------- | ------------------------ | ------ |
-| `searchPosthogLogs`        | Search logs              | Read   |
-| `searchPosthogSessions`    | Search sessions          | Read   |
-| `getPosthogSessionEvents`  | Get events for a session | Read   |
-| `searchPosthogEvents`      | Search events            | Read   |
+`terse generate` also emits a `PosthogEventName` union of the custom event names observed in your project over the last 180 days, so `eventName` filters are checked at compile time. Built-in `$`-prefixed events like `$pageview` are always accepted.
+
+| Tool                       | Description                              | Access |
+| -------------------------- | ---------------------------------------- | ------ |
+| `searchPosthogLogs`        | Search logs                              | Read   |
+| `searchPosthogSessions`    | Search sessions                          | Read   |
+| `getPosthogSessionEvents`  | Get events for a session                 | Read   |
+| `listPosthogEventNames`    | List event names with occurrence counts  | Read   |
+| `searchPosthogEvents`      | Search events                            | Read   |
 
 ## LaunchDarkly
 

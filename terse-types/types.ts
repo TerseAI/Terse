@@ -116,6 +116,23 @@ export const posthogProjectsResponseSchema = z.object({
 })
 export type PosthogProjectsResponse = z.infer<typeof posthogProjectsResponseSchema>
 
+export const posthogProjectEventsQuerySchema = z.object({
+    integrationId: z.string(),
+    projectId: z.string()
+})
+export type PosthogProjectEventsQuery = z.infer<typeof posthogProjectEventsQuerySchema>
+
+export const posthogProjectEventSchema = z.object({
+    name: z.string(),
+    count: z.number()
+})
+export type PosthogProjectEvent = z.infer<typeof posthogProjectEventSchema>
+
+export const posthogProjectEventsResponseSchema = z.object({
+    events: z.array(posthogProjectEventSchema)
+})
+export type PosthogProjectEventsResponse = z.infer<typeof posthogProjectEventsResponseSchema>
+
 export const launchDarklyProjectSchema = z.object({
     key: z.string(),
     name: z.string()
@@ -1073,13 +1090,31 @@ export const sdkStateGetResponseSchema = z.object({
 })
 export type SdkStateGetResponse = z.infer<typeof sdkStateGetResponseSchema>
 
+export const sdkStateScopeRequestSchema = z.object({
+    projectId: z.string().min(1),
+    jobName: z.string().min(1),
+    test: z.boolean().optional()
+})
+export type SdkStateScopeRequest = z.infer<typeof sdkStateScopeRequestSchema>
+
+export const sdkStateKeyRequestSchema = sdkStateScopeRequestSchema.extend({
+    key: z.string().min(1)
+})
+export type SdkStateKeyRequest = z.infer<typeof sdkStateKeyRequestSchema>
+
+export type SdkStateKeyEntry = { key: string; sizeBytes: number }
+export type SdkStateListResponse = { job: string; keys: SdkStateKeyEntry[] }
+export type SdkStateReadResponse = { key: string; content: string }
+export type SdkStateResetResponse = { deleted: number }
+
 export const sdkTestRunStartRequestSchema = z.object({
     projectId: z.string().min(1),
     jobName: z.string().min(1),
     event: serializedEventSchema,
     forceLocal: z.boolean().optional(),
     isTest: z.boolean().optional(),
-    replayOfRunId: z.string().optional()
+    replayOfRunId: z.string().optional(),
+    freshState: z.boolean().optional()
 })
 export type SdkTestRunStartRequest = z.infer<typeof sdkTestRunStartRequestSchema>
 

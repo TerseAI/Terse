@@ -49,6 +49,7 @@ interface NotionResourceData {
 interface PosthogProjectData {
     id: string
     name: string
+    events: string[]
 }
 
 interface DatadogIndexData {
@@ -122,6 +123,7 @@ export interface HeyReachInstanceData extends IntegrationInstanceData {
 }
 
 export interface CodegenInput {
+    availableIntegrations: string[]
     github: GitHubInstanceData[]
     slack: SlackInstanceData[]
     gmail: IntegrationInstanceData[]

@@ -4,21 +4,23 @@ import { DateTime } from "luxon"
 import fs from "node:fs"
 import type { CreateJobParameters } from "terse-sdk"
 import { IntegrationType } from "terse-sdk"
-import { ApiRoutes, debugTrigger, displayTrigger, formatTriggerForAgent, serializedEventSchema } from "terse-types"
-import type { SdkSampleEventsResponse, SerializedEvent, Trigger } from "terse-types"
+import { ApiRoutes, hydrateSerializedEvent, toEventFixture } from "terse-types"
+import type { SdkSampleEventsResponse, SerializedEvent } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
 import { CliError } from "../cliError.js"
 import { isNonInteractive } from "../cliHelpers.js"
 import { createRunIndicator, createSpinner, interceptConsole } from "../cliUi.js"
+import { parseEventFixtureJson } from "../eventFixture.js"
 import { loadJob } from "../loadJob.js"
 import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
+import { parseSerializedEventJson } from "../serializedEvent.js"
 
-export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
+export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string, freshState?: boolean): Promise<void> {
     if (isNonInteractive()) {
         throw new CliError("test_requires_interactive", "`terse test` needs a terminal.", {
             detail: "In non-interactive contexts, use `terse test list` to enumerate sample events and `terse test run --id <id>` to execute one."
@@ -73,6 +75,7 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
             apiKey,
             verbose: !!verbose,
             entryFile,
+            freshState,
             pauseUiAround: async fn => {
                 runView.pause("Awaiting input")
                 try {
@@ -145,7 +148,7 @@ export async function testShow(opts: TestShowOpts): Promise<void> {
     const event = await resolveEventById(provider, opts.id, opts.jobName, opts.entryFile)
 
     if (opts.json) {
-        process.stdout.write(JSON.stringify({ id: opts.id, event }, null, 2) + "\n")
+        process.stdout.write(JSON.stringify({ id: opts.id, event: toEventFixture(event) }, null, 2) + "\n")
         return
     }
 
@@ -175,12 +178,12 @@ export async function testRun(opts: TestRunOpts): Promise<void> {
         event = await resolveEventByIdForJob(job, opts.id)
     } else {
         const rawJson = opts.eventJson ?? readEventFile(opts.eventFile!)
-        event = parseEventJson(rawJson)
+        event = parseEventFixtureJson(rawJson, "--event / --event-file")
     }
 
     const apiKey = readApiKeyOrBail()
     const projectId = readProjectConfigOrBail().projectId
-    const { runId, local } = await runLocalTestJob(provider, job, event, { projectId, apiKey, verbose: !!opts.verbose, entryFile: opts.entryFile })
+    const { runId, local } = await runLocalTestJob(provider, job, event, { projectId, apiKey, verbose: !!opts.verbose, entryFile: opts.entryFile, freshState: opts.freshState })
     if (!local) console.log(chalk.cyan(`  ${remoteDispatchNotice(runId)}`))
 }
 
@@ -205,24 +208,6 @@ function readEventFile(filePath: string): string {
         return fs.readFileSync(filePath, "utf-8")
     } catch (err) {
         throw new CliError("event_file_unreadable", `Could not read event file: ${filePath}`, {
-            detail: err instanceof Error ? err.message : String(err)
-        })
-    }
-}
-
-function parseEventJson(raw: string): SerializedEvent {
-    let parsed: unknown
-    try {
-        parsed = JSON.parse(raw)
-    } catch (err) {
-        throw new CliError("invalid_event_json", "--event / --event-file must be valid JSON.", {
-            detail: err instanceof Error ? err.message : String(err)
-        })
-    }
-    try {
-        return serializedEventSchema.parse(parsed)
-    } catch (err) {
-        throw new CliError("invalid_event_shape", "Event JSON does not match the canonical Trigger schema.", {
             detail: err instanceof Error ? err.message : String(err)
         })
     }
@@ -285,7 +270,7 @@ async function fetchSampleEventCandidatesForJob(job: CreateJobParameters, apiKey
     }
 
     for (const [index, trigger] of timeTriggers.entries()) {
-        const event = serializeEvent({
+        const event = hydrateSerializedEvent({
             integrationType: IntegrationType.CRON_JOB,
             eventType: "cron",
             inputId: trigger.integrationId,
@@ -423,17 +408,6 @@ async function inspectSampleEvent(event: SerializedEvent): Promise<"back" | "run
     )
 }
 
-function serializeEvent(event: Trigger): SerializedEvent {
-    return {
-        integrationType: event.integrationType,
-        eventType: event.eventType,
-        formattedContent: formatTriggerForAgent(event),
-        debugLog: debugTrigger(event),
-        display: displayTrigger(event),
-        data: event
-    }
-}
-
 // Types
 
 export type TestListOpts = {
@@ -459,6 +433,7 @@ export type TestRunOpts = {
     verbose?: boolean
     entryFile?: string
     provider?: LanguageProvider
+    freshState?: boolean
 }
 
 type SampleEventCandidate =

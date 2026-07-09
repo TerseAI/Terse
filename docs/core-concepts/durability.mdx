@@ -195,6 +195,38 @@ During local testing with `terse test`, `waitForInput()` shows an interactive te
 `sleep()`, `waitForInput()`, and `jobStep()` are only available in durable jobs. Call them in a non-durable job and you get a clear error asking you to add `durable: true`.
 </Note>
 
+## Structuring durable handlers
+
+Two habits keep a durable handler readable as it grows.
+
+**Write the happy path as sequential step blocks.** Keep `step()` calls inline in the handler, one after another, so the top of the job reads like a list of the things it does.
+
+**Give branches their own functions.** When a conditional path does real work — steps, tool calls, waits — extract it into a named helper below the job, with its own steps inside. The handler stays a top-down summary, and you open a branch only when you care about it. Keep helpers in the same file as `createJob()`: `step()` is compiled per-file, so a helper moved elsewhere won't have its steps transformed.
+
+```ts
+onTrigger: async event => {
+    const triage = await generateText({ prompt: ..., outputSchema: Triage })
+
+    switch (triage.severity) {
+        case "critical":
+            return escalateCritical(event, triage)
+        case "routine":
+            return fileRoutine(event, triage)
+        default:
+            throw triage.severity satisfies never
+    }
+}
+
+// below the job, same file:
+async function escalateCritical(event: LinearIssueCreatedTrigger, triage: Triage) {
+    await toolbox.slack.sendMessage({ ... })
+    const approval = await waitForInput({ ... })
+    // ...
+}
+```
+
+Branch conditions should derive from the trigger event or from step results, so every replay takes the same path.
+
 ## How it works
 
 A durable job's handler is replayed from the top each time it advances. Completed steps return their recorded result instead of running again, and only new work executes. That is why side effects must live inside steps: anything outside a step runs on every replay.
