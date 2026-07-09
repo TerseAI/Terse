@@ -371,8 +371,9 @@ secretsCommand
     .description("Add or update a project secret")
     .argument("<NAME>", "Secret environment variable name")
     .option("--value-stdin", "Read the secret value from stdin")
-    .action(async (name: string, opts: { valueStdin?: boolean }) => {
-        await secretsAdd(name, { valueStdin: opts.valueStdin })
+    .option("--skip-local-sync", "Skip syncing the secret to the local environment", false)
+    .action(async (name: string, opts: { valueStdin?: boolean; skipLocalSync?: boolean }) => {
+        await secretsAdd(name, { valueStdin: opts.valueStdin, skipLocalSync: opts.skipLocalSync })
     })
 
 secretsCommand
@@ -380,8 +381,9 @@ secretsCommand
     .description("Remove a project secret")
     .argument("<NAME>", "Secret environment variable name")
     .option("--yes", "Confirm removal")
-    .action(async (name: string, opts: { yes?: boolean }) => {
-        await secretsRemove(name, { yes: opts.yes })
+    .option("--skip-local-sync", "Skip syncing the secret to the local environment")
+    .action(async (name: string, opts: { yes?: boolean; skipLocalSync?: boolean }) => {
+        await secretsRemove(name, { yes: opts.yes, skipLocalSync: opts.skipLocalSync })
     })
 
 secretsCommand

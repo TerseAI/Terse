@@ -41,7 +41,7 @@ export async function secretsList(opts: { json?: boolean } = {}): Promise<void> 
     }
 }
 
-export async function secretsAdd(name: string, opts: { valueStdin?: boolean } = {}): Promise<void> {
+export async function secretsAdd(name: string, opts: { valueStdin?: boolean; skipLocalSync?: boolean } = {}): Promise<void> {
     const apiKey = readApiKeyOrBail()
     const config = readProjectConfigOrBail()
     assertManagedProjectConfig(config)
@@ -54,10 +54,12 @@ export async function secretsAdd(name: string, opts: { valueStdin?: boolean } = 
     await fetchWithAuth<ProjectSecretSummary>(buildRoute(ApiRoutes.PROJECT_SECRETS.UPSERT, { id: config.projectId }), apiKey, body, "POST")
 
     process.stdout.write(chalk.green(`Secret ${name} saved.\n`))
-    mirrorSecretToLocalEnv(name, value)
+    if (!opts.skipLocalSync) {
+        mirrorSecretToLocalEnv(name, value)
+    }
 }
 
-export async function secretsRemove(name: string, opts: { yes?: boolean } = {}): Promise<void> {
+export async function secretsRemove(name: string, opts: { yes?: boolean; skipLocalSync?: boolean } = {}): Promise<void> {
     const apiKey = readApiKeyOrBail()
     const config = readProjectConfigOrBail()
     assertManagedProjectConfig(config)
@@ -91,7 +93,9 @@ export async function secretsRemove(name: string, opts: { yes?: boolean } = {}):
     }
 
     process.stdout.write(chalk.green(`Secret ${name} removed.\n`))
-    removeSecretFromLocalEnv(name)
+    if (!opts.skipLocalSync) {
+        removeSecretFromLocalEnv(name)
+    }
 }
 
 export async function secretsImport(filePath: string, opts: { overwrite?: boolean } = {}): Promise<void> {
