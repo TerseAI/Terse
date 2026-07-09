@@ -3,7 +3,7 @@ import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
 // Run `terse generate` to refresh after connecting new integrations.
-import { SlackChannel, Triggers, toolbox } from "./terse.generated"
+import { PosthogProject, SlackChannel, Triggers, toolbox } from "./terse.generated"
 
 // `createJob` registers a job with Terse. Each job has a name, one or more
 // triggers, and an `onTrigger` handler. `terse test` and `terse run` execute

@@ -1,12 +1,14 @@
 import { Request, Response } from "express"
 import { IntegrationType } from "terse-types/Integrations"
-import { PosthogProjectsResponse } from "terse-types/types"
+import { PosthogProjectEventsResponse, PosthogProjectsResponse, posthogProjectEventsQuerySchema } from "terse-types/types"
+import { z } from "zod"
 
 import logger from "../../../common/logger"
 import { parseFormSubmissionFromRequest } from "../../../integrations/abstract/Integration"
 import { PosthogIntegrationManager } from "../../../integrations/posthog/integration"
 import { db } from "../../../loaders/prisma"
 import { SecretService } from "../../../services/SecretService"
+import { runPosthogHogqlQuery } from "../../../utility/posthog"
 
 export async function getPosthogIntegrations(req: Request, res: Response) {
     if (!req.session?.user) return res.status(401).json({ error: "Unauthorized" })
@@ -55,14 +57,36 @@ export const getPosthogProjects = async (req: Request, res: Response) => {
     }
 }
 
+export const getPosthogProjectEvents = async (req: Request, res: Response) => {
+    const user = req.session?.user
+    if (!user) return res.status(401).json({ error: "Unauthorized" })
+    if (!user.organizationId) return res.status(400).json({ error: "Organization context is required" })
+
+    const parsed = posthogProjectEventsQuerySchema.safeParse(req.query)
+    if (!parsed.success) return res.status(400).json({ error: "integrationId and projectId are required" })
+
+    try {
+        const responseData = await fetchPosthogProjectEvents(user.organizationId, parsed.data.integrationId, parsed.data.projectId)
+        res.status(200).json(responseData)
+    } catch (error: any) {
+        logger.error("Error fetching Posthog project events:", { error })
+        res.status(500).json({ error: "Failed to fetch events", details: error.message })
+    }
+}
+
+/**
+ * Custom event names observed in the project over the last 180 days, most frequent first.
+ * Feeds the PosthogEventName union in terse.generated.ts.
+ */
+export const fetchPosthogProjectEvents = async (organizationId: string, integrationId: string, projectId: string): Promise<PosthogProjectEventsResponse> => {
+    const apiKey = await getPosthogApiKeyForOrganization(organizationId, integrationId)
+    const hogql = "SELECT event, count() AS count FROM events WHERE timestamp >= now() - INTERVAL 180 DAY AND event NOT LIKE '$%' GROUP BY event ORDER BY count DESC LIMIT 1000"
+    const rows = await runPosthogHogqlQuery(projectId, apiKey, hogql, {})
+    return { events: rows.map(row => ({ name: String(row[0] ?? ""), count: Number(row[1] ?? 0) })).filter(event => event.name) }
+}
+
 export const fetchPosthogProjects = async (organizationId: string, integrationId: string, search: string = ""): Promise<PosthogProjectsResponse> => {
-    const integration = await db().posthog_integrations.findFirst({
-        where: { id: integrationId, organization_id: organizationId }
-    })
-    if (!integration) throw new Error("Posthog integration not found")
-    const secretService = SecretService.getInstance()
-    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
-    const apiKey = secret.apiKey
+    const apiKey = await getPosthogApiKeyForOrganization(organizationId, integrationId)
 
     const apiUrl = "https://us.posthog.com/api/projects/"
     const response = await fetch(apiUrl, {
@@ -97,4 +121,14 @@ export const fetchPosthogProjects = async (organizationId: string, integrationId
     }
 
     return { projects: mappedProjects }
+}
+
+async function getPosthogApiKeyForOrganization(organizationId: string, integrationId: string): Promise<string> {
+    const integration = await db().posthog_integrations.findFirst({
+        where: { id: integrationId, organization_id: organizationId }
+    })
+    if (!integration) throw new Error("Posthog integration not found")
+    const secretService = SecretService.getInstance()
+    const secret = await secretService.getSecrets({ type: "integration", secret: { integrationType: IntegrationType.POSTHOG, recordId: integration.id } })
+    return secret.apiKey
 }
