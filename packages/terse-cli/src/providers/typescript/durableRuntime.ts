@@ -11,7 +11,6 @@ import { setWorld } from "workflow/runtime"
 import { createTerseWorld } from "../../terseWorld.js"
 
 import { transformJobSource } from "./jobMacro.js"
-import { withReplayLogDedupe, withReplayPassSignals, withoutReplayLogDedupe } from "./replayLogDedupe.js"
 import { TerseWorkflowBuilder } from "./terseWorkflowBuilder.js"
 
 let runtimePromise: Promise<DurableRuntime> | null = null
@@ -25,12 +24,12 @@ async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
 
     const workflowFnByJob = isBuildFresh(out, cwd) ? loadWorkflowArtifacts(out) : await buildWorkflowArtifacts(cwd)
 
-    const world = withReplayPassSignals(createTerseWorld())
+    const world = createTerseWorld()
     setWorld(world)
 
     const require = createRequire(import.meta.url)
-    world.registerHandler("__wkf_step_", withoutReplayLogDedupe(require(path.join(out, "steps.cjs")).POST))
-    world.registerHandler("__wkf_workflow_", withReplayLogDedupe(require(path.join(out, "workflows.cjs")).POST))
+    world.registerHandler("__wkf_step_", require(path.join(out, "steps.cjs")).POST)
+    world.registerHandler("__wkf_workflow_", require(path.join(out, "workflows.cjs")).POST)
 
     const manifest = JSON.parse(fs.readFileSync(path.join(out, "manifest.json"), "utf8"))
     const workflowIdByJob = new Map<string, string>()
