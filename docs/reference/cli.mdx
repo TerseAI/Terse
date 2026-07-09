@@ -279,14 +279,30 @@ Options:
 
 #### `terse integrate describe <type>`
 
-Shows the current status, installation type, required fields, and any setup URL for one integration type.
+Shows the current status, installation type, required fields, any setup URL, and a summary of the tools the integration exposes to jobs (name, description, read-only flag, approval support).
 
 ```bash
 terse integrate describe snowflake
 terse integrate describe slack --json
 ```
 
-Use this command to inspect the schema before you build a `connect` command.
+Use this command to inspect the schema before you build a `connect` command. For a tool's input/output schemas, use `terse integrate tool <type> <tool-name>`.
+
+Options:
+
+| Flag     | Description                |
+| -------- | -------------------------- |
+| `--json` | Emit machine-readable JSON |
+
+#### `terse integrate tool <type> [tool-name]`
+
+With only an integration type, lists every tool that integration exposes to jobs, with descriptions. With a tool name, shows that tool's full details: description, read-only flag, approval support, input schema, and output schema.
+
+```bash
+terse integrate tool slack
+terse integrate tool slack --json
+terse integrate tool slack slack_send_message --json
+```
 
 Options:
 
@@ -349,7 +365,7 @@ Options:
 | `--timeout <seconds>` | Timeout in seconds. Defaults to 300 and caps at 900 |
 | `--json`              | Emit machine-readable JSON                          |
 
-The `list`, `describe`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
+The `list`, `describe`, `tool`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
 
 ### `terse secrets`
 
@@ -419,6 +435,7 @@ What the generated file contains:
 
 | Category                    | Example                                                              |
 | --------------------------- | -------------------------------------------------------------------- |
+| Available integrations      | A header comment listing every integration currently available in Terse |
 | Resource constants          | `SlackChannel.Engineering`                                           |
 | Trigger builders            | `Triggers.github.onPROpened()`, `Triggers.schedule.cron()`           |
 | Skill constructors          | `Skills.github({ repos: [...] })`                                    |
