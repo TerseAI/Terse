@@ -20,7 +20,7 @@ import { resolveProvider } from "../providers/resolveProvider.js"
 import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
 import { parseSerializedEventJson } from "../serializedEvent.js"
 
-export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
+export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string, freshState?: boolean): Promise<void> {
     if (isNonInteractive()) {
         throw new CliError("test_requires_interactive", "`terse test` needs a terminal.", {
             detail: "In non-interactive contexts, use `terse test list` to enumerate sample events and `terse test run --id <id>` to execute one."
@@ -75,6 +75,7 @@ export async function test(jobName?: string, verbose?: boolean, provider: Langua
             apiKey,
             verbose: !!verbose,
             entryFile,
+            freshState,
             pauseUiAround: async fn => {
                 runView.pause("Awaiting input")
                 try {
@@ -182,7 +183,7 @@ export async function testRun(opts: TestRunOpts): Promise<void> {
 
     const apiKey = readApiKeyOrBail()
     const projectId = readProjectConfigOrBail().projectId
-    const { runId, local } = await runLocalTestJob(provider, job, event, { projectId, apiKey, verbose: !!opts.verbose, entryFile: opts.entryFile })
+    const { runId, local } = await runLocalTestJob(provider, job, event, { projectId, apiKey, verbose: !!opts.verbose, entryFile: opts.entryFile, freshState: opts.freshState })
     if (!local) console.log(chalk.cyan(`  ${remoteDispatchNotice(runId)}`))
 }
 
@@ -432,6 +433,7 @@ export type TestRunOpts = {
     verbose?: boolean
     entryFile?: string
     provider?: LanguageProvider
+    freshState?: boolean
 }
 
 type SampleEventCandidate =

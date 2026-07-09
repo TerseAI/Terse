@@ -81,6 +81,7 @@ interface PosthogSectionContext {
     id: string
     skillToolType: string
     projectClass: ResourceClassContext
+    eventNames: string[]
 }
 
 interface DatadogSectionContext {
@@ -528,7 +529,8 @@ function preparePosthogSection(instances: PosthogInstanceData[], tools: ToolDefi
             ],
             "name",
             inst.projects
-        )
+        ),
+        eventNames: [...new Set(inst.projects.flatMap(project => project.events))]
     })
 }
 
@@ -996,11 +998,17 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("")
     }
 
+    const hasPosthogEventNames = (input.posthog[0]?.projects ?? []).some(project => project.events.length > 0)
+
     const paramTypes: ToolParamTypeContext[] = []
     for (const tool of tools) {
         if (isAttioTool(tool)) continue
         const key = `"${escapeString(tool.name)}"`
-        const tsType = hasAutoFillId(tool) ? `Omit<ToolInputByName[${key}], "integrationId">` : `ToolInputByName[${key}]`
+        let tsType = hasAutoFillId(tool) ? `Omit<ToolInputByName[${key}], "integrationId">` : `ToolInputByName[${key}]`
+        if (tool.name === "searchPosthogEvents" && hasPosthogEventNames) {
+            // Custom events type-check against the generated union; $-prefixed builtins are always allowed
+            tsType = `Omit<ToolInputByName[${key}], "integrationId" | "eventName"> & { eventName?: PosthogEventName | \`$\${string}\` | null }`
+        }
         paramTypes.push({
             description: tool.description || undefined,
             typeName: toolNameToInterfaceName(tool.name),
