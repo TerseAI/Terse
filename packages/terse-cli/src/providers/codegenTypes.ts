@@ -49,6 +49,7 @@ interface NotionResourceData {
 interface PosthogProjectData {
     id: string
     name: string
+    events: string[]
 }
 
 interface DatadogIndexData {
