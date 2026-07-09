@@ -43,7 +43,7 @@ Each execution runs in its own Modal sandbox with a project-scoped, short-lived 
 
 Secrets are project-scoped and write-only. `terse secrets add OPENAI_API_KEY` (or `terse secrets import .env` for a whole file) encrypts the value and injects it into that project's sandbox as an environment variable at run time. Other projects in your org can't see it, and once stored the value can't be read back out by anyone — including the CLI and any AI coding agent you point at the project. A leaked API key or a compromised laptop never exposes the rest of your secrets. See [Projects](/core-concepts/projects) for how project scope works across deploys, jobs, and integrations.
 
-The tradeoff: `terse test` can't pull hosted secrets onto your machine for local runs. Keep a gitignored `.env` in your project directory with the same variable names — the CLI loads it automatically for `terse test`, and the deploy step excludes it from the upload, so the sandbox always uses what you stored with `terse secrets`.
+The tradeoff: `terse test` can't pull hosted secrets onto your machine for local runs. Instead, the CLI keeps a gitignored `.env` in your project directory in sync at write time: `terse secrets add` also writes the value to `.env`, and `terse secrets remove` deletes the matching line. The CLI loads that file automatically for `terse test`, and the deploy step excludes it from the upload, so local runs and sandbox runs both use what you stored with `terse secrets`.
 
 ```bash
 echo "OPENAI_API_KEY=sk-..." >> .env   # values for local `terse test`
@@ -51,7 +51,7 @@ terse secrets import .env              # mirror them into the hosted vault
 terse deploy
 ```
 
-After deploy, `terse secrets add <NAME>` overwrites a value, `terse secrets remove <NAME>` deletes it, and `terse secrets list` shows which names are set on the server. The values themselves stay sealed.
+After deploy, `terse secrets add <NAME>` overwrites a value (on the server and in your local `.env`), `terse secrets remove <NAME>` deletes it from both, and `terse secrets list` shows which names are set on the server. The stored values themselves stay sealed.
 
 ### What gets uploaded
 
