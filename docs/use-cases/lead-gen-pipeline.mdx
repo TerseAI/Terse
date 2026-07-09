@@ -43,7 +43,7 @@ Run once a day, pull new workspaces from WorkOS, enrich each one with Parallel, 
 
 ### What it does
 
-1. Runs every day at 8am.
+1. Runs every day at 8:00 UTC.
 2. Deterministically fetches WorkOS workspaces created in the window.
 3. For each workspace, an agent decides **create** vs **update** against Attio and enriches via Parallel Web Services.
 4. The workflow collects the draft rows, builds a CSV, and emails it as an attachment.

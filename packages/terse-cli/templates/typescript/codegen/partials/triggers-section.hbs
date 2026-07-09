@@ -329,7 +329,7 @@ export const Triggers = {
     },
 {{/if}}
     schedule: {
-        /** Run on a cron schedule */
+        /** Run on a cron schedule (5-field cron expression, evaluated in UTC) */
         cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
             return new TimeTriggerConfig(opts.expression)
         },
