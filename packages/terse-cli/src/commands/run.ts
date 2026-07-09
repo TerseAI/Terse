@@ -5,6 +5,7 @@ import type { SerializedEvent } from "terse-types"
 import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
 import { getLocalHoistMarker } from "../cliVersion.js"
+import { parseEventFixtureJson } from "../eventFixture.js"
 import { loadJob } from "../loadJob.js"
 import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
@@ -38,7 +39,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
 
     let parsedEvent: SerializedEvent
     if (eventJson) {
-        parsedEvent = parseSerializedEventJson(eventJson, "--event")
+        parsedEvent = parseEventFixtureJson(eventJson, "--event / --event-file")
     } else if (runId) {
         const resolvedEvent = await resolveEventFromRunId(runId, apiKey)
         if (!resolvedEvent) {

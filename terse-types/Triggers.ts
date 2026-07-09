@@ -1014,3 +1014,31 @@ export const serializedEventSchema = z.object({
     data: TriggerSchema
 })
 export type SerializedEvent = z.infer<typeof serializedEventSchema>
+
+export const eventFixtureOverridesSchema = z.object({
+    formattedContent: z.string().optional(),
+    debugLog: z.string().optional()
+})
+export const eventFixtureSchema = z.intersection(TriggerSchema, eventFixtureOverridesSchema)
+export type EventFixture = z.infer<typeof eventFixtureSchema>
+
+export function hydrateSerializedEvent(fixture: EventFixture): SerializedEvent {
+    // re-parse through TriggerSchema so override keys are stripped from data
+    const trigger = TriggerSchema.parse(fixture)
+    return {
+        integrationType: trigger.integrationType,
+        eventType: trigger.eventType,
+        formattedContent: fixture.formattedContent ?? formatTriggerForAgent(trigger),
+        debugLog: fixture.debugLog ?? debugTrigger(trigger),
+        display: displayTrigger(trigger),
+        data: trigger
+    }
+}
+
+export function toEventFixture(event: SerializedEvent): EventFixture {
+    return {
+        ...event.data,
+        formattedContent: event.formattedContent,
+        debugLog: event.debugLog
+    }
+}

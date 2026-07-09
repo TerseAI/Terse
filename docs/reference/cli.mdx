@@ -176,7 +176,7 @@ Options:
 | `--json`              | Emit JSON instead of the rendered text view |
 | `--entry-file <path>` | Override the default workflow entry file    |
 
-The CLI refetches the workflow's current sample events and resolves the id against them.
+The CLI refetches the workflow's current sample events and resolves the id against them. With `--json`, the event is printed as a trigger event fixture: save it to a file, edit it, and replay it with `terse test run --event-file`.
 
 #### `terse test run [job-name]`
 
@@ -194,14 +194,35 @@ Options:
 | Flag                  | Description                                                 |
 | --------------------- | ----------------------------------------------------------- |
 | `--id <id>`           | Run a sample event by its `terse test list` id              |
-| `--event <json>`      | Inline serialized trigger event JSON                        |
-| `--event-file <path>` | Path to a JSON file containing the serialized trigger event |
+| `--event <json>`      | Inline trigger event fixture JSON                           |
+| `--event-file <path>` | Path to a JSON file containing a trigger event fixture      |
 | `-v, --verbose`       | Show agent stream output during the run (default: enabled)  |
 | `--no-verbose`        | Hide agent stream output                                    |
 | `--fresh-state`       | Reset the job's test state before running                   |
 | `--entry-file <path>` | Override the default workflow entry file                    |
 
 Test runs read and write an isolated copy of the job's [state](/reference/typescript-sdk#job-state) that persists across `terse test` invocations, so dedupe and cooldown logic behaves the same way it will in production. Pass `--fresh-state` to reset that test state before the run, for example to re-test a `filter` that already fired. `--fresh-state` never touches the state of the deployed job, and is not yet supported for projects with a remote data plane.
+
+
+##### Trigger event fixtures
+
+`--event` and `--event-file` take a flat trigger event fixture: the same fields your handler reads, and nothing else. For a webhook trigger:
+
+```json
+{
+  "integrationType": "webhook",
+  "eventType": "webhook",
+  "method": "POST",
+  "headers": { "content-type": "application/json" },
+  "body": { "lead": "acme" }
+}
+```
+
+The available fields per trigger type match what your handler receives at runtime (for webhooks: `body`, `headers`, `method`).
+
+The prompt-facing text returned by `event.formatForAgentRunner()` and the log line returned by `event.debugLog()` are derived from the fixture exactly the way production derives them from a live event. To test a custom rendering, add a top-level `formattedContent` or `debugLog` string to the fixture and it overrides the derived value.
+
+`terse test show <id> --json` prints any stored sample event in this shape, so a recorded event is always a valid starting point for a hand-edited fixture.
 
 ### `terse deploy`
 
@@ -385,7 +406,7 @@ Lists secret names (not values) stored on the linked Terse project.
 
 #### `terse secrets add <NAME>`
 
-Adds or updates one secret. Prompts for the value as a hidden input by default, or reads it from stdin so secrets don't end up in shell history.
+Adds or updates one secret. Prompts for the value as a hidden input by default, or reads it from stdin so secrets don't end up in shell history. Also writes the value to the project's local `.env` file, so `terse test` runs use the same value that deployed runs will see.
 
 ```bash
 terse secrets add OPENAI_API_KEY
@@ -398,7 +419,7 @@ printf '%s' "$OPENAI_API_KEY" | terse secrets add OPENAI_API_KEY --value-stdin
 
 #### `terse secrets remove <NAME>`
 
-Removes one secret. Prompts for confirmation in a terminal; pass `--yes` in scripts.
+Removes one secret. Prompts for confirmation in a terminal; pass `--yes` in scripts. Also deletes the matching line from the project's local `.env` file, so a job that would fail on the next deploy doesn't keep passing locally.
 
 ```bash
 terse secrets remove OPENAI_API_KEY --yes
