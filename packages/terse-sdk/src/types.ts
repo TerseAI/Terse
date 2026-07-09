@@ -16,7 +16,11 @@ export interface ToolboxEntry {
     displayName: string
 }
 
-export type SDKTrigger<TEvent extends Trigger = Trigger> = TEvent & {
+// Structural bound so generated projected payload types (plain string literals)
+// satisfy the same constraint as the enum-typed Trigger members.
+export type TriggerLike = { integrationType: string; eventType: string }
+
+export type SDKTrigger<TEvent extends TriggerLike = Trigger> = TEvent & {
     formatForAgentRunner(): string
     debugLog(): string
 }
@@ -37,7 +41,7 @@ export function createSDKTrigger(serialized: SerializedEvent): SDKTrigger {
 // TypedTrigger – phantom-typed ConfigData for generic event inference
 // ---------------------------------------------------------------------------
 
-export type TypedTrigger<TEvent extends Trigger = Trigger> = ConfigData & {
+export type TypedTrigger<TEvent extends TriggerLike = Trigger> = ConfigData & {
     readonly __eventType?: TEvent
 }
 

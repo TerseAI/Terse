@@ -974,6 +974,40 @@ export const TriggerSchema = z.union([
 ])
 export type Trigger = z.infer<typeof TriggerSchema>
 
+export function resolveTriggerSchema(integrationType: IntegrationType): z.ZodType<Trigger> | null {
+    switch (integrationType) {
+        case IntegrationType.SLACK:
+            return slackTriggerSchema
+        case IntegrationType.GITHUB:
+            return GithubTriggerSchema
+        case IntegrationType.GMAIL:
+            return gmailTriggerSchema
+        case IntegrationType.LINEAR:
+            return linearTriggerSchema
+        case IntegrationType.WORKOS:
+            return workOSTriggerSchema
+        case IntegrationType.HEY_REACH:
+            return heyReachTriggerSchema
+        case IntegrationType.ATTIO:
+            return attioTriggerSchema
+        case IntegrationType.WEBHOOK:
+            return webhookTriggerSchema
+        case IntegrationType.CRON_JOB:
+            return cronTriggerSchema
+        case IntegrationType.WEBMONITOR:
+            return webMonitorTriggerSchema
+        case IntegrationType.TERSE:
+        case IntegrationType.NOTION:
+        case IntegrationType.POSTHOG:
+        case IntegrationType.DATADOG:
+        case IntegrationType.LAUNCHDARKLY:
+        case IntegrationType.SNOWFLAKE:
+            return null
+        default:
+            throw integrationType satisfies never
+    }
+}
+
 export function createManualTrigger(
     params: {
         integrationType?: IntegrationType

@@ -173,9 +173,12 @@ export type {
     StateAccessor,
     StateDefinition,
     ToolboxEntry,
+    TriggerLike,
     TypedSkill,
     TypedTrigger
 } from "./types.js"
+
+export type { SlackAttachments, SlackBlocks, SlackFiles } from "terse-types"
 
 // Re-export shared types for consumer convenience
 export {
