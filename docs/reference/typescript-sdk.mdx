@@ -110,6 +110,8 @@ Two type details worth knowing:
 
 State is stored as JSON in the project volume, in a namespace the agent cannot read or write. It is separate from the agent's memory.
 
+Deployed runs and `terse test` runs each have their own copy of a job's state, so testing never touches production values. Test state persists across `terse test` invocations, which lets you exercise dedupe and cooldown logic locally; reset it with `terse test run --fresh-state` or inspect it with the [`terse state` commands](/reference/cli#state).
+
 ```ts
 import { createJob } from "terse-sdk"
 import { z } from "zod"

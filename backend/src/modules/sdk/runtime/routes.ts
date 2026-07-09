@@ -3,7 +3,7 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../../rateLimit/routeLimits"
 import { handleMemoryDelete, handleMemoryGet, handleMemoryList, handleMemoryPut } from "../memory/controller"
-import { handleStateGet, handleStatePut } from "../state/controller"
+import { handleStateDelete, handleStateGet, handleStateList, handleStatePut, handleStateRead, handleStateReset } from "../state/controller"
 
 import { handleInputRequestRegister, handleJobSuspension, handleSdkAgentRun, handleSdkApprovalDecision, handleSdkListen, handleSessionEvents } from "./controller"
 
@@ -25,5 +25,9 @@ router.post("/memory/delete", limit, auth, handleMemoryDelete)
 
 router.post("/state/get", limit, auth, handleStateGet)
 router.post("/state/put", limit, auth, handleStatePut)
+router.post("/state/list", limit, auth, handleStateList)
+router.post("/state/read", limit, auth, handleStateRead)
+router.post("/state/delete", limit, auth, handleStateDelete)
+router.post("/state/reset", limit, auth, handleStateReset)
 
 export default router
