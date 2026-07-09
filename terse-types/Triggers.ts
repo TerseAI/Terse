@@ -1005,30 +1005,13 @@ export const serializedEventDisplaySchema = z.object({
 })
 export type SerializedEventDisplay = z.infer<typeof serializedEventDisplaySchema>
 
-export const serializedEventBaseSchema = z.object({
+export const serializedEventSchema = z.object({
     integrationType: integrationTypeEnum,
     eventType: TriggerTypeSchema,
     formattedContent: z.string(),
     debugLog: z.string(),
     display: serializedEventDisplaySchema.optional(),
     data: TriggerSchema
-})
-
-export const serializedEventSchema = serializedEventBaseSchema.superRefine((event, ctx) => {
-    if (event.integrationType !== event.data.integrationType) {
-        ctx.addIssue({
-            code: "custom",
-            path: ["integrationType"],
-            message: `integrationType "${event.integrationType}" does not match data.integrationType "${event.data.integrationType}"`
-        })
-    }
-    if (event.eventType !== event.data.eventType) {
-        ctx.addIssue({
-            code: "custom",
-            path: ["eventType"],
-            message: `eventType "${event.eventType}" does not match data.eventType "${event.data.eventType}"`
-        })
-    }
 })
 export type SerializedEvent = z.infer<typeof serializedEventSchema>
 
