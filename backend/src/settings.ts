@@ -85,6 +85,9 @@ export const settings = {
 
     // Environment
     nodeEnv: optionalEnv("NODE_ENV", "development") as "development" | "production" | "test",
+    // Render sets IS_PULL_REQUEST=true on PR preview services. All previews share one small
+    // queue database, so pg-boss backs off its polling cadence there (see loaders/pgBoss.ts).
+    isPreviewEnv: optionalEnv("IS_PULL_REQUEST") === "true",
 
     health: {
         checkPath: optionalEnv("HEALTH_CHECK_PATH", "/healthz")
