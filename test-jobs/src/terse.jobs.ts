@@ -170,5 +170,19 @@ createJob({
         console.log("trying to sleep in durable job")
         await sleep("2m")
         console.log("sleep in durable job completed")
+
+        const events = await toolbox.posthog.searchEvents({
+            projectId: PosthogProject.Terse.projectId,
+            eventName: "project_deployed",
+            limit: 10
+        })
+
+        const evenqts = await toolbox.posthog.searchEvents({
+            projectId: PosthogProject.Terse.projectId,
+            eventName: "project_deployed",
+            distinctId: "2e2e2e"
+        })
+
+        console.log("events", events)
     }
 })
