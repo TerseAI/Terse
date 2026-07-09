@@ -18,6 +18,7 @@ import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
+import { parseSerializedEventJson } from "../serializedEvent.js"
 
 export async function test(jobName?: string, verbose?: boolean, provider: LanguageProvider = resolveProvider(), entryFile?: string): Promise<void> {
     if (isNonInteractive()) {

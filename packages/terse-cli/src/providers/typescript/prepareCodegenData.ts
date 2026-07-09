@@ -157,6 +157,7 @@ interface SystemSectionContext {}
 export interface TemplateContext {
     imports: string[]
     useMultilineImports: boolean
+    availableIntegrations?: string
     github?: GitHubSectionContext
     gmail?: GmailSectionContext
     slack?: SlackSectionContext
@@ -1159,6 +1160,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     return {
         imports,
         useMultilineImports: imports.length > 3,
+        availableIntegrations: input.availableIntegrations.length > 0 ? input.availableIntegrations.join(", ") : undefined,
         github: github.data,
         gmail: gmail.data,
         slack: slack.data,

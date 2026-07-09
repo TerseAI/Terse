@@ -11,6 +11,7 @@ import { readProjectConfig, readProjectConfigOrBail } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
+import { parseSerializedEventJson } from "../serializedEvent.js"
 
 export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string, verbose?: boolean): Promise<void> {
     const hoistMarker = getLocalHoistMarker()
