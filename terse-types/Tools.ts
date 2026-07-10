@@ -1857,94 +1857,94 @@ export const attioAttributeHistoryEntrySchema = z
 
 export const attioTaskSchema = z
     .object({
-        id: z.object({ workspace_id: z.string().optional(), task_id: z.string().optional() }).catchall(z.unknown()).optional(),
-        content_plaintext: z.string().optional(),
-        deadline_at: z.string().nullable().optional(),
-        is_completed: z.boolean().optional(),
-        linked_records: z.array(z.record(z.string(), z.unknown())).optional(),
-        assignees: z.array(z.record(z.string(), z.unknown())).optional(),
-        created_at: z.string().optional()
+        id: z.object({ workspace_id: z.string(), task_id: z.string() }),
+        content_plaintext: z.string(),
+        deadline_at: z.string().nullable(),
+        is_completed: z.boolean(),
+        linked_records: z.array(z.record(z.string(), z.unknown())),
+        assignees: z.array(z.record(z.string(), z.unknown())),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
 export const attioNoteSchema = z
     .object({
-        id: z.object({ workspace_id: z.string().optional(), note_id: z.string().optional() }).catchall(z.unknown()).optional(),
-        parent_object: z.string().optional(),
-        parent_record_id: z.string().optional(),
-        title: z.string().optional(),
-        content_plaintext: z.string().nullable().optional(),
-        content_markdown: z.string().nullable().optional(),
-        created_at: z.string().optional()
+        id: z.object({ workspace_id: z.string(), note_id: z.string() }),
+        parent_object: z.string(),
+        parent_record_id: z.string(),
+        title: z.string(),
+        content_plaintext: z.string().nullable(),
+        content_markdown: z.string().nullable(),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
 export const attioCommentSchema = z
     .object({
-        id: z.object({ workspace_id: z.string().optional(), comment_id: z.string().optional() }).catchall(z.unknown()).optional(),
-        thread_id: z.string().optional(),
-        content_plaintext: z.string().optional(),
-        author: z.record(z.string(), z.unknown()).optional(),
-        resolved_at: z.string().nullable().optional(),
-        created_at: z.string().optional()
+        id: z.object({ workspace_id: z.string(), comment_id: z.string() }),
+        thread_id: z.string(),
+        content_plaintext: z.string(),
+        author: z.record(z.string(), z.unknown()),
+        resolved_at: z.string().nullable(),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
 export const attioThreadSchema = z
     .object({
-        id: z.object({ workspace_id: z.string().optional(), thread_id: z.string().optional() }).catchall(z.unknown()).optional(),
-        comments: z.array(attioCommentSchema).optional(),
-        created_at: z.string().optional()
+        id: z.object({ workspace_id: z.string(), thread_id: z.string() }),
+        comments: z.array(attioCommentSchema),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
 export const attioListSchema = z
     .object({
-        id: z.object({ workspace_id: z.string().optional(), list_id: z.string().optional() }).catchall(z.unknown()).optional(),
-        api_slug: z.string().optional(),
-        name: z.string().optional(),
-        parent_object: z.array(z.string()).or(z.string()).optional(),
-        created_at: z.string().optional()
+        id: z.object({ workspace_id: z.string(), list_id: z.string() }),
+        api_slug: z.string(),
+        name: z.string(),
+        parent_object: z.array(z.string()).or(z.string()),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
 export const attioListEntrySchema = z
     .object({
-        id: z.object({ workspace_id: z.string().optional(), list_id: z.string().optional(), entry_id: z.string().optional() }).catchall(z.unknown()).optional(),
-        parent_record_id: z.string().optional(),
-        parent_object: z.string().optional(),
-        entry_values: z.record(z.string(), z.unknown()).optional(),
-        created_at: z.string().optional()
+        id: z.object({ workspace_id: z.string(), list_id: z.string(), entry_id: z.string() }),
+        parent_record_id: z.string(),
+        parent_object: z.string(),
+        entry_values: z.record(z.string(), z.unknown()),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
 export const attioMeetingSchema = z
     .object({
-        id: z.object({ workspace_id: z.string().optional(), meeting_id: z.string().optional() }).catchall(z.unknown()).optional(),
-        title: z.string().nullable().optional(),
-        participants: z.array(z.record(z.string(), z.unknown())).optional(),
-        linked_records: z.array(z.record(z.string(), z.unknown())).optional(),
-        created_at: z.string().optional()
+        id: z.object({ workspace_id: z.string(), meeting_id: z.string() }),
+        title: z.string().nullable(),
+        participants: z.array(z.record(z.string(), z.unknown())),
+        linked_records: z.array(z.record(z.string(), z.unknown())),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
 export const attioCallRecordingSchema = z
     .object({
-        id: z.object({ workspace_id: z.string().optional(), meeting_id: z.string().optional(), call_recording_id: z.string().optional() }).catchall(z.unknown()).optional(),
-        status: z.string().optional(),
-        created_at: z.string().optional()
+        id: z.object({ workspace_id: z.string(), meeting_id: z.string(), call_recording_id: z.string() }),
+        status: z.string(),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
 export const attioFileSchema = z
     .object({
-        id: z.record(z.string(), z.unknown()).optional(),
-        name: z.string().optional(),
+        id: z.record(z.string(), z.unknown()),
+        name: z.string(),
         content_type: z.string().nullable().optional(),
         content_size: z.number().nullable().optional(),
         record_id: z.string().optional(),
         object_slug: z.string().optional(),
-        created_at: z.string().optional()
+        created_at: z.string()
     })
     .catchall(z.unknown())
 
