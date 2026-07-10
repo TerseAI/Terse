@@ -923,7 +923,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push(
             "type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }"
         )
-        attioPreludeLines.push('type __AttioRecordBase = NonNullable<NonNullable<ToolOutputByName["attio_upsert_record"]["records"]>[number]>')
+        attioPreludeLines.push('type __AttioRecordBase = NonNullable<NonNullable<ToolOutputByName["attio_records"]["records"]>[number]>')
         attioPreludeLines.push('type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<__AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }')
         attioPreludeLines.push("")
 
@@ -971,17 +971,31 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioFilterExpression<AttioRecordValuesFor<TObject>>")
         attioPreludeLines.push("export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
         attioPreludeLines.push(
-            "export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null }"
+            "export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null; offset?: number | null }"
+        )
+        attioPreludeLines.push("export type AttioSearchRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; query: string; limit?: number | null }")
+        attioPreludeLines.push("export type AttioGetRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }")
+        attioPreludeLines.push("export type AttioCreateRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; values: AttioValuesFor<TObject> }")
+        attioPreludeLines.push(
+            'export type AttioUpdateRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; values: Partial<AttioValuesFor<TObject>>; multiselectMode?: "overwrite" | "append" | null }'
         )
         attioPreludeLines.push(
             "export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; records: AttioValuesFor<TObject>[] }"
         )
-        attioPreludeLines.push("export type AttioListObjectsParams = Record<string, never>")
+        attioPreludeLines.push("export type AttioDeleteRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }")
         attioPreludeLines.push(
-            'export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_query_records"], "records"> & { records: Array<AttioRecordFor<TObject>> }'
+            "export type AttioGetAttributeHistoryParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; attribute: AttioAttributeSlug<TObject>; limit?: number | null; offset?: number | null }"
+        )
+        attioPreludeLines.push("export type AttioListObjectsParams = Record<string, never>")
+        attioPreludeLines.push('export type AttioRecordsResult = ToolOutputByName["attio_records"]')
+        attioPreludeLines.push(
+            'export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<AttioRecordsResult, "records"> & { records: Array<AttioRecordFor<TObject>> }'
         )
         attioPreludeLines.push(
-            'export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_upsert_record"], "records"> & { records?: Array<AttioRecordFor<TObject>> }'
+            'export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<AttioRecordsResult, "records"> & { records?: Array<AttioRecordFor<TObject>> }'
+        )
+        attioPreludeLines.push(
+            'export type AttioSingleRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<AttioRecordsResult, "record"> & { record?: AttioRecordFor<TObject> }'
         )
         attioPreludeLines.push("")
         attioPreludeLines.push("function __normalizeAttioObjectSlug(object: unknown): string {")
@@ -1011,7 +1025,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
         attioPreludeLines.push(
-            'function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_query_records"]): AttioQueryRecordsResult<TObject> {'
+            'function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_records"]): AttioQueryRecordsResult<TObject> {'
         )
         attioPreludeLines.push("    return {")
         attioPreludeLines.push("        ...result,")
@@ -1020,11 +1034,20 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
         attioPreludeLines.push(
-            'function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_upsert_record"]): AttioUpsertRecordResult<TObject> {'
+            'function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_records"]): AttioUpsertRecordResult<TObject> {'
         )
         attioPreludeLines.push("    return {")
         attioPreludeLines.push("        ...result,")
         attioPreludeLines.push("        records: (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>,")
+        attioPreludeLines.push("    }")
+        attioPreludeLines.push("}")
+        attioPreludeLines.push("")
+        attioPreludeLines.push(
+            'function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_records"]): AttioSingleRecordResult<TObject> {'
+        )
+        attioPreludeLines.push("    return {")
+        attioPreludeLines.push("        ...result,")
+        attioPreludeLines.push("        record: __enhanceAttioRecord(object, result.record),")
         attioPreludeLines.push("    }")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
@@ -1087,34 +1110,24 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     const groups: ToolGroupContext[] = rawGroups.map(group => ({
         key: group.key,
         integrationType: toolIntegrationToIntegrationType(group.integration),
-        methods: group.tools.map(tool => {
+        methods: group.tools.flatMap(tool => {
             const methodName = toCamelCase(tool.displayName)
             const paramsType = toolNameToInterfaceName(tool.name)
             const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
 
+            if (group.integration === "attio" && tool.name === "attio_records" && group.integrationId) {
+                return buildAttioRecordsMethods(group.integrationId)
+            }
+
             let generatedSignature: string
-            if (group.integration === "attio" && tool.name === "attio_query_records") {
-                generatedSignature = `${methodName}<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>`
-            } else if (group.integration === "attio" && tool.name === "attio_upsert_record") {
-                generatedSignature = `${methodName}<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>`
-            } else if (group.integration === "attio" && tool.name === "attio_list_objects") {
+            if (group.integration === "attio" && tool.name === "attio_list_objects") {
                 generatedSignature = `${methodName}(params?: AttioListObjectsParams): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
             } else {
                 generatedSignature = `${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
             }
 
             let runtimeLines: string[]
-            if (group.integration === "attio" && tool.name === "attio_query_records" && group.integrationId) {
-                runtimeLines = [
-                    `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioQueryResult(params.object, result)),`
-                ]
-            } else if (group.integration === "attio" && tool.name === "attio_upsert_record" && group.integrationId) {
-                runtimeLines = [
-                    `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
-                ]
-            } else if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
+            if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
                 runtimeLines = [
                     `${methodName}: (params: AttioListObjectsParams = {}) =>`,
                     `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
@@ -1131,11 +1144,13 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
                 ]
             }
 
-            return {
-                description: tool.description || undefined,
-                generatedSignature,
-                runtimeLines
-            }
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature,
+                    runtimeLines
+                }
+            ]
         })
     }))
 
@@ -1148,6 +1163,79 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             groups
         }
     }
+}
+
+function buildAttioRecordsMethods(integrationId: string): ToolMethodContext[] {
+    const id = escapeString(integrationId)
+    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["attio_records"]>("attio_records", { integrationId: "${id}", request: ${requestExpr} })`
+    const objectSlug = "objectSlug: __normalizeAttioObjectSlug(params.object)"
+
+    return [
+        {
+            description: "Query records of an Attio object, with optional filtering and limit/offset pagination (limit defaults to 20, max 500).",
+            generatedSignature: "queryRecords<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>",
+            runtimeLines: [
+                "queryRecords: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>",
+                `    ${call(`{ action: "query", ${objectSlug}, filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, offset: params.offset ?? null }`)}.then(result => __enhanceAttioQueryResult(params.object, result)),`
+            ]
+        },
+        {
+            description: "Fuzzy-search records by name, email address or domain (max 25 matches). Results are eventually consistent; use queryRecords for guaranteed up-to-date reads.",
+            generatedSignature: "searchRecords<TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>): Promise<AttioRecordsResult>",
+            runtimeLines: [
+                "searchRecords: <TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>) =>",
+                `    ${call(`{ action: "search", ${objectSlug}, query: params.query, limit: params.limit ?? null }`)},`
+            ]
+        },
+        {
+            description: "Fetch a single record by its ID.",
+            generatedSignature: "getRecord<TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
+            runtimeLines: [
+                "getRecord: <TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>) =>",
+                `    ${call(`{ action: "get", ${objectSlug}, recordId: params.recordId }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
+            ]
+        },
+        {
+            description: "Create a new record. Unlike upsertRecord, no matching attribute is needed, so this works for objects without a unique writable attribute (e.g. deals).",
+            generatedSignature: "createRecord<TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
+            runtimeLines: [
+                "createRecord: <TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>) =>",
+                `    ${call(`{ action: "create", ${objectSlug}, values: JSON.stringify(params.values) }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
+            ]
+        },
+        {
+            description: "Update an existing record by its ID. Only the attributes present in values are touched; multiselectMode 'append' adds to multi-value attributes instead of overwriting them.",
+            generatedSignature: "updateRecord<TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
+            runtimeLines: [
+                "updateRecord: <TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>) =>",
+                `    ${call(`{ action: "update", ${objectSlug}, recordId: params.recordId, values: JSON.stringify(params.values), multiselectMode: params.multiselectMode ?? null }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
+            ]
+        },
+        {
+            description: "Create or update one or more records, matched on a unique writable attribute (e.g. email_addresses for people, domains for companies).",
+            generatedSignature: "upsertRecord<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>",
+            runtimeLines: [
+                "upsertRecord: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>",
+                `    ${call(`{ action: "upsert", ${objectSlug}, matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records) }`)}.then(result => __enhanceAttioUpsertResult(params.object, result)),`
+            ]
+        },
+        {
+            description: "Permanently delete a record by its ID. This cannot be undone.",
+            generatedSignature: "deleteRecord<TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>): Promise<AttioRecordsResult>",
+            runtimeLines: [
+                "deleteRecord: <TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>) =>",
+                `    ${call(`{ action: "delete", ${objectSlug}, recordId: params.recordId }`)},`
+            ]
+        },
+        {
+            description: "Fetch the historic values of one attribute on a record (e.g. every stage a deal has been in), with limit/offset pagination.",
+            generatedSignature: "getAttributeHistory<TObject extends GeneratedAttioObject>(params: AttioGetAttributeHistoryParams<TObject>): Promise<AttioRecordsResult>",
+            runtimeLines: [
+                "getAttributeHistory: <TObject extends GeneratedAttioObject>(params: AttioGetAttributeHistoryParams<TObject>) =>",
+                `    ${call(`{ action: "get_attribute_history", ${objectSlug}, recordId: params.recordId, attributeSlug: params.attribute, limit: params.limit ?? null, offset: params.offset ?? null }`)},`
+            ]
+        }
+    ]
 }
 
 function prepareSystemSection(): SectionContext<SystemSectionContext> {

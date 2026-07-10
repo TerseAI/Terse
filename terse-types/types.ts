@@ -6,11 +6,13 @@ import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecis
 import type { RunHistoryAction } from "./RunHistoryTypes"
 import { SlackChannelType, slackChannelTypeSchema } from "./SlackTypes"
 import {
+    attioAttributeHistoryEntrySchema,
     attioAttributeSchema,
     attioObjectSchema,
     attioObjectWithAttributesSchema,
     attioRecordIdentifierSchema,
     attioRecordSchema,
+    attioSearchMatchSchema,
     attioUpsertErrorSchema,
     linearProjectSummarySchema,
     linearTeamSchema,
@@ -81,6 +83,8 @@ export type AttioAttribute = z.infer<typeof attioAttributeSchema>
 export type AttioObjectWithAttributes = z.infer<typeof attioObjectWithAttributesSchema>
 export type AttioRecordIdentifier = z.infer<typeof attioRecordIdentifierSchema>
 export type AttioRecord = z.infer<typeof attioRecordSchema>
+export type AttioSearchMatch = z.infer<typeof attioSearchMatchSchema>
+export type AttioAttributeHistoryEntry = z.infer<typeof attioAttributeHistoryEntrySchema>
 
 export const linearWorkspaceSchema = z.object({
     id: z.string(),

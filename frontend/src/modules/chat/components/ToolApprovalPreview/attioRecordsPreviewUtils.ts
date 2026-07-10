@@ -1,64 +1,38 @@
+import type { AttioRecordsRequest } from "terse-types"
 import type { AttioAttribute } from "terse-types/types"
 
-export interface AttioUpsertRecordParams {
-    integrationId?: string
-    objectSlug?: string
-    matchingAttribute?: string
-    records?: string
-    values?: string
-}
-
-export type ValidationNotice = {
-    rowIndex: number
-    field: string
-    message: string
-}
-
-export type AttioEditorColumn = {
-    key: string
-    title: string
-    width?: number
-    multiline?: boolean
-}
-
-export function safeParseParams(parameters?: string): AttioUpsertRecordParams | null {
+export function safeParseParams(parameters?: string): AttioRecordsParams | null {
     if (!parameters) return null
 
     try {
-        return JSON.parse(parameters) as AttioUpsertRecordParams
+        const parsed = JSON.parse(parameters) as AttioRecordsParams
+        return parsed && typeof parsed === "object" ? parsed : null
     } catch {
         return null
     }
 }
 
-export function extractRecords(parameters: AttioUpsertRecordParams | null): Array<Record<string, unknown>> {
-    if (!parameters) return []
-
-    const parsedRecords: Array<Record<string, unknown>> = []
-
-    if (parameters.records) {
-        try {
-            const batch = JSON.parse(parameters.records) as unknown
-            if (Array.isArray(batch)) {
-                parsedRecords.push(...batch.filter(isRecordLike))
-            }
-        } catch {
+export function extractRecords(request?: AttioRecordsRequest): Array<Record<string, unknown>> {
+    switch (request?.action) {
+        case "upsert":
+            return parseRecordsBatch(request.records)
+        case "create":
+        case "update":
+            return parseSingleValues(request.values)
+        default:
             return []
-        }
     }
+}
 
-    if (parsedRecords.length === 0 && parameters.values) {
-        try {
-            const value = JSON.parse(parameters.values) as unknown
-            if (isRecordLike(value)) {
-                parsedRecords.push(value)
-            }
-        } catch {
-            return []
-        }
+export function writeActionLabel(action: "create" | "update" | "upsert"): string {
+    switch (action) {
+        case "create":
+            return "Create"
+        case "update":
+            return "Update"
+        case "upsert":
+            return "Create or update"
     }
-
-    return parsedRecords
 }
 
 export function buildEditorColumns(records: Array<Record<string, unknown>>, attributes?: AttioAttribute[], matchingAttribute?: string): AttioEditorColumn[] {
@@ -115,6 +89,24 @@ export function valueToEditString(value: unknown): string {
     return String(value ?? "")
 }
 
+function parseRecordsBatch(records: string): Array<Record<string, unknown>> {
+    try {
+        const batch = JSON.parse(records) as unknown
+        return Array.isArray(batch) ? batch.filter(isRecordLike) : []
+    } catch {
+        return []
+    }
+}
+
+function parseSingleValues(values: string): Array<Record<string, unknown>> {
+    try {
+        const value = JSON.parse(values) as unknown
+        return isRecordLike(value) ? [value] : []
+    } catch {
+        return []
+    }
+}
+
 function buildColumnOrder(records: Array<Record<string, unknown>>, attributes?: AttioAttribute[], matchingAttribute?: string): string[] {
     const ordered = new Set<string>()
 
@@ -146,4 +138,22 @@ function isEmptyValue(value: unknown): boolean {
     if (typeof value === "string") return value.trim().length === 0
     if (Array.isArray(value)) return value.length === 0 || value.every(item => String(item).trim().length === 0)
     return false
+}
+
+export interface AttioRecordsParams {
+    integrationId?: string
+    request?: AttioRecordsRequest
+}
+
+export type ValidationNotice = {
+    rowIndex: number
+    field: string
+    message: string
+}
+
+export type AttioEditorColumn = {
+    key: string
+    title: string
+    width?: number
+    multiline?: boolean
 }

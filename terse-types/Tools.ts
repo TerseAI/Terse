@@ -1837,6 +1837,21 @@ export const attioUpsertErrorSchema = z.object({
     message: z.string()
 })
 
+export const attioSearchMatchSchema = z
+    .object({
+        id: attioRecordIdentifierSchema.optional(),
+        record_text: z.string().optional(),
+        object_slug: z.string().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioAttributeHistoryEntrySchema = z
+    .object({
+        active_from: z.string().optional(),
+        active_until: z.string().nullable().optional()
+    })
+    .catchall(z.unknown())
+
 // WorkOS schemas
 export const workOSUserSummarySchema = z.object({
     id: z.string(),
@@ -1918,26 +1933,106 @@ export const attioListObjectsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Attio workspace to use.")
 })
 
-export const attioQueryRecordsInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
-    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
+const attioObjectSlugField = z.string().describe("The Attio object type slug (e.g. 'people', 'companies').")
+const attioRecordIdField = z.string().describe("The record ID (UUID).")
+
+export const attioQueryRecordsRequestSchema = z.object({
+    action: z.literal("query").describe("List records of an object, with optional filtering and limit/offset pagination."),
+    objectSlug: attioObjectSlugField,
     filter: z
         .string()
         .nullable()
-        .describe('Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators.'),
-    limit: z.number().int().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
+        .describe(
+            'Optional Attio filter as a JSON string. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators ($eq, $contains, $starts_with, $ends_with) combined via $and/$or. Pass null for no filtering.'
+        ),
+    limit: z.number().int().nullable().describe("Maximum number of records to return (default 20, max 500). Pass null for the default."),
+    offset: z.number().int().nullable().describe("Number of records to skip, for pagination. Pass null for 0.")
 })
 
-export const attioUpsertRecordInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
-    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
-    matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
+export const attioSearchRecordsRequestSchema = z.object({
+    action: z.literal("search").describe("Fuzzy-search records by name, email address or domain. Results are eventually consistent; use 'query' for guaranteed up-to-date reads."),
+    objectSlug: attioObjectSlugField,
+    query: z.string().describe("The search term, matched fuzzily against record names, email addresses and domains (max 256 chars)."),
+    limit: z.number().int().nullable().describe("Maximum number of matches to return (default and max 25). Pass null for the default.")
+})
+
+export const attioGetRecordRequestSchema = z.object({
+    action: z.literal("get").describe("Fetch a single record by its ID."),
+    objectSlug: attioObjectSlugField,
+    recordId: attioRecordIdField
+})
+
+export const attioCreateRecordRequestSchema = z.object({
+    action: z.literal("create").describe("Create a new record. Unlike 'upsert', no matching attribute is needed, so this works for objects without a unique writable attribute (e.g. deals)."),
+    objectSlug: attioObjectSlugField,
+    values: z.string().describe('A JSON object string mapping attribute slugs to values (e.g. \'{"name":"Acme","domains":["acme.com"]}\'). For multi-value attributes, pass an array.')
+})
+
+export const attioUpdateRecordRequestSchema = z.object({
+    action: z.literal("update").describe("Update an existing record by its ID. Only the attributes present in 'values' are touched."),
+    objectSlug: attioObjectSlugField,
+    recordId: attioRecordIdField,
+    values: z.string().describe("A JSON object string mapping the attribute slugs to update to their new values."),
+    multiselectMode: z
+        .enum(["overwrite", "append"])
+        .nullable()
+        .describe("'overwrite' (the default) replaces the values of multi-value attributes; 'append' adds to them without removing existing values. Pass null for the default.")
+})
+
+export const attioUpsertRecordsRequestSchema = z.object({
+    action: z.literal("upsert").describe("Create or update one or more records, matched on a unique attribute. If a match is found the record is updated, otherwise a new one is created."),
+    objectSlug: attioObjectSlugField,
+    matchingAttribute: z.string().describe("The unique, writable attribute slug to match on (e.g. 'email_addresses' for people, 'domains' for companies)."),
     records: z
         .string()
         .describe(
-            'A JSON string representing a list of Attio records to upsert. Each record should map attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: \'[{"email_addresses":["test@example.com"],"name":"John"}]\'.'
+            'A JSON string representing a list of records to upsert. Each record maps attribute slugs to values; for multi-value attributes pass an array. Example: \'[{"email_addresses":["test@example.com"],"name":"John"}]\'.'
         )
 })
+
+export const attioDeleteRecordRequestSchema = z.object({
+    action: z.literal("delete").describe("Permanently delete a record by its ID. This cannot be undone."),
+    objectSlug: attioObjectSlugField,
+    recordId: attioRecordIdField
+})
+
+export const attioGetAttributeHistoryRequestSchema = z.object({
+    action: z.literal("get_attribute_history").describe("Fetch the historic values of one attribute on a record (e.g. every stage a deal has been in)."),
+    objectSlug: attioObjectSlugField,
+    recordId: attioRecordIdField,
+    attributeSlug: z.string().describe("The attribute slug to fetch the value history for."),
+    limit: z.number().int().nullable().describe("Maximum number of history entries to return. Pass null for the default."),
+    offset: z.number().int().nullable().describe("Number of entries to skip, for pagination. Pass null for 0.")
+})
+
+export const attioRecordsRequestSchema = z.discriminatedUnion("action", [
+    attioQueryRecordsRequestSchema,
+    attioSearchRecordsRequestSchema,
+    attioGetRecordRequestSchema,
+    attioCreateRecordRequestSchema,
+    attioUpdateRecordRequestSchema,
+    attioUpsertRecordsRequestSchema,
+    attioDeleteRecordRequestSchema,
+    attioGetAttributeHistoryRequestSchema
+])
+
+export const attioRecordsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+    request: attioRecordsRequestSchema.describe("The record operation to perform and its arguments.")
+})
+
+export type AttioQueryRecordsRequest = z.infer<typeof attioQueryRecordsRequestSchema>
+export type AttioSearchRecordsRequest = z.infer<typeof attioSearchRecordsRequestSchema>
+export type AttioGetRecordRequest = z.infer<typeof attioGetRecordRequestSchema>
+export type AttioCreateRecordRequest = z.infer<typeof attioCreateRecordRequestSchema>
+export type AttioUpdateRecordRequest = z.infer<typeof attioUpdateRecordRequestSchema>
+export type AttioUpsertRecordsRequest = z.infer<typeof attioUpsertRecordsRequestSchema>
+export type AttioDeleteRecordRequest = z.infer<typeof attioDeleteRecordRequestSchema>
+export type AttioGetAttributeHistoryRequest = z.infer<typeof attioGetAttributeHistoryRequestSchema>
+export type AttioRecordsRequest = z.infer<typeof attioRecordsRequestSchema>
+export type AttioRecordsAction = AttioRecordsRequest["action"]
+
+export const attioRecordsActionSchema = z.enum(["query", "search", "get", "create", "update", "upsert", "delete", "get_attribute_history"])
 
 // WorkOS input schemas
 export const listWorkOSUsersInputSchema = z.object({
@@ -2017,21 +2112,18 @@ export const attioListObjectsTool = defineTool({
     })
 })
 
-export const attioQueryRecordsTool = defineTool({
-    name: "attio_query_records",
-    inputSchema: attioQueryRecordsInputSchema,
+export const attioRecordsTool = defineTool({
+    name: "attio_records",
+    inputSchema: attioRecordsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
-        records: z.array(attioRecordSchema),
-        count: z.number().int()
-    })
-})
-
-export const attioUpsertRecordTool = defineTool({
-    name: "attio_upsert_record",
-    inputSchema: attioUpsertRecordInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
+        action: attioRecordsActionSchema,
         records: z.array(attioRecordSchema).optional(),
+        record: attioRecordSchema.optional(),
+        matches: z.array(attioSearchMatchSchema).optional(),
+        history: z.array(attioAttributeHistoryEntrySchema).optional(),
         count: z.number().int().optional(),
+        offset: z.number().int().optional(),
+        deleted: z.boolean().optional(),
         requestedCount: z.number().int().optional(),
         successCount: z.number().int().optional(),
         failureCount: z.number().int().optional(),
@@ -2234,8 +2326,7 @@ export const ToolDefinitions = {
     [listPosthogEventNamesTool.name]: listPosthogEventNamesTool,
     [searchPosthogEventsTool.name]: searchPosthogEventsTool,
     [attioListObjectsTool.name]: attioListObjectsTool,
-    [attioQueryRecordsTool.name]: attioQueryRecordsTool,
-    [attioUpsertRecordTool.name]: attioUpsertRecordTool,
+    [attioRecordsTool.name]: attioRecordsTool,
     [listWorkOSUsersTool.name]: listWorkOSUsersTool,
     [listWorkOSOrganizationsTool.name]: listWorkOSOrganizationsTool,
     [getWorkOSUserTool.name]: getWorkOSUserTool,
