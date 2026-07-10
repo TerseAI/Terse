@@ -5,7 +5,7 @@ import { readApiKeyOrBail } from "../../../api.js"
 import { CliError } from "../../../cliError.js"
 import { BACKEND_URL } from "../../../config.js"
 import { isCliRunCommandEnabled } from "../../../env.js"
-import { getDurableRuntime } from "../durableRuntime.js"
+import { closeDurableRuntime, getDurableRuntime } from "../durableRuntime.js"
 import { readRunStatus, resolveWorkflowRunId, rewindFailedRun } from "../rewindRun.js"
 
 import { type JobRuntime, type ResumeHookInput, type ResumeRunOptions, formatErrorDetail } from "./JobRuntime.js"
@@ -30,6 +30,8 @@ export const durableJobRuntime: JobRuntime = {
         } catch (error) {
             if (error instanceof CliError) throw error
             throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, { detail: formatErrorDetail(error) })
+        } finally {
+            if (!isCliRunCommandEnabled()) await closeDurableRuntime()
         }
     },
 
@@ -72,6 +74,8 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
     } catch (error) {
         if (error instanceof CliError) throw error
         throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })
+    } finally {
+        if (!isCliRunCommandEnabled()) await closeDurableRuntime()
     }
 }
 

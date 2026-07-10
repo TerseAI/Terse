@@ -19,6 +19,13 @@ export function getDurableRuntime(cwd = process.cwd()): Promise<DurableRuntime> 
     return (runtimePromise ??= startDurableRuntime(cwd))
 }
 
+export async function closeDurableRuntime(): Promise<void> {
+    if (!runtimePromise) return
+    const runtime = await runtimePromise
+    runtimePromise = null
+    await runtime.close()
+}
+
 async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
     const out = path.join(cwd, ".terse", "wf")
 
