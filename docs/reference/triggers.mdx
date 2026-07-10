@@ -366,9 +366,11 @@ Choosing frequency:
 
 <CodeGroup>
 ```ts TypeScript
-triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })] // Every Monday at 9am
+triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })] // Every Monday at 9:00 UTC
 ```
 </CodeGroup>
+
+Expressions use standard 5-field cron syntax (`minute hour day-of-month month day-of-week`) and are always evaluated in **UTC**. To schedule in a local timezone, convert the time to UTC first (e.g. 9am Eastern is `0 14 * * *` during standard time), and keep in mind the UTC offset shifts when daylight saving starts or ends.
 
 <Expandable title="Event payload">
   - `isManualTrigger` - whether the run was triggered manually from the dashboard

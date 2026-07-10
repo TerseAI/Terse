@@ -116,7 +116,7 @@ export const Triggers = {
         }
     },
     schedule: {
-        /** Run on a cron schedule */
+        /** Run on a cron schedule (5-field cron expression, evaluated in UTC) */
         cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
             /* … */
         }
