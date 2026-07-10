@@ -246,14 +246,13 @@ async function deleteRecord(request: AttioDeleteRecordRequest, accessToken: stri
 }
 
 async function getAttributeHistory(request: AttioGetAttributeHistoryRequest, accessToken: string): Promise<AttioRecordsOutput> {
-    const query = new URLSearchParams()
+    const query = new URLSearchParams({ show_historic: "true" })
     if (request.limit !== null) query.set("limit", String(request.limit))
     if (request.offset !== null) query.set("offset", String(request.offset))
-    const suffix = query.size > 0 ? `?${query.toString()}` : ""
 
     const data = await attioApiRequest<{ data?: AttioAttributeHistoryEntry[] }>(
         accessToken,
-        `${recordPath(request.objectSlug, request.recordId)}/attribute-values/${encodeURIComponent(request.attributeSlug)}${suffix}`
+        `${recordPath(request.objectSlug, request.recordId)}/attributes/${encodeURIComponent(request.attributeSlug)}/values?${query.toString()}`
     )
     const history = data.data ?? []
 
