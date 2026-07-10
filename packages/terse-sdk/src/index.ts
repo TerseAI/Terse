@@ -120,6 +120,7 @@ import {
     type SDKTrigger,
     type StateAccessor,
     type StateDefinition,
+    type TriggerLike,
     type TypedSkill,
     type TypedTrigger,
     createSDKTrigger
@@ -173,6 +174,7 @@ export type {
     StateAccessor,
     StateDefinition,
     ToolboxEntry,
+    TriggerLike,
     TypedSkill,
     TypedTrigger
 } from "./types.js"
@@ -298,6 +300,7 @@ export type WorkOSUserTrigger = SDKTrigger<_RawWorkOSUserTrigger>
 
 export { FrequencyUnit, IntegrationType } from "terse-types"
 export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
+export type { SlackAttachments, SlackBlocks, SlackFiles } from "terse-types"
 
 export { RunHistoryAction, RunHistoryDecision, RunHistoryRecord, RunHistoryStatus, RunHistoryTrigger } from "terse-types"
 
@@ -305,7 +308,7 @@ export { RunHistoryAction, RunHistoryDecision, RunHistoryRecord, RunHistoryStatu
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[], TStates extends readonly StateDefinition[] = readonly StateDefinition[]> = {
+export type CreateJobParameters<TTriggers extends readonly TypedTrigger<TriggerLike>[] = TypedTrigger<TriggerLike>[], TStates extends readonly StateDefinition[] = readonly StateDefinition[]> = {
     name: string
     triggers: [...TTriggers]
     states?: [...TStates]
@@ -315,7 +318,7 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     durable?: boolean
 }
 
-export function createJob<TTriggers extends readonly TypedTrigger[], const TStates extends readonly StateDefinition[] = readonly []>(params: CreateJobParameters<TTriggers, TStates>) {
+export function createJob<TTriggers extends readonly TypedTrigger<TriggerLike>[], const TStates extends readonly StateDefinition[] = readonly []>(params: CreateJobParameters<TTriggers, TStates>) {
     const currentJobs = fetchRegisteredJobs()
     if (currentJobs.has(params.name)) {
         throw new Error(`Job "${params.name}" is registered twice on this Terse instance.`)
@@ -334,7 +337,7 @@ export function createJob<TTriggers extends readonly TypedTrigger[], const TStat
 const TERSE_INSTANCES_KEY = Symbol.for("jobs.instances")
 type GlobalWithInstances = typeof globalThis & { [TERSE_INSTANCES_KEY]?: Map<string, CreateJobParameters> }
 
-function registerJob<TTriggers extends readonly TypedTrigger[]>(job: CreateJobParameters<TTriggers>): void {
+function registerJob<TTriggers extends readonly TypedTrigger<TriggerLike>[]>(job: CreateJobParameters<TTriggers>): void {
     const g = globalThis as GlobalWithInstances
     g[TERSE_INSTANCES_KEY] ??= new Map<string, CreateJobParameters>()
 

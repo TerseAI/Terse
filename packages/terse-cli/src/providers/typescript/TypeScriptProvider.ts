@@ -12,14 +12,14 @@ import { tsImport } from "tsx/esm/api"
 import { CliError } from "../../cliError.js"
 import { ensureDotenvLoaded } from "../../dotenv.js"
 import { readProjectConfig } from "../../projectConfig.js"
-import type { LanguageProvider } from "../LanguageProvider.js"
+import type { GeneratedFile, LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 
 import { buildWorkflowArtifacts, expectedWorkflowVersion } from "./durableRuntime.js"
 import { prepareTemplateContext } from "./prepareCodegenData.js"
 import { type JobRuntime, directJobRuntime, durableJobRuntime } from "./runtimes/index.js"
-import { renderGeneratedCode } from "./templateEngine.js"
+import { renderGeneratedFiles } from "./templateEngine.js"
 
 const execAsync = promisify(exec)
 const execFileAsync = promisify(execFile)
@@ -79,8 +79,8 @@ class TypeScriptProvider implements LanguageProvider {
         return path.join(cwd, fs.existsSync(path.join(cwd, "src")) ? "src/terse.generated.ts" : "terse.generated.ts")
     }
 
-    renderGeneratedCode(input: CodegenInput): string {
-        return renderGeneratedCode(prepareTemplateContext(input))
+    async renderGeneratedFiles(input: CodegenInput): Promise<GeneratedFile[]> {
+        return renderGeneratedFiles(await prepareTemplateContext(input))
     }
 
     async typecheck(): Promise<void> {

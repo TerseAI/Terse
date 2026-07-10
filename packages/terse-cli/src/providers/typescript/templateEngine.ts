@@ -2,11 +2,17 @@ import Handlebars from "handlebars"
 import fs from "node:fs"
 import path from "node:path"
 
+import type { GeneratedFile } from "../LanguageProvider.js"
 import { getTemplatesRoot, readTemplateFile } from "../templateUtils.js"
 
 import { type TemplateContext, escapeString } from "./prepareCodegenData.js"
 
-let template: Handlebars.TemplateDelegate<TemplateContext> | undefined
+export function renderGeneratedFiles(context: TemplateContext): GeneratedFile[] {
+    const code = getCompiledTemplate()(context)
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/\n$/, "")
+    return [{ fileName: "terse.generated.ts", code }]
+}
 
 function getHandlebars(): typeof Handlebars {
     const handlebars = Handlebars.create()
@@ -29,16 +35,11 @@ function getHandlebars(): typeof Handlebars {
     return handlebars
 }
 
+let template: Handlebars.TemplateDelegate<TemplateContext> | undefined
+
 function getCompiledTemplate(): Handlebars.TemplateDelegate<TemplateContext> {
     if (!template) {
-        const handlebars = getHandlebars()
-        template = handlebars.compile<TemplateContext>(readTemplateFile("typescript/codegen/generated.hbs"), { noEscape: true })
+        template = getHandlebars().compile<TemplateContext>(readTemplateFile("typescript/codegen/generated.hbs"), { noEscape: true })
     }
     return template
-}
-
-export function renderGeneratedCode(context: TemplateContext): string {
-    return getCompiledTemplate()(context)
-        .replace(/\n{3,}/g, "\n\n")
-        .replace(/\n$/, "")
 }

@@ -43,7 +43,7 @@ export type GeneratedAttioObject =
 export type GeneratedAttioObject = AttioObject
 {{/if}}
 
-function attioParentObjectFilter(object: GeneratedAttioObject | undefined) {
+export function attioParentObjectFilter(object: GeneratedAttioObject | undefined) {
     if (!object) return null
     return { $and: [{ field: "id.object_id", operator: "equals" as const, value: object.objectId }] }
 }

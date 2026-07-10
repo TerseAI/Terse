@@ -3,7 +3,7 @@ import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
 // Run `terse generate` to refresh after connecting new integrations.
-import { SlackChannel, Triggers, toolbox } from "./terse.generated"
+import { CronTrigger, SlackChannel, SlackMessageTrigger, Triggers, toolbox } from "./terse.generated"
 
 // `createJob` registers a job with Terse. Each job has a name, one or more
 // triggers, and an `onTrigger` handler. `terse test` and `terse run` execute
@@ -12,13 +12,13 @@ createJob({
     name: "Tell a programming joke example job",
 
     // This is where you configure what events will fire this job.
-    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" }), Triggers.slack.onMessage({ channel: SlackChannel.AllTerseInc })],
 
     states: [{ key: "runCount", value: z.number().default(0) }],
     durable: true,
     // The handler runs every time a trigger fires. `event` is typed to match
     // the trigger(s) above.
-    onTrigger: async (event, state) => {
+    onTrigger: async (event: SlackMessageTrigger | CronTrigger, state) => {
         const response = await generateText({
             prompt: "Tell me a joke about Lord of the rings. With Gandalf in it",
             skills: [],

@@ -27,7 +27,7 @@ export interface LanguageProvider {
     detectPackageManager(): string
     installDependencies(targetDir: string): Promise<void>
     resolveGeneratedCodePath(cwd: string): string
-    renderGeneratedCode(input: CodegenInput): string
+    renderGeneratedFiles(input: CodegenInput): Promise<GeneratedFile[]>
     typecheck(): Promise<void>
     loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>>
     prebuild(): Promise<void>
@@ -63,4 +63,9 @@ export interface LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void>
+}
+
+export type GeneratedFile = {
+    readonly fileName: string
+    readonly code: string
 }

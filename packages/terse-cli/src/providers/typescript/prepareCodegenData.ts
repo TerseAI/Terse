@@ -1,4 +1,4 @@
-import { type ToolDefinition, toolsWithIntegrationId } from "terse-types"
+import { type ToolDefinition, ToolDefinitions, type ToolName, attioRecordSchema, runHistoryActionBaseSchema, toolsWithIntegrationId } from "terse-types"
 
 import type {
     AttioAttributeData,
@@ -16,340 +16,67 @@ import type {
     SnowflakeInstanceData
 } from "../codegenTypes.js"
 
-interface ResourceFieldMapping {
-    classField: string
-    type: string
-    sourceField: string
-}
+import { buildTriggerTypeDeclarations } from "./triggerTypeDeclarations.js"
+import { type HoistedShape, printHoistedShape, printType } from "./typePrinter.js"
 
-type SectionContext<T> = {
-    imports: Set<string>
-    data?: T
-}
+export async function prepareTemplateContext(input: CodegenInput): Promise<TemplateContext> {
+    const allImports = new Set<string>()
 
-interface ResourceClassContext {
-    className: string
-    constructorParams: string
-    items: Array<{
-        staticName: string
-        argsText: string
-    }>
-}
+    const github = prepareGitHubSection(input.github, input.tools)
+    const gmail = prepareGmailSection(input.gmail, input.tools)
+    const slack = prepareSlackSection(input.slack, input.tools)
+    const linear = prepareLinearSection(input.linear, input.tools)
+    const notion = prepareNotionSection(input.notion, input.tools)
+    const posthog = preparePosthogSection(input.posthog, input.tools)
+    const datadog = prepareDatadogSection(input.datadog, input.tools)
+    const launchdarkly = prepareLaunchDarklySection(input.launchdarkly, input.tools)
+    const workos = prepareWorkOSSection(input.workos, input.tools)
+    const attio = prepareAttioSection(input.attio, input.tools)
+    const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
+    const heyreach = prepareHeyReachSection(input.heyreach)
+    const tools = await prepareToolsSection(input.tools, input)
+    const system = prepareSystemSection()
 
-interface GitHubSectionContext {
-    id: string
-    skillToolType: string
-    owners: Array<{ name: string; staticName: string }>
-    repoGroups: Array<{
-        ownerStaticName: string
-        repos: Array<{
-            id: number
-            name: string
-            fullName: string
-            staticName: string
-        }>
-    }>
-}
+    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
 
-interface GmailSectionContext {
-    id: string
-    skillToolType: string
-}
-
-interface SlackSectionContext {
-    id: string
-    skillToolType: string
-    channelClass: ResourceClassContext
-    userClass: ResourceClassContext
-}
-
-interface LinearSectionContext {
-    id: string
-    skillToolType: string
-    teamClass: ResourceClassContext
-    projectClass: ResourceClassContext
-}
-
-interface NotionSectionContext {
-    id: string
-    skillToolType: string
-    databaseClass: ResourceClassContext
-    pageClass: ResourceClassContext
-}
-
-interface PosthogSectionContext {
-    id: string
-    skillToolType: string
-    projectClass: ResourceClassContext
-    eventNames: string[]
-}
-
-interface DatadogSectionContext {
-    id: string
-    skillToolType: string
-    indexClass: ResourceClassContext
-}
-
-interface LaunchDarklySectionContext {
-    id: string
-    skillToolType: string
-    projectClass: ResourceClassContext
-}
-
-interface WorkOSSectionContext {
-    id: string
-    skillToolType: string
-}
-
-interface AttioObjectContext {
-    staticName: string
-    apiSlug: string
-    objectId: string
-    singularNoun: string
-    attributeSource: string
-    recordValuesType: string
-    inputValuesType: string
-}
-
-interface AttioSectionContext {
-    id: string
-    skillToolType: string
-    objects: AttioObjectContext[]
-    valueTypeLines: string[]
-    runtimeLines: string[]
-}
-
-interface SnowflakeSectionContext {
-    id: string
-    skillToolType: string
-}
-
-interface HeyReachSectionContext {
-    id: string
-    campaignClass: ResourceClassContext
-}
-
-interface ToolParamTypeContext {
-    description?: string
-    typeName: string
-    tsType: string
-}
-
-interface ToolMethodContext {
-    description?: string
-    generatedSignature: string
-    runtimeLines: string[]
-}
-
-interface ToolGroupContext {
-    key: string
-    integrationType: string
-    methods: ToolMethodContext[]
-}
-
-interface ToolsSectionContext {
-    attioPreludeLines: string[]
-    paramTypes: ToolParamTypeContext[]
-    githubRepoMappings: Array<{ name: string; fullName: string }>
-    groups: ToolGroupContext[]
-}
-
-interface SystemSectionContext {}
-
-export interface TemplateContext {
-    imports: string[]
-    useMultilineImports: boolean
-    availableIntegrations?: string
-    github?: GitHubSectionContext
-    gmail?: GmailSectionContext
-    slack?: SlackSectionContext
-    linear?: LinearSectionContext
-    notion?: NotionSectionContext
-    posthog?: PosthogSectionContext
-    datadog?: DatadogSectionContext
-    launchdarkly?: LaunchDarklySectionContext
-    workos?: WorkOSSectionContext
-    attio?: AttioSectionContext
-    snowflake?: SnowflakeSectionContext
-    heyreach?: HeyReachSectionContext
-    tools?: ToolsSectionContext
-    system: SystemSectionContext
-}
-
-function toPascalCase(value: string): string {
-    return value
-        .replace(/[^a-zA-Z0-9]+/g, " ")
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join("")
-}
-
-export function escapeString(value: string): string {
-    return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-}
-
-function toGeneratedIdentifier(raw: string, fallback: string): string {
-    let name = toPascalCase(raw || fallback)
-    if (!name) name = fallback
-    if (/^\d/.test(name)) name = `_${name}`
-    return name
-}
-
-function toCamelCase(value: string): string {
-    const pascal = toPascalCase(value)
-    return pascal.charAt(0).toLowerCase() + pascal.slice(1)
-}
-
-function toolNameToInterfaceName(name: string): string {
-    return (
-        name
-            .split("_")
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join("") + "Params"
-    )
-}
-
-function buildResourceClassContext(className: string, fields: ResourceFieldMapping[], staticNameField: string, items: object[]): ResourceClassContext {
-    const constructorParams = fields.map(field => `public readonly ${field.classField}: ${field.type}`).join(", ")
-
-    const entries: ResourceClassContext["items"] = []
-    const usedNames = new Set<string>()
-
-    for (const item of items) {
-        const source = item as Record<string, unknown>
-        let name = toPascalCase(String(source[staticNameField] || "Unknown"))
-        if (!name || /^\d/.test(name)) name = `_${name}`
-        while (usedNames.has(name)) name += "_"
-        usedNames.add(name)
-
-        const argsText = fields
-            .map(field => {
-                const value = source[field.sourceField]
-                if (typeof value === "number") return String(value)
-                return `"${escapeString(String(value ?? ""))}"`
-            })
-            .join(", ")
-
-        entries.push({
-            staticName: name,
-            argsText
-        })
+    for (const section of sections) {
+        section.imports.forEach(value => allImports.add(value))
     }
+
+    const triggerTypes = await buildTriggerTypeDeclarations(allImports)
+    triggerTypes.declaredNames.forEach(name => allImports.delete(name))
+    if (triggerTypes.declaredNames.size > 0) allImports.add("SDKTrigger")
+    triggerTypes.extraImports.forEach(name => allImports.add(name))
+
+    const imports = [...allImports].sort()
+
+    const { common: commonTriggerDeclarations = [], ...triggerFiles } = triggerTypes.declarationsByIntegration
 
     return {
-        className,
-        constructorParams,
-        items: entries
+        imports,
+        useMultilineImports: imports.length > 3,
+        availableIntegrations: input.availableIntegrations.length > 0 ? input.availableIntegrations.join(", ") : undefined,
+        toolboxEntries: tools.data?.toolboxEntries ?? [],
+        toolFiles: tools.data?.toolFiles ?? {},
+        triggerFiles,
+        commonTriggerDeclarations,
+        commonToolDeclarations: tools.data?.commonToolDeclarations ?? [],
+        attioPreludeLines: tools.data?.attioPreludeLines ?? [],
+        githubRepoMappings: tools.data?.githubRepoMappings ?? [],
+        github: github.data,
+        gmail: gmail.data,
+        slack: slack.data,
+        linear: linear.data,
+        notion: notion.data,
+        posthog: posthog.data,
+        datadog: datadog.data,
+        launchdarkly: launchdarkly.data,
+        workos: workos.data,
+        attio: attio.data,
+        snowflake: snowflake.data,
+        heyreach: heyreach.data,
+        system: system.data!
     }
-}
-
-function sectionData<T>(imports: string[], data?: T): SectionContext<T> {
-    return { imports: new Set(imports), data }
-}
-
-function isProbablyAttioMultiValue(attr: AttioAttributeData): boolean {
-    const slug = (attr.api_slug || "").toLowerCase()
-    const type = (attr.type || "").toLowerCase()
-
-    return (
-        type.includes("multi") ||
-        type.includes("array") ||
-        type.includes("list") ||
-        slug === "email_addresses" ||
-        slug === "domains" ||
-        slug === "phone_numbers" ||
-        slug === "social_profiles" ||
-        slug === "links" ||
-        slug === "tags" ||
-        slug.endsWith("_addresses") ||
-        slug.endsWith("_ids")
-    )
-}
-
-function attioAttributeBaseType(attr: AttioAttributeData): string {
-    const slug = (attr.api_slug || "").toLowerCase()
-    const type = (attr.type || "").toLowerCase()
-
-    if (type.includes("checkbox") || type.includes("boolean")) return "boolean"
-    if (type.includes("number") || type.includes("currency") || type.includes("rating") || type.includes("percent")) {
-        return "number"
-    }
-    if (type.includes("date") || type.includes("time")) return "string"
-    if (
-        type.includes("email") ||
-        type.includes("domain") ||
-        type.includes("phone") ||
-        type.includes("url") ||
-        type.includes("select") ||
-        type.includes("status") ||
-        type.includes("text") ||
-        type.includes("string") ||
-        type.includes("name")
-    ) {
-        return "string"
-    }
-    if (type.includes("location") || type.includes("address") || type.includes("reference") || type.includes("record") || type.includes("actor")) {
-        return "Record<string, unknown>"
-    }
-    if (slug === "email_addresses" || slug === "domains" || slug === "phone_numbers" || slug === "name") {
-        return "string"
-    }
-    return "unknown"
-}
-
-function attioValueTypeLines(): string[] {
-    return ["export type AttioSelectOption = {", "    id: string", "    title: string", "    is_archived: boolean", "}"]
-}
-
-function attioAttributeRecordBaseType(attr: AttioAttributeData): string {
-    const type = (attr.type || "").toLowerCase()
-
-    if (type.includes("select") || type.includes("status")) return "AttioSelectOption"
-    return attioAttributeBaseType(attr)
-}
-
-function attioAttributeInputTsType(attr: AttioAttributeData): string {
-    const baseType = attioAttributeBaseType(attr)
-    if (!isProbablyAttioMultiValue(attr)) return baseType
-    return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
-}
-
-function attioAttributeRecordTsType(attr: AttioAttributeData): string {
-    const baseType = attioAttributeRecordBaseType(attr)
-    if (!isProbablyAttioMultiValue(attr)) return baseType
-    return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
-}
-
-function renderAttioObjectValueShape(attributes: AttioAttributeData[], mode: "input" | "record"): string {
-    if (attributes.length === 0) return "Record<string, unknown>"
-
-    const lines = attributes.map(attr => {
-        const valueType = mode === "input" ? attioAttributeInputTsType(attr) : attioAttributeRecordTsType(attr)
-        return `    "${escapeString(attr.api_slug || "")}"?: ${valueType}`
-    })
-
-    return `{\n${lines.join("\n")}\n}`
-}
-
-function toolIntegrationToIntegrationType(toolIntegration: string): string {
-    return toolIntegration
-}
-
-function renderStringLiteralUnion(values: string[]): string {
-    if (values.length === 0) return "never"
-    return values.map(value => `"${escapeString(value)}"`).join(" | ")
-}
-
-function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationType: string): string {
-    const toolNames = tools
-        .filter(tool => toolIntegrationToIntegrationType(tool.integration.toLowerCase()) === integrationType)
-        .filter(tool => !tool.isReadOnly || tool.supportsApproval)
-        .map(tool => tool.name)
-        .sort()
-
-    return renderStringLiteralUnion(toolNames)
 }
 
 function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefinition[]): SectionContext<GitHubSectionContext> {
@@ -606,6 +333,474 @@ function prepareWorkOSSection(instances: IntegrationInstanceData[], tools: ToolD
     )
 }
 
+function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefinition[]): SectionContext<AttioSectionContext> {
+    if (instances.length === 0) return sectionData([])
+    const objects = buildGeneratedAttioObjects(instances)
+    return sectionData(
+        [
+            "registerEventTransform",
+            "AttioOutputConfig",
+            "TypedSkill",
+            "AttioInputConfig",
+            "AttioEventType",
+            "TypedTrigger",
+            "AttioTrigger",
+            "AttioCallRecordingCreatedTrigger",
+            "AttioCommentCreatedTrigger",
+            "AttioCommentResolvedTrigger",
+            "AttioCommentUnresolvedTrigger",
+            "AttioCommentDeletedTrigger",
+            "AttioListCreatedTrigger",
+            "AttioListUpdatedTrigger",
+            "AttioListDeletedTrigger",
+            "AttioListAttributeCreatedTrigger",
+            "AttioListAttributeUpdatedTrigger",
+            "AttioListEntryCreatedTrigger",
+            "AttioListEntryUpdatedTrigger",
+            "AttioListEntryDeletedTrigger",
+            "AttioObjectAttributeCreatedTrigger",
+            "AttioObjectAttributeUpdatedTrigger",
+            "AttioNoteCreatedTrigger",
+            "AttioNoteContentUpdatedTrigger",
+            "AttioNoteUpdatedTrigger",
+            "AttioNoteDeletedTrigger",
+            "AttioRecordCreatedTrigger",
+            "AttioRecordMergedTrigger",
+            "AttioRecordUpdatedTrigger",
+            "AttioRecordDeletedTrigger",
+            "AttioTaskCreatedTrigger",
+            "AttioTaskUpdatedTrigger",
+            "AttioTaskDeletedTrigger",
+            "AttioWorkspaceMemberCreatedTrigger"
+        ],
+        {
+            id: instances[0].id,
+            skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
+            objects,
+            valueTypeLines: attioValueTypeLines(),
+            runtimeLines: buildAttioRuntimeLines(objects)
+        }
+    )
+}
+
+function prepareSnowflakeSection(instances: SnowflakeInstanceData[], tools: ToolDefinition[]): SectionContext<SnowflakeSectionContext> {
+    if (instances.length === 0) return sectionData([])
+    return sectionData(["SnowflakeOutputConfig", "TypedSkill"], {
+        id: instances[0].id,
+        skillToolType: buildSkillToolTypeForIntegration(tools, "snowflake")
+    })
+}
+
+function prepareHeyReachSection(instances: HeyReachInstanceData[]): SectionContext<HeyReachSectionContext> {
+    if (instances.length === 0) return sectionData([])
+    const inst = instances[0]
+    return sectionData(
+        [
+            "HeyReachInputConfig",
+            "HeyReachEventType",
+            "TypedTrigger",
+            "HeyReachTrigger",
+            "HeyReachConnectionRequestSentTrigger",
+            "HeyReachConnectionRequestAcceptedTrigger",
+            "HeyReachMessageSentTrigger",
+            "HeyReachMessageReplyReceivedTrigger",
+            "HeyReachInmailSentTrigger",
+            "HeyReachInmailReplyReceivedTrigger",
+            "HeyReachFollowSentTrigger",
+            "HeyReachLikedPostTrigger",
+            "HeyReachViewedProfileTrigger",
+            "HeyReachCampaignCompletedTrigger",
+            "HeyReachLeadTagUpdatedTrigger"
+        ],
+        {
+            id: inst.id,
+            campaignClass: buildResourceClassContext(
+                "HeyReachCampaign",
+                [
+                    { classField: "campaignId", type: "string", sourceField: "id" },
+                    { classField: "name", type: "string", sourceField: "name" }
+                ],
+                "name",
+                inst.campaigns
+            )
+        }
+    )
+}
+
+async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Promise<SectionContext<ToolsSectionContext>> {
+    if (tools.length === 0) return sectionData([])
+
+    const imports = new Set(["TerseAgent"])
+    const attioPreludeLines: string[] = []
+    const hoistedShapes: HoistedShape[] = [{ name: "RunHistoryAction", schema: runHistoryActionBaseSchema }]
+
+    const instanceMap = new Map<string, { id: string; displayName: string }[]>()
+    instanceMap.set(
+        "slack",
+        input.slack.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "github",
+        input.github.map(inst => ({ id: inst.integration.id, displayName: inst.integration.account_name || "" }))
+    )
+    instanceMap.set(
+        "gmail",
+        input.gmail.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "linear",
+        input.linear.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "notion",
+        input.notion.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "posthog",
+        input.posthog.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "datadog",
+        input.datadog.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "launchdarkly",
+        input.launchdarkly.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "workos",
+        input.workos.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "attio",
+        input.attio.map(inst => ({ id: inst.id, displayName: inst.displayName }))
+    )
+    instanceMap.set(
+        "snowflake",
+        input.snowflake.map(inst => ({ id: inst.id, displayName: inst.name }))
+    )
+
+    const byIntegration = new Map<string, ToolDefinition[]>()
+    for (const tool of tools) {
+        const key = tool.integration.toLowerCase()
+        if (!byIntegration.has(key)) byIntegration.set(key, [])
+        byIntegration.get(key)!.push(tool)
+    }
+
+    const hasAutoFillId = (tool: ToolDefinition): boolean => (toolsWithIntegrationId as ReadonlySet<string>).has(tool.name)
+
+    const normalizeGitHubReposParams = (toolName: string): string => {
+        switch (toolName) {
+            case "readGitHubFile":
+            case "listGitHubPullRequests":
+            case "listGitHubDirectory":
+            case "listGitHubCommits":
+            case "summarizeGitHubPullRequestDiff":
+                return "{ ...params, repository: __normalizeGitHubRepos((params).repository) }"
+            case "searchGitHubCode":
+            case "grepGitHubCode":
+                return "{ ...params, repositoryNames: __normalizeGitHubReposNames((params).repositoryNames) }"
+            default:
+                return "params"
+        }
+    }
+
+    const isAttioTool = (tool: ToolDefinition): boolean => tool.integration.toLowerCase() === "attio"
+    const attioGeneratedObjects = buildGeneratedAttioObjects(input.attio)
+
+    if (input.attio.length > 0 && tools.some(isAttioTool)) {
+        attioPreludeLines.push("type __AttioPrimitive = string | number | boolean | null")
+        attioPreludeLines.push("type __AttioStructuredValue = Record<string, unknown>")
+        attioPreludeLines.push("type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
+        attioPreludeLines.push("type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T")
+        attioPreludeLines.push("type __AttioFilterShorthand<T> = T extends (infer U)[] ? __AttioFilterAtom<U> | __AttioFilterAtom<U>[] : __AttioFilterAtom<T>")
+        attioPreludeLines.push(
+            "type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>"
+        )
+        attioPreludeLines.push(
+            "type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }"
+        )
+        const attioHoisted: HoistedShape[] = [...hoistedShapes, { name: "AttioRecordBase", schema: attioRecordSchema }]
+        attioPreludeLines.push(await printType({ typeName: "AttioRecordBase", schema: attioRecordSchema, io: "output", hoisted: hoistedShapes }))
+        attioPreludeLines.push("")
+        attioPreludeLines.push(await printType({ typeName: "AttioQueryRecordsResultBase", schema: ToolDefinitions.attio_query_records.outputSchema, io: "output", hoisted: attioHoisted }))
+        attioPreludeLines.push("")
+        attioPreludeLines.push(await printType({ typeName: "AttioUpsertRecordResultBase", schema: ToolDefinitions.attio_upsert_record.outputSchema, io: "output", hoisted: attioHoisted }))
+        attioPreludeLines.push("")
+        attioPreludeLines.push(await printType({ typeName: "AttioListObjectsResult", schema: ToolDefinitions.attio_list_objects.outputSchema, io: "output", hoisted: attioHoisted }))
+        attioPreludeLines.push("")
+        attioPreludeLines.push('type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }')
+        attioPreludeLines.push("")
+
+        if (attioGeneratedObjects.length > 0) {
+            attioPreludeLines.push("export type AttioInputValuesByObject = {")
+            for (const object of attioGeneratedObjects) {
+                const inputShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "input")
+                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${inputShape}`)
+            }
+            attioPreludeLines.push("}")
+            attioPreludeLines.push("")
+            attioPreludeLines.push("export type AttioRecordValuesByObject = {")
+            for (const object of attioGeneratedObjects) {
+                const recordShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "record")
+                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${recordShape}`)
+            }
+            attioPreludeLines.push("}")
+            attioPreludeLines.push("")
+            attioPreludeLines.push("export type AttioFilterByObject = {")
+            for (const object of attioGeneratedObjects) {
+                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": __AttioFilterExpression<AttioRecordValuesByObject["${escapeString(object.apiSlug)}"]>`)
+            }
+            attioPreludeLines.push("}")
+            attioPreludeLines.push("")
+            attioPreludeLines.push("export type AttioRecordByObject = {")
+            for (const object of attioGeneratedObjects) {
+                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": __AttioRecordWithValues<AttioRecordValuesByObject["${escapeString(object.apiSlug)}"]>`)
+            }
+            attioPreludeLines.push("}")
+        } else {
+            attioPreludeLines.push("export type AttioInputValuesByObject = Record<string, Record<string, __AttioValue>>")
+            attioPreludeLines.push("export type AttioRecordValuesByObject = Record<string, Record<string, __AttioValue>>")
+            attioPreludeLines.push("export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>")
+            attioPreludeLines.push("export type AttioRecordByObject = Record<string, __AttioRecordWithValues<Record<string, __AttioValue>>>")
+        }
+
+        attioPreludeLines.push("")
+        attioPreludeLines.push(
+            'export type AttioValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __inputValues: infer TInputValues } ? TInputValues : AttioInputValuesByObject[TObject["apiSlug"]]'
+        )
+        attioPreludeLines.push(
+            'export type AttioRecordValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __recordValues: infer TRecordValues } ? TRecordValues : AttioRecordValuesByObject[TObject["apiSlug"]]'
+        )
+        attioPreludeLines.push("export type AttioAttributeSlug<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Extract<keyof AttioValuesFor<TObject>, string>")
+        attioPreludeLines.push("export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioFilterExpression<AttioRecordValuesFor<TObject>>")
+        attioPreludeLines.push("export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
+        attioPreludeLines.push(
+            "export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null }"
+        )
+        attioPreludeLines.push(
+            "export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; records: AttioValuesFor<TObject>[] }"
+        )
+        attioPreludeLines.push("export type AttioListObjectsParams = Record<string, never>")
+        attioPreludeLines.push(
+            'export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<AttioQueryRecordsResultBase, "records"> & { records: Array<AttioRecordFor<TObject>> }'
+        )
+        attioPreludeLines.push(
+            'export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<AttioUpsertRecordResultBase, "records"> & { records?: Array<AttioRecordFor<TObject>> }'
+        )
+        attioPreludeLines.push("")
+        attioPreludeLines.push("function __normalizeAttioObjectSlug(object: unknown): string {")
+        attioPreludeLines.push('    if (object && typeof object === "object" && "apiSlug" in (object as Record<string, unknown>)) {')
+        attioPreludeLines.push("        const apiSlug = (object as { apiSlug?: unknown }).apiSlug")
+        attioPreludeLines.push('        if (typeof apiSlug === "string" && apiSlug.length > 0) return apiSlug')
+        attioPreludeLines.push("    }")
+        attioPreludeLines.push('    return typeof object === "string" ? object : ""')
+        attioPreludeLines.push("}")
+        attioPreludeLines.push("")
+        attioPreludeLines.push("function __serializeAttioFilter(filter: unknown): string | null {")
+        attioPreludeLines.push("    if (filter === undefined || filter === null) return null")
+        attioPreludeLines.push("    return JSON.stringify(filter)")
+        attioPreludeLines.push("}")
+        attioPreludeLines.push("")
+        attioPreludeLines.push("function __serializeAttioRecords(records: unknown): string {")
+        attioPreludeLines.push("    if (!Array.isArray(records)) return JSON.stringify([])")
+        attioPreludeLines.push('    return JSON.stringify(records.filter((record): record is Record<string, unknown> => typeof record === "object" && record !== null && !Array.isArray(record)))')
+        attioPreludeLines.push("}")
+        attioPreludeLines.push("")
+        attioPreludeLines.push(
+            "function __enhanceAttioRecord<TObject extends GeneratedAttioObject>(object: TObject, record: unknown): __AttioRecordWithValues<AttioRecordValuesFor<TObject>> | undefined {"
+        )
+        attioPreludeLines.push('    if (!record || typeof record !== "object") return undefined')
+        attioPreludeLines.push("    const values = __getAttioRecordValues<AttioRecordValuesFor<TObject>>(__normalizeAttioObjectSlug(object), record)")
+        attioPreludeLines.push("    return { ...values, ...(record as AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
+        attioPreludeLines.push("}")
+        attioPreludeLines.push("")
+        attioPreludeLines.push("function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioQueryRecordsResultBase): AttioQueryRecordsResult<TObject> {")
+        attioPreludeLines.push("    return {")
+        attioPreludeLines.push("        ...result,")
+        attioPreludeLines.push("        records: (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>,")
+        attioPreludeLines.push("    }")
+        attioPreludeLines.push("}")
+        attioPreludeLines.push("")
+        attioPreludeLines.push("function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioUpsertRecordResultBase): AttioUpsertRecordResult<TObject> {")
+        attioPreludeLines.push("    return {")
+        attioPreludeLines.push("        ...result,")
+        attioPreludeLines.push("        records: (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>,")
+        attioPreludeLines.push("    }")
+        attioPreludeLines.push("}")
+        attioPreludeLines.push("")
+    }
+
+    const hasPosthogEventNames = (input.posthog[0]?.projects ?? []).some(project => project.events.length > 0)
+
+    // Custom events type-check against the generated union; $-prefixed builtins are always allowed
+    const posthogEventNameOverride = "PosthogEventName | `$${string}` | null"
+
+    const printedToolTypes = await Promise.all(
+        tools
+            .filter(tool => !isAttioTool(tool))
+            .map(async tool => {
+                const name = tool.name
+                if (!isPrintableToolName(name)) return undefined
+                const definition = ToolDefinitions[name]
+                const paramsDeclaration = await printType({
+                    typeName: toolNameToTypeName(name, "Params"),
+                    schema: definition.inputSchema,
+                    io: "input",
+                    description: tool.description || undefined,
+                    omitFields: hasAutoFillId(tool) ? ["integrationId"] : undefined,
+                    fieldOverrides: name === "searchPosthogEvents" && hasPosthogEventNames ? { eventName: posthogEventNameOverride } : undefined
+                })
+                const resultDeclaration = await printType({
+                    typeName: toolNameToTypeName(name, "Result"),
+                    schema: definition.outputSchema,
+                    io: "output",
+                    hoisted: hoistedShapes
+                })
+                return { key: tool.integration.toLowerCase(), declarations: [paramsDeclaration, resultDeclaration] }
+            })
+    )
+    const declarationsByKey = new Map<string, string[]>()
+    for (const printed of printedToolTypes) {
+        if (!printed) continue
+        declarationsByKey.set(printed.key, [...(declarationsByKey.get(printed.key) ?? []), ...printed.declarations])
+    }
+    const commonToolDeclarations = [await printHoistedShape(hoistedShapes[0], "output")]
+
+    const rawGroups: Array<{ key: string; integration: string; tools: ToolDefinition[]; integrationId?: string }> = []
+    for (const [integration, integrationTools] of byIntegration.entries()) {
+        const needsAutoFill = integrationTools.some(hasAutoFillId)
+        if (needsAutoFill) {
+            const instances = instanceMap.get(integration) || []
+            if (instances.length === 0) continue
+            rawGroups.push({ key: integration, integration, tools: integrationTools, integrationId: instances[0].id })
+        } else {
+            rawGroups.push({ key: integration, integration, tools: integrationTools })
+        }
+    }
+    rawGroups.sort((a, b) => a.key.localeCompare(b.key))
+
+    const githubRepoMappings: Array<{ name: string; fullName: string }> = []
+    if (rawGroups.some(group => group.integration === "github")) {
+        const githubRepoFullNames = Array.from(
+            new Set(input.github.flatMap(inst => inst.repositories.map(repo => (repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name).trim()).filter(Boolean)))
+        )
+
+        const nameToFullName = new Map<string, string>()
+        const ambiguousNames = new Set<string>()
+        for (const fullName of githubRepoFullNames) {
+            const [, repoName = fullName] = fullName.split("/", 2)
+            if (nameToFullName.has(repoName) && nameToFullName.get(repoName) !== fullName) {
+                ambiguousNames.add(repoName)
+                nameToFullName.delete(repoName)
+            } else if (!ambiguousNames.has(repoName)) {
+                nameToFullName.set(repoName, fullName)
+            }
+        }
+
+        for (const [name, fullName] of Array.from(nameToFullName.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+            githubRepoMappings.push({ name, fullName })
+        }
+    }
+
+    const toolFiles: Record<string, ToolFileContext> = {}
+    const toolboxEntries: ToolboxEntryContext[] = []
+    rawGroups.forEach(group => {
+        const pascal = toPascalCase(group.key)
+        const entry: ToolboxEntryContext = {
+            key: group.key,
+            integrationType: toolIntegrationToIntegrationType(group.integration),
+            typeName: `${pascal}GeneratedTools`,
+            constName: `${toCamelCase(group.key)}Tools`
+        }
+        toolboxEntries.push(entry)
+        toolFiles[group.key] = {
+            ...entry,
+            declarations: declarationsByKey.get(group.key) ?? [],
+            methods: group.tools.map(tool => {
+                const methodName = toCamelCase(tool.displayName)
+                const paramsType = toolNameToTypeName(tool.name, "Params")
+                const resultType = toolNameToTypeName(tool.name, "Result")
+                const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
+
+                let generatedSignature: string
+                if (group.integration === "attio" && tool.name === "attio_query_records") {
+                    generatedSignature = `${methodName}<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>`
+                } else if (group.integration === "attio" && tool.name === "attio_upsert_record") {
+                    generatedSignature = `${methodName}<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>`
+                } else if (group.integration === "attio" && tool.name === "attio_list_objects") {
+                    generatedSignature = `${methodName}(params?: AttioListObjectsParams): Promise<AttioListObjectsResult>`
+                } else {
+                    generatedSignature = `${methodName}(params: ${paramsType}): Promise<${resultType}>`
+                }
+
+                let runtimeLines: string[]
+                if (group.integration === "attio" && tool.name === "attio_query_records" && group.integrationId) {
+                    runtimeLines = [
+                        `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>`,
+                        `    TerseAgent.executeTool<AttioQueryRecordsResultBase>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioQueryResult(params.object, result)),`
+                    ]
+                } else if (group.integration === "attio" && tool.name === "attio_upsert_record" && group.integrationId) {
+                    runtimeLines = [
+                        `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>`,
+                        `    TerseAgent.executeTool<AttioUpsertRecordResultBase>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
+                    ]
+                } else if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
+                    runtimeLines = [
+                        `${methodName}: (params: AttioListObjectsParams = {}) =>`,
+                        `    TerseAgent.executeTool<AttioListObjectsResult>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
+                    ]
+                } else if (group.integrationId && hasAutoFillId(tool)) {
+                    runtimeLines = [
+                        `${methodName}: (params: ${paramsType}) =>`,
+                        `    TerseAgent.executeTool<${resultType}>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
+                    ]
+                } else {
+                    runtimeLines = [`${methodName}: (params: ${paramsType}) =>`, `    TerseAgent.executeTool<${resultType}>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}) }),`]
+                }
+
+                return {
+                    description: tool.description || undefined,
+                    generatedSignature,
+                    runtimeLines
+                }
+            })
+        }
+    })
+
+    return {
+        imports,
+        data: {
+            toolFiles,
+            toolboxEntries,
+            commonToolDeclarations,
+            attioPreludeLines,
+            githubRepoMappings
+        }
+    }
+}
+
+function prepareSystemSection(): SectionContext<SystemSectionContext> {
+    return sectionData(
+        [
+            "TimeTriggerConfig",
+            "WebConfig",
+            "ImageEditConfig",
+            "MemoryConfig",
+            "TypedSkill",
+            "WebhookInputConfig",
+            "WebhookTrigger",
+            "CronTrigger",
+            "TypedTrigger",
+            "WebMonitorConfig",
+            "WebMonitorTrigger",
+            "FrequencyUnit",
+            "InferStructuredOutput"
+        ],
+        {}
+    )
+}
+
 function buildGeneratedAttioObjects(instances: AttioInstanceData[]): Array<AttioObjectContext & { attributes: Array<AttioAttributeData & { api_slug: string }> }> {
     const objects = instances[0]?.objects ?? []
     const usedNames = new Set<string>()
@@ -712,7 +907,7 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     lines.push("    return (__attioMultiValueAttributeSlugsByObject[objectSlug] || []).includes(attributeSlug)")
     lines.push("}")
     lines.push("")
-    lines.push("function __getAttioRecordValues<TValues extends Record<string, unknown>>(objectSlug: string, record: unknown): TValues {")
+    lines.push("export function __getAttioRecordValues<TValues extends Record<string, unknown>>(objectSlug: string, record: unknown): TValues {")
     lines.push('    const rawValues = record && typeof record === "object" ? (record as { values?: unknown }).values : undefined')
     lines.push('    if (!rawValues || typeof rawValues !== "object" || Array.isArray(rawValues)) return {} as TValues')
     lines.push("    const flattenedValues: Record<string, unknown> = {}")
@@ -733,487 +928,349 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     return lines
 }
 
-function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefinition[]): SectionContext<AttioSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const objects = buildGeneratedAttioObjects(instances)
-    return sectionData(
-        [
-            "registerEventTransform",
-            "AttioOutputConfig",
-            "TypedSkill",
-            "AttioInputConfig",
-            "AttioEventType",
-            "TypedTrigger",
-            "AttioTrigger",
-            "AttioCallRecordingCreatedTrigger",
-            "AttioCommentCreatedTrigger",
-            "AttioCommentResolvedTrigger",
-            "AttioCommentUnresolvedTrigger",
-            "AttioCommentDeletedTrigger",
-            "AttioListCreatedTrigger",
-            "AttioListUpdatedTrigger",
-            "AttioListDeletedTrigger",
-            "AttioListAttributeCreatedTrigger",
-            "AttioListAttributeUpdatedTrigger",
-            "AttioListEntryCreatedTrigger",
-            "AttioListEntryUpdatedTrigger",
-            "AttioListEntryDeletedTrigger",
-            "AttioObjectAttributeCreatedTrigger",
-            "AttioObjectAttributeUpdatedTrigger",
-            "AttioNoteCreatedTrigger",
-            "AttioNoteContentUpdatedTrigger",
-            "AttioNoteUpdatedTrigger",
-            "AttioNoteDeletedTrigger",
-            "AttioRecordCreatedTrigger",
-            "AttioRecordMergedTrigger",
-            "AttioRecordUpdatedTrigger",
-            "AttioRecordDeletedTrigger",
-            "AttioTaskCreatedTrigger",
-            "AttioTaskUpdatedTrigger",
-            "AttioTaskDeletedTrigger",
-            "AttioWorkspaceMemberCreatedTrigger"
-        ],
-        {
-            id: instances[0].id,
-            skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
-            objects,
-            valueTypeLines: attioValueTypeLines(),
-            runtimeLines: buildAttioRuntimeLines(objects)
-        }
-    )
+function attioValueTypeLines(): string[] {
+    return ["export type AttioSelectOption = {", "    id: string", "    title: string", "    is_archived: boolean", "}"]
 }
 
-function prepareSnowflakeSection(instances: SnowflakeInstanceData[], tools: ToolDefinition[]): SectionContext<SnowflakeSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    return sectionData(["SnowflakeOutputConfig", "TypedSkill"], {
-        id: instances[0].id,
-        skillToolType: buildSkillToolTypeForIntegration(tools, "snowflake")
+function renderAttioObjectValueShape(attributes: AttioAttributeData[], mode: "input" | "record"): string {
+    if (attributes.length === 0) return "Record<string, unknown>"
+
+    const lines = attributes.map(attr => {
+        const valueType = mode === "input" ? attioAttributeInputTsType(attr) : attioAttributeRecordTsType(attr)
+        return `    "${escapeString(attr.api_slug || "")}"?: ${valueType}`
     })
+
+    return `{\n${lines.join("\n")}\n}`
 }
 
-function prepareHeyReachSection(instances: HeyReachInstanceData[]): SectionContext<HeyReachSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
-    return sectionData(
-        [
-            "HeyReachInputConfig",
-            "HeyReachEventType",
-            "TypedTrigger",
-            "HeyReachTrigger",
-            "HeyReachConnectionRequestSentTrigger",
-            "HeyReachConnectionRequestAcceptedTrigger",
-            "HeyReachMessageSentTrigger",
-            "HeyReachMessageReplyReceivedTrigger",
-            "HeyReachInmailSentTrigger",
-            "HeyReachInmailReplyReceivedTrigger",
-            "HeyReachFollowSentTrigger",
-            "HeyReachLikedPostTrigger",
-            "HeyReachViewedProfileTrigger",
-            "HeyReachCampaignCompletedTrigger",
-            "HeyReachLeadTagUpdatedTrigger"
-        ],
-        {
-            id: inst.id,
-            campaignClass: buildResourceClassContext(
-                "HeyReachCampaign",
-                [
-                    { classField: "campaignId", type: "string", sourceField: "id" },
-                    { classField: "name", type: "string", sourceField: "name" }
-                ],
-                "name",
-                inst.campaigns
-            )
-        }
+function attioAttributeInputTsType(attr: AttioAttributeData): string {
+    const baseType = attioAttributeBaseType(attr)
+    if (!isProbablyAttioMultiValue(attr)) return baseType
+    return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
+}
+
+function attioAttributeRecordTsType(attr: AttioAttributeData): string {
+    const baseType = attioAttributeRecordBaseType(attr)
+    if (!isProbablyAttioMultiValue(attr)) return baseType
+    return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
+}
+
+function attioAttributeRecordBaseType(attr: AttioAttributeData): string {
+    const type = (attr.type || "").toLowerCase()
+
+    if (type.includes("select") || type.includes("status")) return "AttioSelectOption"
+    return attioAttributeBaseType(attr)
+}
+
+function attioAttributeBaseType(attr: AttioAttributeData): string {
+    const slug = (attr.api_slug || "").toLowerCase()
+    const type = (attr.type || "").toLowerCase()
+
+    if (type.includes("checkbox") || type.includes("boolean")) return "boolean"
+    if (type.includes("number") || type.includes("currency") || type.includes("rating") || type.includes("percent")) {
+        return "number"
+    }
+    if (type.includes("date") || type.includes("time")) return "string"
+    if (
+        type.includes("email") ||
+        type.includes("domain") ||
+        type.includes("phone") ||
+        type.includes("url") ||
+        type.includes("select") ||
+        type.includes("status") ||
+        type.includes("text") ||
+        type.includes("string") ||
+        type.includes("name")
+    ) {
+        return "string"
+    }
+    if (type.includes("location") || type.includes("address") || type.includes("reference") || type.includes("record") || type.includes("actor")) {
+        return "Record<string, unknown>"
+    }
+    if (slug === "email_addresses" || slug === "domains" || slug === "phone_numbers" || slug === "name") {
+        return "string"
+    }
+    return "unknown"
+}
+
+function isProbablyAttioMultiValue(attr: AttioAttributeData): boolean {
+    const slug = (attr.api_slug || "").toLowerCase()
+    const type = (attr.type || "").toLowerCase()
+
+    return (
+        type.includes("multi") ||
+        type.includes("array") ||
+        type.includes("list") ||
+        slug === "email_addresses" ||
+        slug === "domains" ||
+        slug === "phone_numbers" ||
+        slug === "social_profiles" ||
+        slug === "links" ||
+        slug === "tags" ||
+        slug.endsWith("_addresses") ||
+        slug.endsWith("_ids")
     )
 }
 
-function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionContext<ToolsSectionContext> {
-    if (tools.length === 0) return sectionData([])
+function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationType: string): string {
+    const toolNames = tools
+        .filter(tool => toolIntegrationToIntegrationType(tool.integration.toLowerCase()) === integrationType)
+        .filter(tool => !tool.isReadOnly || tool.supportsApproval)
+        .map(tool => tool.name)
+        .sort()
 
-    const imports = new Set(["TerseAgent", "ToolInputByName", "ToolOutputByName"])
-    const attioPreludeLines: string[] = []
+    return renderStringLiteralUnion(toolNames)
+}
 
-    const instanceMap = new Map<string, { id: string; displayName: string }[]>()
-    instanceMap.set(
-        "slack",
-        input.slack.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "github",
-        input.github.map(inst => ({ id: inst.integration.id, displayName: inst.integration.account_name || "" }))
-    )
-    instanceMap.set(
-        "gmail",
-        input.gmail.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "linear",
-        input.linear.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "notion",
-        input.notion.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "posthog",
-        input.posthog.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "datadog",
-        input.datadog.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "launchdarkly",
-        input.launchdarkly.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "workos",
-        input.workos.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "attio",
-        input.attio.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "snowflake",
-        input.snowflake.map(inst => ({ id: inst.id, displayName: inst.name }))
-    )
+function renderStringLiteralUnion(values: string[]): string {
+    if (values.length === 0) return "never"
+    return values.map(value => `"${escapeString(value)}"`).join(" | ")
+}
 
-    const byIntegration = new Map<string, ToolDefinition[]>()
-    for (const tool of tools) {
-        const key = tool.integration.toLowerCase()
-        if (!byIntegration.has(key)) byIntegration.set(key, [])
-        byIntegration.get(key)!.push(tool)
-    }
+function toolIntegrationToIntegrationType(toolIntegration: string): string {
+    return toolIntegration
+}
 
-    const hasAutoFillId = (tool: ToolDefinition): boolean => (toolsWithIntegrationId as ReadonlySet<string>).has(tool.name)
+function buildResourceClassContext(className: string, fields: ResourceFieldMapping[], staticNameField: string, items: object[]): ResourceClassContext {
+    const constructorParams = fields.map(field => `public readonly ${field.classField}: ${field.type}`).join(", ")
 
-    const normalizeGitHubReposParams = (toolName: string): string => {
-        switch (toolName) {
-            case "readGitHubFile":
-            case "listGitHubPullRequests":
-            case "listGitHubDirectory":
-            case "listGitHubCommits":
-            case "summarizeGitHubPullRequestDiff":
-                return "{ ...params, repository: __normalizeGitHubRepos((params).repository) }"
-            case "searchGitHubCode":
-            case "grepGitHubCode":
-                return "{ ...params, repositoryNames: __normalizeGitHubReposNames((params).repositoryNames) }"
-            default:
-                return "params"
-        }
-    }
+    const entries: ResourceClassContext["items"] = []
+    const usedNames = new Set<string>()
 
-    const isAttioTool = (tool: ToolDefinition): boolean => tool.integration.toLowerCase() === "attio"
-    const attioGeneratedObjects = buildGeneratedAttioObjects(input.attio)
+    for (const item of items) {
+        const source = item as Record<string, unknown>
+        let name = toPascalCase(String(source[staticNameField] || "Unknown"))
+        if (!name || /^\d/.test(name)) name = `_${name}`
+        while (usedNames.has(name)) name += "_"
+        usedNames.add(name)
 
-    if (tools.some(isAttioTool)) {
-        if (input.attio.length === 0) {
-            attioPreludeLines.push(...attioValueTypeLines())
-            attioPreludeLines.push("")
-        }
-        attioPreludeLines.push("type __AttioPrimitive = string | number | boolean | null")
-        attioPreludeLines.push("type __AttioStructuredValue = Record<string, unknown>")
-        attioPreludeLines.push("type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
-        attioPreludeLines.push("type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T")
-        attioPreludeLines.push("type __AttioFilterShorthand<T> = T extends (infer U)[] ? __AttioFilterAtom<U> | __AttioFilterAtom<U>[] : __AttioFilterAtom<T>")
-        attioPreludeLines.push(
-            "type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>"
-        )
-        attioPreludeLines.push(
-            "type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }"
-        )
-        attioPreludeLines.push('type __AttioRecordBase = NonNullable<NonNullable<ToolOutputByName["attio_upsert_record"]["records"]>[number]>')
-        attioPreludeLines.push('type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<__AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }')
-        attioPreludeLines.push("")
+        const argsText = fields
+            .map(field => {
+                const value = source[field.sourceField]
+                if (typeof value === "number") return String(value)
+                return `"${escapeString(String(value ?? ""))}"`
+            })
+            .join(", ")
 
-        if (attioGeneratedObjects.length > 0) {
-            attioPreludeLines.push("export type AttioInputValuesByObject = {")
-            for (const object of attioGeneratedObjects) {
-                const inputShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "input")
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${inputShape}`)
-            }
-            attioPreludeLines.push("}")
-            attioPreludeLines.push("")
-            attioPreludeLines.push("export type AttioRecordValuesByObject = {")
-            for (const object of attioGeneratedObjects) {
-                const recordShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "record")
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${recordShape}`)
-            }
-            attioPreludeLines.push("}")
-            attioPreludeLines.push("")
-            attioPreludeLines.push("export type AttioFilterByObject = {")
-            for (const object of attioGeneratedObjects) {
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": __AttioFilterExpression<AttioRecordValuesByObject["${escapeString(object.apiSlug)}"]>`)
-            }
-            attioPreludeLines.push("}")
-            attioPreludeLines.push("")
-            attioPreludeLines.push("export type AttioRecordByObject = {")
-            for (const object of attioGeneratedObjects) {
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": __AttioRecordWithValues<AttioRecordValuesByObject["${escapeString(object.apiSlug)}"]>`)
-            }
-            attioPreludeLines.push("}")
-        } else {
-            attioPreludeLines.push("export type AttioInputValuesByObject = Record<string, Record<string, __AttioValue>>")
-            attioPreludeLines.push("export type AttioRecordValuesByObject = Record<string, Record<string, __AttioValue>>")
-            attioPreludeLines.push("export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>")
-            attioPreludeLines.push("export type AttioRecordByObject = Record<string, __AttioRecordWithValues<Record<string, __AttioValue>>>")
-        }
-
-        attioPreludeLines.push("")
-        attioPreludeLines.push(
-            'export type AttioValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __inputValues: infer TInputValues } ? TInputValues : AttioInputValuesByObject[TObject["apiSlug"]]'
-        )
-        attioPreludeLines.push(
-            'export type AttioRecordValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __recordValues: infer TRecordValues } ? TRecordValues : AttioRecordValuesByObject[TObject["apiSlug"]]'
-        )
-        attioPreludeLines.push("export type AttioAttributeSlug<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Extract<keyof AttioValuesFor<TObject>, string>")
-        attioPreludeLines.push("export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioFilterExpression<AttioRecordValuesFor<TObject>>")
-        attioPreludeLines.push("export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
-        attioPreludeLines.push(
-            "export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null }"
-        )
-        attioPreludeLines.push(
-            "export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; records: AttioValuesFor<TObject>[] }"
-        )
-        attioPreludeLines.push("export type AttioListObjectsParams = Record<string, never>")
-        attioPreludeLines.push(
-            'export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_query_records"], "records"> & { records: Array<AttioRecordFor<TObject>> }'
-        )
-        attioPreludeLines.push(
-            'export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<ToolOutputByName["attio_upsert_record"], "records"> & { records?: Array<AttioRecordFor<TObject>> }'
-        )
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __normalizeAttioObjectSlug(object: unknown): string {")
-        attioPreludeLines.push('    if (object && typeof object === "object" && "apiSlug" in (object as Record<string, unknown>)) {')
-        attioPreludeLines.push("        const apiSlug = (object as { apiSlug?: unknown }).apiSlug")
-        attioPreludeLines.push('        if (typeof apiSlug === "string" && apiSlug.length > 0) return apiSlug')
-        attioPreludeLines.push("    }")
-        attioPreludeLines.push('    return typeof object === "string" ? object : ""')
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __serializeAttioFilter(filter: unknown): string | null {")
-        attioPreludeLines.push("    if (filter === undefined || filter === null) return null")
-        attioPreludeLines.push("    return JSON.stringify(filter)")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __serializeAttioRecords(records: unknown): string {")
-        attioPreludeLines.push("    if (!Array.isArray(records)) return JSON.stringify([])")
-        attioPreludeLines.push('    return JSON.stringify(records.filter((record): record is Record<string, unknown> => typeof record === "object" && record !== null && !Array.isArray(record)))')
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push(
-            "function __enhanceAttioRecord<TObject extends GeneratedAttioObject>(object: TObject, record: unknown): __AttioRecordWithValues<AttioRecordValuesFor<TObject>> | undefined {"
-        )
-        attioPreludeLines.push('    if (!record || typeof record !== "object") return undefined')
-        attioPreludeLines.push("    const values = __getAttioRecordValues<AttioRecordValuesFor<TObject>>(__normalizeAttioObjectSlug(object), record)")
-        attioPreludeLines.push("    return { ...values, ...(record as __AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push(
-            'function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_query_records"]): AttioQueryRecordsResult<TObject> {'
-        )
-        attioPreludeLines.push("    return {")
-        attioPreludeLines.push("        ...result,")
-        attioPreludeLines.push("        records: (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>,")
-        attioPreludeLines.push("    }")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push(
-            'function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_upsert_record"]): AttioUpsertRecordResult<TObject> {'
-        )
-        attioPreludeLines.push("    return {")
-        attioPreludeLines.push("        ...result,")
-        attioPreludeLines.push("        records: (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>,")
-        attioPreludeLines.push("    }")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-    }
-
-    const hasPosthogEventNames = (input.posthog[0]?.projects ?? []).some(project => project.events.length > 0)
-
-    const paramTypes: ToolParamTypeContext[] = []
-    for (const tool of tools) {
-        if (isAttioTool(tool)) continue
-        const key = `"${escapeString(tool.name)}"`
-        let tsType = hasAutoFillId(tool) ? `Omit<ToolInputByName[${key}], "integrationId">` : `ToolInputByName[${key}]`
-        if (tool.name === "searchPosthogEvents" && hasPosthogEventNames) {
-            // Custom events type-check against the generated union; $-prefixed builtins are always allowed
-            tsType = `Omit<ToolInputByName[${key}], "integrationId" | "eventName"> & { eventName?: PosthogEventName | \`$\${string}\` | null }`
-        }
-        paramTypes.push({
-            description: tool.description || undefined,
-            typeName: toolNameToInterfaceName(tool.name),
-            tsType
+        entries.push({
+            staticName: name,
+            argsText
         })
     }
 
-    const rawGroups: Array<{ key: string; integration: string; tools: ToolDefinition[]; integrationId?: string }> = []
-    for (const [integration, integrationTools] of byIntegration.entries()) {
-        const needsAutoFill = integrationTools.some(hasAutoFillId)
-        if (needsAutoFill) {
-            const instances = instanceMap.get(integration) || []
-            if (instances.length === 0) continue
-            rawGroups.push({ key: integration, integration, tools: integrationTools, integrationId: instances[0].id })
-        } else {
-            rawGroups.push({ key: integration, integration, tools: integrationTools })
-        }
-    }
-    rawGroups.sort((a, b) => a.key.localeCompare(b.key))
-
-    const githubRepoMappings: Array<{ name: string; fullName: string }> = []
-    if (rawGroups.some(group => group.integration === "github")) {
-        const githubRepoFullNames = Array.from(
-            new Set(input.github.flatMap(inst => inst.repositories.map(repo => (repo.owner && repo.name ? `${repo.owner}/${repo.name}` : repo.name).trim()).filter(Boolean)))
-        )
-
-        const nameToFullName = new Map<string, string>()
-        const ambiguousNames = new Set<string>()
-        for (const fullName of githubRepoFullNames) {
-            const [, repoName = fullName] = fullName.split("/", 2)
-            if (nameToFullName.has(repoName) && nameToFullName.get(repoName) !== fullName) {
-                ambiguousNames.add(repoName)
-                nameToFullName.delete(repoName)
-            } else if (!ambiguousNames.has(repoName)) {
-                nameToFullName.set(repoName, fullName)
-            }
-        }
-
-        for (const [name, fullName] of Array.from(nameToFullName.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
-            githubRepoMappings.push({ name, fullName })
-        }
-    }
-
-    const groups: ToolGroupContext[] = rawGroups.map(group => ({
-        key: group.key,
-        integrationType: toolIntegrationToIntegrationType(group.integration),
-        methods: group.tools.map(tool => {
-            const methodName = toCamelCase(tool.displayName)
-            const paramsType = toolNameToInterfaceName(tool.name)
-            const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
-
-            let generatedSignature: string
-            if (group.integration === "attio" && tool.name === "attio_query_records") {
-                generatedSignature = `${methodName}<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>`
-            } else if (group.integration === "attio" && tool.name === "attio_upsert_record") {
-                generatedSignature = `${methodName}<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>`
-            } else if (group.integration === "attio" && tool.name === "attio_list_objects") {
-                generatedSignature = `${methodName}(params?: AttioListObjectsParams): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
-            } else {
-                generatedSignature = `${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
-            }
-
-            let runtimeLines: string[]
-            if (group.integration === "attio" && tool.name === "attio_query_records" && group.integrationId) {
-                runtimeLines = [
-                    `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioQueryResult(params.object, result)),`
-                ]
-            } else if (group.integration === "attio" && tool.name === "attio_upsert_record" && group.integrationId) {
-                runtimeLines = [
-                    `${methodName}: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records), integrationId: "${escapeString(group.integrationId)}" }).then(result => __enhanceAttioUpsertResult(params.object, result)),`
-                ]
-            } else if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
-                runtimeLines = [
-                    `${methodName}: (params: AttioListObjectsParams = {}) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
-                ]
-            } else if (group.integrationId && hasAutoFillId(tool)) {
-                runtimeLines = [
-                    `${methodName}: (params: ${paramsType}) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
-                ]
-            } else {
-                runtimeLines = [
-                    `${methodName}: (params: ${paramsType}) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", ${normalizedParamsExpr}),`
-                ]
-            }
-
-            return {
-                description: tool.description || undefined,
-                generatedSignature,
-                runtimeLines
-            }
-        })
-    }))
-
     return {
-        imports,
-        data: {
-            attioPreludeLines,
-            paramTypes,
-            githubRepoMappings,
-            groups
-        }
+        className,
+        constructorParams,
+        items: entries
     }
 }
 
-function prepareSystemSection(): SectionContext<SystemSectionContext> {
-    return sectionData(
-        [
-            "TimeTriggerConfig",
-            "WebConfig",
-            "ImageEditConfig",
-            "MemoryConfig",
-            "TypedSkill",
-            "WebhookInputConfig",
-            "WebhookTrigger",
-            "CronTrigger",
-            "TypedTrigger",
-            "WebMonitorConfig",
-            "WebMonitorTrigger",
-            "FrequencyUnit",
-            "InferStructuredOutput"
-        ],
-        {}
+function sectionData<T>(imports: string[], data?: T): SectionContext<T> {
+    return { imports: new Set(imports), data }
+}
+
+function isPrintableToolName(name: string): name is ToolName {
+    return name in ToolDefinitions
+}
+
+function toolNameToTypeName(name: string, suffix: "Params" | "Result"): string {
+    return (
+        name
+            .split("_")
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join("") + suffix
     )
 }
 
-export function prepareTemplateContext(input: CodegenInput): TemplateContext {
-    const allImports = new Set<string>()
+function toGeneratedIdentifier(raw: string, fallback: string): string {
+    let name = toPascalCase(raw || fallback)
+    if (!name) name = fallback
+    if (/^\d/.test(name)) name = `_${name}`
+    return name
+}
 
-    const github = prepareGitHubSection(input.github, input.tools)
-    const gmail = prepareGmailSection(input.gmail, input.tools)
-    const slack = prepareSlackSection(input.slack, input.tools)
-    const linear = prepareLinearSection(input.linear, input.tools)
-    const notion = prepareNotionSection(input.notion, input.tools)
-    const posthog = preparePosthogSection(input.posthog, input.tools)
-    const datadog = prepareDatadogSection(input.datadog, input.tools)
-    const launchdarkly = prepareLaunchDarklySection(input.launchdarkly, input.tools)
-    const workos = prepareWorkOSSection(input.workos, input.tools)
-    const attio = prepareAttioSection(input.attio, input.tools)
-    const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
-    const heyreach = prepareHeyReachSection(input.heyreach)
-    const tools = prepareToolsSection(input.tools, input)
-    const system = prepareSystemSection()
+function toPascalCase(value: string): string {
+    return value
+        .replace(/[^a-zA-Z0-9]+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join("")
+}
 
-    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
+function toCamelCase(value: string): string {
+    const pascal = toPascalCase(value)
+    return pascal.charAt(0).toLowerCase() + pascal.slice(1)
+}
 
-    for (const section of sections) {
-        section.imports.forEach(value => allImports.add(value))
-    }
+export function escapeString(value: string): string {
+    return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+}
 
-    const imports = [...allImports].sort()
+interface ResourceFieldMapping {
+    classField: string
+    type: string
+    sourceField: string
+}
 
-    return {
-        imports,
-        useMultilineImports: imports.length > 3,
-        availableIntegrations: input.availableIntegrations.length > 0 ? input.availableIntegrations.join(", ") : undefined,
-        github: github.data,
-        gmail: gmail.data,
-        slack: slack.data,
-        linear: linear.data,
-        notion: notion.data,
-        posthog: posthog.data,
-        datadog: datadog.data,
-        launchdarkly: launchdarkly.data,
-        workos: workos.data,
-        attio: attio.data,
-        snowflake: snowflake.data,
-        heyreach: heyreach.data,
-        tools: tools.data,
-        system: system.data!
-    }
+type SectionContext<T> = {
+    imports: Set<string>
+    data?: T
+}
+
+interface ResourceClassContext {
+    className: string
+    constructorParams: string
+    items: Array<{
+        staticName: string
+        argsText: string
+    }>
+}
+
+interface GitHubSectionContext {
+    id: string
+    skillToolType: string
+    owners: Array<{ name: string; staticName: string }>
+    repoGroups: Array<{
+        ownerStaticName: string
+        repos: Array<{
+            id: number
+            name: string
+            fullName: string
+            staticName: string
+        }>
+    }>
+}
+
+interface GmailSectionContext {
+    id: string
+    skillToolType: string
+}
+
+interface SlackSectionContext {
+    id: string
+    skillToolType: string
+    channelClass: ResourceClassContext
+    userClass: ResourceClassContext
+}
+
+interface LinearSectionContext {
+    id: string
+    skillToolType: string
+    teamClass: ResourceClassContext
+    projectClass: ResourceClassContext
+}
+
+interface NotionSectionContext {
+    id: string
+    skillToolType: string
+    databaseClass: ResourceClassContext
+    pageClass: ResourceClassContext
+}
+
+interface PosthogSectionContext {
+    id: string
+    skillToolType: string
+    projectClass: ResourceClassContext
+    eventNames: string[]
+}
+
+interface DatadogSectionContext {
+    id: string
+    skillToolType: string
+    indexClass: ResourceClassContext
+}
+
+interface LaunchDarklySectionContext {
+    id: string
+    skillToolType: string
+    projectClass: ResourceClassContext
+}
+
+interface WorkOSSectionContext {
+    id: string
+    skillToolType: string
+}
+
+interface AttioObjectContext {
+    staticName: string
+    apiSlug: string
+    objectId: string
+    singularNoun: string
+    attributeSource: string
+    recordValuesType: string
+    inputValuesType: string
+}
+
+interface AttioSectionContext {
+    id: string
+    skillToolType: string
+    objects: AttioObjectContext[]
+    valueTypeLines: string[]
+    runtimeLines: string[]
+}
+
+interface SnowflakeSectionContext {
+    id: string
+    skillToolType: string
+}
+
+interface HeyReachSectionContext {
+    id: string
+    campaignClass: ResourceClassContext
+}
+
+interface ToolMethodContext {
+    description?: string
+    generatedSignature: string
+    runtimeLines: string[]
+}
+
+interface ToolboxEntryContext {
+    key: string
+    integrationType: string
+    typeName: string
+    constName: string
+}
+
+interface ToolFileContext extends ToolboxEntryContext {
+    declarations: string[]
+    methods: ToolMethodContext[]
+}
+
+interface ToolsSectionContext {
+    toolFiles: Record<string, ToolFileContext>
+    toolboxEntries: ToolboxEntryContext[]
+    commonToolDeclarations: string[]
+    attioPreludeLines: string[]
+    githubRepoMappings: Array<{ name: string; fullName: string }>
+}
+
+interface SystemSectionContext {}
+
+export interface TemplateContext {
+    imports: string[]
+    useMultilineImports: boolean
+    availableIntegrations?: string
+    toolboxEntries: ToolboxEntryContext[]
+    toolFiles: Record<string, ToolFileContext>
+    triggerFiles: Record<string, string[]>
+    commonTriggerDeclarations: string[]
+    commonToolDeclarations: string[]
+    attioPreludeLines: string[]
+    githubRepoMappings: Array<{ name: string; fullName: string }>
+    github?: GitHubSectionContext
+    gmail?: GmailSectionContext
+    slack?: SlackSectionContext
+    linear?: LinearSectionContext
+    notion?: NotionSectionContext
+    posthog?: PosthogSectionContext
+    datadog?: DatadogSectionContext
+    launchdarkly?: LaunchDarklySectionContext
+    workos?: WorkOSSectionContext
+    attio?: AttioSectionContext
+    snowflake?: SnowflakeSectionContext
+    heyreach?: HeyReachSectionContext
+    system: SystemSectionContext
 }
