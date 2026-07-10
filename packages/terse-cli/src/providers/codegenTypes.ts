@@ -72,6 +72,8 @@ export interface AttioAttributeData {
     type?: string
     is_required?: boolean
     is_unique?: boolean
+    is_multiselect?: boolean
+    options?: string[]
 }
 
 interface AttioObjectData {

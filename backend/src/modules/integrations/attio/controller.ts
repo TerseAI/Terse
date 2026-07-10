@@ -69,7 +69,8 @@ export async function getAttioObjects(req: Request, res: Response) {
                     headers: { Authorization: `Bearer ${accessToken}` }
                 })
                 const attributes = attrResponse.ok ? ((await attrResponse.json()) as { data?: AttioAttribute[] })?.data || [] : []
-                return { ...obj, attributes }
+                const enrichedAttributes = await Promise.all(attributes.map(attribute => enrichAttributeWithOptions(accessToken, obj.api_slug, attribute)))
+                return { ...obj, attributes: enrichedAttributes }
             })
         )
 
@@ -78,6 +79,22 @@ export async function getAttioObjects(req: Request, res: Response) {
         logger.error("Error fetching Attio objects:", { error })
         res.status(500).json({ error: "Failed to fetch Attio objects" })
     }
+}
+
+const OPTION_PATH_BY_ATTRIBUTE_TYPE: Record<string, string> = { status: "statuses", select: "options" }
+
+async function enrichAttributeWithOptions(accessToken: string, objectSlug: string, attribute: AttioAttribute): Promise<AttioAttribute> {
+    const pathSegment = OPTION_PATH_BY_ATTRIBUTE_TYPE[(attribute.type || "").toLowerCase()]
+    if (!pathSegment || !attribute.api_slug) return attribute
+
+    const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/attributes/${encodeURIComponent(attribute.api_slug)}/${pathSegment}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+    })
+    if (!response.ok) return attribute
+
+    const data = (await response.json()) as { data?: Array<{ title?: string; is_archived?: boolean }> }
+    const options = (data.data ?? []).flatMap(option => (option.title && !option.is_archived ? [option.title] : []))
+    return { ...attribute, options }
 }
 
 export const attioOAuthCallback = async (req: Request, res: Response) => {

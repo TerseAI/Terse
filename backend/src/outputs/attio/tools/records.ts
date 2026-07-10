@@ -281,25 +281,30 @@ function parseFilter(filter: string | null): Record<string, unknown> | undefined
     return parsed as Record<string, unknown>
 }
 
-const attioScalarValue = z.union([z.string(), z.number(), z.boolean(), z.null()])
-const attioStructuredValue = z.object({}).catchall(z.union([attioScalarValue, z.array(attioScalarValue)]))
-const attioRecordValue = z.union([attioScalarValue, attioStructuredValue, z.array(z.union([attioScalarValue, attioStructuredValue]))])
-const attioValuesObjectSchema = z.record(z.string(), attioRecordValue)
+const attioValuesObjectSchema = z.record(z.string(), z.unknown())
 
 function parseValuesObject(values: string): Record<string, unknown> {
-    const parsed = attioValuesObjectSchema.safeParse(JSON.parse(values))
+    const parsed = attioValuesObjectSchema.safeParse(parseJsonInput(values, "values"))
     if (!parsed.success) {
-        throw new Error(`Invalid "values": expected a JSON object mapping attribute slugs to values. ${parsed.error.message}`)
+        throw new Error(`Invalid "values": expected a JSON object mapping attribute slugs to values, e.g. {"name":"Acme"}.`)
     }
     return parsed.data
 }
 
 function parseRecordsArray(records: string): Record<string, unknown>[] {
-    const parsed = z.array(attioValuesObjectSchema).min(1).safeParse(JSON.parse(records))
+    const parsed = z.array(attioValuesObjectSchema).min(1).safeParse(parseJsonInput(records, "records"))
     if (!parsed.success) {
-        throw new Error(`Invalid "records": expected a JSON array of objects mapping attribute slugs to values. ${parsed.error.message}`)
+        throw new Error(`Invalid "records": expected a non-empty JSON array of objects mapping attribute slugs to values.`)
     }
     return parsed.data
+}
+
+function parseJsonInput(raw: string, label: string): unknown {
+    try {
+        return JSON.parse(raw)
+    } catch {
+        throw new Error(`Invalid "${label}": not valid JSON.`)
+    }
 }
 
 function readAction(action: string, target: string, details: string): RunHistoryActionEntry {

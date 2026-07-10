@@ -1807,7 +1807,10 @@ export const attioAttributeSchema = z
         title: z.string().optional(),
         type: z.string().optional(),
         is_required: z.boolean().optional(),
-        is_unique: z.boolean().optional()
+        is_unique: z.boolean().optional(),
+        is_multiselect: z.boolean().optional(),
+        /** Active option/status titles, populated for select and status attributes when fetched for codegen. */
+        options: z.array(z.string()).optional()
     })
     .catchall(z.unknown())
 
@@ -1854,17 +1857,16 @@ export const attioAttributeHistoryEntrySchema = z
 
 export const attioWorkspaceMemberSchema = z
     .object({
-        id: z
-            .object({
-                workspace_id: z.string().optional(),
-                workspace_member_id: z.string().optional()
-            })
-            .catchall(z.unknown())
-            .optional(),
-        first_name: z.string().nullable().optional(),
-        last_name: z.string().nullable().optional(),
-        email_address: z.string().optional(),
-        access_level: z.string().optional()
+        id: z.object({
+            workspace_id: z.string(),
+            workspace_member_id: z.string()
+        }),
+        first_name: z.string().nullable(),
+        last_name: z.string().nullable(),
+        avatar_url: z.string().nullable(),
+        email_address: z.string(),
+        access_level: z.string(),
+        created_at: z.string()
     })
     .catchall(z.unknown())
 

@@ -299,26 +299,82 @@ function attioAttributeBaseType(attr: AttioAttributeData): string {
     return "unknown"
 }
 
-function attioValueTypeLines(): string[] {
-    return ["export type AttioSelectOption = {", "    id: string", "    title: string", "    is_archived: boolean", "}"]
+function attioValueTypeLines(objects: Array<{ staticName: string; attributes: Array<AttioAttributeData & { api_slug: string }> }> = []): string[] {
+    const lines = [
+        "export type AttioSelectOption = {",
+        "    id: string",
+        "    title: string",
+        "    is_archived: boolean",
+        "}",
+        "",
+        'export type AttioActorReferenceInput = string | { workspace_member_email_address: string } | { referenced_actor_type: "workspace-member"; referenced_actor_id: string }',
+        "export type AttioRecordReferenceInput = { target_object: string; target_record_id: string } | Record<string, unknown>",
+        "export type AttioActorReference = { referenced_actor_type: string; referenced_actor_id: string | null }",
+        "export type AttioRecordReferenceValue = { target_object: string; target_record_id: string }",
+        "export type AttioCurrencyValue = { currency_value: number; currency_code: string | null }"
+    ]
+
+    const usedConstNames = new Set<string>()
+    for (const object of objects) {
+        for (const attr of object.attributes) {
+            if (!attr.options || attr.options.length === 0) continue
+            let attrName = toGeneratedIdentifier(attr.title || attr.api_slug, "Attribute")
+            if (attrName.startsWith(object.staticName) && attrName.length > object.staticName.length) {
+                attrName = attrName.slice(object.staticName.length)
+            }
+            let constName = `Attio${object.staticName}${attrName}`
+            while (usedConstNames.has(constName)) constName += "_"
+            usedConstNames.add(constName)
+            lines.push("", `export const ${constName} = {`)
+            const usedKeys = new Set<string>()
+            for (const title of attr.options) {
+                let key = toGeneratedIdentifier(title, "Option")
+                while (usedKeys.has(key)) key += "_"
+                usedKeys.add(key)
+                lines.push(`    ${key}: "${escapeString(title)}",`)
+            }
+            lines.push("} as const")
+        }
+    }
+
+    return lines
+}
+
+function attioIsMultiValue(attr: AttioAttributeData): boolean {
+    if (typeof attr.is_multiselect === "boolean") return attr.is_multiselect
+    return isProbablyAttioMultiValue(attr)
+}
+
+function attioAttributeInputBaseType(attr: AttioAttributeData): string {
+    const type = (attr.type || "").toLowerCase()
+
+    if (type.includes("actor")) return "AttioActorReferenceInput"
+    if (type.includes("record") && type.includes("reference")) return "AttioRecordReferenceInput"
+    if ((type.includes("select") || type.includes("status")) && attr.options && attr.options.length > 0) {
+        return renderStringLiteralUnion(attr.options)
+    }
+    return attioAttributeBaseType(attr)
 }
 
 function attioAttributeRecordBaseType(attr: AttioAttributeData): string {
     const type = (attr.type || "").toLowerCase()
 
     if (type.includes("select") || type.includes("status")) return "AttioSelectOption"
+    if (type.includes("actor")) return "AttioActorReference"
+    if (type.includes("record") && type.includes("reference")) return "AttioRecordReferenceValue"
+    if (type.includes("currency")) return "AttioCurrencyValue"
     return attioAttributeBaseType(attr)
 }
 
 function attioAttributeInputTsType(attr: AttioAttributeData): string {
-    const baseType = attioAttributeBaseType(attr)
-    if (!isProbablyAttioMultiValue(attr)) return baseType
+    const baseType = attioAttributeInputBaseType(attr)
+    if (!attioIsMultiValue(attr)) return baseType
     return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
 }
 
 function attioAttributeRecordTsType(attr: AttioAttributeData): string {
     const baseType = attioAttributeRecordBaseType(attr)
-    if (!isProbablyAttioMultiValue(attr)) return baseType
+    if (!attioIsMultiValue(attr)) return baseType
     return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
 }
 
@@ -659,7 +715,7 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     lines.push("const __attioMultiValueAttributeSlugsByObject: Record<string, readonly string[]> = {")
     for (const object of objects) {
         const multiValueSlugs = object.attributes
-            .filter(isProbablyAttioMultiValue)
+            .filter(attioIsMultiValue)
             .map(attr => `"${escapeString(attr.api_slug)}"`)
             .join(", ")
         lines.push(`    "${escapeString(object.apiSlug)}": [${multiValueSlugs}],`)
@@ -777,7 +833,7 @@ function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefiniti
             id: instances[0].id,
             skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
             objects,
-            valueTypeLines: attioValueTypeLines(),
+            valueTypeLines: attioValueTypeLines(objects),
             runtimeLines: buildAttioRuntimeLines(objects)
         }
     )
@@ -915,7 +971,9 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("type __AttioPrimitive = string | number | boolean | null")
         attioPreludeLines.push("type __AttioStructuredValue = Record<string, unknown>")
         attioPreludeLines.push("type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
-        attioPreludeLines.push("type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T")
+        attioPreludeLines.push(
+            "type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T extends AttioActorReference ? string : T extends AttioRecordReferenceValue ? string : T extends AttioCurrencyValue ? number : T"
+        )
         attioPreludeLines.push("type __AttioFilterShorthand<T> = T extends (infer U)[] ? __AttioFilterAtom<U> | __AttioFilterAtom<U>[] : __AttioFilterAtom<T>")
         attioPreludeLines.push(
             "type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>"
