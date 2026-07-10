@@ -25,7 +25,7 @@ export async function install(opts?: NonInteractiveOpts): Promise<void> {
     await installSkillBundle(bundle)
     await offerClaudePermissions(opts)
     await ensureAuth(opts)
-    outro("Terse is ready. Try `terse init <project>`, or ask your coding agent to create a Terse workflow.")
+    outro("Terse is ready. Try `terse init <project>`, or create your first workflow with the `/terse-create` command in your coding agent.")
 }
 
 export async function update(): Promise<void> {
