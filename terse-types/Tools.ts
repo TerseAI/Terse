@@ -1852,6 +1852,22 @@ export const attioAttributeHistoryEntrySchema = z
     })
     .catchall(z.unknown())
 
+export const attioWorkspaceMemberSchema = z
+    .object({
+        id: z
+            .object({
+                workspace_id: z.string().optional(),
+                workspace_member_id: z.string().optional()
+            })
+            .catchall(z.unknown())
+            .optional(),
+        first_name: z.string().nullable().optional(),
+        last_name: z.string().nullable().optional(),
+        email_address: z.string().optional(),
+        access_level: z.string().optional()
+    })
+    .catchall(z.unknown())
+
 // WorkOS schemas
 export const workOSUserSummarySchema = z.object({
     id: z.string(),
@@ -2034,6 +2050,28 @@ export type AttioRecordsAction = AttioRecordsRequest["action"]
 
 export const attioRecordsActionSchema = z.enum(["query", "search", "get", "create", "update", "upsert", "delete", "get_attribute_history"])
 
+export const attioListWorkspaceMembersRequestSchema = z.object({
+    action: z
+        .literal("list")
+        .describe("List every workspace member (name, email address, access level). Use to resolve a record's owner to a person, or to find the ID/email to write into an actor-reference attribute.")
+})
+
+export const attioGetWorkspaceMemberRequestSchema = z.object({
+    action: z.literal("get").describe("Fetch a single workspace member by ID (e.g. the referenced_actor_id of a record's owner value)."),
+    workspaceMemberId: z.string().describe("The workspace member ID (UUID).")
+})
+
+export const attioWorkspaceMembersRequestSchema = z.discriminatedUnion("action", [attioListWorkspaceMembersRequestSchema, attioGetWorkspaceMemberRequestSchema])
+
+export const attioWorkspaceMembersInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+    request: attioWorkspaceMembersRequestSchema.describe("The workspace-member operation to perform and its arguments.")
+})
+
+export type AttioListWorkspaceMembersRequest = z.infer<typeof attioListWorkspaceMembersRequestSchema>
+export type AttioGetWorkspaceMemberRequest = z.infer<typeof attioGetWorkspaceMemberRequestSchema>
+export type AttioWorkspaceMembersRequest = z.infer<typeof attioWorkspaceMembersRequestSchema>
+
 // WorkOS input schemas
 export const listWorkOSUsersInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the WorkOS skill to use."),
@@ -2109,6 +2147,17 @@ export const attioListObjectsTool = defineTool({
     outputSchema: toolOutputBaseSchema.extend({
         objects: z.array(attioObjectWithAttributesSchema),
         count: z.number().int()
+    })
+})
+
+export const attioWorkspaceMembersTool = defineTool({
+    name: "attio_workspace_members",
+    inputSchema: attioWorkspaceMembersInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        action: z.enum(["list", "get"]),
+        members: z.array(attioWorkspaceMemberSchema).optional(),
+        member: attioWorkspaceMemberSchema.optional(),
+        count: z.number().int().optional()
     })
 })
 
@@ -2327,6 +2376,7 @@ export const ToolDefinitions = {
     [searchPosthogEventsTool.name]: searchPosthogEventsTool,
     [attioListObjectsTool.name]: attioListObjectsTool,
     [attioRecordsTool.name]: attioRecordsTool,
+    [attioWorkspaceMembersTool.name]: attioWorkspaceMembersTool,
     [listWorkOSUsersTool.name]: listWorkOSUsersTool,
     [listWorkOSOrganizationsTool.name]: listWorkOSOrganizationsTool,
     [getWorkOSUserTool.name]: getWorkOSUserTool,

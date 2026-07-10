@@ -14,6 +14,7 @@ import {
     attioRecordSchema,
     attioSearchMatchSchema,
     attioUpsertErrorSchema,
+    attioWorkspaceMemberSchema,
     linearProjectSummarySchema,
     linearTeamSchema,
     slackUserResponseSchema
@@ -85,6 +86,7 @@ export type AttioRecordIdentifier = z.infer<typeof attioRecordIdentifierSchema>
 export type AttioRecord = z.infer<typeof attioRecordSchema>
 export type AttioSearchMatch = z.infer<typeof attioSearchMatchSchema>
 export type AttioAttributeHistoryEntry = z.infer<typeof attioAttributeHistoryEntrySchema>
+export type AttioWorkspaceMember = z.infer<typeof attioWorkspaceMemberSchema>
 
 export const linearWorkspaceSchema = z.object({
     id: z.string(),

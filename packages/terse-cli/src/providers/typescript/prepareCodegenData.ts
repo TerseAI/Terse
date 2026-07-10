@@ -987,6 +987,9 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             "export type AttioGetAttributeHistoryParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; attribute: AttioAttributeSlug<TObject>; limit?: number | null; offset?: number | null }"
         )
         attioPreludeLines.push("export type AttioListObjectsParams = Record<string, never>")
+        attioPreludeLines.push("export type AttioListWorkspaceMembersParams = Record<string, never>")
+        attioPreludeLines.push("export type AttioGetWorkspaceMemberParams = { workspaceMemberId: string }")
+        attioPreludeLines.push('export type AttioWorkspaceMembersResult = ToolOutputByName["attio_workspace_members"]')
         attioPreludeLines.push('export type AttioRecordsResult = ToolOutputByName["attio_records"]')
         attioPreludeLines.push(
             'export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Omit<AttioRecordsResult, "records"> & { records: Array<AttioRecordFor<TObject>> }'
@@ -1118,6 +1121,9 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             if (group.integration === "attio" && tool.name === "attio_records" && group.integrationId) {
                 return buildAttioRecordsMethods(group.integrationId)
             }
+            if (group.integration === "attio" && tool.name === "attio_workspace_members" && group.integrationId) {
+                return buildAttioWorkspaceMembersMethods(group.integrationId)
+            }
 
             let generatedSignature: string
             if (group.integration === "attio" && tool.name === "attio_list_objects") {
@@ -1234,6 +1240,24 @@ function buildAttioRecordsMethods(integrationId: string): ToolMethodContext[] {
                 "getAttributeHistory: <TObject extends GeneratedAttioObject>(params: AttioGetAttributeHistoryParams<TObject>) =>",
                 `    ${call(`{ action: "get_attribute_history", ${objectSlug}, recordId: params.recordId, attributeSlug: params.attribute, limit: params.limit ?? null, offset: params.offset ?? null }`)},`
             ]
+        }
+    ]
+}
+
+function buildAttioWorkspaceMembersMethods(integrationId: string): ToolMethodContext[] {
+    const id = escapeString(integrationId)
+    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["attio_workspace_members"]>("attio_workspace_members", { integrationId: "${id}", request: ${requestExpr} })`
+
+    return [
+        {
+            description: "List every Attio workspace member (name, email address, access level). Use to resolve a record's owner to a person, e.g. for a Slack DM by email.",
+            generatedSignature: "listWorkspaceMembers(params?: AttioListWorkspaceMembersParams): Promise<AttioWorkspaceMembersResult>",
+            runtimeLines: ["listWorkspaceMembers: (_params: AttioListWorkspaceMembersParams = {}) =>", `    ${call('{ action: "list" }')},`]
+        },
+        {
+            description: "Fetch a single workspace member by ID (e.g. the referenced_actor_id of a record's owner value).",
+            generatedSignature: "getWorkspaceMember(params: AttioGetWorkspaceMemberParams): Promise<AttioWorkspaceMembersResult>",
+            runtimeLines: ["getWorkspaceMember: (params: AttioGetWorkspaceMemberParams) =>", `    ${call('{ action: "get", workspaceMemberId: params.workspaceMemberId }')},`]
         }
     ]
 }

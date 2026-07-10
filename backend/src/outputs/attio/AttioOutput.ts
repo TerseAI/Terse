@@ -9,12 +9,14 @@ import { unrestricted } from "../abstract/acl"
 
 import { attioListObjectsTool } from "./tools/listObjects"
 import { attioRecordsTool, validateAttioRecords } from "./tools/records"
+import { attioWorkspaceMembersTool } from "./tools/workspaceMembers"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
         super(OutputConfigType.ATTIO, [
             { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: unrestricted },
-            { tool: attioRecordsTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Records", validateACL: validateAttioRecords }
+            { tool: attioRecordsTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Records", validateACL: validateAttioRecords },
+            { tool: attioWorkspaceMembersTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Workspace members", validateACL: unrestricted }
         ])
     }
 
@@ -66,6 +68,9 @@ export class AttioOutput extends Output<AttioOutputConfig> {
         sections.push("Use attio_list_objects to discover available object types and their attributes before creating/updating records.")
         sections.push("Use attio_records with the 'query' or 'search' action to find existing records before updating them; 'query' supports limit/offset pagination for full scans.")
         sections.push("Prefer 'upsert' when a unique writable attribute exists (e.g. email_addresses, domains); use 'create' for objects without one (e.g. deals).")
+        sections.push(
+            'Owner attributes are actor references to workspace members: use attio_workspace_members to find the member, then write either their email address string or { referenced_actor_type: "workspace-member", referenced_actor_id: "<id>" }.'
+        )
 
         return sections.join("\n")
     }

@@ -690,6 +690,20 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return request?.action === "delete" ? `Delete this ${target}? This cannot be undone.` : `Save ${target}?`
         }
     },
+    attio_workspace_members: {
+        preparing: "Looking up workspace members",
+        executing: params => {
+            const request = params?.request as { action?: string } | undefined
+            return request?.action === "get" ? "Loading workspace member" : "Loading workspace members"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            const request = params?.request as { action?: string } | undefined
+            if (request?.action === "get") return "Loaded workspace member"
+            return count !== undefined ? `Found ${count} workspace member${count !== 1 ? "s" : ""}` : "Workspace members loaded"
+        }
+    },
     attio_list_objects: {
         preparing: "Loading object types",
         executing: () => "Loading object types",
