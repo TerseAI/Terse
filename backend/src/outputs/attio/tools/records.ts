@@ -18,11 +18,10 @@ import type {
 import { z } from "zod"
 
 import logger from "../../../common/logger"
-import { AttioIntegrationManager } from "../../../integrations/attio/integration"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 import { ToolACLValidator, requireValueInAnyConfig } from "../../abstract/acl"
 
-import { attioApiRequest, attioWriteRequest } from "./attioApi"
+import { attioApiRequest, attioWriteRequest, resolveAttioAccessToken } from "./attioApi"
 
 const QUERY_DEFAULT_LIMIT = 20
 const QUERY_MAX_LIMIT = 500
@@ -30,7 +29,7 @@ const SEARCH_MAX_LIMIT = 25
 
 export const attioRecordsTool = defineSessionTool({
     name: "attio_records",
-    description: `Read and write records in Attio. One tool, several actions: 'query' (filtered listing with limit/offset pagination), 'search' (fuzzy match by name/email/domain), 'get' (fetch by record ID), 'create' (plain create, works for objects without a unique writable attribute), 'update' (patch by record ID), 'upsert' (create-or-update matched on a unique attribute), 'delete' (remove by record ID, irreversible), and 'get_attribute_history' (historic values of one attribute, e.g. every stage a deal has been in). Use attio_list_objects first to discover objects and their attributes.`,
+    description: `Read and write records in Attio. One tool, several actions: 'query' (filtered listing with limit/offset pagination), 'search' (fuzzy match by name/email/domain), 'get' (fetch by record ID), 'create' (plain create, works for objects without a unique writable attribute), 'update' (patch by record ID), 'upsert' (create-or-update matched on a unique attribute), 'delete' (remove by record ID, irreversible), and 'get_attribute_history' (historic values of one attribute, e.g. every stage a deal has been in). Use attio_schema with the 'list_objects' action first to discover objects and their attributes.`,
     execute: async ({ integrationId, request }, runContext) => {
         logger.debug("Executing attio_records tool", { integrationId, action: request.action, objectSlug: request.objectSlug })
 
@@ -38,16 +37,7 @@ export const attioRecordsTool = defineSessionTool({
             throw new Error("No context provided")
         }
 
-        const manager = new AttioIntegrationManager()
-        const orgIntegrations = await manager.getInstancesForOrganization(runContext.context.user.organizationId)
-        if (!orgIntegrations.some(i => i.id === integrationId)) {
-            throw new Error("Attio integration not found or not authorized for this organization.")
-        }
-
-        const accessToken = await manager.getAccessToken(integrationId)
-        if (!accessToken) {
-            throw new Error("Failed to get Attio access token. The integration may not be connected.")
-        }
+        const accessToken = await resolveAttioAccessToken(integrationId, runContext)
 
         try {
             return await executeRecordsRequest(request, accessToken)

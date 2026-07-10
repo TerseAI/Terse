@@ -134,8 +134,8 @@ export const Skills = {
     }): TypedSkill<"grepGitHubCode" | "listGitHubCommits" | "listGitHubDirectory" | "listGitHubPullRequests" | "readGitHubFile" | "searchGitHubCode" | "summarizeGitHubPullRequestDiff"> {
         /* … */
     },
-    /** Attio — read and write records on a CRM object */
-    attio(opts: { object: AttioObject<any> }): TypedSkill<"attio_list_objects" | "attio_records"> {
+    /** Attio — read and write records, tasks, notes, lists and more on a CRM object */
+    attio(opts: { object: AttioObject<any> }): TypedSkill<"attio_records" | "attio_workspace_members" | "attio_tasks" | "attio_notes" | "attio_comments" | "attio_lists" | "attio_meetings" | "attio_files" | "attio_schema"> {
         /* … */
     }
 }

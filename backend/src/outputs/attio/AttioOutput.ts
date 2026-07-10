@@ -7,16 +7,28 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 import { unrestricted } from "../abstract/acl"
 
-import { attioListObjectsTool } from "./tools/listObjects"
+import { attioCommentsTool } from "./tools/comments"
+import { attioFilesTool } from "./tools/files"
+import { attioListsTool } from "./tools/lists"
+import { attioMeetingsTool } from "./tools/meetings"
+import { attioNotesTool } from "./tools/notes"
 import { attioRecordsTool, validateAttioRecords } from "./tools/records"
+import { attioSchemaTool } from "./tools/schema"
+import { attioTasksTool } from "./tools/tasks"
 import { attioWorkspaceMembersTool } from "./tools/workspaceMembers"
 
 export class AttioOutput extends Output<AttioOutputConfig> {
     constructor() {
         super(OutputConfigType.ATTIO, [
-            { tool: attioListObjectsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "List objects", validateACL: unrestricted },
             { tool: attioRecordsTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Records", validateACL: validateAttioRecords },
-            { tool: attioWorkspaceMembersTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Workspace members", validateACL: unrestricted }
+            { tool: attioWorkspaceMembersTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Workspace members", validateACL: unrestricted },
+            { tool: attioTasksTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Tasks", validateACL: unrestricted },
+            { tool: attioNotesTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Notes", validateACL: unrestricted },
+            { tool: attioCommentsTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Comments", validateACL: unrestricted },
+            { tool: attioListsTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Lists", validateACL: unrestricted },
+            { tool: attioMeetingsTool, isReadOnly: true, integration: IntegrationType.ATTIO, displayName: "Meetings", validateACL: unrestricted },
+            { tool: attioFilesTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Files", validateACL: unrestricted },
+            { tool: attioSchemaTool, isReadOnly: false, integration: IntegrationType.ATTIO, displayName: "Schema", validateACL: unrestricted }
         ])
     }
 
@@ -65,12 +77,13 @@ export class AttioOutput extends Output<AttioOutputConfig> {
         sections.push("Available configurations:")
         sections.push(configList.join("\n"))
         sections.push("\nWhen calling Attio tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.")
-        sections.push("Use attio_list_objects to discover available object types and their attributes before creating/updating records.")
+        sections.push("Use attio_schema with the 'list_objects' action to discover available object types and their attributes before creating/updating records.")
         sections.push("Use attio_records with the 'query' or 'search' action to find existing records before updating them; 'query' supports limit/offset pagination for full scans.")
         sections.push("Prefer 'upsert' when a unique writable attribute exists (e.g. email_addresses, domains); use 'create' for objects without one (e.g. deals).")
         sections.push(
             'Owner attributes are actor references to workspace members: use attio_workspace_members to find the member, then write either their email address string or { referenced_actor_type: "workspace-member", referenced_actor_id: "<id>" }.'
         )
+        sections.push("Tasks, notes, comments, list entries, meetings and files each have their own tool (attio_tasks, attio_notes, attio_comments, attio_lists, attio_meetings, attio_files).")
 
         return sections.join("\n")
     }

@@ -1044,7 +1044,6 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push(
             "export type AttioGetAttributeHistoryParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; attribute: AttioAttributeSlug<TObject>; limit?: number | null; offset?: number | null }"
         )
-        attioPreludeLines.push("export type AttioListObjectsParams = Record<string, never>")
         attioPreludeLines.push("export type AttioListWorkspaceMembersParams = Record<string, never>")
         attioPreludeLines.push("export type AttioGetWorkspaceMemberParams = { workspaceMemberId: string }")
         attioPreludeLines.push('export type AttioWorkspaceMembersResult = ToolOutputByName["attio_workspace_members"]')
@@ -1176,27 +1175,15 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             const paramsType = toolNameToInterfaceName(tool.name)
             const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
 
-            if (group.integration === "attio" && tool.name === "attio_records" && group.integrationId) {
-                return buildAttioRecordsMethods(group.integrationId)
-            }
-            if (group.integration === "attio" && tool.name === "attio_workspace_members" && group.integrationId) {
-                return buildAttioWorkspaceMembersMethods(group.integrationId)
+            if (group.integration === "attio" && group.integrationId) {
+                const attioMethods = buildAttioToolMethods(group.integrationId, tool.name)
+                if (attioMethods) return attioMethods
             }
 
-            let generatedSignature: string
-            if (group.integration === "attio" && tool.name === "attio_list_objects") {
-                generatedSignature = `${methodName}(params?: AttioListObjectsParams): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
-            } else {
-                generatedSignature = `${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
-            }
+            const generatedSignature = `${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
 
             let runtimeLines: string[]
-            if (group.integration === "attio" && tool.name === "attio_list_objects" && group.integrationId) {
-                runtimeLines = [
-                    `${methodName}: (params: AttioListObjectsParams = {}) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...params, integrationId: "${escapeString(group.integrationId)}" }),`
-                ]
-            } else if (group.integrationId && hasAutoFillId(tool)) {
+            if (group.integrationId && hasAutoFillId(tool)) {
                 runtimeLines = [
                     `${methodName}: (params: ${paramsType}) =>`,
                     `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
@@ -1300,6 +1287,120 @@ function buildAttioRecordsMethods(integrationId: string): ToolMethodContext[] {
             ]
         }
     ]
+}
+
+function buildAttioToolMethods(integrationId: string, toolName: string): ToolMethodContext[] | null {
+    switch (toolName) {
+        case "attio_records":
+            return buildAttioRecordsMethods(integrationId)
+        case "attio_workspace_members":
+            return buildAttioWorkspaceMembersMethods(integrationId)
+        case "attio_tasks":
+        case "attio_notes":
+        case "attio_comments":
+        case "attio_lists":
+        case "attio_meetings":
+        case "attio_files":
+        case "attio_schema":
+            return buildAttioResourceMethods(integrationId, toolName, ATTIO_RESOURCE_METHOD_SPECS[toolName])
+        default:
+            return null
+    }
+}
+
+const ATTIO_RESOURCE_METHOD_SPECS: Record<string, AttioResourceMethodSpec[]> = {
+    attio_tasks: [
+        { action: "list", methodName: "listTasks", description: "List Attio tasks, optionally filtered by linked record or completion state (limit/offset pagination).", emptyParams: true },
+        { action: "get", methodName: "getTask", description: "Fetch a single Attio task by ID." },
+        { action: "create", methodName: "createTask", description: "Create an Attio task with optional deadline, assignees (workspace-member emails or IDs) and linked records." },
+        { action: "update", methodName: "updateTask", description: "Update an Attio task's deadline, completion state, assignees or linked records (content is immutable)." },
+        { action: "delete", methodName: "deleteTask", description: "Permanently delete an Attio task." }
+    ],
+    attio_notes: [
+        { action: "list", methodName: "listNotes", description: "List Attio notes, optionally scoped to one record (limit/offset pagination).", emptyParams: true },
+        { action: "get", methodName: "getNote", description: "Fetch a single Attio note by ID." },
+        { action: "create", methodName: "createNote", description: "Create a note on a record (markdown by default)." },
+        { action: "delete", methodName: "deleteNote", description: "Permanently delete a note." }
+    ],
+    attio_comments: [
+        {
+            action: "create",
+            methodName: "createComment",
+            description: "Create a comment: reply to a thread via threadId, or start a thread on a record via objectSlug + recordId. Requires authorWorkspaceMemberId."
+        },
+        { action: "get", methodName: "getComment", description: "Fetch a single comment by ID." },
+        { action: "delete", methodName: "deleteComment", description: "Permanently delete a comment." },
+        { action: "list_threads", methodName: "listThreads", description: "List comment threads on a record.", emptyParams: true },
+        { action: "get_thread", methodName: "getThread", description: "Fetch a thread with all of its comments." }
+    ],
+    attio_lists: [
+        { action: "list", methodName: "listLists", description: "List all Attio lists in the workspace.", emptyParams: true },
+        { action: "get", methodName: "getList", description: "Fetch a list's configuration by ID or slug." },
+        { action: "create", methodName: "createList", description: "Create a new list over an object. This changes the workspace for every user." },
+        { action: "update", methodName: "updateList", description: "Rename a list." },
+        { action: "query_entries", methodName: "queryListEntries", description: "List entries in a list with optional filter and limit/offset pagination." },
+        { action: "add_entry", methodName: "addListEntry", description: "Add a record to a list as a new entry (throws on unique-attribute conflicts)." },
+        { action: "upsert_entry", methodName: "upsertListEntry", description: "Create or update a list entry keyed by parent record (idempotent list membership)." },
+        { action: "get_entry", methodName: "getListEntry", description: "Fetch a single list entry." },
+        { action: "update_entry", methodName: "updateListEntry", description: "Update a list entry's attribute values (e.g. move its stage)." },
+        { action: "remove_entry", methodName: "removeListEntry", description: "Remove an entry from a list; the parent record is untouched." }
+    ],
+    attio_meetings: [
+        { action: "list", methodName: "listMeetings", description: "List meetings, filterable by linked record, participants or time range (cursor pagination via nextCursor).", emptyParams: true },
+        { action: "get", methodName: "getMeeting", description: "Fetch a single meeting by ID." },
+        { action: "list_recordings", methodName: "listCallRecordings", description: "List call recordings for a meeting." },
+        { action: "get_transcript", methodName: "getCallTranscript", description: "Fetch the transcript of a call recording." }
+    ],
+    attio_files: [
+        { action: "list", methodName: "listFiles", description: "List files attached to a record (cursor pagination)." },
+        { action: "get", methodName: "getFile", description: "Fetch a file's metadata by ID." },
+        { action: "upload", methodName: "uploadFile", description: "Upload a file to a record from base64 content (max 50 MB)." },
+        { action: "get_download_url", methodName: "getFileDownloadUrl", description: "Get a signed download URL for a file." },
+        { action: "delete", methodName: "deleteFile", description: "Permanently delete a file." }
+    ],
+    attio_schema: [
+        {
+            action: "list_objects",
+            methodName: "listObjects",
+            description: "List all object types in the workspace with their attributes. Call before creating or updating records.",
+            emptyParams: true
+        },
+        { action: "get_object", methodName: "getObject", description: "Fetch one object's configuration." },
+        { action: "create_object", methodName: "createObject", description: "Create a custom object type (changes the workspace schema)." },
+        { action: "update_object", methodName: "updateObject", description: "Update an object's slug or display names." },
+        { action: "list_attributes", methodName: "listAttributes", description: "List the attributes on an object or list." },
+        { action: "create_attribute", methodName: "createAttribute", description: "Create an attribute on an object or list (changes the workspace schema)." },
+        { action: "update_attribute", methodName: "updateAttribute", description: "Update an attribute's title or constraints." },
+        { action: "list_statuses", methodName: "listStatuses", description: "List the statuses of a status attribute (e.g. deal stages)." },
+        { action: "create_status", methodName: "createStatus", description: "Add a status to a status attribute. Rerun terse generate to refresh constants." },
+        { action: "update_status", methodName: "updateStatus", description: "Rename or archive a status." },
+        { action: "list_select_options", methodName: "listSelectOptions", description: "List the options of a select attribute." },
+        { action: "create_select_option", methodName: "createSelectOption", description: "Add an option to a select attribute. Rerun terse generate to refresh constants." },
+        { action: "update_select_option", methodName: "updateSelectOption", description: "Rename or archive a select option." }
+    ]
+}
+
+function buildAttioResourceMethods(integrationId: string, toolName: string, specs: AttioResourceMethodSpec[]): ToolMethodContext[] {
+    const id = escapeString(integrationId)
+    return specs.map(spec => {
+        const paramsType = `Omit<Extract<ToolInputByName["${toolName}"]["request"], { action: "${spec.action}" }>, "action">`
+        const resultType = `ToolOutputByName["${toolName}"]`
+        return {
+            description: spec.description,
+            generatedSignature: `${spec.methodName}(${spec.emptyParams ? `params?: ${paramsType}` : `params: ${paramsType}`}): Promise<${resultType}>`,
+            runtimeLines: [
+                `${spec.methodName}: (params: ${paramsType}${spec.emptyParams ? " = {}" : ""}) =>`,
+                `    TerseAgent.executeTool<${resultType}>("${toolName}", { integrationId: "${id}", request: { action: "${spec.action}", ...params } }),`
+            ]
+        }
+    })
+}
+
+interface AttioResourceMethodSpec {
+    action: string
+    methodName: string
+    description: string
+    emptyParams?: boolean
 }
 
 function buildAttioWorkspaceMembersMethods(integrationId: string): ToolMethodContext[] {

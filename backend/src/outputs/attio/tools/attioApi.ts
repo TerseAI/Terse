@@ -1,6 +1,59 @@
+import { RunContext } from "@openai/agents"
 import type { AttioAttribute } from "terse-types"
 
+import { Session } from "../../../express"
+import { AttioIntegrationManager } from "../../../integrations/attio/integration"
+import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
+
 const ATTIO_API_BASE = "https://api.attio.com/v2"
+
+export async function resolveAttioAccessToken(integrationId: string, runContext: RunContext<SessionWithTracking<Session>> | undefined): Promise<string> {
+    if (!runContext?.context) {
+        throw new Error("No context provided")
+    }
+
+    const manager = new AttioIntegrationManager()
+    const orgIntegrations = await manager.getInstancesForOrganization(runContext.context.user.organizationId)
+    if (!orgIntegrations.some(i => i.id === integrationId)) {
+        throw new Error("Attio integration not found or not authorized for this organization.")
+    }
+
+    const accessToken = await manager.getAccessToken(integrationId)
+    if (!accessToken) {
+        throw new Error("Failed to get Attio access token. The integration may not be connected.")
+    }
+    return accessToken
+}
+
+export function toAttioActorInput(emailOrMemberId: string): Record<string, unknown> {
+    if (emailOrMemberId.includes("@")) {
+        return { workspace_member_email_address: emailOrMemberId }
+    }
+    return { referenced_actor_type: "workspace-member", referenced_actor_id: emailOrMemberId }
+}
+
+export function parseOptionalJsonObject(raw: string | null | undefined, label: string): Record<string, unknown> | undefined {
+    if (!raw) return undefined
+    let parsed: unknown
+    try {
+        parsed = JSON.parse(raw)
+    } catch {
+        throw new Error(`Invalid "${label}": not valid JSON.`)
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error(`Invalid "${label}": expected a JSON object.`)
+    }
+    return parsed as Record<string, unknown>
+}
+
+export function buildQueryString(params: Record<string, string | number | boolean | null | undefined>): string {
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== null && value !== undefined) query.set(key, String(value))
+    }
+    const rendered = query.toString()
+    return rendered ? `?${rendered}` : ""
+}
 
 export async function attioApiRequest<T>(accessToken: string, path: string, options: AttioApiRequestOptions = {}): Promise<T> {
     const response = await fetch(`${ATTIO_API_BASE}${path}`, {

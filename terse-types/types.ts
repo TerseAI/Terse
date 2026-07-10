@@ -8,11 +8,20 @@ import { SlackChannelType, slackChannelTypeSchema } from "./SlackTypes"
 import {
     attioAttributeHistoryEntrySchema,
     attioAttributeSchema,
+    attioCallRecordingSchema,
+    attioCommentSchema,
+    attioFileSchema,
+    attioListEntrySchema,
+    attioListSchema,
+    attioMeetingSchema,
+    attioNoteSchema,
     attioObjectSchema,
     attioObjectWithAttributesSchema,
     attioRecordIdentifierSchema,
     attioRecordSchema,
     attioSearchMatchSchema,
+    attioTaskSchema,
+    attioThreadSchema,
     attioUpsertErrorSchema,
     attioWorkspaceMemberSchema,
     linearProjectSummarySchema,
@@ -87,6 +96,15 @@ export type AttioRecord = z.infer<typeof attioRecordSchema>
 export type AttioSearchMatch = z.infer<typeof attioSearchMatchSchema>
 export type AttioAttributeHistoryEntry = z.infer<typeof attioAttributeHistoryEntrySchema>
 export type AttioWorkspaceMember = z.infer<typeof attioWorkspaceMemberSchema>
+export type AttioTask = z.infer<typeof attioTaskSchema>
+export type AttioNote = z.infer<typeof attioNoteSchema>
+export type AttioComment = z.infer<typeof attioCommentSchema>
+export type AttioThread = z.infer<typeof attioThreadSchema>
+export type AttioList = z.infer<typeof attioListSchema>
+export type AttioListEntry = z.infer<typeof attioListEntrySchema>
+export type AttioMeeting = z.infer<typeof attioMeetingSchema>
+export type AttioCallRecording = z.infer<typeof attioCallRecordingSchema>
+export type AttioFile = z.infer<typeof attioFileSchema>
 
 export const linearWorkspaceSchema = z.object({
     id: z.string(),

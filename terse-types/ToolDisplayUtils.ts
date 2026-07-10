@@ -63,6 +63,33 @@ function memoryLabel(command: MemoryCommand | undefined, done: boolean): string 
     }
 }
 
+function safeParseCount(result?: string): number | undefined {
+    const parsed = safeParseResult(result)
+    return typeof parsed?.count === "number" ? parsed.count : undefined
+}
+
+function attioActionLabel(params: Record<string, unknown> | undefined, noun: string, done: boolean, count?: number): string {
+    const request = params?.request as { action?: string } | undefined
+    const action = request?.action ?? ""
+    const verbByPrefix: Array<[string, [string, string]]> = [
+        ["list", ["Loading", "Loaded"]],
+        ["query", ["Loading", "Loaded"]],
+        ["get", ["Loading", "Loaded"]],
+        ["create", ["Creating", "Created"]],
+        ["add", ["Adding", "Added"]],
+        ["upsert", ["Saving", "Saved"]],
+        ["update", ["Updating", "Updated"]],
+        ["upload", ["Uploading", "Uploaded"]],
+        ["delete", ["Deleting", "Deleted"]],
+        ["remove", ["Removing", "Removed"]]
+    ]
+    const match = verbByPrefix.find(([prefix]) => action.startsWith(prefix))
+    const verb = match ? match[1][done ? 1 : 0] : done ? "Finished" : "Working with"
+    const plural = action.startsWith("list") || action.startsWith("query")
+    if (done && count !== undefined && plural) return `${verb} ${count} ${noun}${count !== 1 ? "s" : ""}`
+    return `${verb} ${noun}${plural ? "s" : ""}`
+}
+
 function attioRecordsRequest(params?: Record<string, unknown>): AttioRecordsRequest | undefined {
     const request = params?.request
     return request && typeof request === "object" && "action" in request ? (request as AttioRecordsRequest) : undefined
@@ -704,15 +731,40 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return count !== undefined ? `Found ${count} workspace member${count !== 1 ? "s" : ""}` : "Workspace members loaded"
         }
     },
-    attio_list_objects: {
-        preparing: "Loading object types",
-        executing: () => "Loading object types",
-        complete: (_params, result) => {
-            const parsed = safeParseResult(result)
-            const count = parsed?.count as number | undefined
-            if (count !== undefined) return `Found ${count} object type${count !== 1 ? "s" : ""}`
-            return "Object types loaded"
-        }
+    attio_tasks: {
+        preparing: "Working with tasks",
+        executing: params => attioActionLabel(params, "task", false),
+        complete: (params, result) => attioActionLabel(params, "task", true, safeParseCount(result))
+    },
+    attio_notes: {
+        preparing: "Working with notes",
+        executing: params => attioActionLabel(params, "note", false),
+        complete: (params, result) => attioActionLabel(params, "note", true, safeParseCount(result))
+    },
+    attio_comments: {
+        preparing: "Working with comments",
+        executing: params => attioActionLabel(params, "comment", false),
+        complete: (params, result) => attioActionLabel(params, "comment", true, safeParseCount(result))
+    },
+    attio_lists: {
+        preparing: "Working with lists",
+        executing: params => attioActionLabel(params, "list entry", false),
+        complete: (params, result) => attioActionLabel(params, "list entry", true, safeParseCount(result))
+    },
+    attio_meetings: {
+        preparing: "Loading meetings",
+        executing: params => attioActionLabel(params, "meeting", false),
+        complete: (params, result) => attioActionLabel(params, "meeting", true, safeParseCount(result))
+    },
+    attio_files: {
+        preparing: "Working with files",
+        executing: params => attioActionLabel(params, "file", false),
+        complete: (params, result) => attioActionLabel(params, "file", true, safeParseCount(result))
+    },
+    attio_schema: {
+        preparing: "Loading workspace schema",
+        executing: params => attioActionLabel(params, "schema item", false),
+        complete: (params, result) => attioActionLabel(params, "schema item", true, safeParseCount(result))
     },
 
     // ===================

@@ -3,10 +3,9 @@ import { IntegrationType } from "terse-types"
 import type { AttioGetWorkspaceMemberRequest, AttioListWorkspaceMembersRequest, AttioWorkspaceMember, AttioWorkspaceMembersRequest, ToolOutputByName } from "terse-types"
 
 import logger from "../../../common/logger"
-import { AttioIntegrationManager } from "../../../integrations/attio/integration"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest } from "./attioApi"
+import { attioApiRequest, resolveAttioAccessToken } from "./attioApi"
 
 export const attioWorkspaceMembersTool = defineSessionTool({
     name: "attio_workspace_members",
@@ -18,16 +17,7 @@ export const attioWorkspaceMembersTool = defineSessionTool({
             throw new Error("No context provided")
         }
 
-        const manager = new AttioIntegrationManager()
-        const orgIntegrations = await manager.getInstancesForOrganization(runContext.context.user.organizationId)
-        if (!orgIntegrations.some(i => i.id === integrationId)) {
-            throw new Error("Attio integration not found or not authorized for this organization.")
-        }
-
-        const accessToken = await manager.getAccessToken(integrationId)
-        if (!accessToken) {
-            throw new Error("Failed to get Attio access token. The integration may not be connected.")
-        }
+        const accessToken = await resolveAttioAccessToken(integrationId, runContext)
 
         try {
             return await executeWorkspaceMembersRequest(request, accessToken)
