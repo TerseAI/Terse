@@ -771,6 +771,18 @@ export function step<T>(promise: Promise<T>): Promise<T> {
     )
 }
 
+/**
+ * Replay-safe logging for durable jobs: `await log("processed", count)`.
+ * In workflow code the call is a journaled step, so the line prints exactly
+ * once instead of once per replay like a bare `console.log` outside a step
+ * would. Arguments cross the step boundary, so they must be serializable.
+ * Inside step bodies and non-durable jobs it simply forwards to `console.log`.
+ */
+export async function log(...args: unknown[]): Promise<void> {
+    "use step"
+    console.log(...args)
+}
+
 export function sleep(duration: string | number | Date): Promise<void> {
     if (!isDurableExecution()) {
         throw new DurableOnlyError("sleep() is only available in durable jobs. Add `durable: true` to this job.")

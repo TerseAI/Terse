@@ -494,7 +494,7 @@ These rules apply when the job sets `durable: true`. The mechanics (replay model
 
 **Branch on journaled data.** Conditions that pick a branch must derive from the trigger event or step results, so every replay takes the same path.
 
-**Code outside steps re-runs on every replay.** Keep it pure and cheap; every side effect lives inside a step.
+**Code outside steps re-runs on every replay.** Keep it pure and cheap; every side effect lives inside a step. A bare `console.log` outside a step prints once per replay; use `await log(...)` from `terse-sdk` (a journaled step) for lines that should print once.
 
 ## Worked examples
 
