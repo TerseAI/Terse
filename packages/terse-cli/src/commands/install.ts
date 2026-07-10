@@ -11,7 +11,7 @@ import { CliError } from "../cliError.js"
 import { NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { getStoredApiKey } from "../userConfig.js"
 
-import { LoginResult, loginAndPersist } from "./auth.js"
+import { loginAndPersist } from "./auth.js"
 
 const execFile = promisify(execFileCallback)
 
@@ -147,7 +147,7 @@ function readClaudeSettings(settingsPath: string): ClaudeSettings | null {
     return parsed.success ? parsed.data : null
 }
 
-export async function ensureAuth(opts?: NonInteractiveOpts): Promise<LoginResult | undefined> {
+async function ensureAuth(opts?: NonInteractiveOpts): Promise<void> {
     if (getStoredApiKey()) return
     if (isNonInteractive(opts)) {
         log.info("Not logged in. Run `terse auth login` when ready.")
@@ -158,7 +158,7 @@ export async function ensureAuth(opts?: NonInteractiveOpts): Promise<LoginResult
         log.info("You can log in later with `terse auth login`.")
         return
     }
-    return await loginAndPersist()
+    await loginAndPersist()
 }
 
 async function isOnPath(bin: string): Promise<boolean> {

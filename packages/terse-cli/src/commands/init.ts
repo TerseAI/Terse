@@ -14,7 +14,6 @@ import { renderTemplate } from "../providers/templateUtils.js"
 
 import { loginAndPersist } from "./auth.js"
 import { generate } from "./generate.js"
-import { ensureAuth } from "./install.js"
 import { listAndPromptIntegrations } from "./integrate.js"
 
 export async function init(projectName?: string, provider: LanguageProvider = resolveProvider({ command: "init", language: "ts" }), opts?: NonInteractiveOpts): Promise<void> {
@@ -43,7 +42,7 @@ export async function init(projectName?: string, provider: LanguageProvider = re
         const sdkVersion = await fetchSdkVersion(provider.language)
         s.stop(`Using terse-sdk ${sdkVersion}`)
 
-        const loginResult = await ensureAuth(opts)
+        const loginResult = await loginAndPersist(opts)
         const isAuthenticated = !!loginResult
 
         if (projectName) {
