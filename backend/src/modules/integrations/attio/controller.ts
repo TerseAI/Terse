@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { Request, Response } from "express"
 import { attioWebhookPayloadSchema } from "terse-types"
 import { IntegrationType } from "terse-types/Integrations"
-import type { AttioAttribute, AttioObject, AttioObjectWithAttributes } from "terse-types/types"
+import type { AttioAttribute, AttioList, AttioObject, AttioObjectWithAttributes } from "terse-types/types"
 import { z } from "zod"
 
 import logger from "../../../common/logger"
@@ -69,7 +69,7 @@ export async function getAttioObjects(req: Request, res: Response) {
                     headers: { Authorization: `Bearer ${accessToken}` }
                 })
                 const attributes = attrResponse.ok ? ((await attrResponse.json()) as { data?: AttioAttribute[] })?.data || [] : []
-                const enrichedAttributes = await Promise.all(attributes.map(attribute => enrichAttributeWithOptions(accessToken, obj.api_slug, attribute)))
+                const enrichedAttributes = await Promise.all(attributes.map(attribute => enrichAttributeWithOptions(accessToken, "objects", obj.api_slug, attribute)))
                 return { ...obj, attributes: enrichedAttributes }
             })
         )
@@ -81,13 +81,65 @@ export async function getAttioObjects(req: Request, res: Response) {
     }
 }
 
+export async function getAttioLists(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: "Unauthorized" })
+        return
+    }
+
+    const { integrationId } = req.params
+    if (!integrationId) {
+        res.status(400).json({ error: "Missing integrationId parameter" })
+        return
+    }
+
+    try {
+        const manager = new AttioIntegrationManager()
+        const accessToken = await manager.getAccessToken(integrationId)
+        if (!accessToken) {
+            res.status(404).json({ error: "Attio integration not found or not connected" })
+            return
+        }
+
+        const response = await fetch("https://api.attio.com/v2/lists", {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        })
+        if (!response.ok) {
+            const errorText = await response.text()
+            logger.error("Failed to fetch Attio lists", { status: response.status, error: errorText })
+            res.status(response.status).json({ error: "Failed to fetch Attio lists" })
+            return
+        }
+
+        const data = (await response.json()) as { data?: AttioList[] }
+        const lists = data?.data || []
+
+        const listsWithAttributes = await Promise.all(
+            lists.map(async list => {
+                const listId = list.id.list_id
+                const attrResponse = await fetch(`https://api.attio.com/v2/lists/${encodeURIComponent(listId)}/attributes`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                })
+                const attributes = attrResponse.ok ? ((await attrResponse.json()) as { data?: AttioAttribute[] })?.data || [] : []
+                const enrichedAttributes = await Promise.all(attributes.map(attribute => enrichAttributeWithOptions(accessToken, "lists", listId, attribute)))
+                return { ...list, attributes: enrichedAttributes }
+            })
+        )
+
+        res.status(200).json(listsWithAttributes)
+    } catch (error) {
+        logger.error("Error fetching Attio lists:", { error })
+        res.status(500).json({ error: "Failed to fetch Attio lists" })
+    }
+}
+
 const OPTION_PATH_BY_ATTRIBUTE_TYPE: Record<string, string> = { status: "statuses", select: "options" }
 
-async function enrichAttributeWithOptions(accessToken: string, objectSlug: string, attribute: AttioAttribute): Promise<AttioAttribute> {
+async function enrichAttributeWithOptions(accessToken: string, target: "objects" | "lists", identifier: string, attribute: AttioAttribute): Promise<AttioAttribute> {
     const pathSegment = OPTION_PATH_BY_ATTRIBUTE_TYPE[(attribute.type || "").toLowerCase()]
     if (!pathSegment || !attribute.api_slug) return attribute
 
-    const response = await fetch(`https://api.attio.com/v2/objects/${encodeURIComponent(objectSlug)}/attributes/${encodeURIComponent(attribute.api_slug)}/${pathSegment}`, {
+    const response = await fetch(`https://api.attio.com/v2/${target}/${encodeURIComponent(identifier)}/attributes/${encodeURIComponent(attribute.api_slug)}/${pathSegment}`, {
         headers: { Authorization: `Bearer ${accessToken}` }
     })
     if (!response.ok) return attribute

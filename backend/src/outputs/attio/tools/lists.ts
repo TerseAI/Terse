@@ -5,7 +5,7 @@ import type { AttioList, AttioListEntry, AttioListsRequest, ToolOutputByName } f
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, attioWriteRequest, parseOptionalJsonObject, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, attioWriteRequest, fetchWorkspaceSlug, parseOptionalJsonObject, requireAttioData, resolveAttioAccessToken } from "./attioApi"
 
 const ENTRIES_DEFAULT_LIMIT = 20
 const ENTRIES_MAX_LIMIT = 500
@@ -35,7 +35,8 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
     switch (request.action) {
         case "list": {
             const data = await attioApiRequest<{ data?: AttioList[] }>(accessToken, "/lists")
-            const lists = data.data ?? []
+            const workspaceSlug = await fetchWorkspaceSlug(accessToken)
+            const lists = (data.data ?? []).map(list => withListWebUrl(list, workspaceSlug))
             return {
                 success: true,
                 action: request.action,
@@ -46,7 +47,12 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
         }
         case "get": {
             const data = await attioApiRequest<{ data?: AttioList }>(accessToken, listPath(request.listIdOrSlug))
-            return { success: true, action: request.action, list: data.data, actions: [listAction("Fetched list", request.listIdOrSlug, "Fetched list configuration", RunHistoryActionType.read)] }
+            return {
+                success: true,
+                action: request.action,
+                list: withListWebUrl(requireAttioData(data.data, "list"), await fetchWorkspaceSlug(accessToken)),
+                actions: [listAction("Fetched list", request.listIdOrSlug, "Fetched list configuration", RunHistoryActionType.read)]
+            }
         }
         case "create": {
             const body = {
@@ -62,7 +68,7 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             return {
                 success: true,
                 action: request.action,
-                list: data.data,
+                list: withListWebUrl(requireAttioData(data.data, "list"), await fetchWorkspaceSlug(accessToken)),
                 actions: [listAction("Created list", request.apiSlug, `Created list "${request.name}" over ${request.parentObjectSlug}`, RunHistoryActionType.create)]
             }
         }
@@ -71,7 +77,7 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             return {
                 success: true,
                 action: request.action,
-                list: data.data,
+                list: withListWebUrl(requireAttioData(data.data, "list"), await fetchWorkspaceSlug(accessToken)),
                 actions: [listAction("Updated list", request.listIdOrSlug, `Renamed list to "${request.name}"`, RunHistoryActionType.update)]
             }
         }
@@ -107,13 +113,18 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             return {
                 success: true,
                 action: request.action,
-                entry: data.data,
+                entry: requireAttioData(data.data, "list entry"),
                 actions: [listAction(`${verb} list entry`, `${request.listIdOrSlug}/${request.parentRecordId}`, `${verb} ${request.parentObjectSlug} record on list`, RunHistoryActionType.create)]
             }
         }
         case "get_entry": {
             const data = await attioApiRequest<{ data?: AttioListEntry }>(accessToken, entryPath(request.listIdOrSlug, request.entryId))
-            return { success: true, action: request.action, entry: data.data, actions: [listAction("Fetched list entry", request.entryId, "Fetched list entry", RunHistoryActionType.read)] }
+            return {
+                success: true,
+                action: request.action,
+                entry: requireAttioData(data.data, "list entry"),
+                actions: [listAction("Fetched list entry", request.entryId, "Fetched list entry", RunHistoryActionType.read)]
+            }
         }
         case "update_entry": {
             const entryValues = parseOptionalJsonObject(request.entryValues, "entryValues")
@@ -122,7 +133,12 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             }
             const method = request.multiselectMode === "append" ? "PATCH" : "PUT"
             const data = await attioApiRequest<{ data?: AttioListEntry }>(accessToken, entryPath(request.listIdOrSlug, request.entryId), { method, body: { data: { entry_values: entryValues } } })
-            return { success: true, action: request.action, entry: data.data, actions: [listAction("Updated list entry", request.entryId, "Updated list entry values", RunHistoryActionType.update)] }
+            return {
+                success: true,
+                action: request.action,
+                entry: requireAttioData(data.data, "list entry"),
+                actions: [listAction("Updated list entry", request.entryId, "Updated list entry values", RunHistoryActionType.update)]
+            }
         }
         case "remove_entry": {
             await attioApiRequest<unknown>(accessToken, entryPath(request.listIdOrSlug, request.entryId), { method: "DELETE" })
@@ -144,6 +160,11 @@ function listPath(listIdOrSlug: string): string {
 
 function entryPath(listIdOrSlug: string, entryId: string): string {
     return `${listPath(listIdOrSlug)}/entries/${encodeURIComponent(entryId)}`
+}
+
+function withListWebUrl(list: AttioList, workspaceSlug: string | undefined): AttioList {
+    if (!workspaceSlug) return list
+    return { ...list, web_url: `https://app.attio.com/${workspaceSlug}/collection/${list.id.list_id}` }
 }
 
 function listAction(action: string, target: string, details: string, type: RunHistoryActionType) {

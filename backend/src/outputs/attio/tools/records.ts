@@ -21,7 +21,7 @@ import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 import { ToolACLValidator, requireValueInAnyConfig } from "../../abstract/acl"
 
-import { attioApiRequest, attioWriteRequest, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, attioWriteRequest, requireAttioData, resolveAttioAccessToken } from "./attioApi"
 
 const QUERY_DEFAULT_LIMIT = 20
 const QUERY_MAX_LIMIT = 500
@@ -135,7 +135,7 @@ async function createRecord(request: AttioCreateRecordRequest, accessToken: stri
     return {
         success: true,
         action: request.action,
-        record: data.data,
+        record: requireAttioData(data.data, "record"),
         actions: [writeAction("Created record", request.objectSlug, data.data, RunHistoryActionType.create, `Created ${request.objectSlug} record`)]
     }
 }
@@ -151,7 +151,7 @@ async function updateRecord(request: AttioUpdateRecordRequest, accessToken: stri
     return {
         success: true,
         action: request.action,
-        record: data.data,
+        record: requireAttioData(data.data, "record"),
         actions: [writeAction("Updated record", request.objectSlug, data.data, RunHistoryActionType.update, `Updated ${request.objectSlug} record ${request.recordId}`)]
     }
 }

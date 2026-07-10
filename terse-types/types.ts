@@ -22,6 +22,7 @@ import {
     attioSearchMatchSchema,
     attioTaskSchema,
     attioThreadSchema,
+    attioTranscriptSchema,
     attioUpsertErrorSchema,
     attioWorkspaceMemberSchema,
     linearProjectSummarySchema,
@@ -104,6 +105,7 @@ export type AttioList = z.infer<typeof attioListSchema>
 export type AttioListEntry = z.infer<typeof attioListEntrySchema>
 export type AttioMeeting = z.infer<typeof attioMeetingSchema>
 export type AttioCallRecording = z.infer<typeof attioCallRecordingSchema>
+export type AttioTranscript = z.infer<typeof attioTranscriptSchema>
 export type AttioFile = z.infer<typeof attioFileSchema>
 
 export const linearWorkspaceSchema = z.object({

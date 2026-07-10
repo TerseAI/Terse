@@ -1,11 +1,11 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import type { AttioCallRecording, AttioMeeting, AttioMeetingsRequest, ToolOutputByName } from "terse-types"
+import type { AttioCallRecording, AttioMeeting, AttioMeetingsRequest, AttioTranscript, ToolOutputByName } from "terse-types"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, buildQueryString, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken } from "./attioApi"
 
 export const attioMeetingsTool = defineSessionTool({
     name: "attio_meetings",
@@ -53,7 +53,7 @@ async function executeMeetingsRequest(request: AttioMeetingsRequest, accessToken
         }
         case "get": {
             const data = await attioApiRequest<{ data?: AttioMeeting }>(accessToken, `/meetings/${encodeURIComponent(request.meetingId)}`)
-            return { success: true, action: request.action, meeting: data.data, actions: [meetingAction("Fetched meeting", request.meetingId, "Fetched meeting")] }
+            return { success: true, action: request.action, meeting: requireAttioData(data.data, "meeting"), actions: [meetingAction("Fetched meeting", request.meetingId, "Fetched meeting")] }
         }
         case "list_recordings": {
             const query = buildQueryString({ limit: request.limit, cursor: request.cursor })
@@ -73,14 +73,14 @@ async function executeMeetingsRequest(request: AttioMeetingsRequest, accessToken
         }
         case "get_transcript": {
             const query = buildQueryString({ cursor: request.cursor })
-            const data = await attioApiRequest<{ data?: Record<string, unknown>; pagination?: { next_cursor?: string | null } }>(
+            const data = await attioApiRequest<{ data?: AttioTranscript; pagination?: { next_cursor?: string | null } }>(
                 accessToken,
                 `/meetings/${encodeURIComponent(request.meetingId)}/call_recordings/${encodeURIComponent(request.callRecordingId)}/transcript${query}`
             )
             return {
                 success: true,
                 action: request.action,
-                transcript: data.data,
+                transcript: requireAttioData(data.data, "transcript"),
                 nextCursor: data.pagination?.next_cursor ?? null,
                 actions: [meetingAction("Fetched call transcript", request.callRecordingId, "Fetched call transcript")]
             }

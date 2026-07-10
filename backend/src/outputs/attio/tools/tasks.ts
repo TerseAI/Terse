@@ -5,7 +5,7 @@ import type { AttioTask, AttioTasksRequest, ToolOutputByName } from "terse-types
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, buildQueryString, resolveAttioAccessToken, toAttioActorInput } from "./attioApi"
+import { attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken, toAttioActorInput } from "./attioApi"
 
 export const attioTasksTool = defineSessionTool({
     name: "attio_tasks",
@@ -50,7 +50,12 @@ async function executeTasksRequest(request: AttioTasksRequest, accessToken: stri
         }
         case "get": {
             const data = await attioApiRequest<{ data?: AttioTask }>(accessToken, `/tasks/${encodeURIComponent(request.taskId)}`)
-            return { success: true, action: request.action, task: data.data, actions: [taskAction("Fetched task", request.taskId, "Fetched task", RunHistoryActionType.read)] }
+            return {
+                success: true,
+                action: request.action,
+                task: requireAttioData(data.data, "task"),
+                actions: [taskAction("Fetched task", request.taskId, "Fetched task", RunHistoryActionType.read)]
+            }
         }
         case "create": {
             const body = {
@@ -68,7 +73,7 @@ async function executeTasksRequest(request: AttioTasksRequest, accessToken: stri
             return {
                 success: true,
                 action: request.action,
-                task: data.data,
+                task: requireAttioData(data.data, "task"),
                 actions: [taskAction("Created task", taskId || "task", `Created task "${truncate(request.content)}"`, RunHistoryActionType.create)]
             }
         }
@@ -81,7 +86,12 @@ async function executeTasksRequest(request: AttioTasksRequest, accessToken: stri
                 updates.linked_records = request.linkedRecords.map(record => ({ target_object: record.objectSlug, target_record_id: record.recordId }))
             }
             const data = await attioApiRequest<{ data?: AttioTask }>(accessToken, `/tasks/${encodeURIComponent(request.taskId)}`, { method: "PATCH", body: { data: updates } })
-            return { success: true, action: request.action, task: data.data, actions: [taskAction("Updated task", request.taskId, "Updated task", RunHistoryActionType.update)] }
+            return {
+                success: true,
+                action: request.action,
+                task: requireAttioData(data.data, "task"),
+                actions: [taskAction("Updated task", request.taskId, "Updated task", RunHistoryActionType.update)]
+            }
         }
         case "delete": {
             await attioApiRequest<unknown>(accessToken, `/tasks/${encodeURIComponent(request.taskId)}`, { method: "DELETE" })

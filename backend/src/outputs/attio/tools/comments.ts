@@ -5,7 +5,7 @@ import type { AttioComment, AttioCommentsRequest, AttioThread, ToolOutputByName 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, buildQueryString, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken } from "./attioApi"
 
 export const attioCommentsTool = defineSessionTool({
     name: "attio_comments",
@@ -34,11 +34,21 @@ async function executeCommentsRequest(request: AttioCommentsRequest, accessToken
             const body = { data: { format: "plaintext", content: request.content, author: { type: "workspace-member", id: request.authorWorkspaceMemberId }, ...buildCommentTarget(request) } }
             const data = await attioApiRequest<{ data?: AttioComment }>(accessToken, "/comments", { method: "POST", body })
             const target = request.threadId ? `thread/${request.threadId}` : `${request.objectSlug}/${request.recordId}`
-            return { success: true, action: request.action, comment: data.data, actions: [commentAction("Created comment", target, "Created comment", RunHistoryActionType.create)] }
+            return {
+                success: true,
+                action: request.action,
+                comment: requireAttioData(data.data, "comment"),
+                actions: [commentAction("Created comment", target, "Created comment", RunHistoryActionType.create)]
+            }
         }
         case "get": {
             const data = await attioApiRequest<{ data?: AttioComment }>(accessToken, `/comments/${encodeURIComponent(request.commentId)}`)
-            return { success: true, action: request.action, comment: data.data, actions: [commentAction("Fetched comment", request.commentId, "Fetched comment", RunHistoryActionType.read)] }
+            return {
+                success: true,
+                action: request.action,
+                comment: requireAttioData(data.data, "comment"),
+                actions: [commentAction("Fetched comment", request.commentId, "Fetched comment", RunHistoryActionType.read)]
+            }
         }
         case "delete": {
             await attioApiRequest<unknown>(accessToken, `/comments/${encodeURIComponent(request.commentId)}`, { method: "DELETE" })
@@ -58,7 +68,12 @@ async function executeCommentsRequest(request: AttioCommentsRequest, accessToken
         }
         case "get_thread": {
             const data = await attioApiRequest<{ data?: AttioThread }>(accessToken, `/threads/${encodeURIComponent(request.threadId)}`)
-            return { success: true, action: request.action, thread: data.data, actions: [commentAction("Fetched thread", request.threadId, "Fetched thread with comments", RunHistoryActionType.read)] }
+            return {
+                success: true,
+                action: request.action,
+                thread: requireAttioData(data.data, "thread"),
+                actions: [commentAction("Fetched thread", request.threadId, "Fetched thread with comments", RunHistoryActionType.read)]
+            }
         }
         default:
             throw request satisfies never

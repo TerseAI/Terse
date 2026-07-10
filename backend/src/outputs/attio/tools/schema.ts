@@ -5,7 +5,7 @@ import type { AttioAttribute, AttioObject, AttioSchemaRequest, ToolOutputByName 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, parseOptionalJsonObject, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, parseOptionalJsonObject, requireAttioData, resolveAttioAccessToken } from "./attioApi"
 
 export const attioSchemaTool = defineSessionTool({
     name: "attio_schema",
@@ -37,7 +37,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 success: true,
                 action: request.action,
-                object: data.data,
+                object: requireAttioData(data.data, "object"),
                 actions: [schemaAction("Fetched object", request.objectSlug, "Fetched object configuration", RunHistoryActionType.read)]
             }
         }
@@ -47,7 +47,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 success: true,
                 action: request.action,
-                object: data.data,
+                object: requireAttioData(data.data, "object"),
                 actions: [schemaAction("Created object", request.apiSlug, `Created custom object "${request.singularNoun}"`, RunHistoryActionType.create)]
             }
         }
@@ -60,7 +60,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 success: true,
                 action: request.action,
-                object: data.data,
+                object: requireAttioData(data.data, "object"),
                 actions: [schemaAction("Updated object", request.objectSlug, "Updated object configuration", RunHistoryActionType.update)]
             }
         }
@@ -92,7 +92,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 success: true,
                 action: request.action,
-                attribute: data.data,
+                attribute: requireAttioData(data.data, "attribute"),
                 actions: [schemaAction("Created attribute", `${request.identifier}/${request.apiSlug}`, `Created ${request.attributeType} attribute "${request.title}"`, RunHistoryActionType.create)]
             }
         }
@@ -104,7 +104,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 success: true,
                 action: request.action,
-                attribute: data.data,
+                attribute: requireAttioData(data.data, "attribute"),
                 actions: [schemaAction("Updated attribute", `${request.identifier}/${request.attributeSlug}`, "Updated attribute configuration", RunHistoryActionType.update)]
             }
         }
@@ -124,7 +124,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 success: true,
                 action: request.action,
-                status: data.data,
+                status: requireAttioData(data.data, "status"),
                 actions: [schemaAction("Created status", `${request.identifier}/${request.attributeSlug}`, `Added status "${request.title}"`, RunHistoryActionType.create)]
             }
         }
@@ -136,7 +136,12 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
                 method: "PATCH",
                 body: { data: updates }
             })
-            return { success: true, action: request.action, status: data.data, actions: [schemaAction("Updated status", request.statusId, "Updated status", RunHistoryActionType.update)] }
+            return {
+                success: true,
+                action: request.action,
+                status: requireAttioData(data.data, "status"),
+                actions: [schemaAction("Updated status", request.statusId, "Updated status", RunHistoryActionType.update)]
+            }
         }
         case "list_select_options": {
             const data = await attioApiRequest<{ data?: Record<string, unknown>[] }>(accessToken, `${attributePath(request)}/options`)
@@ -154,7 +159,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 success: true,
                 action: request.action,
-                selectOption: data.data,
+                selectOption: requireAttioData(data.data, "select option"),
                 actions: [schemaAction("Created select option", `${request.identifier}/${request.attributeSlug}`, `Added option "${request.title}"`, RunHistoryActionType.create)]
             }
         }
@@ -169,7 +174,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 success: true,
                 action: request.action,
-                selectOption: data.data,
+                selectOption: requireAttioData(data.data, "select option"),
                 actions: [schemaAction("Updated select option", request.optionId, "Updated select option", RunHistoryActionType.update)]
             }
         }

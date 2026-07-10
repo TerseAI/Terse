@@ -5,7 +5,7 @@ import type { AttioFile, AttioFilesRequest, ToolOutputByName } from "terse-types
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { AttioApiError, attioApiRequest, buildQueryString, resolveAttioAccessToken } from "./attioApi"
+import { AttioApiError, attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken } from "./attioApi"
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
@@ -47,7 +47,12 @@ async function executeFilesRequest(request: AttioFilesRequest, accessToken: stri
         }
         case "get": {
             const data = await attioApiRequest<{ data?: AttioFile }>(accessToken, `/files/${encodeURIComponent(request.fileId)}`)
-            return { success: true, action: request.action, file: data.data, actions: [fileAction("Fetched file", request.fileId, "Fetched file metadata", RunHistoryActionType.read)] }
+            return {
+                success: true,
+                action: request.action,
+                file: requireAttioData(data.data, "file"),
+                actions: [fileAction("Fetched file", request.fileId, "Fetched file metadata", RunHistoryActionType.read)]
+            }
         }
         case "upload": {
             const file = await uploadFile(request, accessToken)

@@ -87,7 +87,8 @@
     "ATTIO": {
         "INTEGRATIONS": "/attio/integrations",
         "OAUTH_CALLBACK": "/attio/oauth/callback",
-        "OBJECTS": "/attio/integrations/:integrationId/objects"
+        "OBJECTS": "/attio/integrations/:integrationId/objects",
+        "LISTS": "/attio/integrations/:integrationId/lists"
     },
     "HEY_REACH": {
         "INTEGRATIONS": "/heyreach/integrations",

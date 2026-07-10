@@ -25,6 +25,22 @@ export async function resolveAttioAccessToken(integrationId: string, runContext:
     return accessToken
 }
 
+export function requireAttioData<T>(value: T | undefined, what: string): T {
+    if (value === undefined) {
+        throw new Error(`Attio returned a success response without the expected ${what} payload.`)
+    }
+    return value
+}
+
+export async function fetchWorkspaceSlug(accessToken: string): Promise<string | undefined> {
+    try {
+        const data = await attioApiRequest<{ workspace_slug?: string }>(accessToken, "/self")
+        return data.workspace_slug
+    } catch {
+        return undefined
+    }
+}
+
 export function toAttioActorInput(emailOrMemberId: string): Record<string, unknown> {
     if (emailOrMemberId.includes("@")) {
         return { workspace_member_email_address: emailOrMemberId }

@@ -5,7 +5,7 @@ import type { AttioNote, AttioNotesRequest, ToolOutputByName } from "terse-types
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, buildQueryString, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken } from "./attioApi"
 
 export const attioNotesTool = defineSessionTool({
     name: "attio_notes",
@@ -49,7 +49,12 @@ async function executeNotesRequest(request: AttioNotesRequest, accessToken: stri
         }
         case "get": {
             const data = await attioApiRequest<{ data?: AttioNote }>(accessToken, `/notes/${encodeURIComponent(request.noteId)}`)
-            return { success: true, action: request.action, note: data.data, actions: [noteAction("Fetched note", request.noteId, "Fetched note", RunHistoryActionType.read)] }
+            return {
+                success: true,
+                action: request.action,
+                note: requireAttioData(data.data, "note"),
+                actions: [noteAction("Fetched note", request.noteId, "Fetched note", RunHistoryActionType.read)]
+            }
         }
         case "create": {
             const body = {
@@ -65,7 +70,7 @@ async function executeNotesRequest(request: AttioNotesRequest, accessToken: stri
             return {
                 success: true,
                 action: request.action,
-                note: data.data,
+                note: requireAttioData(data.data, "note"),
                 actions: [noteAction("Created note", `${request.parentObjectSlug}/${request.parentRecordId}`, `Created note "${request.title}"`, RunHistoryActionType.create)]
             }
         }

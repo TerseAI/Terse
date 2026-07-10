@@ -1850,8 +1850,9 @@ export const attioSearchMatchSchema = z
 
 export const attioAttributeHistoryEntrySchema = z
     .object({
-        active_from: z.string().optional(),
-        active_until: z.string().nullable().optional()
+        active_from: z.string(),
+        active_until: z.string().nullable(),
+        attribute_type: z.string().optional()
     })
     .catchall(z.unknown())
 
@@ -1861,8 +1862,8 @@ export const attioTaskSchema = z
         content_plaintext: z.string(),
         deadline_at: z.string().nullable(),
         is_completed: z.boolean(),
-        linked_records: z.array(z.record(z.string(), z.unknown())),
-        assignees: z.array(z.record(z.string(), z.unknown())),
+        linked_records: z.array(z.object({ target_object_id: z.string(), target_record_id: z.string() }).catchall(z.unknown())),
+        assignees: z.array(z.object({ referenced_actor_type: z.string(), referenced_actor_id: z.string().nullable() }).catchall(z.unknown())),
         created_at: z.string()
     })
     .catchall(z.unknown())
@@ -1904,7 +1905,9 @@ export const attioListSchema = z
         api_slug: z.string(),
         name: z.string(),
         parent_object: z.array(z.string()).or(z.string()),
-        created_at: z.string()
+        created_at: z.string(),
+        /** Synthesized by Terse from the workspace slug; the Attio API does not return list URLs. */
+        web_url: z.string().optional()
     })
     .catchall(z.unknown())
 
@@ -1933,6 +1936,21 @@ export const attioCallRecordingSchema = z
         id: z.object({ workspace_id: z.string(), meeting_id: z.string(), call_recording_id: z.string() }),
         status: z.string(),
         created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioTranscriptSpeechSchema = z
+    .object({
+        speech: z.string(),
+        start_time: z.number().optional(),
+        end_time: z.number().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioTranscriptSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), meeting_id: z.string(), call_recording_id: z.string() }).optional(),
+        transcript: z.array(attioTranscriptSpeechSchema)
     })
     .catchall(z.unknown())
 
@@ -2555,7 +2573,7 @@ export const attioMeetingsTool = defineTool({
         meetings: z.array(attioMeetingSchema).optional(),
         meeting: attioMeetingSchema.optional(),
         recordings: z.array(attioCallRecordingSchema).optional(),
-        transcript: z.record(z.string(), z.unknown()).optional(),
+        transcript: attioTranscriptSchema.optional(),
         count: z.number().int().optional(),
         nextCursor: z.string().nullable().optional()
     })
