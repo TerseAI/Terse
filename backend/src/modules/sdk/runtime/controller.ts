@@ -318,7 +318,9 @@ export async function handleSdkListen(req: Request, res: Response) {
 
 // SESSION events SSE
 
-const SSE_SESSION_CAP = { name: "sse-session", max: 100, keyTtlSeconds: 300, heartbeatIntervalMs: 30_000 }
+const SSE_SESSION_CAP = { name: "sse-session", max: 100, lockTimeoutMs: 120_000, refreshIntervalMs: 30_000 }
+const SSE_HEARTBEAT_INTERVAL_MS = 30_000
+const SSE_MAX_STALLED_HEARTBEATS = 4
 
 let sessionCap: ReturnType<typeof RateLimiterClient.prototype.createConnectionCap> | null = null
 function getSseCap() {
@@ -333,11 +335,12 @@ export async function handleSessionEvents(req: Request, res: Response) {
     const slot = await getSseCap().tryAcquire(user.id)
     if (!slot) {
         res.setHeader("Retry-After", "30")
-        return res.status(429).json({ error: "Too many concurrent SSE connections" })
+        return res.status(429).json({ error: "Too many concurrent Terse sessions" })
     }
 
     const sessionId = crypto.randomUUID()
 
+    req.socket.setKeepAlive(true, SSE_HEARTBEAT_INTERVAL_MS)
     res.setHeader("Content-Type", "text/event-stream")
     res.setHeader("Cache-Control", "no-cache")
     res.setHeader("Connection", "keep-alive")
@@ -355,10 +358,18 @@ export async function handleSessionEvents(req: Request, res: Response) {
         }
     }
 
+    // A healthy peer drains the response buffer between beats; a buffer that stays
+    // unflushed across several beats is a dead connection the socket never reported.
+    let stalledHeartbeats = 0
     const heartbeat = setInterval(() => {
+        stalledHeartbeats = res.writableLength > 0 ? stalledHeartbeats + 1 : 0
+        if (stalledHeartbeats >= SSE_MAX_STALLED_HEARTBEATS) {
+            logger.warn("[sdkSession] peer stopped reading; closing SSE stream", { sessionId, userId: user.id })
+            teardown()
+            return
+        }
         safeWrite(`: keepalive\n\n`)
-        void slot.refresh().catch(error => logger.warn("[sdkSession] slot.refresh failed", { error, sessionId, userId: user.id }))
-    }, SSE_SESSION_CAP.heartbeatIntervalMs)
+    }, SSE_HEARTBEAT_INTERVAL_MS)
 
     const unsubscribe = onSessionEvent(sessionId, event => {
         safeWrite(`data: ${JSON.stringify(event)}\n\n`)

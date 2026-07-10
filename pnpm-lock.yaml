@@ -174,6 +174,9 @@ importers:
       helmet:
         specifier: ^8.2.0
         version: 8.2.0
+      ioredis:
+        specifier: 5.11.1
+        version: 5.11.1
       ipaddr.js:
         specifier: ^2.4.0
         version: 2.4.0
@@ -216,6 +219,9 @@ importers:
       redis:
         specifier: ^5.9.0
         version: 5.11.0
+      redis-semaphore:
+        specifier: ^5.7.0
+        version: 5.7.0(ioredis@5.11.1)
       resend:
         specifier: ^6.9.2
         version: 6.10.0
@@ -7278,6 +7284,15 @@ packages:
   redis-parser@3.0.0:
     resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
     engines: {node: '>=4'}
+
+  redis-semaphore@5.7.0:
+    resolution: {integrity: sha512-2xjl8eYVVTKX8O8C/H70iWEGx8BSOOzI5P1tQgXEO8A8dR2/BPgU7QctCfcXOHsQ7/IIkebv1ulEdo2iC2SwvA==}
+    engines: {node: '>= 14.17.0'}
+    peerDependencies:
+      ioredis: 5.11.1
+    peerDependenciesMeta:
+      ioredis:
+        optional: true
 
   redis@5.11.0:
     resolution: {integrity: sha512-YwXjATVDT+AuxcyfOwZn046aml9jMlQPvU1VXIlLDVAExe0u93aTfPYSeRgG4p9Q/Jlkj+LXJ1XEoFV+j2JKcQ==}
@@ -16063,6 +16078,14 @@ snapshots:
   redis-parser@3.0.0:
     dependencies:
       redis-errors: 1.2.0
+
+  redis-semaphore@5.7.0(ioredis@5.11.1):
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+    optionalDependencies:
+      ioredis: 5.11.1
+    transitivePeerDependencies:
+      - supports-color
 
   redis@5.11.0:
     dependencies:

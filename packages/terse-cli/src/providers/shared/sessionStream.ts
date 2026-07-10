@@ -17,21 +17,25 @@ type SessionStreamOptions = {
 
 export async function openSessionStream(apiKey: string, options: SessionStreamOptions = {}): Promise<SessionHandle> {
     try {
-        return await connectTerseSessionStream(BACKEND_URL, apiKey, {
-            onEvent: async (event: SessionStreamEvent) => {
-                if (options.onEvent) {
-                    try {
-                        await options.onEvent(event)
-                    } catch (error) {
-                        console.error(chalk.red(`  Session event handler failed: ${(error as Error).message}`))
-                    }
-                }
-                logSessionEvent(event, options)
-            }
-        })
+        return await connectSessionStream(apiKey, options)
     } catch (error) {
         throw mapSessionStreamError(error)
     }
+}
+
+async function connectSessionStream(apiKey: string, options: SessionStreamOptions): Promise<SessionHandle> {
+    return connectTerseSessionStream(BACKEND_URL, apiKey, {
+        onEvent: async (event: SessionStreamEvent) => {
+            if (options.onEvent) {
+                try {
+                    await options.onEvent(event)
+                } catch (error) {
+                    console.error(chalk.red(`  Session event handler failed: ${(error as Error).message}`))
+                }
+            }
+            logSessionEvent(event, options)
+        }
+    })
 }
 
 export async function submitApprovalDecision(apiKey: string, params: SdkApprovalDecisionRequestBody): Promise<void> {
@@ -128,6 +132,11 @@ function mapSessionStreamError(error: unknown): unknown {
                 detail: "Your TERSE_API_KEY is missing, expired, or invalid. Run `terse auth login` to re-authenticate, or set a valid TERSE_API_KEY in your environment.",
                 actionRequired: true,
                 exitCode: ErrorCode.BAD_ARGUMENTS
+            })
+        }
+        if (error.status === 429) {
+            return new CliError("session_limit_reached", "Too many open Terse sessions.", {
+                detail: `${error.message}\n  Close other running terse processes, or wait a couple of minutes for stale sessions to expire, then retry.\n  Backend: ${BACKEND_URL}`
             })
         }
         return new CliError("session_stream_failed", "Could not start a Terse session.", {
