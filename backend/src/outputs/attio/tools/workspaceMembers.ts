@@ -51,7 +51,7 @@ async function executeWorkspaceMembersRequest(request: AttioWorkspaceMembersRequ
 }
 
 async function listWorkspaceMembers(request: AttioListWorkspaceMembersRequest, accessToken: string): Promise<AttioWorkspaceMembersOutput> {
-    const data = await attioApiRequest<{ data?: AttioWorkspaceMember[] }>(accessToken, "/workspace-members")
+    const data = await attioApiRequest<{ data?: AttioWorkspaceMember[] }>(accessToken, "/workspace_members")
     const members = data.data ?? []
 
     return {
@@ -72,7 +72,7 @@ async function listWorkspaceMembers(request: AttioListWorkspaceMembersRequest, a
 }
 
 async function getWorkspaceMember(request: AttioGetWorkspaceMemberRequest, accessToken: string): Promise<AttioWorkspaceMembersOutput> {
-    const data = await attioApiRequest<{ data?: AttioWorkspaceMember }>(accessToken, `/workspace-members/${encodeURIComponent(request.workspaceMemberId)}`)
+    const data = await attioApiRequest<{ data?: AttioWorkspaceMember }>(accessToken, `/workspace_members/${encodeURIComponent(request.workspaceMemberId)}`)
     if (!data.data) {
         throw new Error(`Attio workspace member "${request.workspaceMemberId}" not found.`)
     }
