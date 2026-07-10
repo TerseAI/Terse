@@ -46,7 +46,7 @@ export async function update(): Promise<void> {
     intro("terse update")
     await updateGlobalCli()
     const bundle = await fetchSkillBundle()
-    await installSkillBundle(bundle)
+    await updateSkillBundle(bundle)
     outro("Terse CLI and skills are up to date.")
 }
 
@@ -108,6 +108,13 @@ async function installSkillBundle(bundle: SkillBundle): Promise<void> {
     log.step(`Installing Terse skills into your coding agents: ${bundle.skills.join(", ")}`)
     const skillFlags = bundle.skills.flatMap(skill => ["--skill", skill])
     const command = ["npx", "-y", "skills@latest", "add", REPO_SLUG, "-y", "-g", ...skillFlags]
+    await runStreaming(command[0], command.slice(1))
+}
+
+async function updateSkillBundle(bundle: SkillBundle): Promise<void> {
+    log.step(`Updating Terse skills in your coding agents: ${bundle.skills.join(", ")}`)
+    const skillFlags = bundle.skills.flatMap(skill => ["--skill", skill])
+    const command = ["npx", "-y", "skills@latest", "update", REPO_SLUG, "-y", "-g", ...skillFlags]
     await runStreaming(command[0], command.slice(1))
 }
 
