@@ -239,7 +239,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
     }
 }
 
-export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiKey: string; displayName: string | null } | null> {
+export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<LoginResult | null> {
     const canFallToDeviceLogin = !opts?.nonInteractive
 
     const stored = getStoredApiKey()
@@ -311,6 +311,11 @@ export async function getProjectAttachedUserName(targetDir: string): Promise<str
 }
 
 // Types
+
+export type LoginResult = {
+    apiKey: string
+    displayName: string | null
+}
 
 interface DeviceCodeResponse {
     device_code: string

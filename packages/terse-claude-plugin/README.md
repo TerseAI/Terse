@@ -70,7 +70,7 @@ Self-host the Terse control plane on your own infrastructure via `npx create-ter
 
 - `skills/<name>/SKILL.md` — one folder per skill, per the [Agent Skills spec](https://agentskills.io/specification). Where `templates/<name>.md.hbs` exists, `SKILL.md` is generated: edit the template (or a partial) and run `node scripts/build-skills.mjs` (CI fails on drift)
 - `templates/` — `<name>.md.hbs` skill templates plus the `.md` partials they inline (`{{> code-conventions}}`); always-read style guides live here so they ship inside the generated `SKILL.md`
-- `skills/<name>/references/` — reference docs the skill reads at run time (research templates, bootstrap)
+- `skills/<name>/references/` — reference docs the skill reads at run time (research templates, self-hosting)
 - `.claude-plugin/marketplace.json` (repo root) is the single source of truth for the official skill set: Claude Code installs from it, and `terse install`/`terse update` fetch it from main to decide what to install
 
 ## What is Terse?

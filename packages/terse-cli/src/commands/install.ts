@@ -1,4 +1,5 @@
 import { confirm, intro, isCancel, log, outro } from "@clack/prompts"
+import chalk from "chalk"
 import { execFile as execFileCallback, spawn } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
@@ -10,7 +11,7 @@ import { CliError } from "../cliError.js"
 import { NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { getStoredApiKey } from "../userConfig.js"
 
-import { loginAndPersist } from "./auth.js"
+import { LoginResult, loginAndPersist } from "./auth.js"
 
 const execFile = promisify(execFileCallback)
 
@@ -25,7 +26,20 @@ export async function install(opts?: NonInteractiveOpts): Promise<void> {
     await installSkillBundle(bundle)
     await offerClaudePermissions(opts)
     await ensureAuth(opts)
-    outro("Terse is ready. Try `terse init <project>`, or create your first workflow with the `/terse-create` command in your coding agent.")
+
+    const installationMessage = [
+        chalk.green("Terse installation is complete."),
+        "",
+        chalk.bold("To create your first workflow:"),
+        "",
+        "1. Open your coding agent (claude, cursor, codex etc.)",
+        `2. Run this slash command: ${chalk.green("/terse-create <describe your workflow>")}`,
+        "",
+        chalk.bold("OR"),
+        "",
+        `Create a project from the CLI: ${chalk.green("terse init <projectName>")}`
+    ].join("\n")
+    outro(installationMessage)
 }
 
 export async function update(): Promise<void> {
@@ -93,7 +107,8 @@ async function fetchJson(url: string): Promise<unknown> {
 async function installSkillBundle(bundle: SkillBundle): Promise<void> {
     log.step(`Installing Terse skills into your coding agents: ${bundle.skills.join(", ")}`)
     const skillFlags = bundle.skills.flatMap(skill => ["--skill", skill])
-    await runStreaming("npx", ["-y", "skills@latest", "add", REPO_SLUG, "-y", ...skillFlags])
+    const command = ["npx", "-y", "skills@latest", "add", REPO_SLUG, "-y", "-g", ...skillFlags]
+    await runStreaming(command[0], command.slice(1))
 }
 
 async function offerClaudePermissions(opts?: NonInteractiveOpts): Promise<void> {
@@ -132,7 +147,7 @@ function readClaudeSettings(settingsPath: string): ClaudeSettings | null {
     return parsed.success ? parsed.data : null
 }
 
-async function ensureAuth(opts?: NonInteractiveOpts): Promise<void> {
+export async function ensureAuth(opts?: NonInteractiveOpts): Promise<LoginResult | undefined> {
     if (getStoredApiKey()) return
     if (isNonInteractive(opts)) {
         log.info("Not logged in. Run `terse auth login` when ready.")
@@ -143,7 +158,7 @@ async function ensureAuth(opts?: NonInteractiveOpts): Promise<void> {
         log.info("You can log in later with `terse auth login`.")
         return
     }
-    await loginAndPersist()
+    return await loginAndPersist()
 }
 
 async function isOnPath(bin: string): Promise<boolean> {
