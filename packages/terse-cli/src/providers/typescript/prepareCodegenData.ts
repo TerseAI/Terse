@@ -981,8 +981,10 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push(
             "type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }"
         )
-        attioPreludeLines.push('type __AttioRecordBase = NonNullable<NonNullable<ToolOutputByName["attio_records"]["records"]>[number]>')
-        attioPreludeLines.push('type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<__AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }')
+        attioPreludeLines.push(
+            "type __AttioRecordBase = { id?: { workspace_id?: string; object_id?: string; record_id?: string }; record_id?: string; web_url?: string; created_at?: string }"
+        )
+        attioPreludeLines.push("type __AttioRecordWithValues<TValues extends Record<string, unknown>> = __AttioRecordBase & TValues & { values: TValues; attributes: TValues }")
         attioPreludeLines.push("")
 
         if (attioGeneratedObjects.length > 0) {
