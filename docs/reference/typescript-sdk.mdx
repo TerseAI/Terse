@@ -64,7 +64,7 @@ Your `onTrigger` and `filter` callbacks receive these enriched objects, so you c
 
 ## `createJob(...)`
 
-Registers a workflow at load time. The CLI imports your entry file (`src/terse.jobs.ts` by default), so every `createJob()` call that runs during that import is included. Split definitions across files with side-effect imports (for example `import "./jobs/myWorkflow"`) if you prefer.
+Registers a workflow at load time. The CLI imports your entry file (`src/terse.jobs.ts` by default), so every `createJob()` call that runs during that import is included. The scaffolded layout defines each job in its own file under `src/jobs/` and imports it for side effects (`import "./jobs/myWorkflow"`) from the entry file.
 
 Duplicate `name` values throw an error when the second job registers. At most **one** webhook trigger is allowed per workflow.
 

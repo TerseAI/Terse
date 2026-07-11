@@ -162,7 +162,7 @@ The diagram is a separate step from the design questions: resolve every remainin
 Open `src/terse.jobs.ts` (the canonical job entry file). The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 
 If the repo already uses a custom entry file, follow that layout and pass `--entry-file` on later `terse` commands.
-Job placement follows the project-layout rule in the conventions section: the first job lives directly in `src/terse.jobs.ts`; adding a second job moves every job (the existing one too) into its own `src/jobs/<kebab-case-name>.ts` file and turns `src/terse.jobs.ts` into a manifest of side-effect imports. If the manifest layout is already in place, create the new job as its own file in `src/jobs/` and add its import line.
+Job placement follows the project-layout rule in the conventions section: every job lives in its own `src/jobs/<kebab-case-name>.ts` file, and `src/terse.jobs.ts` is a manifest of side-effect imports — create the new job as its own file in `src/jobs/` and add its import line. If the repo still keeps a job inline in `src/terse.jobs.ts`, move it to its own file in `src/jobs/` when you touch it.
 If the repo only has `src/index.ts`, treat that as a legacy fallback instead of creating a second competing entry file.
 If no runtime entry exists yet, create one:
 
