@@ -4,7 +4,7 @@ description: Create a Terse workflow. Use when the user wants to build an automa
 license: MIT
 metadata:
   author: Terse AI
-  version: "0.5.0"
+  version: "0.6.0"
   category: workflow
 ---
 
@@ -59,9 +59,9 @@ If `src/terse.generated.ts` is missing in an existing project, run `terse genera
 
 ### 1. Initial interview
 
-Interview the user before doing any research: their answers set the direction the researchers take in step 2.
+Interview the user before doing any research: their answers set the direction the workspace scan and the researchers take in step 2.
 
-Ask about decisions and intent only — what should happen, on which events, for whom, and what a good outcome looks like. Do not ask about facts: what is connected, which triggers exist, what the docs support, and what an external API offers are exactly what step 2's researchers retrieve. If the request already pins down the intent unambiguously, skip straight to step 2.
+Ask about decisions and intent only — what should happen, on which events, for whom, and what a good outcome looks like. Do not ask about how to implement it: what is connected, which triggers exist, what the docs support, and what an external API offers are exactly what step 2's scan and researchers retrieve. If the request already pins down the intent unambiguously, skip straight to step 2.
 
 Batch related questions, at most four per interruption. For every question, provide a recommended answer.
 
@@ -70,28 +70,34 @@ While interviewing, sharpen the domain language:
 - When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
 - Stress-test domain relationships with concrete scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
 
-### 2. Dispatch researchers
+### 2. Scan the workspace, then dispatch researchers
 
-Gather context through researchers — focused, read-only research tasks defined by self-contained templates in `references/`. Each produces a research brief in a fixed shape.
+**Workspace scan — always yours, never a subagent's.** The exact types and signatures must be in your context to write the job in step 9, so delegating this read would only add a wasted pass. Read, in full:
 
-- **Workspace researcher** ([research-workspace.md](references/research-workspace.md)) — always dispatch. Reads `src/terse.generated.ts` and the job entry file, and reports which connected integrations, triggers, skills, toolbox methods, and resources match this workflow, and which needed services are missing.
-- **Docs researcher** ([research-docs.md](references/research-docs.md)) — dispatch unless the workflow only uses primitives you have already verified against the live docs in this session. Reads the live Terse docs and reports the features relevant to this workflow, including whether each involved platform has a built-in integration type.
-- **Integration researcher** ([research-integrations.md](references/research-integrations.md)) — dispatch only after the workspace and docs briefs confirm a needed service has no built-in Terse integration (rungs 3–4 of the integration ladder in the conventions section). Researches the platform's official SDK, auth model, and key endpoints.
+1. `src/terse.generated.ts`. The comment at the top lists every integration currently available in Terse; the generated sections below it reflect what is connected. Do not read `node_modules/`.
+2. `src/terse.jobs.ts` (or the project's custom entry file, or the legacy `src/index.ts`) — note existing jobs that overlap or conflict with this workflow.
+
+From the scan, carry forward the exact trigger factories (`Triggers.*`), skill factories (`Skills.*`), `toolbox.<integration>.<method>` signatures, and resource constants that match this workflow — only names that literally appear in the file, never invented — plus the gaps. Classify each gap against the available-integrations comment: a platform in the list but with no generated section is a connectable built-in (`terse integrate tool <type> --json` lists its tools); a platform absent from the list has no Terse built-in — leave those to the researchers below.
+
+**Researchers** are focused, read-only background research tasks defined by self-contained templates in `references/`. Each produces a research brief in a fixed shape.
+
+- **Docs researcher** ([research-docs.md](references/research-docs.md)) — dispatch right after the scan, unless the workflow only uses primitives you have already verified against the live docs in this session. Reads the live Terse docs and reports the features relevant to this workflow, including whether each involved platform has a built-in integration type. Sharpen its objectives with the scan: name the platforms whose coverage is actually in question instead of asking about everything.
+- **Integration researcher** ([research-integrations.md](references/research-integrations.md)) — dispatch only after the scan and the docs brief confirm a needed service has no built-in Terse integration (rungs 3–4 of the integration ladder in the conventions section). Researches the platform's official SDK, auth model, and key endpoints.
 
 **Dispatching a researcher.** For each one:
 
 1. Read its template file from `references/`.
-2. Replace the "Context from the orchestrator" comment block with real content: the workflow in one paragraph, the platforms/events/actions involved, and the interview answers that narrow the search. Where the template has an "Objectives" block, fill it with the specific questions this run needs answered — researchers answer the objectives with the fewest fetches that settle them, so vague objectives buy back the over-reading.
-3. If your harness can spawn subagents (an Agent/Task tool), pass the entire filled-in template as the subagent's prompt, using a read-only agent type — web-capable for the docs and integration researchers. The template is self-contained: the subagent needs no other context, and its reply is the research brief.
+2. Replace the "Context from the orchestrator" comment block with real content: the workflow in one paragraph, the platforms/events/actions involved, and the interview answers and scan findings that narrow the search. Where the template has an "Objectives" block, fill it with the specific questions this run needs answered — researchers answer the objectives with the fewest fetches that settle them, so vague objectives buy back the over-reading.
+3. If your harness can spawn subagents (an Agent/Task tool), pass the entire filled-in template as the subagent's prompt, using a read-only, web-capable agent type. The template is self-contained: the subagent needs no other context, and its reply is the research brief.
 4. If it cannot, follow the filled-in template yourself, inline, and write out the same brief before moving on.
 
-**Parallel where the harness allows.** Dispatch the workspace and docs researchers in one message so they run concurrently, and collect their briefs. Dispatch the integration researcher as soon as the briefs justify it — it can run while you conduct step 3. Inline execution runs the templates sequentially, in the order above.
+**Background where the harness allows.** Dispatch the docs researcher as soon as the scan is done, and collect its brief. Dispatch the integration researcher as soon as the scan and docs brief justify it — it can run while you conduct step 3. Inline execution runs the templates sequentially, in the order above.
 
 Researchers are read-only: they must not edit files or run state-changing commands (`terse integrate connect`, `terse generate`, `terse deploy`).
 
 ### 3. Reach a shared understanding
 
-Read the briefs, then bring the user everything that changes the design:
+Combine your workspace scan with the research briefs, then bring the user everything that changes the design:
 
 - Decisions the research raised: a missing integration to connect or work around, two plausible trigger choices, a docs feature that suggests a different shape for the workflow.
 - Contradictions between what the user asked for and what exists. Surface them; do not silently resolve them.
@@ -191,7 +197,7 @@ For durable jobs, the style rules in the conventions section ("Durable job style
 
 ### 6. Pick triggers
 
-Choose triggers based on what events the job should respond to. The workspace brief lists the candidates; import trigger factories and resource constants from `./terse.generated`.
+Choose triggers based on what events the job should respond to. Your workspace scan surfaced the candidates; import trigger factories and resource constants from `./terse.generated`.
 
 Only use triggers and resources that actually exist in `src/terse.generated.ts`. Do not invent constants that are not defined there.
 
@@ -203,7 +209,7 @@ Rules of thumb:
 - If a step is fully deterministic, call `toolbox.<integration>.<method>` directly. No skill required.
 - If the model needs to choose actions on an integration during a `generateText` run, that integration must be in `skills`.
 
-When the workflow needs a platform, the briefs have already walked the integration ladder in the conventions section ("Integrating with a platform"): the workspace brief settles what is connected, the docs brief settles whether a built-in type exists, and the integration brief covers the external rungs. Confirm the rung and stop at the first one that works; for the community-wrapper rung, put the choice to the user with the brief's evidence.
+When the workflow needs a platform, step 2 has already walked the integration ladder in the conventions section ("Integrating with a platform"): the workspace scan settles what is connected, the docs brief settles whether a built-in type exists, and the integration brief covers the external rungs. Confirm the rung and stop at the first one that works; for the community-wrapper rung, put the choice to the user with the brief's evidence.
 
 Connecting a missing built-in integration type:
 
@@ -233,7 +239,7 @@ Filters prevent unnecessary agent runs and save cost.
 
 ### 9. Build the handler in milestones
 
-The "Terse Job Code Conventions" section at the bottom of this file governs every line of handler code below. Before writing code that imports from `./terse.generated`, read `src/terse.generated.ts` yourself: the workspace brief guided the design, but exact names and signatures come from the file.
+The "Terse Job Code Conventions" section at the bottom of this file governs every line of handler code below. Exact names and signatures come from your step 2 read of `src/terse.generated.ts`, never from memory of the design discussion; reopen the file only if `terse generate` has rerun since the scan (step 7 reruns it after connecting an integration).
 
 Never build the whole handler and test at the end. Slice the workflow into milestones — logical groupings like gather context, decide, act — and prove each one green before starting the next. The worked examples in the conventions section (durable and non-durable) show the target shape; the durable one is sliced into milestones — anchor your slicing on it.
 
