@@ -28,7 +28,7 @@ import { CancelReason } from "../../../modules/agents/cancellation/RunCancellati
 import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellation/runCancellationEffects"
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
-import { registerInputRequest } from "../../../services/InputRequestService"
+import { readStashedInputResponse, registerInputRequest } from "../../../services/InputRequestService"
 import { snapshotRunJournalForSuspend } from "../../../services/resolveRunStatus"
 import { enqueueRunExecution } from "../../../tasks/queues/runExecutionQueue"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
@@ -471,4 +471,21 @@ export async function handleInputRequestRegister(req: Request, res: Response) {
 
     const response: SdkInputRequestRegisterResponse = { success: true, delivery: result.delivery }
     return res.status(200).json(response)
+}
+
+export async function handleInputResponsePoll(req: Request, res: Response) {
+    const user = req.session?.user
+    if (!user?.organizationId) return res.status(401).json({ success: false, error: "Unauthorized" })
+
+    const token = req.params.token?.trim()
+    if (!token) return res.status(400).json({ success: false, error: "token is required" })
+
+    try {
+        const response = await readStashedInputResponse(user.organizationId, token)
+        if (!response) return res.status(204).end()
+        return res.status(200).json(response)
+    } catch (error) {
+        logger.error("[sdk/input-request] Failed to read stashed input response", { token, error: extractErrorMessage(error) })
+        return res.status(500).json({ success: false, error: "Failed to read input response" })
+    }
 }

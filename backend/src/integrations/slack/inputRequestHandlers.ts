@@ -1,10 +1,10 @@
 import { App as SlackApp } from "@slack/bolt"
 import { KnownBlock } from "@slack/web-api"
-import { SdkInputRequestOption, SdkInputResponsePayload } from "terse-types/types"
+import { SdkInputRequestOption, SdkInputResponsePayload, SdkInputResponseTransport } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
-import { InputResolveOutcome, resolveInputRequest } from "../../services/InputRequestService"
+import { InputResolveOutcome, resolveInputRequest, stashInputResponse } from "../../services/InputRequestService"
 
 import { createFeedbackModal } from "./blockKitHelpers"
 import {
@@ -70,6 +70,7 @@ export function registerInputRequestHandlers(slack: SlackApp): void {
                     token: metadata.token,
                     run_id: metadata.run_id,
                     options: metadata.options,
+                    transport: metadata.transport,
                     option_id: option.id,
                     channel_id: channelId,
                     message_ts: message.ts
@@ -102,6 +103,7 @@ export function registerInputRequestHandlers(slack: SlackApp): void {
                 organizationId,
                 runId: metadata.run_id,
                 token: metadata.token,
+                transport: metadata.transport,
                 option,
                 response,
                 channelId,
@@ -154,6 +156,7 @@ export function registerInputRequestHandlers(slack: SlackApp): void {
                     organizationId,
                     runId: metadata.run_id,
                     token: metadata.token,
+                    transport: metadata.transport,
                     option,
                     response,
                     channelId: metadata.channel_id,
@@ -173,6 +176,7 @@ type DeliverResponseParams = {
     organizationId: string
     runId: string
     token: string
+    transport: SdkInputResponseTransport
     option: SdkInputRequestOption
     response: SdkInputResponsePayload
     channelId: string
@@ -181,11 +185,21 @@ type DeliverResponseParams = {
 }
 
 async function deliverResponse(params: DeliverResponseParams): Promise<void> {
-    const { client, organizationId, runId, token, option, response, channelId, messageTs, existingBlocks } = params
+    const { client, organizationId, runId, token, transport, option, response, channelId, messageTs, existingBlocks } = params
 
     const respondedBy = response.respondent.displayName ?? `<@${response.respondent.userId}>`
     const summary = response.text ? `:white_check_mark: *${option.label}* by ${respondedBy}: ${response.text}` : `:white_check_mark: *${option.label}* by ${respondedBy}`
     await finalizeSlackInputRequestMessage(client, channelId, messageTs, summary, existingBlocks)
+
+    if (transport === "poll") {
+        try {
+            await stashInputResponse(organizationId, token, response)
+        } catch (error) {
+            logger.error("[SlackInputRequest] Failed to stash poll-transport response", { error, runId, token })
+            await finalizeSlackInputRequestMessage(client, channelId, messageTs, ":warning: Failed to store the response; the test run is still waiting.")
+        }
+        return
+    }
 
     const outcome = await resolveInputRequest({ organizationId, runId, token, response })
     if (outcome === "resumed") return
