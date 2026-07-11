@@ -1189,6 +1189,10 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("    return JSON.stringify(filter)")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
+        attioPreludeLines.push("function __serializeAttioValues(values: unknown): string {")
+        attioPreludeLines.push("    return JSON.stringify(values ?? {})")
+        attioPreludeLines.push("}")
+        attioPreludeLines.push("")
         attioPreludeLines.push("function __serializeAttioRecords(records: unknown): string {")
         attioPreludeLines.push("    if (!Array.isArray(records)) return JSON.stringify([])")
         attioPreludeLines.push('    return JSON.stringify(records.filter((record): record is Record<string, unknown> => typeof record === "object" && record !== null && !Array.isArray(record)))')
@@ -1595,13 +1599,14 @@ function buildAttioListsMethods(integrationId: string): ToolMethodContext[] {
             ]
         },
         {
-            description: "List entries in a list with a typed filter and limit/offset pagination. Entry values come back flattened (statuses/selects as AttioSelectOption).",
+            description:
+                "List entries in a list with a typed filter, an optional parent-record lookup, and limit/offset pagination. Entry values come back flattened (statuses/selects as AttioSelectOption).",
             generatedSignature:
-                "queryListEntries<TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; limit?: number | null; offset?: number | null }): Promise<AttioListEntriesResult<TList>>",
+                "queryListEntries<TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; parentRecordId?: string | null; parentObjectSlug?: string; limit?: number | null; offset?: number | null }): Promise<AttioListEntriesResult<TList>>",
             runtimeLines: [
-                "queryListEntries: <TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; limit?: number | null; offset?: number | null }) =>",
+                "queryListEntries: <TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; parentRecordId?: string | null; parentObjectSlug?: string; limit?: number | null; offset?: number | null }) =>",
                 `    ${call(
-                    '{ action: "query_entries", listIdOrSlug: __normalizeAttioObjectSlug(params.list), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, offset: params.offset ?? null }'
+                    '{ action: "query_entries", listIdOrSlug: __normalizeAttioObjectSlug(params.list), filter: __serializeAttioFilter(params.filter), parentRecordId: params.parentRecordId ?? null, parentObjectSlug: params.parentRecordId ? __requireAttioListParentObject(params.list, params.parentObjectSlug) : null, limit: params.limit ?? null, offset: params.offset ?? null }'
                 )}.then(result => __enhanceAttioListEntriesResult(params.list, result)),`
             ]
         },
@@ -1612,7 +1617,7 @@ function buildAttioListsMethods(integrationId: string): ToolMethodContext[] {
             runtimeLines: [
                 "addListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }) =>",
                 `    ${call(
-                    '{ action: "add_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioFilter(params.entryValues) }'
+                    '{ action: "add_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) }'
                 )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
             ]
         },
@@ -1623,7 +1628,7 @@ function buildAttioListsMethods(integrationId: string): ToolMethodContext[] {
             runtimeLines: [
                 "upsertListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }) =>",
                 `    ${call(
-                    '{ action: "upsert_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioFilter(params.entryValues) }'
+                    '{ action: "upsert_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) }'
                 )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
             ]
         },
@@ -1642,7 +1647,7 @@ function buildAttioListsMethods(integrationId: string): ToolMethodContext[] {
             runtimeLines: [
                 'updateListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string; entryValues: Partial<AttioEntryValuesFor<TList>>; multiselectMode?: "overwrite" | "append" | null }) =>',
                 `    ${call(
-                    '{ action: "update_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId, entryValues: JSON.stringify(params.entryValues), multiselectMode: params.multiselectMode ?? null }'
+                    '{ action: "update_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId, entryValues: __serializeAttioValues(params.entryValues), multiselectMode: params.multiselectMode ?? null }'
                 )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
             ]
         },

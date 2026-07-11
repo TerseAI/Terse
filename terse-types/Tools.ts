@@ -2282,9 +2282,11 @@ export const attioListsRequestSchema = z.discriminatedUnion("action", [
     }),
     z.object({ action: z.literal("update").describe("Rename a list."), listIdOrSlug: z.string(), name: z.string() }),
     z.object({
-        action: z.literal("query_entries").describe("List entries in a list, with optional filter and limit/offset pagination."),
+        action: z.literal("query_entries").describe("List entries in a list, with optional filter, parent-record lookup, and limit/offset pagination."),
         listIdOrSlug: z.string(),
         filter: z.string().nullable().optional().describe("Optional Attio filter as a JSON string, matching entry attributes."),
+        parentRecordId: z.string().nullable().optional().describe("Only return entries whose parent record has this ID. Requires parentObjectSlug."),
+        parentObjectSlug: z.string().nullable().optional().describe("Object slug of the parent record (e.g. 'companies'); required with parentRecordId."),
         limit: z.number().int().nullable().optional().describe("Maximum entries to return (max 500)."),
         offset: z.number().int().nullable().optional()
     }),

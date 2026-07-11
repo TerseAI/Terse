@@ -12,7 +12,7 @@ const ENTRIES_MAX_LIMIT = 500
 
 export const attioListsTool = defineSessionTool({
     name: "attio_lists",
-    description: `Manage Attio lists and their entries. List actions: 'list', 'get', 'create', 'update'. Entry actions: 'query_entries' (filter + limit/offset pagination), 'add_entry' (add a record to a list), 'upsert_entry' (add-or-update keyed by parent record, idempotent membership), 'get_entry', 'update_entry' (change entry attributes such as a stage), 'remove_entry' (the parent record is untouched). Entry attribute writes go through entryValues as a JSON object string.`,
+    description: `Manage Attio lists and their entries. List actions: 'list', 'get', 'create', 'update'. Entry actions: 'query_entries' (filter by entry attributes and/or parentRecordId + limit/offset pagination), 'add_entry' (add a record to a list), 'upsert_entry' (add-or-update keyed by parent record, idempotent membership), 'get_entry', 'update_entry' (change entry attributes such as a stage), 'remove_entry' (the parent record is untouched). Entry attribute writes go through entryValues as a JSON object string.`,
     execute: async ({ integrationId, request }, runContext) => {
         logger.debug("Executing attio_lists tool", { integrationId, action: request.action })
         if (!runContext?.context) {
@@ -85,8 +85,8 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             const limit = Math.max(1, Math.min(request.limit ?? ENTRIES_DEFAULT_LIMIT, ENTRIES_MAX_LIMIT))
             const offset = request.offset ?? 0
             const body: Record<string, unknown> = { limit, offset }
-            const filter = parseOptionalJsonObject(request.filter, "filter")
-            if (filter && Object.keys(filter).length > 0) body.filter = filter
+            const filter = buildEntriesFilter(request)
+            if (filter) body.filter = filter
             const data = await attioApiRequest<{ data?: AttioListEntry[] }>(accessToken, `${listPath(request.listIdOrSlug)}/entries/query`, { method: "POST", body })
             const entries = data.data ?? []
             return {
@@ -152,6 +152,23 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
         default:
             throw request satisfies never
     }
+}
+
+function buildEntriesFilter(request: Extract<AttioListsRequest, { action: "query_entries" }>): Record<string, unknown> | undefined {
+    const filter = parseOptionalJsonObject(request.filter, "filter")
+    const attributeFilter = filter && Object.keys(filter).length > 0 ? filter : undefined
+    if (!request.parentRecordId) return attributeFilter
+    if (!request.parentObjectSlug) {
+        throw new Error('"parentObjectSlug" is required when filtering by "parentRecordId".')
+    }
+    const parentFilter = {
+        path: [
+            [request.listIdOrSlug, "parent_record"],
+            [request.parentObjectSlug, "record_id"]
+        ],
+        constraints: { value: request.parentRecordId }
+    }
+    return attributeFilter ? { $and: [parentFilter, attributeFilter] } : parentFilter
 }
 
 function listPath(listIdOrSlug: string): string {
