@@ -53,10 +53,12 @@ export async function getAttioObjects(req: Request, res: Response) {
         const objects = await attioRequestData(accessToken, "/objects", z.array(attioObjectSchema), "objects")
 
         const objectsWithAttributes = await Promise.all(
-            objects.map(async (obj): Promise<AttioObjectWithAttributes> => ({
-                ...obj,
-                attributes: await fetchEnrichedAttributes(accessToken, "objects", obj.api_slug)
-            }))
+            objects.map(
+                async (obj): Promise<AttioObjectWithAttributes> => ({
+                    ...obj,
+                    attributes: await fetchEnrichedAttributes(accessToken, "objects", obj.api_slug)
+                })
+            )
         )
 
         res.status(200).json(objectsWithAttributes)

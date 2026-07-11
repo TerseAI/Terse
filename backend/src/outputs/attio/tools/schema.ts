@@ -153,7 +153,10 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             }
         }
         case "create_select_option": {
-            const selectOption = await attioRequestData(accessToken, `${attributePath(request)}/options`, attioSelectOptionEntitySchema, "select option", { method: "POST", body: { data: { title: request.title } } })
+            const selectOption = await attioRequestData(accessToken, `${attributePath(request)}/options`, attioSelectOptionEntitySchema, "select option", {
+                method: "POST",
+                body: { data: { title: request.title } }
+            })
             return {
                 success: true,
                 action: request.action,

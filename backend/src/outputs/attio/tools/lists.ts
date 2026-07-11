@@ -132,7 +132,10 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
                 throw new Error('Invalid "entryValues": a JSON object string of entry attribute values is required.')
             }
             const method = request.multiselectMode === "append" ? "PATCH" : "PUT"
-            const entry = await attioRequestData(accessToken, entryPath(request.listIdOrSlug, request.entryId), attioListEntrySchema, "list entry", { method, body: { data: { entry_values: entryValues } } })
+            const entry = await attioRequestData(accessToken, entryPath(request.listIdOrSlug, request.entryId), attioListEntrySchema, "list entry", {
+                method,
+                body: { data: { entry_values: entryValues } }
+            })
             return {
                 success: true,
                 action: request.action,
