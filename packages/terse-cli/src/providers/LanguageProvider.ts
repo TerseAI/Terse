@@ -15,6 +15,7 @@ export interface LanguageProvider {
         description: string
     }
     readonly entryFile: string
+    readonly sampleJobFile: string
     readonly generatedCodePath: string
     readonly deployExclusions: {
         dirs: Set<string>

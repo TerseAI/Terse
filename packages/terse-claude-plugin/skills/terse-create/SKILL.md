@@ -191,7 +191,7 @@ The diagram is a separate step from the design questions: resolve every remainin
 Open `src/terse.jobs.ts` (the canonical job entry file). The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 
 If the repo already uses a custom entry file, follow that layout and pass `--entry-file` on later `terse` commands.
-Job placement follows the project-layout rule in the conventions section: the first job lives directly in `src/terse.jobs.ts`; adding a second job moves every job (the existing one too) into its own `src/jobs/<kebab-case-name>.ts` file and turns `src/terse.jobs.ts` into a manifest of side-effect imports. If the manifest layout is already in place, create the new job as its own file in `src/jobs/` and add its import line.
+Job placement follows the project-layout rule in the conventions section: every job lives in its own `src/jobs/<kebab-case-name>.ts` file, and `src/terse.jobs.ts` is a manifest of side-effect imports — create the new job as its own file in `src/jobs/` and add its import line. If the repo still keeps a job inline in `src/terse.jobs.ts`, move it to its own file in `src/jobs/` when you touch it.
 If the repo only has `src/index.ts`, treat that as a legacy fallback instead of creating a second competing entry file.
 If no runtime entry exists yet, create one:
 
@@ -381,7 +381,7 @@ A probe is a read-only discovery run against an external API — list the audien
 Probe with a scratch probe job instead:
 
 1. Create `src/jobs/_probe.ts`: a throwaway job with a cron trigger whose handler does the reads and logs the results.
-2. Add its side-effect import to `src/terse.jobs.ts`. This import line is the only sanctioned temporary edit to existing files, and the probe does not count as a second job for the project-layout rule.
+2. Add its side-effect import to `src/terse.jobs.ts`. This import line is the only sanctioned temporary edit to existing files.
 3. Run it with `terse test run` (cron triggers get synthetic sample events), so secrets hydrate exactly as they do for real jobs.
 4. Record what it found, then delete both the probe file and its import line.
 
@@ -481,9 +481,7 @@ return { emailId: data.id }
 
 ## Project layout
 
-**One job: define it in the entry file.** A single-job project keeps the job directly in `src/terse.jobs.ts`.
-
-**Two or more jobs: one file per job.** The moment a second job is added, every job (the existing one too) moves to its own file in `src/jobs/`, named in kebab-case after the job (`src/jobs/triage-bug-reports.ts`), and `src/terse.jobs.ts` becomes a pure manifest of side-effect imports:
+**One file per job, always.** Every job lives in its own file in `src/jobs/`, named in kebab-case after the job (`src/jobs/triage-bug-reports.ts`), and `src/terse.jobs.ts` is a pure manifest of side-effect imports — even when the project has a single job:
 
 ```typescript
 import "./jobs/triage-bug-reports"

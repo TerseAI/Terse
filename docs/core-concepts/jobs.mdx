@@ -105,7 +105,7 @@ For jobs that write to production systems, you can require human approval before
 
 Jobs follow a straightforward path from code to production:
 
-1. **Define.** Register workflows with top-level `createJob()` in `src/terse.jobs.ts` (or split across files and import them for side effects).
+1. **Define.** Register workflows with top-level `createJob()`, one file per job under `src/jobs/`, each imported for side effects from the `src/terse.jobs.ts` manifest.
 2. **Generate.** Run `terse generate` to get typed helpers for your integrations.
 3. **Test.** Run `terse test` to execute against real sample events locally.
 4. **Deploy.** Run `terse deploy` to package and host serverlessly. New jobs are created, existing jobs are updated, and removed jobs are cleaned up.

@@ -88,9 +88,7 @@ return { emailId: data.id }
 
 ## Project layout
 
-**One job: define it in the entry file.** A single-job project keeps the job directly in `src/terse.jobs.ts`.
-
-**Two or more jobs: one file per job.** The moment a second job is added, every job (the existing one too) moves to its own file in `src/jobs/`, named in kebab-case after the job (`src/jobs/triage-bug-reports.ts`), and `src/terse.jobs.ts` becomes a pure manifest of side-effect imports:
+**One file per job, always.** Every job lives in its own file in `src/jobs/`, named in kebab-case after the job (`src/jobs/triage-bug-reports.ts`), and `src/terse.jobs.ts` is a pure manifest of side-effect imports — even when the project has a single job:
 
 ```typescript
 import "./jobs/triage-bug-reports"

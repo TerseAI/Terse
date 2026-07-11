@@ -36,6 +36,7 @@ class TypeScriptProvider implements LanguageProvider {
         description: "TypeScript Terse project"
     }
     readonly entryFile = "src/terse.jobs.ts"
+    readonly sampleJobFile = "src/jobs/sample-job.ts"
     readonly generatedCodePath = "src/terse.generated.ts"
     readonly deployExclusions = {
         dirs: new Set(["node_modules", ".git", "dist", ".next", ".turbo", ".terse"]),
@@ -47,6 +48,7 @@ class TypeScriptProvider implements LanguageProvider {
             { template: "typescript/init/package.json.hbs", output: "package.json" },
             { template: "typescript/init/tsconfig.json.hbs", output: "tsconfig.json" },
             { template: "typescript/init/src/terse.jobs.ts.hbs", output: "src/terse.jobs.ts" },
+            { template: "typescript/init/src/jobs/sample-job.ts.hbs", output: "src/jobs/sample-job.ts" },
             { template: "typescript/init/env.example.hbs", output: ".env.example" },
             { template: "typescript/init/gitignore.hbs", output: ".gitignore" },
             { template: "typescript/init/.claude/settings.json.hbs", output: ".claude/settings.json" }
