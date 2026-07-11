@@ -1,7 +1,6 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { AttioOutputConfig, IntegrationType } from "terse-types"
+import { AttioOutputConfig, IntegrationType, attioAttributeHistoryEntrySchema, attioRecordSchema, attioSearchMatchSchema } from "terse-types"
 import type {
-    AttioAttributeHistoryEntry,
     AttioCreateRecordRequest,
     AttioDeleteRecordRequest,
     AttioGetAttributeHistoryRequest,
@@ -9,7 +8,6 @@ import type {
     AttioQueryRecordsRequest,
     AttioRecord,
     AttioRecordsRequest,
-    AttioSearchMatch,
     AttioSearchRecordsRequest,
     AttioUpdateRecordRequest,
     AttioUpsertRecordsRequest,
@@ -21,7 +19,7 @@ import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 import { ToolACLValidator, requireValueInAnyConfig } from "../../abstract/acl"
 
-import { attioApiRequest, attioWriteRequest, requireAttioData, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, attioRequestData, attioWriteData, resolveAttioAccessToken } from "./attioApi"
 
 const QUERY_DEFAULT_LIMIT = 20
 const QUERY_MAX_LIMIT = 500
@@ -81,8 +79,7 @@ async function queryRecords(request: AttioQueryRecordsRequest, accessToken: stri
         body.filter = filter
     }
 
-    const data = await attioApiRequest<{ data?: AttioRecord[] }>(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}/records/query`, { method: "POST", body })
-    const records = data.data ?? []
+    const records = await attioRequestData(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}/records/query`, z.array(attioRecordSchema), "records", { method: "POST", body })
 
     return {
         success: true,
@@ -96,11 +93,10 @@ async function queryRecords(request: AttioQueryRecordsRequest, accessToken: stri
 
 async function searchRecords(request: AttioSearchRecordsRequest, accessToken: string): Promise<AttioRecordsOutput> {
     const limit = clampLimit(request.limit, SEARCH_MAX_LIMIT, SEARCH_MAX_LIMIT)
-    const data = await attioApiRequest<{ data?: AttioSearchMatch[] }>(accessToken, "/objects/records/search", {
+    const matches = await attioRequestData(accessToken, "/objects/records/search", z.array(attioSearchMatchSchema), "search matches", {
         method: "POST",
         body: { query: request.query, objects: [request.objectSlug], limit, request_as: { type: "workspace" } }
     })
-    const matches = data.data ?? []
 
     return {
         success: true,
@@ -112,22 +108,19 @@ async function searchRecords(request: AttioSearchRecordsRequest, accessToken: st
 }
 
 async function getRecord(request: AttioGetRecordRequest, accessToken: string): Promise<AttioRecordsOutput> {
-    const data = await attioApiRequest<{ data?: AttioRecord }>(accessToken, recordPath(request.objectSlug, request.recordId))
-    if (!data.data) {
-        throw new Error(`Attio record "${request.recordId}" not found on object "${request.objectSlug}".`)
-    }
+    const record = await attioRequestData(accessToken, recordPath(request.objectSlug, request.recordId), attioRecordSchema, "record")
 
     return {
         success: true,
         action: request.action,
-        record: data.data,
+        record,
         actions: [readAction("Fetched record", `${request.objectSlug}/${request.recordId}`, `Fetched ${request.objectSlug} record`)]
     }
 }
 
 async function createRecord(request: AttioCreateRecordRequest, accessToken: string): Promise<AttioRecordsOutput> {
     const values = parseValuesObject(request.values)
-    const data = await attioWriteRequest<{ data?: AttioRecord }>(accessToken, request.objectSlug, `/objects/${encodeURIComponent(request.objectSlug)}/records`, {
+    const record = await attioWriteData(accessToken, request.objectSlug, `/objects/${encodeURIComponent(request.objectSlug)}/records`, attioRecordSchema, "record", {
         method: "POST",
         body: { data: { values } }
     })
@@ -135,15 +128,15 @@ async function createRecord(request: AttioCreateRecordRequest, accessToken: stri
     return {
         success: true,
         action: request.action,
-        record: requireAttioData(data.data, "record"),
-        actions: [writeAction("Created record", request.objectSlug, data.data, RunHistoryActionType.create, `Created ${request.objectSlug} record`)]
+        record,
+        actions: [writeAction("Created record", request.objectSlug, record, RunHistoryActionType.create, `Created ${request.objectSlug} record`)]
     }
 }
 
 async function updateRecord(request: AttioUpdateRecordRequest, accessToken: string): Promise<AttioRecordsOutput> {
     const values = parseValuesObject(request.values)
     const method = request.multiselectMode === "append" ? "PATCH" : "PUT"
-    const data = await attioWriteRequest<{ data?: AttioRecord }>(accessToken, request.objectSlug, recordPath(request.objectSlug, request.recordId), {
+    const record = await attioWriteData(accessToken, request.objectSlug, recordPath(request.objectSlug, request.recordId), attioRecordSchema, "record", {
         method,
         body: { data: { values } }
     })
@@ -151,8 +144,8 @@ async function updateRecord(request: AttioUpdateRecordRequest, accessToken: stri
     return {
         success: true,
         action: request.action,
-        record: requireAttioData(data.data, "record"),
-        actions: [writeAction("Updated record", request.objectSlug, data.data, RunHistoryActionType.update, `Updated ${request.objectSlug} record ${request.recordId}`)]
+        record,
+        actions: [writeAction("Updated record", request.objectSlug, record, RunHistoryActionType.update, `Updated ${request.objectSlug} record ${request.recordId}`)]
     }
 }
 
@@ -209,20 +202,22 @@ async function upsertRecords(request: AttioUpsertRecordsRequest, accessToken: st
 
 async function upsertSingleRecord(request: AttioUpsertRecordsRequest, recordValues: Record<string, unknown>, accessToken: string): Promise<{ record?: AttioRecord } | { error: string }> {
     try {
-        const data = await attioWriteRequest<{ data?: AttioRecord }>(
+        const record = await attioWriteData(
             accessToken,
             request.objectSlug,
             `/objects/${encodeURIComponent(request.objectSlug)}/records?matching_attribute=${encodeURIComponent(request.matchingAttribute)}`,
+            attioRecordSchema,
+            "record",
             { method: "PUT", body: { data: { values: recordValues } } }
         )
-        return { record: data.data }
+        return { record }
     } catch (error: unknown) {
         return { error: error instanceof Error ? error.message : String(error) }
     }
 }
 
 async function deleteRecord(request: AttioDeleteRecordRequest, accessToken: string): Promise<AttioRecordsOutput> {
-    await attioApiRequest<unknown>(accessToken, recordPath(request.objectSlug, request.recordId), { method: "DELETE" })
+    await attioApiRequest(accessToken, recordPath(request.objectSlug, request.recordId), { method: "DELETE" })
 
     return {
         success: true,
@@ -245,11 +240,12 @@ async function getAttributeHistory(request: AttioGetAttributeHistoryRequest, acc
     if (request.limit !== null) query.set("limit", String(request.limit))
     if (request.offset !== null) query.set("offset", String(request.offset))
 
-    const data = await attioApiRequest<{ data?: AttioAttributeHistoryEntry[] }>(
+    const history = await attioRequestData(
         accessToken,
-        `${recordPath(request.objectSlug, request.recordId)}/attributes/${encodeURIComponent(request.attributeSlug)}/values?${query.toString()}`
+        `${recordPath(request.objectSlug, request.recordId)}/attributes/${encodeURIComponent(request.attributeSlug)}/values?${query.toString()}`,
+        z.array(attioAttributeHistoryEntrySchema),
+        "attribute history"
     )
-    const history = data.data ?? []
 
     return {
         success: true,
@@ -271,9 +267,11 @@ function clampLimit(limit: number | null, defaultLimit: number, maxLimit: number
 
 function parseFilter(filter: string | null): Record<string, unknown> | undefined {
     if (!filter) return undefined
-    const parsed = JSON.parse(filter)
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || Object.keys(parsed).length === 0) return undefined
-    return parsed as Record<string, unknown>
+    const parsed = attioValuesObjectSchema.safeParse(parseJsonInput(filter, "filter"))
+    if (!parsed.success) {
+        throw new Error(`Invalid "filter": expected a JSON object of Attio filter conditions.`)
+    }
+    return Object.keys(parsed.data).length === 0 ? undefined : parsed.data
 }
 
 const attioValuesObjectSchema = z.record(z.string(), z.unknown())

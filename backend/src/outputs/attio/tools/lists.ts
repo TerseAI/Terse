@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
-import type { AttioList, AttioListEntry, AttioListsRequest, ToolOutputByName } from "terse-types"
+import { IntegrationType, attioListEntrySchema, attioListSchema } from "terse-types"
+import type { AttioList, AttioListsRequest, ToolOutputByName } from "terse-types"
+import { z } from "zod"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, attioWriteRequest, fetchWorkspaceSlug, parseOptionalJsonObject, requireAttioData, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, attioRequestData, attioWriteData, fetchWorkspaceSlug, parseOptionalJsonObject, resolveAttioAccessToken } from "./attioApi"
 
 const ENTRIES_DEFAULT_LIMIT = 20
 const ENTRIES_MAX_LIMIT = 500
@@ -34,9 +35,9 @@ export const attioListsTool = defineSessionTool({
 async function executeListsRequest(request: AttioListsRequest, accessToken: string): Promise<AttioListsOutput> {
     switch (request.action) {
         case "list": {
-            const data = await attioApiRequest<{ data?: AttioList[] }>(accessToken, "/lists")
+            const data = await attioRequestData(accessToken, "/lists", z.array(attioListSchema), "lists")
             const workspaceSlug = await fetchWorkspaceSlug(accessToken)
-            const lists = (data.data ?? []).map(list => withListWebUrl(list, workspaceSlug))
+            const lists = data.map(list => withListWebUrl(list, workspaceSlug))
             return {
                 success: true,
                 action: request.action,
@@ -46,11 +47,11 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             }
         }
         case "get": {
-            const data = await attioApiRequest<{ data?: AttioList }>(accessToken, listPath(request.listIdOrSlug))
+            const list = await attioRequestData(accessToken, listPath(request.listIdOrSlug), attioListSchema, "list")
             return {
                 success: true,
                 action: request.action,
-                list: withListWebUrl(requireAttioData(data.data, "list"), await fetchWorkspaceSlug(accessToken)),
+                list: withListWebUrl(list, await fetchWorkspaceSlug(accessToken)),
                 actions: [listAction("Fetched list", request.listIdOrSlug, "Fetched list configuration", RunHistoryActionType.read)]
             }
         }
@@ -64,20 +65,20 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
                     workspace_member_access: []
                 }
             }
-            const data = await attioApiRequest<{ data?: AttioList }>(accessToken, "/lists", { method: "POST", body })
+            const list = await attioRequestData(accessToken, "/lists", attioListSchema, "list", { method: "POST", body })
             return {
                 success: true,
                 action: request.action,
-                list: withListWebUrl(requireAttioData(data.data, "list"), await fetchWorkspaceSlug(accessToken)),
+                list: withListWebUrl(list, await fetchWorkspaceSlug(accessToken)),
                 actions: [listAction("Created list", request.apiSlug, `Created list "${request.name}" over ${request.parentObjectSlug}`, RunHistoryActionType.create)]
             }
         }
         case "update": {
-            const data = await attioApiRequest<{ data?: AttioList }>(accessToken, listPath(request.listIdOrSlug), { method: "PATCH", body: { data: { name: request.name } } })
+            const list = await attioRequestData(accessToken, listPath(request.listIdOrSlug), attioListSchema, "list", { method: "PATCH", body: { data: { name: request.name } } })
             return {
                 success: true,
                 action: request.action,
-                list: withListWebUrl(requireAttioData(data.data, "list"), await fetchWorkspaceSlug(accessToken)),
+                list: withListWebUrl(list, await fetchWorkspaceSlug(accessToken)),
                 actions: [listAction("Updated list", request.listIdOrSlug, `Renamed list to "${request.name}"`, RunHistoryActionType.update)]
             }
         }
@@ -87,8 +88,7 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             const body: Record<string, unknown> = { limit, offset }
             const filter = buildEntriesFilter(request)
             if (filter) body.filter = filter
-            const data = await attioApiRequest<{ data?: AttioListEntry[] }>(accessToken, `${listPath(request.listIdOrSlug)}/entries/query`, { method: "POST", body })
-            const entries = data.data ?? []
+            const entries = await attioRequestData(accessToken, `${listPath(request.listIdOrSlug)}/entries/query`, z.array(attioListEntrySchema), "list entries", { method: "POST", body })
             return {
                 success: true,
                 action: request.action,
@@ -108,21 +108,21 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
                 }
             }
             const method = request.action === "add_entry" ? "POST" : "PUT"
-            const data = await attioWriteRequest<{ data?: AttioListEntry }>(accessToken, request.parentObjectSlug, `${listPath(request.listIdOrSlug)}/entries`, { method, body })
+            const entry = await attioWriteData(accessToken, request.parentObjectSlug, `${listPath(request.listIdOrSlug)}/entries`, attioListEntrySchema, "list entry", { method, body })
             const verb = request.action === "add_entry" ? "Added" : "Upserted"
             return {
                 success: true,
                 action: request.action,
-                entry: requireAttioData(data.data, "list entry"),
+                entry,
                 actions: [listAction(`${verb} list entry`, `${request.listIdOrSlug}/${request.parentRecordId}`, `${verb} ${request.parentObjectSlug} record on list`, RunHistoryActionType.create)]
             }
         }
         case "get_entry": {
-            const data = await attioApiRequest<{ data?: AttioListEntry }>(accessToken, entryPath(request.listIdOrSlug, request.entryId))
+            const entry = await attioRequestData(accessToken, entryPath(request.listIdOrSlug, request.entryId), attioListEntrySchema, "list entry")
             return {
                 success: true,
                 action: request.action,
-                entry: requireAttioData(data.data, "list entry"),
+                entry,
                 actions: [listAction("Fetched list entry", request.entryId, "Fetched list entry", RunHistoryActionType.read)]
             }
         }
@@ -132,16 +132,16 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
                 throw new Error('Invalid "entryValues": a JSON object string of entry attribute values is required.')
             }
             const method = request.multiselectMode === "append" ? "PATCH" : "PUT"
-            const data = await attioApiRequest<{ data?: AttioListEntry }>(accessToken, entryPath(request.listIdOrSlug, request.entryId), { method, body: { data: { entry_values: entryValues } } })
+            const entry = await attioRequestData(accessToken, entryPath(request.listIdOrSlug, request.entryId), attioListEntrySchema, "list entry", { method, body: { data: { entry_values: entryValues } } })
             return {
                 success: true,
                 action: request.action,
-                entry: requireAttioData(data.data, "list entry"),
+                entry,
                 actions: [listAction("Updated list entry", request.entryId, "Updated list entry values", RunHistoryActionType.update)]
             }
         }
         case "remove_entry": {
-            await attioApiRequest<unknown>(accessToken, entryPath(request.listIdOrSlug, request.entryId), { method: "DELETE" })
+            await attioApiRequest(accessToken, entryPath(request.listIdOrSlug, request.entryId), { method: "DELETE" })
             return {
                 success: true,
                 action: request.action,

@@ -1,5 +1,7 @@
 import { RunContext } from "@openai/agents"
+import { attioAttributeSchema } from "terse-types"
 import type { AttioAttribute } from "terse-types"
+import { z } from "zod"
 
 import { Session } from "../../../express"
 import { AttioIntegrationManager } from "../../../integrations/attio/integration"
@@ -25,17 +27,35 @@ export async function resolveAttioAccessToken(integrationId: string, runContext:
     return accessToken
 }
 
-export function requireAttioData<T>(value: T | undefined, what: string): T {
-    if (value === undefined) {
-        throw new Error(`Attio returned a success response without the expected ${what} payload.`)
+export async function attioRequestData<T>(accessToken: string, path: string, schema: z.ZodType<T>, what: string, options: AttioApiRequestOptions = {}): Promise<T> {
+    return parseAttioData(await attioApiRequest(accessToken, path, options), schema, what)
+}
+
+export async function attioWriteData<T>(accessToken: string, objectSlug: string, path: string, schema: z.ZodType<T>, what: string, options: AttioApiRequestOptions): Promise<T> {
+    return parseAttioData(await attioWriteRequest(accessToken, objectSlug, path, options), schema, what)
+}
+
+export async function attioRequestPage<T>(accessToken: string, path: string, schema: z.ZodType<T>, what: string): Promise<AttioPage<T>> {
+    const envelope = z.object({ data: schema, pagination: z.object({ next_cursor: z.string().nullable().optional() }).optional() })
+    const parsed = envelope.safeParse(await attioApiRequest(accessToken, path))
+    if (!parsed.success) {
+        throw new AttioPayloadError(what, parsed.error)
     }
-    return value
+    return { data: parsed.data.data, nextCursor: parsed.data.pagination?.next_cursor ?? null }
+}
+
+export function parseAttioData<T>(payload: unknown, schema: z.ZodType<T>, what: string): T {
+    const parsed = z.object({ data: schema }).safeParse(payload)
+    if (!parsed.success) {
+        throw new AttioPayloadError(what, parsed.error)
+    }
+    return parsed.data.data
 }
 
 export async function fetchWorkspaceSlug(accessToken: string): Promise<string | undefined> {
     try {
-        const data = await attioApiRequest<{ workspace_slug?: string }>(accessToken, "/self")
-        return data.workspace_slug
+        const parsed = z.object({ workspace_slug: z.string() }).safeParse(await attioApiRequest(accessToken, "/self"))
+        return parsed.success ? parsed.data.workspace_slug : undefined
     } catch {
         return undefined
     }
@@ -48,6 +68,8 @@ export function toAttioActorInput(emailOrMemberId: string): Record<string, unkno
     return { referenced_actor_type: "workspace-member", referenced_actor_id: emailOrMemberId }
 }
 
+const jsonObjectSchema = z.record(z.string(), z.unknown())
+
 export function parseOptionalJsonObject(raw: string | null | undefined, label: string): Record<string, unknown> | undefined {
     if (!raw) return undefined
     let parsed: unknown
@@ -56,10 +78,11 @@ export function parseOptionalJsonObject(raw: string | null | undefined, label: s
     } catch {
         throw new Error(`Invalid "${label}": not valid JSON.`)
     }
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    const result = jsonObjectSchema.safeParse(parsed)
+    if (!result.success) {
         throw new Error(`Invalid "${label}": expected a JSON object.`)
     }
-    return parsed as Record<string, unknown>
+    return result.data
 }
 
 export function buildQueryString(params: Record<string, string | number | boolean | null | undefined>): string {
@@ -71,7 +94,7 @@ export function buildQueryString(params: Record<string, string | number | boolea
     return rendered ? `?${rendered}` : ""
 }
 
-export async function attioApiRequest<T>(accessToken: string, path: string, options: AttioApiRequestOptions = {}): Promise<T> {
+export async function attioApiRequest(accessToken: string, path: string, options: AttioApiRequestOptions = {}): Promise<unknown> {
     const response = await fetch(`${ATTIO_API_BASE}${path}`, {
         method: options.method ?? "GET",
         headers: {
@@ -85,12 +108,12 @@ export async function attioApiRequest<T>(accessToken: string, path: string, opti
     if (!response.ok) {
         throw new AttioApiError(response.status, responseText)
     }
-    return (responseText ? JSON.parse(responseText) : undefined) as T
+    return responseText ? JSON.parse(responseText) : undefined
 }
 
-export async function attioWriteRequest<T>(accessToken: string, objectSlug: string, path: string, options: AttioApiRequestOptions): Promise<T> {
+export async function attioWriteRequest(accessToken: string, objectSlug: string, path: string, options: AttioApiRequestOptions): Promise<unknown> {
     try {
-        return await attioApiRequest<T>(accessToken, path, options)
+        return await attioApiRequest(accessToken, path, options)
     } catch (error: unknown) {
         throw await normalizeAttioWriteError(error, accessToken, objectSlug)
     }
@@ -144,8 +167,8 @@ async function fetchAttioAttributes(accessToken: string, objectSlug: string): Pr
 
     if (!response.ok) return null
 
-    const data = (await response.json()) as { data?: AttioAttribute[] }
-    return data.data || []
+    const parsed = z.object({ data: z.array(attioAttributeSchema) }).safeParse(await response.json())
+    return parsed.success ? parsed.data.data : []
 }
 
 function getAttributeId(attribute: AttioAttribute): string | undefined {
@@ -191,6 +214,13 @@ export class AttioApiError extends Error {
     }
 }
 
+export class AttioPayloadError extends Error {
+    constructor(what: string, error: z.ZodError) {
+        super(`Attio returned an unexpected ${what} payload. ${z.prettifyError(error)}`)
+        this.name = "AttioPayloadError"
+    }
+}
+
 type AttioApiErrorBody = {
     code?: string
     message?: string
@@ -199,4 +229,9 @@ type AttioApiErrorBody = {
 export interface AttioApiRequestOptions {
     readonly method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
     readonly body?: unknown
+}
+
+export interface AttioPage<T> {
+    readonly data: T
+    readonly nextCursor: string | null
 }

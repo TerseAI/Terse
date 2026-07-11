@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
+import { IntegrationType, attioFileSchema } from "terse-types"
 import type { AttioFile, AttioFilesRequest, ToolOutputByName } from "terse-types"
+import { z } from "zod"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { AttioApiError, attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken } from "./attioApi"
+import { AttioApiError, attioApiRequest, attioRequestData, attioRequestPage, buildQueryString, parseAttioData, resolveAttioAccessToken } from "./attioApi"
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
@@ -34,23 +35,22 @@ async function executeFilesRequest(request: AttioFilesRequest, accessToken: stri
     switch (request.action) {
         case "list": {
             const query = buildQueryString({ object: request.objectSlug, record_id: request.recordId, limit: request.limit, cursor: request.cursor })
-            const data = await attioApiRequest<{ data?: AttioFile[]; pagination?: { next_cursor?: string | null } }>(accessToken, `/files${query}`)
-            const files = data.data ?? []
+            const page = await attioRequestPage(accessToken, `/files${query}`, z.array(attioFileSchema), "files")
             return {
                 success: true,
                 action: request.action,
-                files,
-                count: files.length,
-                nextCursor: data.pagination?.next_cursor ?? null,
-                actions: [fileAction("Listed files", `${request.objectSlug}/${request.recordId}`, `Found ${files.length} file(s)`, RunHistoryActionType.read)]
+                files: page.data,
+                count: page.data.length,
+                nextCursor: page.nextCursor,
+                actions: [fileAction("Listed files", `${request.objectSlug}/${request.recordId}`, `Found ${page.data.length} file(s)`, RunHistoryActionType.read)]
             }
         }
         case "get": {
-            const data = await attioApiRequest<{ data?: AttioFile }>(accessToken, `/files/${encodeURIComponent(request.fileId)}`)
+            const file = await attioRequestData(accessToken, `/files/${encodeURIComponent(request.fileId)}`, attioFileSchema, "file")
             return {
                 success: true,
                 action: request.action,
-                file: requireAttioData(data.data, "file"),
+                file,
                 actions: [fileAction("Fetched file", request.fileId, "Fetched file metadata", RunHistoryActionType.read)]
             }
         }
@@ -68,7 +68,7 @@ async function executeFilesRequest(request: AttioFilesRequest, accessToken: stri
             return { success: true, action: request.action, downloadUrl, actions: [fileAction("Fetched download URL", request.fileId, "Fetched signed download URL", RunHistoryActionType.read)] }
         }
         case "delete": {
-            await attioApiRequest<unknown>(accessToken, `/files/${encodeURIComponent(request.fileId)}`, { method: "DELETE" })
+            await attioApiRequest(accessToken, `/files/${encodeURIComponent(request.fileId)}`, { method: "DELETE" })
             return { success: true, action: request.action, deleted: true, actions: [fileAction("Deleted file", request.fileId, "Permanently deleted file", RunHistoryActionType.delete)] }
         }
         default:
@@ -76,7 +76,7 @@ async function executeFilesRequest(request: AttioFilesRequest, accessToken: stri
     }
 }
 
-async function uploadFile(request: Extract<AttioFilesRequest, { action: "upload" }>, accessToken: string): Promise<AttioFile | undefined> {
+async function uploadFile(request: Extract<AttioFilesRequest, { action: "upload" }>, accessToken: string): Promise<AttioFile> {
     const content = Buffer.from(request.contentBase64, "base64")
     if (content.byteLength > MAX_UPLOAD_BYTES) {
         throw new Error(`File is ${content.byteLength} bytes; Attio's upload limit is 50 MB.`)
@@ -95,8 +95,7 @@ async function uploadFile(request: Extract<AttioFilesRequest, { action: "upload"
     if (!response.ok) {
         throw new AttioApiError(response.status, await response.text())
     }
-    const data = (await response.json()) as { data?: AttioFile }
-    return data.data
+    return parseAttioData(await response.json(), attioFileSchema, "file")
 }
 
 async function fetchDownloadUrl(fileId: string, accessToken: string): Promise<string> {

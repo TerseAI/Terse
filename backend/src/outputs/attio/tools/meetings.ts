@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
-import type { AttioCallRecording, AttioMeeting, AttioMeetingsRequest, AttioTranscript, ToolOutputByName } from "terse-types"
+import { IntegrationType, attioCallRecordingSchema, attioMeetingSchema, attioTranscriptSchema } from "terse-types"
+import type { AttioMeetingsRequest, ToolOutputByName } from "terse-types"
+import { z } from "zod"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken } from "./attioApi"
+import { attioRequestData, attioRequestPage, buildQueryString, resolveAttioAccessToken } from "./attioApi"
 
 export const attioMeetingsTool = defineSessionTool({
     name: "attio_meetings",
@@ -40,48 +41,45 @@ async function executeMeetingsRequest(request: AttioMeetingsRequest, accessToken
                 starts_before: request.startsBefore,
                 ends_from: request.endsFrom
             })
-            const data = await attioApiRequest<{ data?: AttioMeeting[]; pagination?: { next_cursor?: string | null } }>(accessToken, `/meetings${query}`)
-            const meetings = data.data ?? []
+            const page = await attioRequestPage(accessToken, `/meetings${query}`, z.array(attioMeetingSchema), "meetings")
             return {
                 success: true,
                 action: request.action,
-                meetings,
-                count: meetings.length,
-                nextCursor: data.pagination?.next_cursor ?? null,
-                actions: [meetingAction("Listed meetings", "Attio meetings", `Found ${meetings.length} meeting(s)`)]
+                meetings: page.data,
+                count: page.data.length,
+                nextCursor: page.nextCursor,
+                actions: [meetingAction("Listed meetings", "Attio meetings", `Found ${page.data.length} meeting(s)`)]
             }
         }
         case "get": {
-            const data = await attioApiRequest<{ data?: AttioMeeting }>(accessToken, `/meetings/${encodeURIComponent(request.meetingId)}`)
-            return { success: true, action: request.action, meeting: requireAttioData(data.data, "meeting"), actions: [meetingAction("Fetched meeting", request.meetingId, "Fetched meeting")] }
+            const meeting = await attioRequestData(accessToken, `/meetings/${encodeURIComponent(request.meetingId)}`, attioMeetingSchema, "meeting")
+            return { success: true, action: request.action, meeting, actions: [meetingAction("Fetched meeting", request.meetingId, "Fetched meeting")] }
         }
         case "list_recordings": {
             const query = buildQueryString({ limit: request.limit, cursor: request.cursor })
-            const data = await attioApiRequest<{ data?: AttioCallRecording[]; pagination?: { next_cursor?: string | null } }>(
-                accessToken,
-                `/meetings/${encodeURIComponent(request.meetingId)}/call_recordings${query}`
-            )
-            const recordings = data.data ?? []
+            const page = await attioRequestPage(accessToken, `/meetings/${encodeURIComponent(request.meetingId)}/call_recordings${query}`, z.array(attioCallRecordingSchema), "call recordings")
             return {
                 success: true,
                 action: request.action,
-                recordings,
-                count: recordings.length,
-                nextCursor: data.pagination?.next_cursor ?? null,
-                actions: [meetingAction("Listed call recordings", request.meetingId, `Found ${recordings.length} recording(s)`)]
+                recordings: page.data,
+                count: page.data.length,
+                nextCursor: page.nextCursor,
+                actions: [meetingAction("Listed call recordings", request.meetingId, `Found ${page.data.length} recording(s)`)]
             }
         }
         case "get_transcript": {
             const query = buildQueryString({ cursor: request.cursor })
-            const data = await attioApiRequest<{ data?: AttioTranscript; pagination?: { next_cursor?: string | null } }>(
+            const page = await attioRequestPage(
                 accessToken,
-                `/meetings/${encodeURIComponent(request.meetingId)}/call_recordings/${encodeURIComponent(request.callRecordingId)}/transcript${query}`
+                `/meetings/${encodeURIComponent(request.meetingId)}/call_recordings/${encodeURIComponent(request.callRecordingId)}/transcript${query}`,
+                attioTranscriptSchema,
+                "transcript"
             )
             return {
                 success: true,
                 action: request.action,
-                transcript: requireAttioData(data.data, "transcript"),
-                nextCursor: data.pagination?.next_cursor ?? null,
+                transcript: page.data,
+                nextCursor: page.nextCursor,
                 actions: [meetingAction("Fetched call transcript", request.callRecordingId, "Fetched call transcript")]
             }
         }

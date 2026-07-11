@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
-import type { AttioComment, AttioCommentsRequest, AttioThread, ToolOutputByName } from "terse-types"
+import { IntegrationType, attioCommentSchema, attioThreadSchema } from "terse-types"
+import type { AttioCommentsRequest, ToolOutputByName } from "terse-types"
+import { z } from "zod"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, attioRequestData, buildQueryString, resolveAttioAccessToken } from "./attioApi"
 
 export const attioCommentsTool = defineSessionTool({
     name: "attio_comments",
@@ -32,32 +33,31 @@ async function executeCommentsRequest(request: AttioCommentsRequest, accessToken
     switch (request.action) {
         case "create": {
             const body = { data: { format: "plaintext", content: request.content, author: { type: "workspace-member", id: request.authorWorkspaceMemberId }, ...buildCommentTarget(request) } }
-            const data = await attioApiRequest<{ data?: AttioComment }>(accessToken, "/comments", { method: "POST", body })
+            const comment = await attioRequestData(accessToken, "/comments", attioCommentSchema, "comment", { method: "POST", body })
             const target = request.threadId ? `thread/${request.threadId}` : `${request.objectSlug}/${request.recordId}`
             return {
                 success: true,
                 action: request.action,
-                comment: requireAttioData(data.data, "comment"),
+                comment,
                 actions: [commentAction("Created comment", target, "Created comment", RunHistoryActionType.create)]
             }
         }
         case "get": {
-            const data = await attioApiRequest<{ data?: AttioComment }>(accessToken, `/comments/${encodeURIComponent(request.commentId)}`)
+            const comment = await attioRequestData(accessToken, `/comments/${encodeURIComponent(request.commentId)}`, attioCommentSchema, "comment")
             return {
                 success: true,
                 action: request.action,
-                comment: requireAttioData(data.data, "comment"),
+                comment,
                 actions: [commentAction("Fetched comment", request.commentId, "Fetched comment", RunHistoryActionType.read)]
             }
         }
         case "delete": {
-            await attioApiRequest<unknown>(accessToken, `/comments/${encodeURIComponent(request.commentId)}`, { method: "DELETE" })
+            await attioApiRequest(accessToken, `/comments/${encodeURIComponent(request.commentId)}`, { method: "DELETE" })
             return { success: true, action: request.action, deleted: true, actions: [commentAction("Deleted comment", request.commentId, "Permanently deleted comment", RunHistoryActionType.delete)] }
         }
         case "list_threads": {
             const query = buildQueryString({ object: request.objectSlug, record_id: request.recordId, limit: request.limit, offset: request.offset })
-            const data = await attioApiRequest<{ data?: AttioThread[] }>(accessToken, `/threads${query}`)
-            const threads = data.data ?? []
+            const threads = await attioRequestData(accessToken, `/threads${query}`, z.array(attioThreadSchema), "threads")
             return {
                 success: true,
                 action: request.action,
@@ -67,11 +67,11 @@ async function executeCommentsRequest(request: AttioCommentsRequest, accessToken
             }
         }
         case "get_thread": {
-            const data = await attioApiRequest<{ data?: AttioThread }>(accessToken, `/threads/${encodeURIComponent(request.threadId)}`)
+            const thread = await attioRequestData(accessToken, `/threads/${encodeURIComponent(request.threadId)}`, attioThreadSchema, "thread")
             return {
                 success: true,
                 action: request.action,
-                thread: requireAttioData(data.data, "thread"),
+                thread,
                 actions: [commentAction("Fetched thread", request.threadId, "Fetched thread with comments", RunHistoryActionType.read)]
             }
         }

@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
-import type { AttioNote, AttioNotesRequest, ToolOutputByName } from "terse-types"
+import { IntegrationType, attioNoteSchema } from "terse-types"
+import type { AttioNotesRequest, ToolOutputByName } from "terse-types"
+import { z } from "zod"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, buildQueryString, requireAttioData, resolveAttioAccessToken } from "./attioApi"
+import { attioApiRequest, attioRequestData, buildQueryString, resolveAttioAccessToken } from "./attioApi"
 
 export const attioNotesTool = defineSessionTool({
     name: "attio_notes",
@@ -37,8 +38,7 @@ async function executeNotesRequest(request: AttioNotesRequest, accessToken: stri
                 parent_object: request.parentObjectSlug,
                 parent_record_id: request.parentRecordId
             })
-            const data = await attioApiRequest<{ data?: AttioNote[] }>(accessToken, `/notes${query}`)
-            const notes = data.data ?? []
+            const notes = await attioRequestData(accessToken, `/notes${query}`, z.array(attioNoteSchema), "notes")
             return {
                 success: true,
                 action: request.action,
@@ -48,11 +48,11 @@ async function executeNotesRequest(request: AttioNotesRequest, accessToken: stri
             }
         }
         case "get": {
-            const data = await attioApiRequest<{ data?: AttioNote }>(accessToken, `/notes/${encodeURIComponent(request.noteId)}`)
+            const note = await attioRequestData(accessToken, `/notes/${encodeURIComponent(request.noteId)}`, attioNoteSchema, "note")
             return {
                 success: true,
                 action: request.action,
-                note: requireAttioData(data.data, "note"),
+                note,
                 actions: [noteAction("Fetched note", request.noteId, "Fetched note", RunHistoryActionType.read)]
             }
         }
@@ -66,16 +66,16 @@ async function executeNotesRequest(request: AttioNotesRequest, accessToken: stri
                     content: request.content
                 }
             }
-            const data = await attioApiRequest<{ data?: AttioNote }>(accessToken, "/notes", { method: "POST", body })
+            const note = await attioRequestData(accessToken, "/notes", attioNoteSchema, "note", { method: "POST", body })
             return {
                 success: true,
                 action: request.action,
-                note: requireAttioData(data.data, "note"),
+                note,
                 actions: [noteAction("Created note", `${request.parentObjectSlug}/${request.parentRecordId}`, `Created note "${request.title}"`, RunHistoryActionType.create)]
             }
         }
         case "delete": {
-            await attioApiRequest<unknown>(accessToken, `/notes/${encodeURIComponent(request.noteId)}`, { method: "DELETE" })
+            await attioApiRequest(accessToken, `/notes/${encodeURIComponent(request.noteId)}`, { method: "DELETE" })
             return { success: true, action: request.action, deleted: true, actions: [noteAction("Deleted note", request.noteId, "Permanently deleted note", RunHistoryActionType.delete)] }
         }
         default:

@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
-import type { AttioGetWorkspaceMemberRequest, AttioListWorkspaceMembersRequest, AttioWorkspaceMember, AttioWorkspaceMembersRequest, ToolOutputByName } from "terse-types"
+import { IntegrationType, attioWorkspaceMemberSchema } from "terse-types"
+import type { AttioGetWorkspaceMemberRequest, AttioListWorkspaceMembersRequest, AttioWorkspaceMembersRequest, ToolOutputByName } from "terse-types"
+import { z } from "zod"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, resolveAttioAccessToken } from "./attioApi"
+import { attioRequestData, resolveAttioAccessToken } from "./attioApi"
 
 export const attioWorkspaceMembersTool = defineSessionTool({
     name: "attio_workspace_members",
@@ -41,8 +42,7 @@ async function executeWorkspaceMembersRequest(request: AttioWorkspaceMembersRequ
 }
 
 async function listWorkspaceMembers(request: AttioListWorkspaceMembersRequest, accessToken: string): Promise<AttioWorkspaceMembersOutput> {
-    const data = await attioApiRequest<{ data?: AttioWorkspaceMember[] }>(accessToken, "/workspace_members")
-    const members = data.data ?? []
+    const members = await attioRequestData(accessToken, "/workspace_members", z.array(attioWorkspaceMemberSchema), "workspace members")
 
     return {
         success: true,
@@ -62,21 +62,18 @@ async function listWorkspaceMembers(request: AttioListWorkspaceMembersRequest, a
 }
 
 async function getWorkspaceMember(request: AttioGetWorkspaceMemberRequest, accessToken: string): Promise<AttioWorkspaceMembersOutput> {
-    const data = await attioApiRequest<{ data?: AttioWorkspaceMember }>(accessToken, `/workspace_members/${encodeURIComponent(request.workspaceMemberId)}`)
-    if (!data.data) {
-        throw new Error(`Attio workspace member "${request.workspaceMemberId}" not found.`)
-    }
+    const member = await attioRequestData(accessToken, `/workspace_members/${encodeURIComponent(request.workspaceMemberId)}`, attioWorkspaceMemberSchema, "workspace member")
 
     return {
         success: true,
         action: request.action,
-        member: data.data,
+        member,
         actions: [
             {
                 action: "Fetched workspace member",
                 integration: IntegrationType.ATTIO,
                 target: request.workspaceMemberId,
-                details: `Fetched workspace member ${data.data.email_address || request.workspaceMemberId}`,
+                details: `Fetched workspace member ${member.email_address || request.workspaceMemberId}`,
                 type: RunHistoryActionType.read
             }
         ]

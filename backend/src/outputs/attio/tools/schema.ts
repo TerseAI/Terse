@@ -1,11 +1,12 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
-import type { AttioAttribute, AttioObject, AttioSchemaRequest, AttioSelectOptionEntity, AttioStatus, ToolOutputByName } from "terse-types"
+import { IntegrationType, attioAttributeSchema, attioObjectSchema, attioSelectOptionEntitySchema, attioStatusSchema } from "terse-types"
+import type { AttioAttribute, AttioSchemaRequest, ToolOutputByName } from "terse-types"
+import { z } from "zod"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
 
-import { attioApiRequest, parseOptionalJsonObject, requireAttioData, resolveAttioAccessToken } from "./attioApi"
+import { attioRequestData, parseOptionalJsonObject, resolveAttioAccessToken } from "./attioApi"
 
 export const attioSchemaTool = defineSessionTool({
     name: "attio_schema",
@@ -33,21 +34,21 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
         case "list_objects":
             return listObjects(request.action, accessToken)
         case "get_object": {
-            const data = await attioApiRequest<{ data?: AttioObject }>(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}`)
+            const object = await attioRequestData(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}`, attioObjectSchema, "object")
             return {
                 success: true,
                 action: request.action,
-                object: requireAttioData(data.data, "object"),
+                object,
                 actions: [schemaAction("Fetched object", request.objectSlug, "Fetched object configuration", RunHistoryActionType.read)]
             }
         }
         case "create_object": {
             const body = { data: { api_slug: request.apiSlug, singular_noun: request.singularNoun, plural_noun: request.pluralNoun } }
-            const data = await attioApiRequest<{ data?: AttioObject }>(accessToken, "/objects", { method: "POST", body })
+            const object = await attioRequestData(accessToken, "/objects", attioObjectSchema, "object", { method: "POST", body })
             return {
                 success: true,
                 action: request.action,
-                object: requireAttioData(data.data, "object"),
+                object,
                 actions: [schemaAction("Created object", request.apiSlug, `Created custom object "${request.singularNoun}"`, RunHistoryActionType.create)]
             }
         }
@@ -56,17 +57,16 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             if (request.newApiSlug != null) updates.api_slug = request.newApiSlug
             if (request.singularNoun != null) updates.singular_noun = request.singularNoun
             if (request.pluralNoun != null) updates.plural_noun = request.pluralNoun
-            const data = await attioApiRequest<{ data?: AttioObject }>(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}`, { method: "PATCH", body: { data: updates } })
+            const object = await attioRequestData(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}`, attioObjectSchema, "object", { method: "PATCH", body: { data: updates } })
             return {
                 success: true,
                 action: request.action,
-                object: requireAttioData(data.data, "object"),
+                object,
                 actions: [schemaAction("Updated object", request.objectSlug, "Updated object configuration", RunHistoryActionType.update)]
             }
         }
         case "list_attributes": {
-            const data = await attioApiRequest<{ data?: AttioAttribute[] }>(accessToken, `${targetPath(request)}/attributes`)
-            const attributes = data.data ?? []
+            const attributes = await attioRequestData(accessToken, `${targetPath(request)}/attributes`, z.array(attioAttributeSchema), "attributes")
             return {
                 success: true,
                 action: request.action,
@@ -88,11 +88,11 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
                     config: parseOptionalJsonObject(request.config, "config") ?? {}
                 }
             }
-            const data = await attioApiRequest<{ data?: AttioAttribute }>(accessToken, `${targetPath(request)}/attributes`, { method: "POST", body })
+            const attribute = await attioRequestData(accessToken, `${targetPath(request)}/attributes`, attioAttributeSchema, "attribute", { method: "POST", body })
             return {
                 success: true,
                 action: request.action,
-                attribute: requireAttioData(data.data, "attribute"),
+                attribute,
                 actions: [schemaAction("Created attribute", `${request.identifier}/${request.apiSlug}`, `Created ${request.attributeType} attribute "${request.title}"`, RunHistoryActionType.create)]
             }
         }
@@ -100,17 +100,16 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             const updates: Record<string, unknown> = {}
             if (request.title != null) updates.title = request.title
             if (request.isRequired != null) updates.is_required = request.isRequired
-            const data = await attioApiRequest<{ data?: AttioAttribute }>(accessToken, `${attributePath(request)}`, { method: "PATCH", body: { data: updates } })
+            const attribute = await attioRequestData(accessToken, `${attributePath(request)}`, attioAttributeSchema, "attribute", { method: "PATCH", body: { data: updates } })
             return {
                 success: true,
                 action: request.action,
-                attribute: requireAttioData(data.data, "attribute"),
+                attribute,
                 actions: [schemaAction("Updated attribute", `${request.identifier}/${request.attributeSlug}`, "Updated attribute configuration", RunHistoryActionType.update)]
             }
         }
         case "list_statuses": {
-            const data = await attioApiRequest<{ data?: AttioStatus[] }>(accessToken, `${attributePath(request)}/statuses`)
-            const statuses = data.data ?? []
+            const statuses = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, z.array(attioStatusSchema), "statuses")
             return {
                 success: true,
                 action: request.action,
@@ -120,11 +119,11 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             }
         }
         case "create_status": {
-            const data = await attioApiRequest<{ data?: AttioStatus }>(accessToken, `${attributePath(request)}/statuses`, { method: "POST", body: { data: { title: request.title } } })
+            const status = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, attioStatusSchema, "status", { method: "POST", body: { data: { title: request.title } } })
             return {
                 success: true,
                 action: request.action,
-                status: requireAttioData(data.data, "status"),
+                status,
                 actions: [schemaAction("Created status", `${request.identifier}/${request.attributeSlug}`, `Added status "${request.title}"`, RunHistoryActionType.create)]
             }
         }
@@ -132,20 +131,19 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             const updates: Record<string, unknown> = {}
             if (request.title != null) updates.title = request.title
             if (request.isArchived != null) updates.is_archived = request.isArchived
-            const data = await attioApiRequest<{ data?: AttioStatus }>(accessToken, `${attributePath(request)}/statuses/${encodeURIComponent(request.statusId)}`, {
+            const status = await attioRequestData(accessToken, `${attributePath(request)}/statuses/${encodeURIComponent(request.statusId)}`, attioStatusSchema, "status", {
                 method: "PATCH",
                 body: { data: updates }
             })
             return {
                 success: true,
                 action: request.action,
-                status: requireAttioData(data.data, "status"),
+                status,
                 actions: [schemaAction("Updated status", request.statusId, "Updated status", RunHistoryActionType.update)]
             }
         }
         case "list_select_options": {
-            const data = await attioApiRequest<{ data?: AttioSelectOptionEntity[] }>(accessToken, `${attributePath(request)}/options`)
-            const selectOptions = data.data ?? []
+            const selectOptions = await attioRequestData(accessToken, `${attributePath(request)}/options`, z.array(attioSelectOptionEntitySchema), "select options")
             return {
                 success: true,
                 action: request.action,
@@ -155,11 +153,11 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             }
         }
         case "create_select_option": {
-            const data = await attioApiRequest<{ data?: AttioSelectOptionEntity }>(accessToken, `${attributePath(request)}/options`, { method: "POST", body: { data: { title: request.title } } })
+            const selectOption = await attioRequestData(accessToken, `${attributePath(request)}/options`, attioSelectOptionEntitySchema, "select option", { method: "POST", body: { data: { title: request.title } } })
             return {
                 success: true,
                 action: request.action,
-                selectOption: requireAttioData(data.data, "select option"),
+                selectOption,
                 actions: [schemaAction("Created select option", `${request.identifier}/${request.attributeSlug}`, `Added option "${request.title}"`, RunHistoryActionType.create)]
             }
         }
@@ -167,14 +165,14 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             const updates: Record<string, unknown> = {}
             if (request.title != null) updates.title = request.title
             if (request.isArchived != null) updates.is_archived = request.isArchived
-            const data = await attioApiRequest<{ data?: AttioSelectOptionEntity }>(accessToken, `${attributePath(request)}/options/${encodeURIComponent(request.optionId)}`, {
+            const selectOption = await attioRequestData(accessToken, `${attributePath(request)}/options/${encodeURIComponent(request.optionId)}`, attioSelectOptionEntitySchema, "select option", {
                 method: "PATCH",
                 body: { data: updates }
             })
             return {
                 success: true,
                 action: request.action,
-                selectOption: requireAttioData(data.data, "select option"),
+                selectOption,
                 actions: [schemaAction("Updated select option", request.optionId, "Updated select option", RunHistoryActionType.update)]
             }
         }
@@ -184,15 +182,14 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
 }
 
 async function listObjects(action: "list_objects", accessToken: string): Promise<AttioSchemaOutput> {
-    const data = await attioApiRequest<{ data?: AttioObject[] }>(accessToken, "/objects")
-    const objects = data.data ?? []
+    const objects = await attioRequestData(accessToken, "/objects", z.array(attioObjectSchema), "objects")
 
     const objectsWithAttributes = await Promise.all(
         objects.map(async object => {
-            const attrData = await attioApiRequest<{ data?: AttioAttribute[] }>(accessToken, `/objects/${encodeURIComponent(object.api_slug)}/attributes`).catch(() => ({
-                data: [] as AttioAttribute[]
-            }))
-            return { ...object, attributes: attrData.data ?? [] }
+            const attributes = await attioRequestData(accessToken, `/objects/${encodeURIComponent(object.api_slug)}/attributes`, z.array(attioAttributeSchema), "attributes").catch(
+                (): AttioAttribute[] => []
+            )
+            return { ...object, attributes }
         })
     )
 
