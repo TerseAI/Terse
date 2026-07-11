@@ -188,15 +188,20 @@ async function upsertRecords(request: AttioUpsertRecordsRequest, accessToken: st
     const successCount = successfulRecords.length
     const failureCount = errors.length
 
+    if (failureCount > 0) {
+        const failureLines = errors.map(failure => `record[${failure.index}]: ${failure.message}`).join("; ")
+        throw new AttioUpsertFailedError(request.objectSlug, successCount, parsedRecords.length, failureLines)
+    }
+
     return {
-        success: successCount > 0 || failureCount === 0,
+        success: true,
         action: request.action,
         records: successfulRecords,
         count: successCount,
         requestedCount: parsedRecords.length,
         successCount,
         failureCount,
-        partial: successCount > 0 && failureCount > 0,
+        partial: false,
         errors,
         actions
     }
@@ -310,6 +315,13 @@ function writeAction(action: string, objectSlug: string, record: AttioRecord | u
         details,
         type,
         url: record?.web_url || (recordId ? `https://app.attio.com/objects/${objectSlug}/${recordId}` : undefined)
+    }
+}
+
+class AttioUpsertFailedError extends Error {
+    constructor(objectSlug: string, successCount: number, requestedCount: number, failureLines: string) {
+        super(`Attio upsert on ${objectSlug} failed for ${requestedCount - successCount} of ${requestedCount} record(s) (${successCount} succeeded and were written). ${failureLines}`)
+        this.name = "AttioUpsertFailedError"
     }
 }
 

@@ -1,6 +1,6 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType } from "terse-types"
-import type { AttioAttribute, AttioObject, AttioSchemaRequest, ToolOutputByName } from "terse-types"
+import type { AttioAttribute, AttioObject, AttioSchemaRequest, AttioSelectOptionEntity, AttioStatus, ToolOutputByName } from "terse-types"
 
 import logger from "../../../common/logger"
 import { defineSessionTool, formatError } from "../../../tools/toolUtils"
@@ -109,7 +109,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             }
         }
         case "list_statuses": {
-            const data = await attioApiRequest<{ data?: Record<string, unknown>[] }>(accessToken, `${attributePath(request)}/statuses`)
+            const data = await attioApiRequest<{ data?: AttioStatus[] }>(accessToken, `${attributePath(request)}/statuses`)
             const statuses = data.data ?? []
             return {
                 success: true,
@@ -120,7 +120,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             }
         }
         case "create_status": {
-            const data = await attioApiRequest<{ data?: Record<string, unknown> }>(accessToken, `${attributePath(request)}/statuses`, { method: "POST", body: { data: { title: request.title } } })
+            const data = await attioApiRequest<{ data?: AttioStatus }>(accessToken, `${attributePath(request)}/statuses`, { method: "POST", body: { data: { title: request.title } } })
             return {
                 success: true,
                 action: request.action,
@@ -132,7 +132,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             const updates: Record<string, unknown> = {}
             if (request.title != null) updates.title = request.title
             if (request.isArchived != null) updates.is_archived = request.isArchived
-            const data = await attioApiRequest<{ data?: Record<string, unknown> }>(accessToken, `${attributePath(request)}/statuses/${encodeURIComponent(request.statusId)}`, {
+            const data = await attioApiRequest<{ data?: AttioStatus }>(accessToken, `${attributePath(request)}/statuses/${encodeURIComponent(request.statusId)}`, {
                 method: "PATCH",
                 body: { data: updates }
             })
@@ -144,7 +144,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             }
         }
         case "list_select_options": {
-            const data = await attioApiRequest<{ data?: Record<string, unknown>[] }>(accessToken, `${attributePath(request)}/options`)
+            const data = await attioApiRequest<{ data?: AttioSelectOptionEntity[] }>(accessToken, `${attributePath(request)}/options`)
             const selectOptions = data.data ?? []
             return {
                 success: true,
@@ -155,7 +155,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             }
         }
         case "create_select_option": {
-            const data = await attioApiRequest<{ data?: Record<string, unknown> }>(accessToken, `${attributePath(request)}/options`, { method: "POST", body: { data: { title: request.title } } })
+            const data = await attioApiRequest<{ data?: AttioSelectOptionEntity }>(accessToken, `${attributePath(request)}/options`, { method: "POST", body: { data: { title: request.title } } })
             return {
                 success: true,
                 action: request.action,
@@ -167,7 +167,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             const updates: Record<string, unknown> = {}
             if (request.title != null) updates.title = request.title
             if (request.isArchived != null) updates.is_archived = request.isArchived
-            const data = await attioApiRequest<{ data?: Record<string, unknown> }>(accessToken, `${attributePath(request)}/options/${encodeURIComponent(request.optionId)}`, {
+            const data = await attioApiRequest<{ data?: AttioSelectOptionEntity }>(accessToken, `${attributePath(request)}/options/${encodeURIComponent(request.optionId)}`, {
                 method: "PATCH",
                 body: { data: updates }
             })

@@ -1921,13 +1921,41 @@ export const attioListEntrySchema = z
     })
     .catchall(z.unknown())
 
+export const attioMeetingTimeSchema = z
+    .object({
+        datetime: z.string().optional(),
+        timezone: z.string().nullable().optional(),
+        date: z.string().optional()
+    })
+    .catchall(z.unknown())
+
 export const attioMeetingSchema = z
     .object({
         id: z.object({ workspace_id: z.string(), meeting_id: z.string() }),
         title: z.string().nullable(),
+        description: z.string().nullable().optional(),
+        is_all_day: z.boolean().optional(),
+        start: attioMeetingTimeSchema.optional(),
+        end: attioMeetingTimeSchema.optional(),
         participants: z.array(z.record(z.string(), z.unknown())),
         linked_records: z.array(z.record(z.string(), z.unknown())),
         created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioStatusSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string().optional(), object_id: z.string().optional(), attribute_id: z.string().optional(), status_id: z.string().optional() }).catchall(z.unknown()),
+        title: z.string(),
+        is_archived: z.boolean()
+    })
+    .catchall(z.unknown())
+
+export const attioSelectOptionEntitySchema = z
+    .object({
+        id: z.object({ workspace_id: z.string().optional(), object_id: z.string().optional(), attribute_id: z.string().optional(), option_id: z.string().optional() }).catchall(z.unknown()),
+        title: z.string(),
+        is_archived: z.boolean()
     })
     .catchall(z.unknown())
 
@@ -2075,7 +2103,11 @@ export const attioQueryRecordsRequestSchema = z.object({
 })
 
 export const attioSearchRecordsRequestSchema = z.object({
-    action: z.literal("search").describe("Fuzzy-search records by name, email address or domain. Results are eventually consistent; use 'query' for guaranteed up-to-date reads."),
+    action: z
+        .literal("search")
+        .describe(
+            "Fuzzy-search records following Attio's in-product matching: names/domains/emails/phones on people and companies, the record label on other objects (e.g. deal names). Query with a distinctive substring of the target; extra tokens that are not in the record's name can prevent matches. Results are eventually consistent (a just-created record may not be indexed yet) — use 'query' for read-after-write."
+        ),
     objectSlug: attioObjectSlugField,
     query: z.string().describe("The search term, matched fuzzily against record names, email addresses and domains (max 256 chars)."),
     limit: z.number().int().nullable().describe("Maximum number of matches to return (default and max 25). Pass null for the default.")
@@ -2105,7 +2137,11 @@ export const attioUpdateRecordRequestSchema = z.object({
 })
 
 export const attioUpsertRecordsRequestSchema = z.object({
-    action: z.literal("upsert").describe("Create or update one or more records, matched on a unique attribute. If a match is found the record is updated, otherwise a new one is created."),
+    action: z
+        .literal("upsert")
+        .describe(
+            "Create or update one or more records, matched on a unique attribute. If a match is found the record is updated, otherwise a new one is created. Throws if ANY record in the batch fails, naming each failure; earlier records may already be written (upserts are safe to retry)."
+        ),
     objectSlug: attioObjectSlugField,
     matchingAttribute: z.string().describe("The unique, writable attribute slug to match on (e.g. 'email_addresses' for people, 'domains' for companies)."),
     records: z
@@ -2602,10 +2638,10 @@ export const attioSchemaTool = defineTool({
         object: attioObjectSchema.optional(),
         attributes: z.array(attioAttributeSchema).optional(),
         attribute: attioAttributeSchema.optional(),
-        statuses: z.array(z.record(z.string(), z.unknown())).optional(),
-        status: z.record(z.string(), z.unknown()).optional(),
-        selectOptions: z.array(z.record(z.string(), z.unknown())).optional(),
-        selectOption: z.record(z.string(), z.unknown()).optional(),
+        statuses: z.array(attioStatusSchema).optional(),
+        status: attioStatusSchema.optional(),
+        selectOptions: z.array(attioSelectOptionEntitySchema).optional(),
+        selectOption: attioSelectOptionEntitySchema.optional(),
         count: z.number().int().optional()
     })
 })

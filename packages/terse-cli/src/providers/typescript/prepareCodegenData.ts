@@ -1356,7 +1356,8 @@ function buildAttioRecordsMethods(integrationId: string): ToolMethodContext[] {
             ]
         },
         {
-            description: "Fuzzy-search records by name, email address or domain (max 25 matches). Results are eventually consistent; use queryRecords for guaranteed up-to-date reads.",
+            description:
+                "Fuzzy-search records (max 25 matches) following Attio's in-product matching: names/domains/emails/phones on people and companies, the record label on other objects. Query with a distinctive substring of the target name; extra tokens absent from it can prevent matches. Results are eventually consistent (a just-created record may not be indexed) — use queryRecords for read-after-write.",
             generatedSignature: "searchRecords<TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>): Promise<AttioSearchRecordsResult>",
             runtimeLines: [
                 "searchRecords: <TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>) =>",
@@ -1388,7 +1389,8 @@ function buildAttioRecordsMethods(integrationId: string): ToolMethodContext[] {
             ]
         },
         {
-            description: "Create or update one or more records, matched on a unique writable attribute (e.g. email_addresses for people, domains for companies).",
+            description:
+                "Create or update one or more records, matched on a unique writable attribute (e.g. email_addresses for people, domains for companies). Throws if ANY record fails, naming each failure; records earlier in the batch may already be written (upserts are safe to retry).",
             generatedSignature: "upsertRecord<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>",
             runtimeLines: [
                 "upsertRecord: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>",
@@ -1407,10 +1409,10 @@ function buildAttioRecordsMethods(integrationId: string): ToolMethodContext[] {
             description:
                 "Fetch the historic values of one attribute on a record (e.g. every stage a deal has been in), with limit/offset pagination. Entries come back as { active_from, active_until, value } with the value flattened and typed by the attribute.",
             generatedSignature:
-                "getAttributeHistory<TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }): Promise<AttioAttributeHistoryResult<__AttioSingleValue<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>",
+                "getAttributeHistory<TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }): Promise<AttioAttributeHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>>",
             runtimeLines: [
                 "getAttributeHistory: <TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }) =>",
-                `    ${call(`{ action: "get_attribute_history", ${objectSlug}, recordId: params.recordId, attributeSlug: params.attribute, limit: params.limit ?? null, offset: params.offset ?? null }`)}.then(result => __enhanceAttioHistoryResult<__AttioSingleValue<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>(result)),`
+                `    ${call(`{ action: "get_attribute_history", ${objectSlug}, recordId: params.recordId, attributeSlug: params.attribute, limit: params.limit ?? null, offset: params.offset ?? null }`)}.then(result => __enhanceAttioHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>(result)),`
             ]
         }
     ]
