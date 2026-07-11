@@ -9,7 +9,7 @@ A read-only research task: determine what the current Terse workspace already pr
 ## Instructions
 
 1. Read `src/terse.generated.ts` in full. It is the source of truth for connected integrations, triggers, skills, resources, and deterministic `toolbox` wrappers. The comment at the top lists every integration currently available in Terse; the generated sections below it reflect what is connected. Do not read `node_modules/`.
-2. Read `src/terse.jobs.ts` (or the project's custom entry file, or the legacy `src/index.ts`) to see which jobs already exist.
+2. Read `src/terse.jobs.ts` (or the project's custom entry file, or the legacy `src/index.ts`) and the job files it imports from `src/jobs/` to see which jobs already exist.
 3. For each platform, event, and action in the context block, find the exact matching exports: trigger factories (`Triggers.*`), skill factories (`Skills.*`), `toolbox.<integration>.<method>` signatures, and resource constants (repos, channels, teams, projects).
 4. Anything the workflow needs that the generated file does not provide is a gap. Check the available-integrations comment before reporting it: if the platform appears in the list but has no generated section, report it as a connectable built-in (`terse integrate tool <type> --json` lists its tools); if it does not appear in the list at all, Terse has no built-in for it — report the gap and leave external options to the docs and integration briefs. Never report an integration that is absent from the list as available.
 

@@ -120,7 +120,7 @@ The "Terse Job Code Conventions" section at the bottom of this file is what the 
 #### Durability
 
 - **Durable jobs**: audit the handler against the "Durable job style" rules in the conventions section — step placement, serializable boundaries, branch helpers, journaled branch conditions.
-- **Non-durable jobs**: check for the durable signals in the conventions section ("When to be durable") that have crept in. If present, recommend flipping `durable: true` (and the step restructuring it requires) as an opt-in improvement.
+- **Non-durable jobs**: check for the durable signals in the conventions section ("When to be durable") that have crept in. A forcing signal (`waitForInput`, `sleep`) means the job is broken, not improvable — the flip to `durable: true` (and the step restructuring it requires) is a required fix; state it as a consequence, never as a question. The judgment signal (three or more side-effecting milestones) makes the flip an opt-in improvement to recommend.
 
 #### Skill Configuration
 
@@ -130,7 +130,7 @@ The "Terse Job Code Conventions" section at the bottom of this file is what the 
 
 ### 4. Confirm behavior changes with the user
 
-If any proposed improvement changes the job's observable behavior — a filter that skips events it used to process, a rewritten prompt, a changed output surface, a durability flip — put those decisions to the user before implementing. Provide a recommended answer for each, and batch related questions, at most four per interruption. Mechanical fixes (typing, error classes, file shape) don't need confirmation.
+If any proposed improvement changes the job's observable behavior — a filter that skips events it used to process, a rewritten prompt, a changed output surface, a judgment-signal durability flip — put those decisions to the user before implementing. Provide a recommended answer for each, and batch related questions, at most four per interruption. Mechanical fixes (typing, error classes, file shape) and forced durability flips don't need confirmation.
 
 If a *fact* can be found in the code, run history, or docs, look it up rather than asking. If you are running headless with no one to answer, take your recommended answers and state them with reasons in the final summary.
 
@@ -327,7 +327,7 @@ A probe is a read-only discovery run against an external API — list the audien
 Probe with a scratch probe job instead:
 
 1. Create `src/jobs/_probe.ts`: a throwaway job with a cron trigger whose handler does the reads and logs the results.
-2. Add its side-effect import to `src/terse.jobs.ts`. This import line is the only sanctioned temporary edit to existing files, and the probe does not count as a second job for the project-layout rule.
+2. Add its side-effect import to `src/terse.jobs.ts`. This import line is the only sanctioned temporary edit to existing files.
 3. Run it with `terse test run` (cron triggers get synthetic sample events), so secrets hydrate exactly as they do for real jobs.
 4. Record what it found, then delete both the probe file and its import line.
 
@@ -427,9 +427,7 @@ return { emailId: data.id }
 
 ## Project layout
 
-**One job: define it in the entry file.** A single-job project keeps the job directly in `src/terse.jobs.ts`.
-
-**Two or more jobs: one file per job.** The moment a second job is added, every job (the existing one too) moves to its own file in `src/jobs/`, named in kebab-case after the job (`src/jobs/triage-bug-reports.ts`), and `src/terse.jobs.ts` becomes a pure manifest of side-effect imports:
+**One file per job, always.** Every job lives in its own file in `src/jobs/`, named in kebab-case after the job (`src/jobs/triage-bug-reports.ts`), and `src/terse.jobs.ts` is a pure manifest of side-effect imports — even when the project has a single job:
 
 ```typescript
 import "./jobs/triage-bug-reports"
@@ -482,7 +480,12 @@ For `_B64` secrets, put the full encode one-liner in the missing-secret error me
 
 These rules apply when the job sets `durable: true`. The mechanics (replay model, `step()`, `jobStep`, `sleep`, `waitForInput`) live in https://docs.useterse.ai/core-concepts/durability; facts there win.
 
-**When to be durable.** Recommend `durable: true` when the workflow involves any of: human input or approval (`waitForInput`), timed waits (`sleep`), or three or more side-effecting milestones where a mid-run failure would leave visible half-done work. Otherwise recommend non-durable.
+**When to be durable.** Two kinds of signal, treated differently:
+
+- **Forcing signals** — human input or approval (`waitForInput`) or timed waits (`sleep`). These primitives only exist in durable mode, so their presence *requires* `durable: true`; there is no decision to put to the user, only a consequence to state.
+- **Judgment signal** — three or more side-effecting milestones where a mid-run failure would leave visible half-done work. This is a genuine trade-off: recommend `durable: true` and let the user decide.
+
+With neither signal, default to non-durable.
 
 **`step()` inline is the default.** Wrap each external call directly — `await step(client.method(args))` — so the handler reads as sequential blocks. Terse SDK calls (`toolbox.*`, `generateText`, `state.get`/`state.set`) are already durable steps; leave them bare.
 
