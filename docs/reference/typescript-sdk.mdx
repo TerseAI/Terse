@@ -365,7 +365,7 @@ Posts an interactive input request and suspends until a human responds. Returns 
 
 `result.choice` is typed to the union of your option ids. See [Durability — Waiting for human input](/core-concepts/durability#waiting-for-human-input).
 
-Locally (`terse test`, no `TERSE_RUN_ID`), Terse shows an interactive terminal prompt instead of posting to Slack. The prompt is journaled as a step, so durable replays return the cached answer instead of re-prompting.
+Locally (`terse test`), Terse posts the same Slack message it would in production, marked as coming from `terse test`, and the run waits for the response there. The wait is journaled as a step, so durable replays return the cached answer instead of asking again.
 
 ### `slack({ channel })`
 

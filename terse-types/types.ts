@@ -778,13 +778,20 @@ export const sdkInputRequestTargetSchema = z.discriminatedUnion("provider", [
 ])
 export type SdkInputRequestTarget = z.infer<typeof sdkInputRequestTargetSchema>
 
+// How the response travels back to the run: "suspend" restores the parked cloud sandbox,
+// "poll" stashes the payload for the live local process to fetch (`terse test`).
+// Defaulted (not required) because already-published SDKs predate the field.
+export const sdkInputResponseTransportSchema = z.enum(["suspend", "poll"]).default("suspend")
+export type SdkInputResponseTransport = z.infer<typeof sdkInputResponseTransportSchema>
+
 export const sdkInputRequestRegisterBodySchema = z.object({
     token: z.string().min(1),
     runId: z.string().min(1),
     prompt: z.string().min(1),
     details: z.record(z.string(), z.string()).optional(),
     options: z.array(sdkInputRequestOptionSchema).min(1),
-    via: sdkInputRequestTargetSchema
+    via: sdkInputRequestTargetSchema,
+    transport: sdkInputResponseTransportSchema
 })
 export type SdkInputRequestRegisterBody = z.infer<typeof sdkInputRequestRegisterBodySchema>
 

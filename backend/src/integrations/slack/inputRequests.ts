@@ -1,5 +1,5 @@
 import { KnownBlock, WebClient } from "@slack/web-api"
-import { SdkInputRequestRegisterBody, sdkInputRequestOptionSchema } from "terse-types/types"
+import { SdkInputRequestRegisterBody, sdkInputRequestOptionSchema, sdkInputResponseTransportSchema } from "terse-types/types"
 import { z } from "zod"
 
 import logger from "../../common/logger"
@@ -19,7 +19,8 @@ export const INPUT_REQUEST_FEEDBACK_ACTION_ID = "feedback"
 export const inputRequestMetadataSchema = z.object({
     token: z.string().min(1),
     run_id: z.string().min(1),
-    options: z.array(sdkInputRequestOptionSchema).min(1)
+    options: z.array(sdkInputRequestOptionSchema).min(1),
+    transport: sdkInputResponseTransportSchema
 })
 export type InputRequestMetadata = z.infer<typeof inputRequestMetadataSchema>
 
@@ -64,7 +65,8 @@ export async function deliverSlackInputRequest(params: {
     const metadata: InputRequestMetadata = {
         token: body.token,
         run_id: body.runId,
-        options: body.options
+        options: body.options,
+        transport: body.transport
     }
 
     try {
@@ -148,9 +150,10 @@ function buildInputRequestBlocks(jobName: string, body: SdkInputRequestRegisterB
         }))
     })
 
+    const source = body.transport === "poll" ? `${jobName} · terse test` : jobName
     blocks.push({
         type: "context",
-        elements: [{ type: "mrkdwn", text: `${jobName} · waiting for a response` }]
+        elements: [{ type: "mrkdwn", text: `${source} · waiting for a response` }]
     })
 
     return blocks

@@ -1,3 +1,4 @@
+import { pollUntil } from "terse-sdk"
 import { ApiRoutes, ConfigurationFieldDefinition, FormFieldDefinition, IntegrationFieldsResponse, IntegrationType, IntegrationWithStatus, OAuthInstallationDetails, buildRoute } from "terse-types"
 
 import { fetchWithAuth } from "./api.js"
@@ -26,18 +27,13 @@ export async function disconnectIntegration(apiKey: string, integrationType: Int
 }
 
 export async function pollForConnection(apiKey: string, integrationType: string, timeoutMs = 120_000, intervalMs = 3_000): Promise<boolean> {
-    const deadline = Date.now() + timeoutMs
-
-    while (Date.now() < deadline) {
-        await new Promise(resolve => setTimeout(resolve, intervalMs))
-        try {
+    const connected = await pollUntil(
+        async () => {
             const integrations = await fetchIntegrations(apiKey)
             const match = integrations.find(i => i.integrationType === integrationType)
-            if (match?.isActive) return true
-        } catch {
-            // ignore transient errors, keep polling
-        }
-    }
-
-    return false
+            return match?.isActive ? true : undefined
+        },
+        { intervalMs, timeoutMs }
+    )
+    return connected ?? false
 }
