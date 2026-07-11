@@ -110,11 +110,7 @@ async function createInputRequestToken(): Promise<string> {
     return globalThis.crypto.randomUUID()
 }
 
-async function registerInputRequest(
-    token: string,
-    params: WaitForInputParams<readonly InputOption[], InputTarget>,
-    transport: SdkInputResponseTransport
-): Promise<InputDelivery> {
+async function registerInputRequest(token: string, params: WaitForInputParams<readonly InputOption[], InputTarget>, transport: SdkInputResponseTransport): Promise<InputDelivery> {
     const response = await deliverInputRequestStep({
         token,
         prompt: params.prompt,
