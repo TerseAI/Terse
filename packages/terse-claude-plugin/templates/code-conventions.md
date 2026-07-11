@@ -143,7 +143,12 @@ For `_B64` secrets, put the full encode one-liner in the missing-secret error me
 
 These rules apply when the job sets `durable: true`. The mechanics (replay model, `step()`, `jobStep`, `sleep`, `waitForInput`) live in https://docs.useterse.ai/core-concepts/durability; facts there win.
 
-**When to be durable.** Recommend `durable: true` when the workflow involves any of: human input or approval (`waitForInput`), timed waits (`sleep`), or three or more side-effecting milestones where a mid-run failure would leave visible half-done work. Otherwise recommend non-durable.
+**When to be durable.** Two kinds of signal, treated differently:
+
+- **Forcing signals** — human input or approval (`waitForInput`) or timed waits (`sleep`). These primitives only exist in durable mode, so their presence *requires* `durable: true`; there is no decision to put to the user, only a consequence to state.
+- **Judgment signal** — three or more side-effecting milestones where a mid-run failure would leave visible half-done work. This is a genuine trade-off: recommend `durable: true` and let the user decide.
+
+With neither signal, default to non-durable.
 
 **`step()` inline is the default.** Wrap each external call directly — `await step(client.method(args))` — so the handler reads as sequential blocks. Terse SDK calls (`toolbox.*`, `generateText`, `state.get`/`state.set`) are already durable steps; leave them bare.
 

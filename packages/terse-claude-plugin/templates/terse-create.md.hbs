@@ -170,13 +170,13 @@ If no runtime entry exists yet, create one:
 import { createJob, generateText } from "terse-sdk"
 ```
 
-### 5. Decide durability with the user
+### 5. Settle durability
 
-Durability changes how the handler is structured, so settle it before writing any handler code.
+Durability changes how the handler is structured, so settle it before writing any handler code. Check the confirmed design against the two signal kinds in the conventions section ("When to be durable").
 
-Form a recommendation first, from the durable signals in the conventions section ("When to be durable").
+**A forcing signal is present** (the design waits on human input or time): durability is not a decision, so never ask. State it as a consequence in one line and move on: "This job waits for \<approval/the timer\>, so it runs durable."
 
-Then ask, presenting your recommendation as the default. Use this copy:
+**Only the judgment signal is present** (three or more side-effecting milestones, no waits): this is a real trade-off, so ask, presenting your recommendation as the default. Use this copy:
 
 > **Should this job be durable?**
 >
@@ -186,6 +186,8 @@ Then ask, presenting your recommendation as the default. Use this copy:
 > Tradeoff: durable requires every side effect to live in a `step()` and all step data to be serializable.
 >
 > Recommended for this workflow: \<your recommendation and one-line reason\>
+
+**Neither signal**: the job is non-durable. Don't ask and don't announce it.
 
 For durable jobs, the style rules in the conventions section ("Durable job style") govern the handler; the mechanics (`step()`, `jobStep`, `sleep`, `waitForInput`, replay model) are in https://docs.useterse.ai/core-concepts/durability.
 

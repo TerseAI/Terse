@@ -193,13 +193,13 @@ If no runtime entry exists yet, create one:
 import { createJob, generateText } from "terse-sdk"
 ```
 
-### 5. Decide durability with the user
+### 5. Settle durability
 
-Durability changes how the handler is structured, so settle it before writing any handler code.
+Durability changes how the handler is structured, so settle it before writing any handler code. Check the confirmed design against the two signal kinds in the conventions section ("When to be durable").
 
-Form a recommendation first, from the durable signals in the conventions section ("When to be durable").
+**A forcing signal is present** (the design waits on human input or time): durability is not a decision, so never ask. State it as a consequence in one line and move on: "This job waits for \<approval/the timer\>, so it runs durable."
 
-Then ask, presenting your recommendation as the default. Use this copy:
+**Only the judgment signal is present** (three or more side-effecting milestones, no waits): this is a real trade-off, so ask, presenting your recommendation as the default. Use this copy:
 
 > **Should this job be durable?**
 >
@@ -209,6 +209,8 @@ Then ask, presenting your recommendation as the default. Use this copy:
 > Tradeoff: durable requires every side effect to live in a `step()` and all step data to be serializable.
 >
 > Recommended for this workflow: \<your recommendation and one-line reason\>
+
+**Neither signal**: the job is non-durable. Don't ask and don't announce it.
 
 For durable jobs, the style rules in the conventions section ("Durable job style") govern the handler; the mechanics (`step()`, `jobStep`, `sleep`, `waitForInput`, replay model) are in https://docs.useterse.ai/core-concepts/durability.
 
@@ -530,7 +532,12 @@ For `_B64` secrets, put the full encode one-liner in the missing-secret error me
 
 These rules apply when the job sets `durable: true`. The mechanics (replay model, `step()`, `jobStep`, `sleep`, `waitForInput`) live in https://docs.useterse.ai/core-concepts/durability; facts there win.
 
-**When to be durable.** Recommend `durable: true` when the workflow involves any of: human input or approval (`waitForInput`), timed waits (`sleep`), or three or more side-effecting milestones where a mid-run failure would leave visible half-done work. Otherwise recommend non-durable.
+**When to be durable.** Two kinds of signal, treated differently:
+
+- **Forcing signals** — human input or approval (`waitForInput`) or timed waits (`sleep`). These primitives only exist in durable mode, so their presence *requires* `durable: true`; there is no decision to put to the user, only a consequence to state.
+- **Judgment signal** — three or more side-effecting milestones where a mid-run failure would leave visible half-done work. This is a genuine trade-off: recommend `durable: true` and let the user decide.
+
+With neither signal, default to non-durable.
 
 **`step()` inline is the default.** Wrap each external call directly — `await step(client.method(args))` — so the handler reads as sequential blocks. Terse SDK calls (`toolbox.*`, `generateText`, `state.get`/`state.set`) are already durable steps; leave them bare.
 
