@@ -87,7 +87,8 @@ export class SnowflakeIntegrationManager
                 warehouse: true,
                 database_name: true,
                 schema_name: true
-            }
+            },
+            orderBy: { created_at: "asc" }
         })
         return integrations.map(i => ({
             id: i.id,
@@ -100,20 +101,17 @@ export class SnowflakeIntegrationManager
     }
 
     async getCliDisplayStateForOrganization(organizationId: string) {
-        const integration = await db().snowflake_integrations.findFirst({
-            where: { organization_id: organizationId },
-            orderBy: { created_at: "asc" },
-            select: {
-                id: true,
-                account_identifier: true
-            }
-        })
+        const [instance] = await this.getInstancesForOrganization(organizationId)
 
-        if (!integration) {
+        if (!instance) {
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Account", integration.account_identifier, integration.id)
+        return createConnectedCliDisplayState("Account", this.getConnectionName(instance), instance.id)
+    }
+
+    getConnectionName(instance: SnowflakeIntegration): string {
+        return instance.accountIdentifier || instance.id
     }
 
     formatIntegrationInstanceForAgent(instance: SnowflakeIntegration): string {

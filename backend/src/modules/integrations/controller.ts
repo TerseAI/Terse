@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { IntegrationType } from "terse-types/Integrations"
+import { IntegrationConnectionsResponse, IntegrationType } from "terse-types/Integrations"
 
 import { AnalyticsEvent, analytics } from "../../common/analytics"
 import logger from "../../common/logger"
@@ -13,6 +13,7 @@ import {
     disconnectIntegrationForOrganization,
     getInstallationInformation,
     listActiveIntegrationsForOrganization,
+    listIntegrationConnectionsForOrganization,
     listIntegrationsForOrganization
 } from "./service"
 
@@ -65,6 +66,20 @@ export async function disconnectIntegration(req: Request, res: Response) {
         if (error instanceof IntegrationNotConnectedError) return res.status(400).json({ error: error.message })
         logger.error("Error disconnecting integration", { error, integrationType, userId: req.session.user.id, organizationId: req.session.user.organizationId })
         res.status(500).json({ error: "Failed to disconnect integration" })
+    }
+}
+
+export async function getIntegrationConnections(req: Request, res: Response) {
+    if (!req.session?.user) return res.status(401).json({ error: "Unauthorized" })
+
+    const { integrationType } = req.params
+    try {
+        const connections = await listIntegrationConnectionsForOrganization(integrationType, req.session.user.organizationId)
+        res.json({ connections } satisfies IntegrationConnectionsResponse)
+    } catch (error: unknown) {
+        if (error instanceof IntegrationNotFoundError) return res.status(404).json({ error: error.message })
+        logger.error("Error listing integration connections", { error, integrationType, userId: req.session.user.id, organizationId: req.session.user.organizationId })
+        res.status(500).json({ error: "Failed to list integration connections" })
     }
 }
 

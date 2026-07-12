@@ -1,4 +1,4 @@
-import { ApiRoutes, IntegrationType, integrationTypeEnum, isValidToolName, toolsWithIntegrationId } from "terse-types"
+import { ApiRoutes, IntegrationConnectionsResponseSchema, buildRoute, isValidToolName, toolsWithIntegrationId } from "terse-types"
 import { z } from "zod"
 
 import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
@@ -86,45 +86,41 @@ function toolRequiresIntegrationId(toolName: string): boolean {
 }
 
 async function resolveSingleIntegrationId(integration: string, apiKey: string): Promise<string> {
-    const route = instancesRouteFor(integration)
-    const raw = await fetchWithAuth<unknown>(route, apiKey)
-    const parsed = integrationInstancesSchema.safeParse(raw)
+    const raw = await fetchConnections(integration, apiKey)
+    const parsed = IntegrationConnectionsResponseSchema.safeParse(raw)
     if (!parsed.success) {
         throw new CliError("integration_resolution_failed", `Could not list connections for '${integration}'.`, {
             detail: "Pass --integration <id> explicitly."
         })
     }
 
-    const instances = parsed.data
-    if (instances.length === 0) {
+    const { connections } = parsed.data
+    if (connections.length === 0) {
         throw new CliError("integration_not_connected", `Integration '${integration}' is not connected.`, {
             detail: `Run \`terse integrate connect ${integration}\` first.`,
             actionRequired: true
         })
     }
-    if (instances.length > 1) {
-        const listing = instances.map(instance => describeInstance(instance)).join(", ")
-        throw new CliError("integration_ambiguous", `Integration '${integration}' has ${instances.length} connections.`, {
+    if (connections.length > 1) {
+        const listing = connections.map(connection => (connection.name === connection.id ? connection.id : `${connection.id} (${connection.name})`)).join(", ")
+        throw new CliError("integration_ambiguous", `Integration '${integration}' has ${connections.length} connections.`, {
             detail: `Pass --integration <id>. Connections: ${listing}`
         })
     }
-    return instances[0].id
+    return connections[0].id
 }
 
-function instancesRouteFor(integration: string): string {
-    const parsed = integrationTypeEnum.safeParse(integration)
-    const route = parsed.success ? INSTANCES_ROUTE_BY_INTEGRATION[parsed.data] : undefined
-    if (!route) {
-        throw new CliError("integration_resolution_unavailable", `Cannot auto-resolve a connection for '${integration}'.`, {
-            detail: "Pass --integration <id> explicitly."
-        })
+async function fetchConnections(integration: string, apiKey: string): Promise<unknown> {
+    try {
+        return await fetchWithAuth<unknown>(buildRoute(ApiRoutes.INTEGRATIONS.CONNECTIONS_BY_TYPE, { integrationType: integration }), apiKey)
+    } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+            throw new CliError("integration_resolution_unavailable", `Cannot auto-resolve a connection for '${integration}'.`, {
+                detail: "Pass --integration <id> explicitly."
+            })
+        }
+        throw err
     }
-    return route
-}
-
-function describeInstance(instance: IntegrationInstance): string {
-    const label = INSTANCE_LABEL_FIELDS.map(field => instance[field]).find(value => typeof value === "string" && value)
-    return typeof label === "string" ? `${instance.id} (${label})` : instance.id
 }
 
 async function executeTool(toolName: string, params: Record<string, unknown>, apiKey: string): Promise<unknown> {
@@ -143,27 +139,6 @@ function toToolExecutionError(err: unknown, toolName: string): CliError {
     }
     return new CliError("tool_execution_failed", `Tool '${toolName}' failed: ${err instanceof Error ? err.message : String(err)}`)
 }
-
-const INSTANCES_ROUTE_BY_INTEGRATION: Partial<Record<IntegrationType, string>> = {
-    [IntegrationType.GITHUB]: ApiRoutes.GITHUB.INTEGRATIONS,
-    [IntegrationType.GMAIL]: ApiRoutes.GMAIL.INTEGRATIONS,
-    [IntegrationType.SLACK]: ApiRoutes.SLACK.INTEGRATIONS,
-    [IntegrationType.LINEAR]: ApiRoutes.LINEAR.INTEGRATIONS,
-    [IntegrationType.NOTION]: ApiRoutes.NOTION.INTEGRATIONS,
-    [IntegrationType.POSTHOG]: ApiRoutes.POSTHOG.INTEGRATIONS,
-    [IntegrationType.DATADOG]: ApiRoutes.DATADOG.INTEGRATIONS,
-    [IntegrationType.LAUNCHDARKLY]: ApiRoutes.LAUNCHDARKLY.INTEGRATIONS,
-    [IntegrationType.WORKOS]: ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS,
-    [IntegrationType.ATTIO]: ApiRoutes.ATTIO.INTEGRATIONS,
-    [IntegrationType.SNOWFLAKE]: ApiRoutes.SNOWFLAKE.INTEGRATIONS,
-    [IntegrationType.HEY_REACH]: ApiRoutes.HEY_REACH.INTEGRATIONS
-}
-
-const INSTANCE_LABEL_FIELDS = ["teamName", "workspaceName", "orgName", "email", "region", "accountIdentifier", "environment", "tokenName", "name"] as const
-
-const integrationInstancesSchema = z.array(z.looseObject({ id: z.string() }))
-
-type IntegrationInstance = z.infer<typeof integrationInstancesSchema>[number]
 
 export type IntegrateToolRunOpts = {
     toolName: string

@@ -35,7 +35,8 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
                 id: true,
                 workspace_id: true,
                 workspace_name: true
-            }
+            },
+            orderBy: { created_at: "asc" }
         })
         return notionIntegrations.map(ni => ({
             id: ni.id,
@@ -45,21 +46,17 @@ export class NotionIntegrationManager extends Integration<NotionIntegration, nev
     }
 
     async getCliDisplayStateForOrganization(organizationId: string) {
-        const integration = await db().notion_integrations.findFirst({
-            where: { organization_id: organizationId },
-            orderBy: { created_at: "asc" },
-            select: {
-                id: true,
-                workspace_id: true,
-                workspace_name: true
-            }
-        })
+        const [instance] = await this.getInstancesForOrganization(organizationId)
 
-        if (!integration) {
+        if (!instance) {
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Workspace", integration.workspace_name || integration.workspace_id || "Workspace", integration.id)
+        return createConnectedCliDisplayState("Workspace", this.getConnectionName(instance), instance.id)
+    }
+
+    getConnectionName(instance: NotionIntegration): string {
+        return instance.workspaceName || instance.workspaceId || instance.id
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, options?: FetchResourcesOptions): Promise<IntegrationWithResources<NotionIntegration, NotionResource>[]> {

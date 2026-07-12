@@ -253,7 +253,7 @@ function formatIntegrationPickerLabel(integration: UserFacingIntegration, longes
 
 function formatIntegrationDisplaySummary(displayState: CliIntegrationDisplayState): string {
     if (displayState.status === "connected") {
-        return `${displayState.summaryLabel}: ${displayState.summaryValue}`
+        return `${displayState.connectionLabel}: ${displayState.connectionName}`
     }
 
     return "Not connected"
@@ -459,11 +459,11 @@ function parseIntegrationTypeOrThrow(value: string): IntegrationType {
     return match as IntegrationType
 }
 
-function summaryFor(displayState: CliIntegrationDisplayState): { summaryLabel: string | null; summaryValue: string | null } {
+function summaryFor(displayState: CliIntegrationDisplayState): { connectionLabel: string | null; connectionName: string | null } {
     if (displayState.status === "connected") {
-        return { summaryLabel: displayState.summaryLabel, summaryValue: displayState.summaryValue }
+        return { connectionLabel: displayState.connectionLabel, connectionName: displayState.connectionName }
     }
-    return { summaryLabel: null, summaryValue: null }
+    return { connectionLabel: null, connectionName: null }
 }
 
 export async function integrateList(opts: IntegrateListOpts = {}): Promise<void> {
@@ -480,13 +480,13 @@ export async function integrateList(opts: IntegrateListOpts = {}): Promise<void>
         const payload = {
             integrations: await Promise.all(
                 filtered.map(async integration => {
-                    const { summaryLabel, summaryValue } = summaryFor(integration.cliDisplayState)
+                    const { connectionLabel, connectionName } = summaryFor(integration.cliDisplayState)
                     return {
                         type: integration.integrationType,
                         status: integration.isActive ? "connected" : "disconnected",
                         name: INTEGRATION_METADATA[integration.integrationType]?.name ?? integration.integrationType,
-                        summaryLabel,
-                        summaryValue
+                        connectionLabel,
+                        connectionName
                     }
                 })
             )
@@ -504,8 +504,8 @@ export async function integrateList(opts: IntegrateListOpts = {}): Promise<void>
     for (const integration of filtered) {
         const name = (INTEGRATION_METADATA[integration.integrationType]?.name ?? integration.integrationType).padEnd(longest)
         const status = integration.isActive ? chalk.green("connected") : chalk.dim("not connected")
-        const { summaryLabel, summaryValue } = summaryFor(integration.cliDisplayState)
-        const summary = summaryLabel && summaryValue ? `  ${chalk.dim(`${summaryLabel}: ${summaryValue}`)}` : ""
+        const { connectionLabel, connectionName } = summaryFor(integration.cliDisplayState)
+        const summary = connectionLabel && connectionName ? `  ${chalk.dim(`${connectionLabel}: ${connectionName}`)}` : ""
         process.stdout.write(`  ${name}  ${status}${summary}\n`)
     }
 }

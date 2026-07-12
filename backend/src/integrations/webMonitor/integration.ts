@@ -48,6 +48,10 @@ export class WebMonitorIntegrationManager
         return "Web Event triggers are available for SDK agents."
     }
 
+    getConnectionName(instance: IntegrationInstance): string {
+        return instance.id
+    }
+
     async getAllActiveInstances(): Promise<IntegrationInstance[]> {
         return []
     }

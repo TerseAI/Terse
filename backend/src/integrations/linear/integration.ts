@@ -50,7 +50,8 @@ export class LinearIntegrationManager
                 id: true,
                 workspace_id: true,
                 workspace_name: true
-            }
+            },
+            orderBy: { created_at: "asc" }
         })
         return linearIntegrations.map(li => ({
             id: li.id,
@@ -59,16 +60,17 @@ export class LinearIntegrationManager
     }
 
     async getCliDisplayStateForOrganization(organizationId: string) {
-        const integration = await db().linear_integrations.findFirst({
-            where: { organization_id: organizationId },
-            orderBy: { created_at: "asc" }
-        })
+        const [instance] = await this.getInstancesForOrganization(organizationId)
 
-        if (!integration) {
+        if (!instance) {
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Workspace", integration.workspace_name, integration.id)
+        return createConnectedCliDisplayState("Workspace", this.getConnectionName(instance), instance.id)
+    }
+
+    getConnectionName(instance: LinearIntegration): string {
+        return instance.workspaceName || instance.id
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<LinearIntegration, LinearTeam>[]> {

@@ -27,6 +27,7 @@ export abstract class Integration<T extends IntegrationInstance, W, M extends In
     abstract getInstancesForOrganization(organizationId: string): Promise<T[]>
     abstract getCliDisplayStateForOrganization(organizationId: string): Promise<CliIntegrationDisplayState>
     abstract formatIntegrationInstanceForAgent(instance: T): string
+    abstract getConnectionName(instance: T): string
     abstract getAllActiveInstances(): Promise<T[]>
     abstract processWebhookEvent(event: W): Promise<void>
     abstract deleteInstallation(integrationId: string): Promise<void>
@@ -123,11 +124,11 @@ export function createNotConnectedCliDisplayState(): CliIntegrationDisplayState 
     return { status: "not_connected" }
 }
 
-export function createConnectedCliDisplayState(summaryLabel: string, summaryValue: string, integrationId: string): CliIntegrationDisplayState {
+export function createConnectedCliDisplayState(connectionLabel: string, connectionName: string, integrationId: string): CliIntegrationDisplayState {
     return {
         status: "connected",
-        summaryLabel,
-        summaryValue,
+        connectionLabel,
+        connectionName,
         integrationId
     }
 }

@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { InstallationOptionsFor, InstallationOptionsSchemas, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "terse-types/Integrations"
+import { InstallationOptionsFor, InstallationOptionsSchemas, IntegrationConnection, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "terse-types/Integrations"
 import { OAuthInstallationDetails } from "terse-types/types"
 
 import logger from "../../common/logger"
@@ -98,6 +98,14 @@ export async function listIntegrationsForOrganization(organizationId: string): P
                 }
             })
     )
+}
+
+export async function listIntegrationConnectionsForOrganization(integrationType: string, organizationId: string): Promise<IntegrationConnection[]> {
+    const integration = findIntegration(integrationType)
+    if (!integration) throw new IntegrationNotFoundError(integrationType)
+
+    const instances = await integration.getInstancesForOrganization(organizationId)
+    return instances.map(instance => ({ id: instance.id, name: integration.getConnectionName(instance) }))
 }
 
 export async function disconnectIntegrationForOrganization(integrationType: string, organizationId: string): Promise<void> {

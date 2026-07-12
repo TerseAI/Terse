@@ -53,7 +53,11 @@ export class WorkOSIntegrationManager
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Environment", integration.environment, integration.id)
+        return createConnectedCliDisplayState("Environment", this.getConnectionName(integration), integration.id)
+    }
+
+    getConnectionName(instance: WorkOSIntegration): string {
+        return instance.environment || instance.id
     }
 
     formatIntegrationInstanceForAgent(instance: WorkOSIntegration): string {

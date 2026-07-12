@@ -35,7 +35,8 @@ export class PosthogIntegrationManager
                 id: true,
                 user_email: true,
                 org_name: true
-            }
+            },
+            orderBy: { created_at: "asc" }
         })
         return posthogIntegrations.map(pi => ({
             id: pi.id,
@@ -45,16 +46,17 @@ export class PosthogIntegrationManager
     }
 
     async getCliDisplayStateForOrganization(organizationId: string) {
-        const integration = await db().posthog_integrations.findFirst({
-            where: { organization_id: organizationId },
-            orderBy: { created_at: "asc" }
-        })
+        const [instance] = await this.getInstancesForOrganization(organizationId)
 
-        if (!integration) {
+        if (!instance) {
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Account", integration.org_name || integration.user_email || "PostHog", integration.id)
+        return createConnectedCliDisplayState("Account", this.getConnectionName(instance), instance.id)
+    }
+
+    getConnectionName(instance: PosthogIntegration): string {
+        return instance.orgName || instance.email || instance.id
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<PosthogIntegration, PosthogProject>[]> {

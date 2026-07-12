@@ -53,6 +53,10 @@ export class HeyReachIntegrationManager
         return `HeyReach [id: ${instance.id}]`
     }
 
+    getConnectionName(instance: HeyReachIntegration): string {
+        return instance.id
+    }
+
     async getAllActiveInstances(): Promise<HeyReachIntegration[]> {
         const integrations = await db().hey_reach_integrations.findMany({ select: { id: true } })
         return integrations.map(i => this.enrichInstance(i.id))

@@ -43,6 +43,10 @@ export class CronJobIntegrationManager
         return `This is a cron job integration. It is always supported by default.`
     }
 
+    getConnectionName(instance: IntegrationInstance): string {
+        return instance.id
+    }
+
     async getAllActiveInstances(): Promise<IntegrationInstance[]> {
         return []
     }
