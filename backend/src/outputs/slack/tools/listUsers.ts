@@ -9,8 +9,8 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const slackListUsersTool = defineSessionTool({
     name: "slack_list_users",
-    description: `List Slack workspace users (id and name). Use this to resolve user IDs to names when needed.
-Returns non-bot members. Optionally filter by name with the query parameter.`,
+    description: `List Slack workspace users (id, name, email). Use this to resolve user IDs to names when needed.
+Returns non-bot members. Optionally filter by name or email with the query parameter.`,
     execute: async ({ integrationId, query }, runContext) => {
         logger.debug("🛠️ Executing slack_list_users tool", { integrationId, query })
 
@@ -30,7 +30,7 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
 
             if (query?.trim()) {
                 const normalizedQuery = query.trim().toLowerCase()
-                users = users.filter(u => u.name?.toLowerCase().includes(normalizedQuery))
+                users = users.filter(u => u.name?.toLowerCase().includes(normalizedQuery) || u.email?.toLowerCase().includes(normalizedQuery))
             }
 
             const action = {
@@ -43,7 +43,7 @@ Returns non-bot members. Optionally filter by name with the query parameter.`,
 
             return {
                 success: true,
-                users: users.map(u => ({ id: u.id, name: u.name })),
+                users: users.map(u => ({ id: u.id, name: u.name, email: u.email })),
                 count: users.length,
                 actions: [action]
             }
