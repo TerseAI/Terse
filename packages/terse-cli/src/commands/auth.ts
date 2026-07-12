@@ -298,7 +298,7 @@ async function fetchMeForKey(apiKey: string): Promise<MeSummary | null> {
             displayName: me.displayName || me.firstName || me.email || "Unknown user",
             organization: me.organizationId ? { id: me.organizationId, name: me.organizationName } : null
         }
-    } catch {
+    } catch (error: any) {
         return null
     }
 }

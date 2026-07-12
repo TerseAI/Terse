@@ -1807,7 +1807,10 @@ export const attioAttributeSchema = z
         title: z.string().optional(),
         type: z.string().optional(),
         is_required: z.boolean().optional(),
-        is_unique: z.boolean().optional()
+        is_unique: z.boolean().optional(),
+        is_multiselect: z.boolean().optional(),
+        /** Active option/status titles, populated for select and status attributes when fetched for codegen. */
+        options: z.array(z.string()).optional()
     })
     .catchall(z.unknown())
 
@@ -1832,10 +1835,174 @@ export const attioRecordSchema = z
     })
     .catchall(z.unknown())
 
-export const attioUpsertErrorSchema = z.object({
-    index: z.number().int(),
-    message: z.string()
-})
+export const attioSearchMatchSchema = z
+    .object({
+        id: attioRecordIdentifierSchema.optional(),
+        record_text: z.string().optional(),
+        object_slug: z.string().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioAttributeHistoryEntrySchema = z
+    .object({
+        active_from: z.string(),
+        active_until: z.string().nullable(),
+        attribute_type: z.string().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioTaskSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), task_id: z.string() }),
+        content_plaintext: z.string(),
+        deadline_at: z.string().nullable(),
+        is_completed: z.boolean(),
+        linked_records: z.array(z.object({ target_object_id: z.string(), target_record_id: z.string() }).catchall(z.unknown())),
+        assignees: z.array(z.object({ referenced_actor_type: z.string(), referenced_actor_id: z.string().nullable() }).catchall(z.unknown())),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioNoteSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), note_id: z.string() }),
+        parent_object: z.string(),
+        parent_record_id: z.string(),
+        title: z.string(),
+        content_plaintext: z.string().nullable(),
+        content_markdown: z.string().nullable(),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioCommentSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), comment_id: z.string() }),
+        thread_id: z.string(),
+        content_plaintext: z.string(),
+        author: z.record(z.string(), z.unknown()),
+        resolved_at: z.string().nullable(),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioThreadSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), thread_id: z.string() }),
+        comments: z.array(attioCommentSchema),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioListSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), list_id: z.string() }),
+        api_slug: z.string(),
+        name: z.string(),
+        parent_object: z.array(z.string()).or(z.string()),
+        created_at: z.string(),
+        /** Synthesized by Terse from the workspace slug; the Attio API does not return list URLs. */
+        web_url: z.string().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioListEntrySchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), list_id: z.string(), entry_id: z.string() }),
+        parent_record_id: z.string(),
+        parent_object: z.string(),
+        entry_values: z.record(z.string(), z.unknown()),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioMeetingTimeSchema = z
+    .object({
+        datetime: z.string().optional(),
+        timezone: z.string().nullable().optional(),
+        date: z.string().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioMeetingSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), meeting_id: z.string() }),
+        title: z.string().nullable(),
+        description: z.string().nullable().optional(),
+        is_all_day: z.boolean().optional(),
+        start: attioMeetingTimeSchema.optional(),
+        end: attioMeetingTimeSchema.optional(),
+        participants: z.array(z.record(z.string(), z.unknown())),
+        linked_records: z.array(z.record(z.string(), z.unknown())),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioStatusSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string().optional(), object_id: z.string().optional(), attribute_id: z.string().optional(), status_id: z.string().optional() }).catchall(z.unknown()),
+        title: z.string(),
+        is_archived: z.boolean()
+    })
+    .catchall(z.unknown())
+
+export const attioSelectOptionEntitySchema = z
+    .object({
+        id: z.object({ workspace_id: z.string().optional(), object_id: z.string().optional(), attribute_id: z.string().optional(), option_id: z.string().optional() }).catchall(z.unknown()),
+        title: z.string(),
+        is_archived: z.boolean()
+    })
+    .catchall(z.unknown())
+
+export const attioCallRecordingSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), meeting_id: z.string(), call_recording_id: z.string() }),
+        status: z.string(),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioTranscriptSpeechSchema = z
+    .object({
+        speech: z.string(),
+        start_time: z.number().optional(),
+        end_time: z.number().optional()
+    })
+    .catchall(z.unknown())
+
+export const attioTranscriptSchema = z
+    .object({
+        id: z.object({ workspace_id: z.string(), meeting_id: z.string(), call_recording_id: z.string() }).optional(),
+        transcript: z.array(attioTranscriptSpeechSchema)
+    })
+    .catchall(z.unknown())
+
+export const attioFileSchema = z
+    .object({
+        id: z.record(z.string(), z.unknown()),
+        name: z.string(),
+        content_type: z.string().nullable().optional(),
+        content_size: z.number().nullable().optional(),
+        record_id: z.string().optional(),
+        object_slug: z.string().optional(),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
+
+export const attioWorkspaceMemberSchema = z
+    .object({
+        id: z.object({
+            workspace_id: z.string(),
+            workspace_member_id: z.string()
+        }),
+        first_name: z.string().nullable(),
+        last_name: z.string().nullable(),
+        avatar_url: z.string().nullable(),
+        email_address: z.string(),
+        access_level: z.string(),
+        created_at: z.string()
+    })
+    .catchall(z.unknown())
 
 // WorkOS schemas
 export const workOSUserSummarySchema = z.object({
@@ -1914,30 +2081,385 @@ export const launchDarklyHistoryResultSchema = z.object({
 export const snowflakeQueryRowSchema = z.record(z.string(), z.unknown())
 
 // Attio input schemas
-export const attioListObjectsInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Attio workspace to use.")
-})
+const attioObjectSlugField = z.string().describe("The Attio object type slug (e.g. 'people', 'companies').")
+const attioRecordIdField = z.string().describe("The record ID (UUID).")
 
-export const attioQueryRecordsInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
-    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
+export const attioQueryRecordsRequestSchema = z.object({
+    action: z.literal("query").describe("List records of an object, with optional filtering and limit/offset pagination."),
+    objectSlug: attioObjectSlugField,
     filter: z
         .string()
         .nullable()
-        .describe('Optional Attio filter as a JSON string. Pass null for no filtering. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators.'),
-    limit: z.number().int().nullable().describe("Maximum number of records to return. Pass null to use the default of 20.")
+        .describe(
+            'Optional Attio filter as a JSON string. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators ($eq, $contains, $starts_with, $ends_with) combined via $and/$or. Pass null for no filtering.'
+        ),
+    limit: z.number().int().nullable().describe("Maximum number of records to return (default 20, max 500). Pass null for the default."),
+    offset: z.number().int().nullable().describe("Number of records to skip, for pagination. Pass null for 0.")
 })
 
-export const attioUpsertRecordInputSchema = z.object({
-    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
-    objectSlug: z.string().describe("The Attio object type slug (e.g. 'people', 'companies')."),
-    matchingAttribute: z.string().describe("The attribute slug to match on for upsert (e.g. 'email_addresses' for people, 'domains' for companies)."),
+export const attioSearchRecordsRequestSchema = z.object({
+    action: z
+        .literal("search")
+        .describe(
+            "Fuzzy-search records following Attio's in-product matching: names/domains/emails/phones on people and companies, the record label on other objects (e.g. deal names). Query with a distinctive substring of the target; extra tokens that are not in the record's name can prevent matches. Results are eventually consistent (a just-created record may not be indexed yet) — use 'query' for read-after-write."
+        ),
+    objectSlug: attioObjectSlugField,
+    query: z.string().describe("The search term, matched fuzzily against record names, email addresses and domains (max 256 chars)."),
+    limit: z.number().int().nullable().describe("Maximum number of matches to return (default and max 25). Pass null for the default.")
+})
+
+export const attioGetRecordRequestSchema = z.object({
+    action: z.literal("get").describe("Fetch a single record by its ID."),
+    objectSlug: attioObjectSlugField,
+    recordId: attioRecordIdField
+})
+
+export const attioCreateRecordRequestSchema = z.object({
+    action: z.literal("create").describe("Create a new record. Unlike 'upsert', no matching attribute is needed, so this works for objects without a unique writable attribute (e.g. deals)."),
+    objectSlug: attioObjectSlugField,
+    values: z.string().describe('A JSON object string mapping attribute slugs to values (e.g. \'{"name":"Acme","domains":["acme.com"]}\'). For multi-value attributes, pass an array.')
+})
+
+export const attioUpdateRecordRequestSchema = z.object({
+    action: z.literal("update").describe("Update an existing record by its ID. Only the attributes present in 'values' are touched."),
+    objectSlug: attioObjectSlugField,
+    recordId: attioRecordIdField,
+    values: z.string().describe("A JSON object string mapping the attribute slugs to update to their new values."),
+    multiselectMode: z
+        .enum(["overwrite", "append"])
+        .nullable()
+        .describe("'overwrite' (the default) replaces the values of multi-value attributes; 'append' adds to them without removing existing values. Pass null for the default.")
+})
+
+export const attioUpsertRecordsRequestSchema = z.object({
+    action: z
+        .literal("upsert")
+        .describe(
+            "Create or update one or more records, matched on a unique attribute. If a match is found the record is updated, otherwise a new one is created. Throws if ANY record in the batch fails, naming each failure; earlier records may already be written (upserts are safe to retry)."
+        ),
+    objectSlug: attioObjectSlugField,
+    matchingAttribute: z.string().describe("The unique, writable attribute slug to match on (e.g. 'email_addresses' for people, 'domains' for companies)."),
     records: z
         .string()
         .describe(
-            'A JSON string representing a list of Attio records to upsert. Each record should map attribute slugs to their values. For multi-value attributes like email_addresses, pass an array of strings. Example: \'[{"email_addresses":["test@example.com"],"name":"John"}]\'.'
+            'A JSON string representing a list of records to upsert. Each record maps attribute slugs to values; for multi-value attributes pass an array. Example: \'[{"email_addresses":["test@example.com"],"name":"John"}]\'.'
         )
 })
+
+export const attioDeleteRecordRequestSchema = z.object({
+    action: z.literal("delete").describe("Permanently delete a record by its ID. This cannot be undone."),
+    objectSlug: attioObjectSlugField,
+    recordId: attioRecordIdField
+})
+
+export const attioGetAttributeHistoryRequestSchema = z.object({
+    action: z.literal("get_attribute_history").describe("Fetch the historic values of one attribute on a record (e.g. every stage a deal has been in)."),
+    objectSlug: attioObjectSlugField,
+    recordId: attioRecordIdField,
+    attributeSlug: z.string().describe("The attribute slug to fetch the value history for."),
+    limit: z.number().int().nullable().describe("Maximum number of history entries to return. Pass null for the default."),
+    offset: z.number().int().nullable().describe("Number of entries to skip, for pagination. Pass null for 0.")
+})
+
+export const attioRecordsRequestSchema = z.discriminatedUnion("action", [
+    attioQueryRecordsRequestSchema,
+    attioSearchRecordsRequestSchema,
+    attioGetRecordRequestSchema,
+    attioCreateRecordRequestSchema,
+    attioUpdateRecordRequestSchema,
+    attioUpsertRecordsRequestSchema,
+    attioDeleteRecordRequestSchema,
+    attioGetAttributeHistoryRequestSchema
+])
+
+export const attioRecordsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+    request: attioRecordsRequestSchema.describe("The record operation to perform and its arguments.")
+})
+
+export type AttioQueryRecordsRequest = z.infer<typeof attioQueryRecordsRequestSchema>
+export type AttioSearchRecordsRequest = z.infer<typeof attioSearchRecordsRequestSchema>
+export type AttioGetRecordRequest = z.infer<typeof attioGetRecordRequestSchema>
+export type AttioCreateRecordRequest = z.infer<typeof attioCreateRecordRequestSchema>
+export type AttioUpdateRecordRequest = z.infer<typeof attioUpdateRecordRequestSchema>
+export type AttioUpsertRecordsRequest = z.infer<typeof attioUpsertRecordsRequestSchema>
+export type AttioDeleteRecordRequest = z.infer<typeof attioDeleteRecordRequestSchema>
+export type AttioGetAttributeHistoryRequest = z.infer<typeof attioGetAttributeHistoryRequestSchema>
+export type AttioRecordsRequest = z.infer<typeof attioRecordsRequestSchema>
+export type AttioRecordsAction = AttioRecordsRequest["action"]
+
+const attioTargetRecordFields = {
+    objectSlug: z.string().describe("The object type slug of the record (e.g. 'people', 'companies')."),
+    recordId: z.string().describe("The record ID (UUID).")
+}
+
+export const attioTasksRequestSchema = z.discriminatedUnion("action", [
+    z.object({
+        action: z.literal("list").describe("List tasks, optionally filtered by linked record, assignee or completion state."),
+        linkedObjectSlug: z.string().nullable().optional().describe("Filter to tasks linked to records of this object slug. Requires linkedRecordId."),
+        linkedRecordId: z.string().nullable().optional().describe("Filter to tasks linked to this record ID."),
+        isCompleted: z.boolean().nullable().optional().describe("Filter by completion state. Omit for all tasks."),
+        limit: z.number().int().nullable().optional().describe("Maximum tasks to return."),
+        offset: z.number().int().nullable().optional().describe("Number of tasks to skip, for pagination.")
+    }),
+    z.object({ action: z.literal("get").describe("Fetch a single task by ID."), taskId: z.string() }),
+    z.object({
+        action: z.literal("create").describe("Create a task, optionally linked to records and assigned to workspace members."),
+        content: z.string().describe("The task text (plaintext, max 2000 chars)."),
+        deadlineAt: z.string().nullable().optional().describe("Deadline as an ISO 8601 timestamp, or null for no deadline."),
+        isCompleted: z.boolean().nullable().optional().describe("Whether the task starts completed. Defaults to false."),
+        assignees: z.array(z.string()).nullable().optional().describe("Workspace member email addresses or member IDs (UUIDs) to assign."),
+        linkedRecords: z.array(z.object(attioTargetRecordFields)).nullable().optional().describe("Records to link the task to.")
+    }),
+    z.object({
+        action: z.literal("update").describe("Update a task's deadline, completion state, assignees or linked records. Task content cannot be changed."),
+        taskId: z.string(),
+        deadlineAt: z.string().nullable().optional().describe("New deadline (ISO 8601), or null to clear."),
+        isCompleted: z.boolean().nullable().optional().describe("New completion state. Omit to leave unchanged."),
+        assignees: z.array(z.string()).nullable().optional().describe("Replacement assignee emails/IDs. Omit to leave unchanged."),
+        linkedRecords: z.array(z.object(attioTargetRecordFields)).nullable().optional().describe("Replacement linked records. Omit to leave unchanged.")
+    }),
+    z.object({ action: z.literal("delete").describe("Permanently delete a task."), taskId: z.string() })
+])
+
+export const attioNotesRequestSchema = z.discriminatedUnion("action", [
+    z.object({
+        action: z.literal("list").describe("List notes, optionally scoped to one record."),
+        parentObjectSlug: z.string().nullable().optional().describe("Filter to notes on records of this object slug. Requires parentRecordId."),
+        parentRecordId: z.string().nullable().optional().describe("Filter to notes on this record ID."),
+        limit: z.number().int().nullable().optional(),
+        offset: z.number().int().nullable().optional()
+    }),
+    z.object({ action: z.literal("get").describe("Fetch a single note by ID."), noteId: z.string() }),
+    z.object({
+        action: z.literal("create").describe("Create a note on a record."),
+        parentObjectSlug: z.string().describe("The object type slug of the record the note belongs to."),
+        parentRecordId: z.string().describe("The record ID the note belongs to."),
+        title: z.string().describe("The note title."),
+        content: z.string().describe("The note body."),
+        format: z.enum(["plaintext", "markdown"]).nullable().optional().describe("Content format. Defaults to markdown.")
+    }),
+    z.object({ action: z.literal("delete").describe("Permanently delete a note."), noteId: z.string() })
+])
+
+export const attioCommentsRequestSchema = z.discriminatedUnion("action", [
+    z.object({
+        action: z.literal("create").describe("Create a comment. Target EITHER an existing thread (threadId, to reply) OR a record (objectSlug + recordId, to start a new thread)."),
+        content: z.string().describe("The comment text (plaintext)."),
+        authorWorkspaceMemberId: z.string().describe("The workspace member ID the comment is authored as. Use attio_workspace_members to find it."),
+        threadId: z.string().nullable().optional().describe("Reply to this thread. Pass null/omit when commenting on a record."),
+        objectSlug: z.string().nullable().optional().describe("With recordId: start a new comment thread on this record."),
+        recordId: z.string().nullable().optional()
+    }),
+    z.object({ action: z.literal("get").describe("Fetch a single comment by ID."), commentId: z.string() }),
+    z.object({ action: z.literal("delete").describe("Permanently delete a comment."), commentId: z.string() }),
+    z.object({
+        action: z.literal("list_threads").describe("List comment threads on a record."),
+        objectSlug: z.string().nullable().optional().describe("With recordId: threads on this record."),
+        recordId: z.string().nullable().optional(),
+        limit: z.number().int().nullable().optional(),
+        offset: z.number().int().nullable().optional()
+    }),
+    z.object({ action: z.literal("get_thread").describe("Fetch a thread with all of its comments."), threadId: z.string() })
+])
+
+export const attioListsRequestSchema = z.discriminatedUnion("action", [
+    z.object({ action: z.literal("list").describe("List all lists in the workspace.") }),
+    z.object({ action: z.literal("get").describe("Fetch a list's configuration by ID or slug."), listIdOrSlug: z.string() }),
+    z.object({
+        action: z.literal("create").describe("Create a new list over an object."),
+        name: z.string().describe("Display name of the list."),
+        apiSlug: z.string().describe("Unique slug for the list (snake_case)."),
+        parentObjectSlug: z.string().describe("The object the list contains records of (e.g. 'companies')."),
+        workspaceAccess: z.enum(["full-access", "read-and-write", "read-only"]).nullable().optional().describe("Workspace-wide access level. Defaults to full-access.")
+    }),
+    z.object({ action: z.literal("update").describe("Rename a list."), listIdOrSlug: z.string(), name: z.string() }),
+    z.object({
+        action: z.literal("query_entries").describe("List entries in a list, with optional filter, parent-record lookup, and limit/offset pagination."),
+        listIdOrSlug: z.string(),
+        filter: z.string().nullable().optional().describe("Optional Attio filter as a JSON string, matching entry attributes."),
+        parentRecordId: z.string().nullable().optional().describe("Only return entries whose parent record has this ID. Requires parentObjectSlug."),
+        parentObjectSlug: z.string().nullable().optional().describe("Object slug of the parent record (e.g. 'companies'); required with parentRecordId."),
+        limit: z.number().int().nullable().optional().describe("Maximum entries to return (max 500)."),
+        offset: z.number().int().nullable().optional()
+    }),
+    z.object({
+        action: z.literal("add_entry").describe("Add a record to a list as a new entry. Throws on unique-attribute conflicts; the same record may appear in multiple entries."),
+        listIdOrSlug: z.string(),
+        parentObjectSlug: z.string().describe("Object slug of the record being added."),
+        parentRecordId: z.string().describe("Record ID being added."),
+        entryValues: z.string().nullable().optional().describe("Optional JSON object string of entry attribute values (e.g. a stage).")
+    }),
+    z.object({
+        action: z.literal("upsert_entry").describe("Create or update a list entry keyed by its parent record: updates the existing entry if the record is already in the list, otherwise adds it."),
+        listIdOrSlug: z.string(),
+        parentObjectSlug: z.string(),
+        parentRecordId: z.string(),
+        entryValues: z.string().nullable().optional().describe("Optional JSON object string of entry attribute values.")
+    }),
+    z.object({ action: z.literal("get_entry").describe("Fetch a single list entry."), listIdOrSlug: z.string(), entryId: z.string() }),
+    z.object({
+        action: z.literal("update_entry").describe("Update a list entry's attribute values (e.g. move stage)."),
+        listIdOrSlug: z.string(),
+        entryId: z.string(),
+        entryValues: z.string().describe("JSON object string mapping entry attribute slugs to new values."),
+        multiselectMode: z.enum(["overwrite", "append"]).nullable().optional().describe("'overwrite' (default) replaces multi-value attribute values; 'append' adds to them.")
+    }),
+    z.object({ action: z.literal("remove_entry").describe("Remove an entry from a list. The parent record itself is untouched."), listIdOrSlug: z.string(), entryId: z.string() })
+])
+
+export const attioMeetingsRequestSchema = z.discriminatedUnion("action", [
+    z.object({
+        action: z.literal("list").describe("List meetings, optionally filtered by linked record, participants or time range. Uses cursor pagination."),
+        linkedObjectSlug: z.string().nullable().optional(),
+        linkedRecordId: z.string().nullable().optional(),
+        participants: z.string().nullable().optional().describe("Comma-separated participant email addresses."),
+        startsBefore: z.string().nullable().optional().describe("Only meetings starting before this ISO timestamp."),
+        endsFrom: z.string().nullable().optional().describe("Only meetings ending at/after this ISO timestamp."),
+        limit: z.number().int().nullable().optional().describe("Maximum meetings to return (max 200)."),
+        cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response's nextCursor.")
+    }),
+    z.object({ action: z.literal("get").describe("Fetch a single meeting by ID."), meetingId: z.string() }),
+    z.object({
+        action: z.literal("list_recordings").describe("List call recordings for a meeting."),
+        meetingId: z.string(),
+        limit: z.number().int().nullable().optional(),
+        cursor: z.string().nullable().optional()
+    }),
+    z.object({
+        action: z.literal("get_transcript").describe("Fetch the transcript of a call recording."),
+        meetingId: z.string(),
+        callRecordingId: z.string(),
+        cursor: z.string().nullable().optional()
+    })
+])
+
+export const attioFilesRequestSchema = z.discriminatedUnion("action", [
+    z.object({
+        action: z.literal("list").describe("List files attached to a record."),
+        objectSlug: z.string().describe("Object slug of the record."),
+        recordId: z.string().describe("Record ID."),
+        limit: z.number().int().nullable().optional(),
+        cursor: z.string().nullable().optional()
+    }),
+    z.object({ action: z.literal("get").describe("Fetch a file's metadata by ID."), fileId: z.string() }),
+    z.object({
+        action: z.literal("upload").describe("Upload a file to a record (native Attio storage, max 50 MB)."),
+        objectSlug: z.string(),
+        recordId: z.string(),
+        fileName: z.string().describe("File name including extension."),
+        contentBase64: z.string().describe("The file content, base64-encoded."),
+        contentType: z.string().nullable().optional().describe("MIME type. Defaults to application/octet-stream.")
+    }),
+    z.object({ action: z.literal("get_download_url").describe("Get a signed download URL for a file."), fileId: z.string() }),
+    z.object({ action: z.literal("delete").describe("Permanently delete a file (deleting a folder deletes its descendants)."), fileId: z.string() })
+])
+
+const attioSchemaTargetFields = {
+    target: z.enum(["objects", "lists"]).describe("Whether the attribute lives on an object or a list."),
+    identifier: z.string().describe("The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.")
+}
+
+export const attioSchemaRequestSchema = z.discriminatedUnion("action", [
+    z.object({ action: z.literal("list_objects").describe("List all object types in the workspace with their attributes and field definitions. Call this before creating or updating records.") }),
+    z.object({ action: z.literal("get_object").describe("Fetch one object's configuration."), objectSlug: z.string() }),
+    z.object({
+        action: z.literal("create_object").describe("Create a custom object type. This changes the workspace schema for every user."),
+        apiSlug: z.string().describe("Unique slug (snake_case)."),
+        singularNoun: z.string().describe("Singular display name (e.g. 'Ticket')."),
+        pluralNoun: z.string().describe("Plural display name (e.g. 'Tickets').")
+    }),
+    z.object({
+        action: z.literal("update_object").describe("Update an object's slug or display names."),
+        objectSlug: z.string(),
+        newApiSlug: z.string().nullable().optional(),
+        singularNoun: z.string().nullable().optional(),
+        pluralNoun: z.string().nullable().optional()
+    }),
+    z.object({ action: z.literal("list_attributes").describe("List the attributes defined on an object or list."), ...attioSchemaTargetFields }),
+    z.object({
+        action: z.literal("create_attribute").describe("Create a new attribute on an object or list. This changes the workspace schema for every user."),
+        ...attioSchemaTargetFields,
+        title: z.string().describe("Display name of the attribute."),
+        apiSlug: z.string().describe("Unique attribute slug (snake_case)."),
+        attributeType: z
+            .string()
+            .describe(
+                "Attio attribute type, e.g. 'text', 'number', 'checkbox', 'currency', 'date', 'timestamp', 'rating', 'status', 'select', 'record-reference', 'actor-reference', 'location', 'domain', 'email-address', 'phone-number'."
+            ),
+        isRequired: z.boolean().nullable().optional().describe("Whether a value is required. Defaults to false."),
+        isUnique: z.boolean().nullable().optional().describe("Whether values must be unique. Defaults to false."),
+        isMultiselect: z.boolean().nullable().optional().describe("Whether the attribute holds multiple values. Defaults to false."),
+        config: z.string().nullable().optional().describe('Optional JSON object string for type-specific config, e.g. \'{"record_reference":{"allowed_objects":["people"]}}\'.')
+    }),
+    z.object({
+        action: z.literal("update_attribute").describe("Update an attribute's title or constraints."),
+        ...attioSchemaTargetFields,
+        attributeSlug: z.string(),
+        title: z.string().nullable().optional(),
+        isRequired: z.boolean().nullable().optional()
+    }),
+    z.object({ action: z.literal("list_statuses").describe("List the statuses of a status attribute (e.g. deal stages)."), ...attioSchemaTargetFields, attributeSlug: z.string() }),
+    z.object({
+        action: z.literal("create_status").describe("Add a new status to a status attribute. Rerun terse generate afterwards to refresh generated constants."),
+        ...attioSchemaTargetFields,
+        attributeSlug: z.string(),
+        title: z.string().describe("The status title.")
+    }),
+    z.object({
+        action: z.literal("update_status").describe("Rename or archive a status."),
+        ...attioSchemaTargetFields,
+        attributeSlug: z.string(),
+        statusId: z.string().describe("The status ID (UUID)."),
+        title: z.string().nullable().optional(),
+        isArchived: z.boolean().nullable().optional()
+    }),
+    z.object({ action: z.literal("list_select_options").describe("List the options of a select attribute."), ...attioSchemaTargetFields, attributeSlug: z.string() }),
+    z.object({
+        action: z.literal("create_select_option").describe("Add an option to a select attribute. Rerun terse generate afterwards to refresh generated constants."),
+        ...attioSchemaTargetFields,
+        attributeSlug: z.string(),
+        title: z.string().describe("The option title.")
+    }),
+    z.object({
+        action: z.literal("update_select_option").describe("Rename or archive a select option."),
+        ...attioSchemaTargetFields,
+        attributeSlug: z.string(),
+        optionId: z.string().describe("The option ID (UUID)."),
+        title: z.string().nullable().optional(),
+        isArchived: z.boolean().nullable().optional()
+    })
+])
+
+export type AttioTasksRequest = z.infer<typeof attioTasksRequestSchema>
+export type AttioNotesRequest = z.infer<typeof attioNotesRequestSchema>
+export type AttioCommentsRequest = z.infer<typeof attioCommentsRequestSchema>
+export type AttioListsRequest = z.infer<typeof attioListsRequestSchema>
+export type AttioMeetingsRequest = z.infer<typeof attioMeetingsRequestSchema>
+export type AttioFilesRequest = z.infer<typeof attioFilesRequestSchema>
+export type AttioSchemaRequest = z.infer<typeof attioSchemaRequestSchema>
+
+export const attioListWorkspaceMembersRequestSchema = z.object({
+    action: z
+        .literal("list")
+        .describe("List every workspace member (name, email address, access level). Use to resolve a record's owner to a person, or to find the ID/email to write into an actor-reference attribute.")
+})
+
+export const attioGetWorkspaceMemberRequestSchema = z.object({
+    action: z.literal("get").describe("Fetch a single workspace member by ID (e.g. the referenced_actor_id of a record's owner value)."),
+    workspaceMemberId: z.string().describe("The workspace member ID (UUID).")
+})
+
+export const attioWorkspaceMembersRequestSchema = z.discriminatedUnion("action", [attioListWorkspaceMembersRequestSchema, attioGetWorkspaceMemberRequestSchema])
+
+export const attioWorkspaceMembersInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+    request: attioWorkspaceMembersRequestSchema.describe("The workspace-member operation to perform and its arguments.")
+})
+
+export type AttioListWorkspaceMembersRequest = z.infer<typeof attioListWorkspaceMembersRequestSchema>
+export type AttioGetWorkspaceMemberRequest = z.infer<typeof attioGetWorkspaceMemberRequestSchema>
+export type AttioWorkspaceMembersRequest = z.infer<typeof attioWorkspaceMembersRequestSchema>
 
 // WorkOS input schemas
 export const listWorkOSUsersInputSchema = z.object({
@@ -2008,35 +2530,127 @@ export const webSearchOutputSchema = z.object({
     results: z.array(webSearchResultItemSchema)
 })
 
-export const attioListObjectsTool = defineTool({
-    name: "attio_list_objects",
-    inputSchema: attioListObjectsInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        objects: z.array(attioObjectWithAttributesSchema),
-        count: z.number().int()
+const attioToolInput = <T extends z.ZodType>(request: T) =>
+    z.object({
+        integrationId: z.string().describe("The integration ID of the Attio workspace to use."),
+        request: request.describe("The operation to perform and its arguments.")
+    })
+
+export const attioTasksInputSchema = attioToolInput(attioTasksRequestSchema)
+export const attioNotesInputSchema = attioToolInput(attioNotesRequestSchema)
+export const attioCommentsInputSchema = attioToolInput(attioCommentsRequestSchema)
+export const attioListsInputSchema = attioToolInput(attioListsRequestSchema)
+export const attioMeetingsInputSchema = attioToolInput(attioMeetingsRequestSchema)
+export const attioFilesInputSchema = attioToolInput(attioFilesRequestSchema)
+export const attioSchemaInputSchema = attioToolInput(attioSchemaRequestSchema)
+
+const attioToolOutputBaseSchema = toolOutputBaseSchema.omit({ success: true })
+
+export const attioTasksTool = defineTool({
+    name: "attio_tasks",
+    inputSchema: attioTasksInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        tasks: z.array(attioTaskSchema).optional(),
+        task: attioTaskSchema.optional(),
+        count: z.number().int().optional()
     })
 })
 
-export const attioQueryRecordsTool = defineTool({
-    name: "attio_query_records",
-    inputSchema: attioQueryRecordsInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        records: z.array(attioRecordSchema),
-        count: z.number().int()
+export const attioNotesTool = defineTool({
+    name: "attio_notes",
+    inputSchema: attioNotesInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        notes: z.array(attioNoteSchema).optional(),
+        note: attioNoteSchema.optional(),
+        count: z.number().int().optional()
     })
 })
 
-export const attioUpsertRecordTool = defineTool({
-    name: "attio_upsert_record",
-    inputSchema: attioUpsertRecordInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        records: z.array(attioRecordSchema).optional(),
+export const attioCommentsTool = defineTool({
+    name: "attio_comments",
+    inputSchema: attioCommentsInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        comment: attioCommentSchema.optional(),
+        threads: z.array(attioThreadSchema).optional(),
+        thread: attioThreadSchema.optional(),
+        count: z.number().int().optional()
+    })
+})
+
+export const attioListsTool = defineTool({
+    name: "attio_lists",
+    inputSchema: attioListsInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        lists: z.array(attioListSchema).optional(),
+        list: attioListSchema.optional(),
+        entries: z.array(attioListEntrySchema).optional(),
+        entry: attioListEntrySchema.optional(),
         count: z.number().int().optional(),
-        requestedCount: z.number().int().optional(),
-        successCount: z.number().int().optional(),
-        failureCount: z.number().int().optional(),
-        partial: z.boolean().optional(),
-        errors: z.array(attioUpsertErrorSchema).optional()
+        offset: z.number().int().optional()
+    })
+})
+
+export const attioMeetingsTool = defineTool({
+    name: "attio_meetings",
+    inputSchema: attioMeetingsInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        meetings: z.array(attioMeetingSchema).optional(),
+        meeting: attioMeetingSchema.optional(),
+        recordings: z.array(attioCallRecordingSchema).optional(),
+        transcript: attioTranscriptSchema.optional(),
+        count: z.number().int().optional(),
+        nextCursor: z.string().nullable().optional()
+    })
+})
+
+export const attioFilesTool = defineTool({
+    name: "attio_files",
+    inputSchema: attioFilesInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        files: z.array(attioFileSchema).optional(),
+        file: attioFileSchema.optional(),
+        downloadUrl: z.string().optional(),
+        count: z.number().int().optional(),
+        nextCursor: z.string().nullable().optional()
+    })
+})
+
+export const attioSchemaTool = defineTool({
+    name: "attio_schema",
+    inputSchema: attioSchemaInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        objects: z.array(attioObjectWithAttributesSchema).optional(),
+        object: attioObjectSchema.optional(),
+        attributes: z.array(attioAttributeSchema).optional(),
+        attribute: attioAttributeSchema.optional(),
+        statuses: z.array(attioStatusSchema).optional(),
+        status: attioStatusSchema.optional(),
+        selectOptions: z.array(attioSelectOptionEntitySchema).optional(),
+        selectOption: attioSelectOptionEntitySchema.optional(),
+        count: z.number().int().optional()
+    })
+})
+
+export const attioWorkspaceMembersTool = defineTool({
+    name: "attio_workspace_members",
+    inputSchema: attioWorkspaceMembersInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        members: z.array(attioWorkspaceMemberSchema).optional(),
+        member: attioWorkspaceMemberSchema.optional(),
+        count: z.number().int().optional()
+    })
+})
+
+export const attioRecordsTool = defineTool({
+    name: "attio_records",
+    inputSchema: attioRecordsInputSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
+        records: z.array(attioRecordSchema).optional(),
+        record: attioRecordSchema.optional(),
+        matches: z.array(attioSearchMatchSchema).optional(),
+        history: z.array(attioAttributeHistoryEntrySchema).optional(),
+        count: z.number().int().optional(),
+        offset: z.number().int().optional()
     })
 })
 
@@ -2233,9 +2847,15 @@ export const ToolDefinitions = {
     [getPosthogSessionEventsTool.name]: getPosthogSessionEventsTool,
     [listPosthogEventNamesTool.name]: listPosthogEventNamesTool,
     [searchPosthogEventsTool.name]: searchPosthogEventsTool,
-    [attioListObjectsTool.name]: attioListObjectsTool,
-    [attioQueryRecordsTool.name]: attioQueryRecordsTool,
-    [attioUpsertRecordTool.name]: attioUpsertRecordTool,
+    [attioRecordsTool.name]: attioRecordsTool,
+    [attioWorkspaceMembersTool.name]: attioWorkspaceMembersTool,
+    [attioTasksTool.name]: attioTasksTool,
+    [attioNotesTool.name]: attioNotesTool,
+    [attioCommentsTool.name]: attioCommentsTool,
+    [attioListsTool.name]: attioListsTool,
+    [attioMeetingsTool.name]: attioMeetingsTool,
+    [attioFilesTool.name]: attioFilesTool,
+    [attioSchemaTool.name]: attioSchemaTool,
     [listWorkOSUsersTool.name]: listWorkOSUsersTool,
     [listWorkOSOrganizationsTool.name]: listWorkOSOrganizationsTool,
     [getWorkOSUserTool.name]: getWorkOSUserTool,

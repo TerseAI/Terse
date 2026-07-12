@@ -6,12 +6,26 @@ import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecis
 import type { RunHistoryAction } from "./RunHistoryTypes"
 import { SlackChannelType, slackChannelTypeSchema } from "./SlackTypes"
 import {
+    attioAttributeHistoryEntrySchema,
     attioAttributeSchema,
+    attioCallRecordingSchema,
+    attioCommentSchema,
+    attioFileSchema,
+    attioListEntrySchema,
+    attioListSchema,
+    attioMeetingSchema,
+    attioNoteSchema,
     attioObjectSchema,
     attioObjectWithAttributesSchema,
     attioRecordIdentifierSchema,
     attioRecordSchema,
-    attioUpsertErrorSchema,
+    attioSearchMatchSchema,
+    attioSelectOptionEntitySchema,
+    attioStatusSchema,
+    attioTaskSchema,
+    attioThreadSchema,
+    attioTranscriptSchema,
+    attioWorkspaceMemberSchema,
     linearProjectSummarySchema,
     linearTeamSchema,
     slackUserResponseSchema
@@ -81,6 +95,21 @@ export type AttioAttribute = z.infer<typeof attioAttributeSchema>
 export type AttioObjectWithAttributes = z.infer<typeof attioObjectWithAttributesSchema>
 export type AttioRecordIdentifier = z.infer<typeof attioRecordIdentifierSchema>
 export type AttioRecord = z.infer<typeof attioRecordSchema>
+export type AttioSearchMatch = z.infer<typeof attioSearchMatchSchema>
+export type AttioAttributeHistoryEntry = z.infer<typeof attioAttributeHistoryEntrySchema>
+export type AttioWorkspaceMember = z.infer<typeof attioWorkspaceMemberSchema>
+export type AttioTask = z.infer<typeof attioTaskSchema>
+export type AttioNote = z.infer<typeof attioNoteSchema>
+export type AttioComment = z.infer<typeof attioCommentSchema>
+export type AttioThread = z.infer<typeof attioThreadSchema>
+export type AttioList = z.infer<typeof attioListSchema>
+export type AttioListEntry = z.infer<typeof attioListEntrySchema>
+export type AttioMeeting = z.infer<typeof attioMeetingSchema>
+export type AttioStatus = z.infer<typeof attioStatusSchema>
+export type AttioSelectOptionEntity = z.infer<typeof attioSelectOptionEntitySchema>
+export type AttioCallRecording = z.infer<typeof attioCallRecordingSchema>
+export type AttioTranscript = z.infer<typeof attioTranscriptSchema>
+export type AttioFile = z.infer<typeof attioFileSchema>
 
 export const linearWorkspaceSchema = z.object({
     id: z.string(),
@@ -995,8 +1024,6 @@ export const sdkJobServerCheckResponseSchema = z.object({
     httpStatus: z.number().optional()
 })
 export type SdkJobServerCheckResponse = z.infer<typeof sdkJobServerCheckResponseSchema>
-
-export type AttioUpsertError = z.infer<typeof attioUpsertErrorSchema>
 
 // ─── Request / param schemas ─────────────────────────────────────────
 

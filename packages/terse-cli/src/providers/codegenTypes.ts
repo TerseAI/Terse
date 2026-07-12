@@ -72,6 +72,8 @@ export interface AttioAttributeData {
     type?: string
     is_required?: boolean
     is_unique?: boolean
+    is_multiselect?: boolean
+    options?: string[]
 }
 
 interface AttioObjectData {
@@ -109,8 +111,17 @@ export interface LaunchDarklyInstanceData extends IntegrationInstanceData {
     projects: LaunchDarklyProjectData[]
 }
 
+export interface AttioListData {
+    id: { workspace_id?: string; list_id: string }
+    api_slug: string
+    name: string
+    parent_object?: string[] | string
+    attributes?: AttioAttributeData[]
+}
+
 export interface AttioInstanceData extends IntegrationInstanceData {
     objects: AttioObjectData[]
+    lists: AttioListData[]
 }
 
 interface HeyReachCampaignData {

@@ -1,40 +1,68 @@
-import { useMemo } from "react"
-
-import { AlertTriangle, ArrowRight } from "lucide-react"
+import { AlertTriangle, ArrowRight, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAttioObjects } from "@/modules/integrations/api/useAttioObjects"
 
-import { buildEditorColumns, buildValidationNotices, extractRecords, safeParseParams, valueToEditString } from "./attioUpsertRecordPreviewUtils"
+import { buildEditorColumns, buildValidationNotices, extractRecords, safeParseParams, valueToEditString, writeActionLabel } from "./attioRecordsPreviewUtils"
 import type { ToolPreviewProps } from "./index"
 
-export default function AttioUpsertRecordPreview({ parameters }: ToolPreviewProps) {
-    const parsedParameters = useMemo(() => safeParseParams(parameters), [parameters])
-    const { integrationId, objectSlug, matchingAttribute } = parsedParameters ?? {}
-    const { objects } = useAttioObjects(integrationId)
+export default function AttioRecordsPreview({ parameters }: ToolPreviewProps) {
+    const parsedParameters = safeParseParams(parameters)
+    const request = parsedParameters?.request
+    const { objects } = useAttioObjects(parsedParameters?.integrationId)
 
-    const records = useMemo(() => extractRecords(parsedParameters), [parsedParameters])
-    const objectDefinition = objects.find(object => object.api_slug === objectSlug)
+    if (!parsedParameters || !request) return null
+
+    if (request.action === "delete") {
+        return (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/8 px-4 py-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                    Permanently delete this {request.objectSlug} record
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                    Record <span className="font-mono text-foreground">{request.recordId}</span> will be deleted from Attio. This cannot be undone.
+                </div>
+            </div>
+        )
+    }
+
+    if (request.action !== "create" && request.action !== "update" && request.action !== "upsert") {
+        return (
+            <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium text-foreground capitalize">{request.objectSlug}</span>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Read-only: {request.action.replace(/_/g, " ")}</span>
+            </div>
+        )
+    }
+
+    const matchingAttribute = request.action === "upsert" ? request.matchingAttribute : undefined
+    const records = extractRecords(request)
+    const objectDefinition = objects.find(object => object.api_slug === request.objectSlug)
     const columns = buildEditorColumns(records, objectDefinition?.attributes, matchingAttribute)
     const validationNotices = buildValidationNotices(records, objectDefinition?.attributes, matchingAttribute)
-
-    if (!parsedParameters) return null
-
     const requiredAttributes = (objectDefinition?.attributes ?? []).filter(attribute => attribute.is_required && attribute.api_slug)
 
     return (
         <div className="space-y-3">
             <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-foreground capitalize">{objectSlug || "Record"}</span>
+                    <span className="font-medium text-foreground capitalize">{request.objectSlug || "Record"}</span>
                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">Create or update</span>
+                    <span className="text-muted-foreground">{writeActionLabel(request.action)}</span>
                 </div>
                 {matchingAttribute && (
                     <div className="mt-1 text-xs text-muted-foreground">
                         Match on <span className="font-mono text-foreground">{matchingAttribute}</span>
+                    </div>
+                )}
+                {request.action === "update" && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                        Record <span className="font-mono text-foreground">{request.recordId}</span>
+                        {request.multiselectMode === "append" ? " (appending to multi-value attributes)" : ""}
                     </div>
                 )}
             </div>

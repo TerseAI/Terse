@@ -43,6 +43,38 @@ export type GeneratedAttioObject =
 export type GeneratedAttioObject = AttioObject
 {{/if}}
 
+export class AttioList<
+    TSlug extends string = string,
+    TEntryValues extends Record<string, unknown> = Record<string, unknown>,
+    TEntryRecordValues extends Record<string, unknown> = TEntryValues
+> {
+    constructor(
+        public readonly apiSlug: TSlug,
+        public readonly name: string,
+        public readonly listId: string,
+        public readonly parentObject: string,
+        public readonly attributes: readonly AttioAttributeDefinition[] = []
+    ) {}
+
+    declare readonly __entryValues: TEntryValues
+    declare readonly __entryRecordValues: TEntryRecordValues
+{{#if lists.length}}
+
+{{#each lists}}
+    static {{staticName}} = new AttioList<"{{escape apiSlug}}", {{{entryValuesType}}}, {{{entryRecordValuesType}}}>("{{escape apiSlug}}", "{{escape name}}", "{{escape listId}}", "{{escape parentObject}}", {{{attributeSource}}})
+{{/each}}
+{{/if}}
+}
+
+{{#if lists.length}}
+export type GeneratedAttioList =
+{{#each lists}}
+    | typeof AttioList.{{staticName}}
+{{/each}}
+{{else}}
+export type GeneratedAttioList = AttioList
+{{/if}}
+
 function attioParentObjectFilter(object: GeneratedAttioObject | undefined) {
     if (!object) return null
     return { $and: [{ field: "id.object_id", operator: "equals" as const, value: object.objectId }] }

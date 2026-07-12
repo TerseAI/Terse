@@ -27,6 +27,7 @@ import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import {
     type AttioAttributeData,
     type AttioInstanceData,
+    type AttioListData,
     type CodegenInput,
     type DatadogInstanceData,
     type GitHubInstanceData,
@@ -321,7 +322,13 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
                                     attributes?: AttioAttributeData[]
                                 }>
                         )
-                        return { id: inst.id, displayName: inst.workspaceName || inst.id, objects: Array.isArray(objects) ? objects : [] }
+                        const lists = await fetchWithAuth<AttioListData[]>(buildRoute(ApiRoutes.ATTIO.LISTS, { integrationId: inst.id }), apiKey).catch(() => [] as AttioListData[])
+                        return {
+                            id: inst.id,
+                            displayName: inst.workspaceName || inst.id,
+                            objects: Array.isArray(objects) ? objects : [],
+                            lists: Array.isArray(lists) ? lists : []
+                        }
                     })
                 )
             })

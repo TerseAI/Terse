@@ -1,4 +1,4 @@
-import type { MemoryCommand } from "./Tools"
+import type { AttioRecordsRequest, MemoryCommand } from "./Tools"
 
 /**
  * The phases a tool call can be in for display purposes.
@@ -60,6 +60,62 @@ function memoryLabel(command: MemoryCommand | undefined, done: boolean): string 
             return (done ? "Deleted memory" : "Deleting memory") + suffix
         case "rename":
             return done ? "Renamed memory file" : "Reorganizing memory"
+    }
+}
+
+function safeParseCount(result?: string): number | undefined {
+    const parsed = safeParseResult(result)
+    return typeof parsed?.count === "number" ? parsed.count : undefined
+}
+
+function attioActionLabel(params: Record<string, unknown> | undefined, noun: string, done: boolean, count?: number): string {
+    const request = params?.request as { action?: string } | undefined
+    const action = request?.action ?? ""
+    const verbByPrefix: Array<[string, [string, string]]> = [
+        ["list", ["Loading", "Loaded"]],
+        ["query", ["Loading", "Loaded"]],
+        ["get", ["Loading", "Loaded"]],
+        ["create", ["Creating", "Created"]],
+        ["add", ["Adding", "Added"]],
+        ["upsert", ["Saving", "Saved"]],
+        ["update", ["Updating", "Updated"]],
+        ["upload", ["Uploading", "Uploaded"]],
+        ["delete", ["Deleting", "Deleted"]],
+        ["remove", ["Removing", "Removed"]]
+    ]
+    const match = verbByPrefix.find(([prefix]) => action.startsWith(prefix))
+    const verb = match ? match[1][done ? 1 : 0] : done ? "Finished" : "Working with"
+    const plural = action.startsWith("list") || action.startsWith("query")
+    if (done && count !== undefined && plural) return `${verb} ${count} ${noun}${count !== 1 ? "s" : ""}`
+    return `${verb} ${noun}${plural ? "s" : ""}`
+}
+
+function attioRecordsRequest(params?: Record<string, unknown>): AttioRecordsRequest | undefined {
+    const request = params?.request
+    return request && typeof request === "object" && "action" in request ? (request as AttioRecordsRequest) : undefined
+}
+
+function attioRecordsLabel(request: AttioRecordsRequest | undefined, done: boolean, count?: number): string {
+    if (!request) return done ? "Updated records" : "Working with records"
+    const target = `${request.objectSlug} record`
+    switch (request.action) {
+        case "query":
+        case "search":
+            if (done && count !== undefined) return `Found ${count} ${target}${count !== 1 ? "s" : ""}`
+            return (done ? "Searched" : "Searching") + ` ${target}s`
+        case "get":
+            return (done ? "Loaded" : "Loading") + ` ${target}`
+        case "get_attribute_history":
+            return (done ? "Loaded" : "Loading") + ` ${target} history`
+        case "create":
+            return (done ? "Created" : "Creating") + ` ${target}`
+        case "update":
+            return (done ? "Updated" : "Updating") + ` ${target}`
+        case "upsert":
+            if (done && count !== undefined && count !== 1) return `Saved ${count} ${target}s`
+            return (done ? "Saved" : "Saving") + ` ${target}`
+        case "delete":
+            return (done ? "Deleted" : "Deleting") + ` ${target}`
     }
 }
 
@@ -647,51 +703,68 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ===================
     // Attio Tools
     // ===================
-    attio_upsert_record: {
-        preparing: "Getting your record ready",
-        executing: params => {
-            const objectSlug = params?.objectSlug as string | undefined
-            return objectSlug ? `Saving ${objectSlug} record` : "Saving record"
-        },
+    attio_records: {
+        preparing: "Getting records ready",
+        executing: params => attioRecordsLabel(attioRecordsRequest(params), false),
         complete: (params, result) => {
             const parsed = safeParseResult(result)
-            const actions = parsed?.actions as Array<{ target?: string }> | undefined
-            const target = actions?.[0]?.target
-            const objectSlug = params?.objectSlug as string | undefined
-            if (target) return `Saved ${objectSlug || "record"}: ${truncate(target, 30)}`
-            if (objectSlug) return `Saved ${objectSlug} record`
-            return "Record saved"
+            const count = parsed?.count as number | undefined
+            return attioRecordsLabel(attioRecordsRequest(params), true, count)
         },
         approval: params => {
-            const objectSlug = params?.objectSlug as string | undefined
-            return objectSlug ? `Save ${objectSlug} record?` : "Save this record?"
+            const request = attioRecordsRequest(params)
+            const target = request ? `${request.objectSlug} record` : "record"
+            return request?.action === "delete" ? `Delete this ${target}? This cannot be undone.` : `Save ${target}?`
         }
     },
-    attio_query_records: {
-        preparing: "Looking up records",
+    attio_workspace_members: {
+        preparing: "Looking up workspace members",
         executing: params => {
-            const objectSlug = params?.objectSlug as string | undefined
-            return objectSlug ? `Searching ${objectSlug} records` : "Searching records"
+            const request = params?.request as { action?: string } | undefined
+            return request?.action === "get" ? "Loading workspace member" : "Loading workspace members"
         },
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const count = parsed?.count as number | undefined
-            const objectSlug = params?.objectSlug as string | undefined
-            if (count !== undefined && objectSlug) return `Found ${count} ${objectSlug} record${count !== 1 ? "s" : ""}`
-            if (count !== undefined) return `Found ${count} record${count !== 1 ? "s" : ""}`
-            if (objectSlug) return `Searched ${objectSlug} records`
-            return "Search complete"
+            const request = params?.request as { action?: string } | undefined
+            if (request?.action === "get") return "Loaded workspace member"
+            return count !== undefined ? `Found ${count} workspace member${count !== 1 ? "s" : ""}` : "Workspace members loaded"
         }
     },
-    attio_list_objects: {
-        preparing: "Loading object types",
-        executing: () => "Loading object types",
-        complete: (_params, result) => {
-            const parsed = safeParseResult(result)
-            const count = parsed?.count as number | undefined
-            if (count !== undefined) return `Found ${count} object type${count !== 1 ? "s" : ""}`
-            return "Object types loaded"
-        }
+    attio_tasks: {
+        preparing: "Working with tasks",
+        executing: params => attioActionLabel(params, "task", false),
+        complete: (params, result) => attioActionLabel(params, "task", true, safeParseCount(result))
+    },
+    attio_notes: {
+        preparing: "Working with notes",
+        executing: params => attioActionLabel(params, "note", false),
+        complete: (params, result) => attioActionLabel(params, "note", true, safeParseCount(result))
+    },
+    attio_comments: {
+        preparing: "Working with comments",
+        executing: params => attioActionLabel(params, "comment", false),
+        complete: (params, result) => attioActionLabel(params, "comment", true, safeParseCount(result))
+    },
+    attio_lists: {
+        preparing: "Working with lists",
+        executing: params => attioActionLabel(params, "list entry", false),
+        complete: (params, result) => attioActionLabel(params, "list entry", true, safeParseCount(result))
+    },
+    attio_meetings: {
+        preparing: "Loading meetings",
+        executing: params => attioActionLabel(params, "meeting", false),
+        complete: (params, result) => attioActionLabel(params, "meeting", true, safeParseCount(result))
+    },
+    attio_files: {
+        preparing: "Working with files",
+        executing: params => attioActionLabel(params, "file", false),
+        complete: (params, result) => attioActionLabel(params, "file", true, safeParseCount(result))
+    },
+    attio_schema: {
+        preparing: "Loading workspace schema",
+        executing: params => attioActionLabel(params, "schema item", false),
+        complete: (params, result) => attioActionLabel(params, "schema item", true, safeParseCount(result))
     },
 
     // ===================
