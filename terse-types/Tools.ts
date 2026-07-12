@@ -127,7 +127,8 @@ export const linearSearchPaginationSchema = z.object({
 
 export const slackUserResponseSchema = z.object({
     id: z.string(),
-    name: z.string()
+    name: z.string(),
+    email: z.string().optional()
 })
 
 export const slackChannelListItemSchema = z.object({
@@ -700,7 +701,7 @@ export const slackListChannelsInputSchema = z.object({
 
 export const slackListUsersInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
-    query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
+    query: z.string().nullable().optional().describe("Optional search query to filter users by name or email. Case-insensitive partial match.")
 })
 
 export const slackReadConversationInputSchema = z.object({
