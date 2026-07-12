@@ -41,8 +41,6 @@ async function executeTasksRequest(request: AttioTasksRequest, accessToken: stri
             })
             const tasks = await attioRequestData(accessToken, `/tasks${query}`, z.array(attioTaskSchema), "tasks")
             return {
-                success: true,
-                action: request.action,
                 tasks,
                 count: tasks.length,
                 actions: [taskAction("Listed tasks", "Attio tasks", `Found ${tasks.length} task(s)`, RunHistoryActionType.read)]
@@ -51,8 +49,6 @@ async function executeTasksRequest(request: AttioTasksRequest, accessToken: stri
         case "get": {
             const task = await attioRequestData(accessToken, `/tasks/${encodeURIComponent(request.taskId)}`, attioTaskSchema, "task")
             return {
-                success: true,
-                action: request.action,
                 task,
                 actions: [taskAction("Fetched task", request.taskId, "Fetched task", RunHistoryActionType.read)]
             }
@@ -70,8 +66,6 @@ async function executeTasksRequest(request: AttioTasksRequest, accessToken: stri
             }
             const task = await attioRequestData(accessToken, "/tasks", attioTaskSchema, "task", { method: "POST", body })
             return {
-                success: true,
-                action: request.action,
                 task,
                 actions: [taskAction("Created task", task.id.task_id || "task", `Created task "${truncate(request.content)}"`, RunHistoryActionType.create)]
             }
@@ -86,15 +80,13 @@ async function executeTasksRequest(request: AttioTasksRequest, accessToken: stri
             }
             const task = await attioRequestData(accessToken, `/tasks/${encodeURIComponent(request.taskId)}`, attioTaskSchema, "task", { method: "PATCH", body: { data: updates } })
             return {
-                success: true,
-                action: request.action,
                 task,
                 actions: [taskAction("Updated task", request.taskId, "Updated task", RunHistoryActionType.update)]
             }
         }
         case "delete": {
             await attioApiRequest(accessToken, `/tasks/${encodeURIComponent(request.taskId)}`, { method: "DELETE" })
-            return { success: true, action: request.action, deleted: true, actions: [taskAction("Deleted task", request.taskId, "Permanently deleted task", RunHistoryActionType.delete)] }
+            return { actions: [taskAction("Deleted task", request.taskId, "Permanently deleted task", RunHistoryActionType.delete)] }
         }
         default:
             throw request satisfies never

@@ -32,12 +32,10 @@ export const attioSchemaTool = defineSessionTool({
 async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: string): Promise<AttioSchemaOutput> {
     switch (request.action) {
         case "list_objects":
-            return listObjects(request.action, accessToken)
+            return listObjects(accessToken)
         case "get_object": {
             const object = await attioRequestData(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}`, attioObjectSchema, "object")
             return {
-                success: true,
-                action: request.action,
                 object,
                 actions: [schemaAction("Fetched object", request.objectSlug, "Fetched object configuration", RunHistoryActionType.read)]
             }
@@ -46,8 +44,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             const body = { data: { api_slug: request.apiSlug, singular_noun: request.singularNoun, plural_noun: request.pluralNoun } }
             const object = await attioRequestData(accessToken, "/objects", attioObjectSchema, "object", { method: "POST", body })
             return {
-                success: true,
-                action: request.action,
                 object,
                 actions: [schemaAction("Created object", request.apiSlug, `Created custom object "${request.singularNoun}"`, RunHistoryActionType.create)]
             }
@@ -59,8 +55,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             if (request.pluralNoun != null) updates.plural_noun = request.pluralNoun
             const object = await attioRequestData(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}`, attioObjectSchema, "object", { method: "PATCH", body: { data: updates } })
             return {
-                success: true,
-                action: request.action,
                 object,
                 actions: [schemaAction("Updated object", request.objectSlug, "Updated object configuration", RunHistoryActionType.update)]
             }
@@ -68,8 +62,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
         case "list_attributes": {
             const attributes = await attioRequestData(accessToken, `${targetPath(request)}/attributes`, z.array(attioAttributeSchema), "attributes")
             return {
-                success: true,
-                action: request.action,
                 attributes,
                 count: attributes.length,
                 actions: [schemaAction("Listed attributes", request.identifier, `Found ${attributes.length} attribute(s)`, RunHistoryActionType.read)]
@@ -90,8 +82,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             }
             const attribute = await attioRequestData(accessToken, `${targetPath(request)}/attributes`, attioAttributeSchema, "attribute", { method: "POST", body })
             return {
-                success: true,
-                action: request.action,
                 attribute,
                 actions: [schemaAction("Created attribute", `${request.identifier}/${request.apiSlug}`, `Created ${request.attributeType} attribute "${request.title}"`, RunHistoryActionType.create)]
             }
@@ -102,8 +92,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             if (request.isRequired != null) updates.is_required = request.isRequired
             const attribute = await attioRequestData(accessToken, `${attributePath(request)}`, attioAttributeSchema, "attribute", { method: "PATCH", body: { data: updates } })
             return {
-                success: true,
-                action: request.action,
                 attribute,
                 actions: [schemaAction("Updated attribute", `${request.identifier}/${request.attributeSlug}`, "Updated attribute configuration", RunHistoryActionType.update)]
             }
@@ -111,8 +99,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
         case "list_statuses": {
             const statuses = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, z.array(attioStatusSchema), "statuses")
             return {
-                success: true,
-                action: request.action,
                 statuses,
                 count: statuses.length,
                 actions: [schemaAction("Listed statuses", `${request.identifier}/${request.attributeSlug}`, `Found ${statuses.length} status(es)`, RunHistoryActionType.read)]
@@ -121,8 +107,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
         case "create_status": {
             const status = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, attioStatusSchema, "status", { method: "POST", body: { data: { title: request.title } } })
             return {
-                success: true,
-                action: request.action,
                 status,
                 actions: [schemaAction("Created status", `${request.identifier}/${request.attributeSlug}`, `Added status "${request.title}"`, RunHistoryActionType.create)]
             }
@@ -136,8 +120,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
                 body: { data: updates }
             })
             return {
-                success: true,
-                action: request.action,
                 status,
                 actions: [schemaAction("Updated status", request.statusId, "Updated status", RunHistoryActionType.update)]
             }
@@ -145,8 +127,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
         case "list_select_options": {
             const selectOptions = await attioRequestData(accessToken, `${attributePath(request)}/options`, z.array(attioSelectOptionEntitySchema), "select options")
             return {
-                success: true,
-                action: request.action,
                 selectOptions,
                 count: selectOptions.length,
                 actions: [schemaAction("Listed select options", `${request.identifier}/${request.attributeSlug}`, `Found ${selectOptions.length} option(s)`, RunHistoryActionType.read)]
@@ -158,8 +138,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
                 body: { data: { title: request.title } }
             })
             return {
-                success: true,
-                action: request.action,
                 selectOption,
                 actions: [schemaAction("Created select option", `${request.identifier}/${request.attributeSlug}`, `Added option "${request.title}"`, RunHistoryActionType.create)]
             }
@@ -173,8 +151,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
                 body: { data: updates }
             })
             return {
-                success: true,
-                action: request.action,
                 selectOption,
                 actions: [schemaAction("Updated select option", request.optionId, "Updated select option", RunHistoryActionType.update)]
             }
@@ -184,7 +160,7 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
     }
 }
 
-async function listObjects(action: "list_objects", accessToken: string): Promise<AttioSchemaOutput> {
+async function listObjects(accessToken: string): Promise<AttioSchemaOutput> {
     const objects = await attioRequestData(accessToken, "/objects", z.array(attioObjectSchema), "objects")
 
     const objectsWithAttributes = await Promise.all(
@@ -197,8 +173,6 @@ async function listObjects(action: "list_objects", accessToken: string): Promise
     )
 
     return {
-        success: true,
-        action,
         objects: objectsWithAttributes,
         count: objectsWithAttributes.length,
         actions: [schemaAction("Listed objects", "Attio workspace", `Found ${objectsWithAttributes.length} object type(s)`, RunHistoryActionType.read)]

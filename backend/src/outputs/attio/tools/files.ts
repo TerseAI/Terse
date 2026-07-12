@@ -37,8 +37,6 @@ async function executeFilesRequest(request: AttioFilesRequest, accessToken: stri
             const query = buildQueryString({ object: request.objectSlug, record_id: request.recordId, limit: request.limit, cursor: request.cursor })
             const page = await attioRequestPage(accessToken, `/files${query}`, z.array(attioFileSchema), "files")
             return {
-                success: true,
-                action: request.action,
                 files: page.data,
                 count: page.data.length,
                 nextCursor: page.nextCursor,
@@ -48,8 +46,6 @@ async function executeFilesRequest(request: AttioFilesRequest, accessToken: stri
         case "get": {
             const file = await attioRequestData(accessToken, `/files/${encodeURIComponent(request.fileId)}`, attioFileSchema, "file")
             return {
-                success: true,
-                action: request.action,
                 file,
                 actions: [fileAction("Fetched file", request.fileId, "Fetched file metadata", RunHistoryActionType.read)]
             }
@@ -57,19 +53,17 @@ async function executeFilesRequest(request: AttioFilesRequest, accessToken: stri
         case "upload": {
             const file = await uploadFile(request, accessToken)
             return {
-                success: true,
-                action: request.action,
                 file,
                 actions: [fileAction("Uploaded file", `${request.objectSlug}/${request.recordId}`, `Uploaded "${request.fileName}"`, RunHistoryActionType.create)]
             }
         }
         case "get_download_url": {
             const downloadUrl = await fetchDownloadUrl(request.fileId, accessToken)
-            return { success: true, action: request.action, downloadUrl, actions: [fileAction("Fetched download URL", request.fileId, "Fetched signed download URL", RunHistoryActionType.read)] }
+            return { downloadUrl, actions: [fileAction("Fetched download URL", request.fileId, "Fetched signed download URL", RunHistoryActionType.read)] }
         }
         case "delete": {
             await attioApiRequest(accessToken, `/files/${encodeURIComponent(request.fileId)}`, { method: "DELETE" })
-            return { success: true, action: request.action, deleted: true, actions: [fileAction("Deleted file", request.fileId, "Permanently deleted file", RunHistoryActionType.delete)] }
+            return { actions: [fileAction("Deleted file", request.fileId, "Permanently deleted file", RunHistoryActionType.delete)] }
         }
         default:
             throw request satisfies never

@@ -36,8 +36,6 @@ async function executeCommentsRequest(request: AttioCommentsRequest, accessToken
             const comment = await attioRequestData(accessToken, "/comments", attioCommentSchema, "comment", { method: "POST", body })
             const target = request.threadId ? `thread/${request.threadId}` : `${request.objectSlug}/${request.recordId}`
             return {
-                success: true,
-                action: request.action,
                 comment,
                 actions: [commentAction("Created comment", target, "Created comment", RunHistoryActionType.create)]
             }
@@ -45,22 +43,18 @@ async function executeCommentsRequest(request: AttioCommentsRequest, accessToken
         case "get": {
             const comment = await attioRequestData(accessToken, `/comments/${encodeURIComponent(request.commentId)}`, attioCommentSchema, "comment")
             return {
-                success: true,
-                action: request.action,
                 comment,
                 actions: [commentAction("Fetched comment", request.commentId, "Fetched comment", RunHistoryActionType.read)]
             }
         }
         case "delete": {
             await attioApiRequest(accessToken, `/comments/${encodeURIComponent(request.commentId)}`, { method: "DELETE" })
-            return { success: true, action: request.action, deleted: true, actions: [commentAction("Deleted comment", request.commentId, "Permanently deleted comment", RunHistoryActionType.delete)] }
+            return { actions: [commentAction("Deleted comment", request.commentId, "Permanently deleted comment", RunHistoryActionType.delete)] }
         }
         case "list_threads": {
             const query = buildQueryString({ object: request.objectSlug, record_id: request.recordId, limit: request.limit, offset: request.offset })
             const threads = await attioRequestData(accessToken, `/threads${query}`, z.array(attioThreadSchema), "threads")
             return {
-                success: true,
-                action: request.action,
                 threads,
                 count: threads.length,
                 actions: [commentAction("Listed threads", request.recordId || "workspace", `Found ${threads.length} thread(s)`, RunHistoryActionType.read)]
@@ -69,8 +63,6 @@ async function executeCommentsRequest(request: AttioCommentsRequest, accessToken
         case "get_thread": {
             const thread = await attioRequestData(accessToken, `/threads/${encodeURIComponent(request.threadId)}`, attioThreadSchema, "thread")
             return {
-                success: true,
-                action: request.action,
                 thread,
                 actions: [commentAction("Fetched thread", request.threadId, "Fetched thread with comments", RunHistoryActionType.read)]
             }

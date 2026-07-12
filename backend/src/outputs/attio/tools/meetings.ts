@@ -43,8 +43,6 @@ async function executeMeetingsRequest(request: AttioMeetingsRequest, accessToken
             })
             const page = await attioRequestPage(accessToken, `/meetings${query}`, z.array(attioMeetingSchema), "meetings")
             return {
-                success: true,
-                action: request.action,
                 meetings: page.data,
                 count: page.data.length,
                 nextCursor: page.nextCursor,
@@ -53,14 +51,12 @@ async function executeMeetingsRequest(request: AttioMeetingsRequest, accessToken
         }
         case "get": {
             const meeting = await attioRequestData(accessToken, `/meetings/${encodeURIComponent(request.meetingId)}`, attioMeetingSchema, "meeting")
-            return { success: true, action: request.action, meeting, actions: [meetingAction("Fetched meeting", request.meetingId, "Fetched meeting")] }
+            return { meeting, actions: [meetingAction("Fetched meeting", request.meetingId, "Fetched meeting")] }
         }
         case "list_recordings": {
             const query = buildQueryString({ limit: request.limit, cursor: request.cursor })
             const page = await attioRequestPage(accessToken, `/meetings/${encodeURIComponent(request.meetingId)}/call_recordings${query}`, z.array(attioCallRecordingSchema), "call recordings")
             return {
-                success: true,
-                action: request.action,
                 recordings: page.data,
                 count: page.data.length,
                 nextCursor: page.nextCursor,
@@ -76,8 +72,6 @@ async function executeMeetingsRequest(request: AttioMeetingsRequest, accessToken
                 "transcript"
             )
             return {
-                success: true,
-                action: request.action,
                 transcript: page.data,
                 nextCursor: page.nextCursor,
                 actions: [meetingAction("Fetched call transcript", request.callRecordingId, "Fetched call transcript")]

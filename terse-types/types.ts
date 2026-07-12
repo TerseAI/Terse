@@ -25,7 +25,6 @@ import {
     attioTaskSchema,
     attioThreadSchema,
     attioTranscriptSchema,
-    attioUpsertErrorSchema,
     attioWorkspaceMemberSchema,
     linearProjectSummarySchema,
     linearTeamSchema,
@@ -1021,8 +1020,6 @@ export const sdkJobServerCheckResponseSchema = z.object({
     httpStatus: z.number().optional()
 })
 export type SdkJobServerCheckResponse = z.infer<typeof sdkJobServerCheckResponseSchema>
-
-export type AttioUpsertError = z.infer<typeof attioUpsertErrorSchema>
 
 // ─── Request / param schemas ─────────────────────────────────────────
 

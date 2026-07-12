@@ -39,8 +39,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             const workspaceSlug = await fetchWorkspaceSlug(accessToken)
             const lists = data.map(list => withListWebUrl(list, workspaceSlug))
             return {
-                success: true,
-                action: request.action,
                 lists,
                 count: lists.length,
                 actions: [listAction("Listed lists", "Attio lists", `Found ${lists.length} list(s)`, RunHistoryActionType.read)]
@@ -49,8 +47,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
         case "get": {
             const list = await attioRequestData(accessToken, listPath(request.listIdOrSlug), attioListSchema, "list")
             return {
-                success: true,
-                action: request.action,
                 list: withListWebUrl(list, await fetchWorkspaceSlug(accessToken)),
                 actions: [listAction("Fetched list", request.listIdOrSlug, "Fetched list configuration", RunHistoryActionType.read)]
             }
@@ -67,8 +63,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             }
             const list = await attioRequestData(accessToken, "/lists", attioListSchema, "list", { method: "POST", body })
             return {
-                success: true,
-                action: request.action,
                 list: withListWebUrl(list, await fetchWorkspaceSlug(accessToken)),
                 actions: [listAction("Created list", request.apiSlug, `Created list "${request.name}" over ${request.parentObjectSlug}`, RunHistoryActionType.create)]
             }
@@ -76,8 +70,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
         case "update": {
             const list = await attioRequestData(accessToken, listPath(request.listIdOrSlug), attioListSchema, "list", { method: "PATCH", body: { data: { name: request.name } } })
             return {
-                success: true,
-                action: request.action,
                 list: withListWebUrl(list, await fetchWorkspaceSlug(accessToken)),
                 actions: [listAction("Updated list", request.listIdOrSlug, `Renamed list to "${request.name}"`, RunHistoryActionType.update)]
             }
@@ -90,8 +82,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             if (filter) body.filter = filter
             const entries = await attioRequestData(accessToken, `${listPath(request.listIdOrSlug)}/entries/query`, z.array(attioListEntrySchema), "list entries", { method: "POST", body })
             return {
-                success: true,
-                action: request.action,
                 entries,
                 count: entries.length,
                 offset,
@@ -111,8 +101,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
             const entry = await attioWriteData(accessToken, request.parentObjectSlug, `${listPath(request.listIdOrSlug)}/entries`, attioListEntrySchema, "list entry", { method, body })
             const verb = request.action === "add_entry" ? "Added" : "Upserted"
             return {
-                success: true,
-                action: request.action,
                 entry,
                 actions: [listAction(`${verb} list entry`, `${request.listIdOrSlug}/${request.parentRecordId}`, `${verb} ${request.parentObjectSlug} record on list`, RunHistoryActionType.create)]
             }
@@ -120,8 +108,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
         case "get_entry": {
             const entry = await attioRequestData(accessToken, entryPath(request.listIdOrSlug, request.entryId), attioListEntrySchema, "list entry")
             return {
-                success: true,
-                action: request.action,
                 entry,
                 actions: [listAction("Fetched list entry", request.entryId, "Fetched list entry", RunHistoryActionType.read)]
             }
@@ -137,8 +123,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
                 body: { data: { entry_values: entryValues } }
             })
             return {
-                success: true,
-                action: request.action,
                 entry,
                 actions: [listAction("Updated list entry", request.entryId, "Updated list entry values", RunHistoryActionType.update)]
             }
@@ -146,9 +130,6 @@ async function executeListsRequest(request: AttioListsRequest, accessToken: stri
         case "remove_entry": {
             await attioApiRequest(accessToken, entryPath(request.listIdOrSlug, request.entryId), { method: "DELETE" })
             return {
-                success: true,
-                action: request.action,
-                deleted: true,
                 actions: [listAction("Removed list entry", request.entryId, "Removed entry from list (record untouched)", RunHistoryActionType.delete)]
             }
         }

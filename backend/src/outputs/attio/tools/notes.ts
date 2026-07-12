@@ -40,8 +40,6 @@ async function executeNotesRequest(request: AttioNotesRequest, accessToken: stri
             })
             const notes = await attioRequestData(accessToken, `/notes${query}`, z.array(attioNoteSchema), "notes")
             return {
-                success: true,
-                action: request.action,
                 notes,
                 count: notes.length,
                 actions: [noteAction("Listed notes", "Attio notes", `Found ${notes.length} note(s)`, RunHistoryActionType.read)]
@@ -50,8 +48,6 @@ async function executeNotesRequest(request: AttioNotesRequest, accessToken: stri
         case "get": {
             const note = await attioRequestData(accessToken, `/notes/${encodeURIComponent(request.noteId)}`, attioNoteSchema, "note")
             return {
-                success: true,
-                action: request.action,
                 note,
                 actions: [noteAction("Fetched note", request.noteId, "Fetched note", RunHistoryActionType.read)]
             }
@@ -68,15 +64,13 @@ async function executeNotesRequest(request: AttioNotesRequest, accessToken: stri
             }
             const note = await attioRequestData(accessToken, "/notes", attioNoteSchema, "note", { method: "POST", body })
             return {
-                success: true,
-                action: request.action,
                 note,
                 actions: [noteAction("Created note", `${request.parentObjectSlug}/${request.parentRecordId}`, `Created note "${request.title}"`, RunHistoryActionType.create)]
             }
         }
         case "delete": {
             await attioApiRequest(accessToken, `/notes/${encodeURIComponent(request.noteId)}`, { method: "DELETE" })
-            return { success: true, action: request.action, deleted: true, actions: [noteAction("Deleted note", request.noteId, "Permanently deleted note", RunHistoryActionType.delete)] }
+            return { actions: [noteAction("Deleted note", request.noteId, "Permanently deleted note", RunHistoryActionType.delete)] }
         }
         default:
             throw request satisfies never

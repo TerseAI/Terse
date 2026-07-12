@@ -45,8 +45,6 @@ async function listWorkspaceMembers(request: AttioListWorkspaceMembersRequest, a
     const members = await attioRequestData(accessToken, "/workspace_members", z.array(attioWorkspaceMemberSchema), "workspace members")
 
     return {
-        success: true,
-        action: request.action,
         members,
         count: members.length,
         actions: [
@@ -65,8 +63,6 @@ async function getWorkspaceMember(request: AttioGetWorkspaceMemberRequest, acces
     const member = await attioRequestData(accessToken, `/workspace_members/${encodeURIComponent(request.workspaceMemberId)}`, attioWorkspaceMemberSchema, "workspace member")
 
     return {
-        success: true,
-        action: request.action,
         member,
         actions: [
             {

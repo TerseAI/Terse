@@ -1835,11 +1835,6 @@ export const attioRecordSchema = z
     })
     .catchall(z.unknown())
 
-export const attioUpsertErrorSchema = z.object({
-    index: z.number().int(),
-    message: z.string()
-})
-
 export const attioSearchMatchSchema = z
     .object({
         id: attioRecordIdentifierSchema.optional(),
@@ -2193,7 +2188,6 @@ export type AttioGetAttributeHistoryRequest = z.infer<typeof attioGetAttributeHi
 export type AttioRecordsRequest = z.infer<typeof attioRecordsRequestSchema>
 export type AttioRecordsAction = AttioRecordsRequest["action"]
 
-export const attioRecordsActionSchema = z.enum(["query", "search", "get", "create", "update", "upsert", "delete", "get_attribute_history"])
 
 const attioTargetRecordFields = {
     objectSlug: z.string().describe("The object type slug of the record (e.g. 'people', 'companies')."),
@@ -2551,63 +2545,56 @@ export const attioMeetingsInputSchema = attioToolInput(attioMeetingsRequestSchem
 export const attioFilesInputSchema = attioToolInput(attioFilesRequestSchema)
 export const attioSchemaInputSchema = attioToolInput(attioSchemaRequestSchema)
 
+const attioToolOutputBaseSchema = toolOutputBaseSchema.omit({ success: true })
+
 export const attioTasksTool = defineTool({
     name: "attio_tasks",
     inputSchema: attioTasksInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: z.string(),
+    outputSchema: attioToolOutputBaseSchema.extend({
         tasks: z.array(attioTaskSchema).optional(),
         task: attioTaskSchema.optional(),
-        count: z.number().int().optional(),
-        deleted: z.boolean().optional()
+        count: z.number().int().optional()
     })
 })
 
 export const attioNotesTool = defineTool({
     name: "attio_notes",
     inputSchema: attioNotesInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: z.string(),
+    outputSchema: attioToolOutputBaseSchema.extend({
         notes: z.array(attioNoteSchema).optional(),
         note: attioNoteSchema.optional(),
-        count: z.number().int().optional(),
-        deleted: z.boolean().optional()
+        count: z.number().int().optional()
     })
 })
 
 export const attioCommentsTool = defineTool({
     name: "attio_comments",
     inputSchema: attioCommentsInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: z.string(),
+    outputSchema: attioToolOutputBaseSchema.extend({
         comment: attioCommentSchema.optional(),
         threads: z.array(attioThreadSchema).optional(),
         thread: attioThreadSchema.optional(),
-        count: z.number().int().optional(),
-        deleted: z.boolean().optional()
+        count: z.number().int().optional()
     })
 })
 
 export const attioListsTool = defineTool({
     name: "attio_lists",
     inputSchema: attioListsInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: z.string(),
+    outputSchema: attioToolOutputBaseSchema.extend({
         lists: z.array(attioListSchema).optional(),
         list: attioListSchema.optional(),
         entries: z.array(attioListEntrySchema).optional(),
         entry: attioListEntrySchema.optional(),
         count: z.number().int().optional(),
-        offset: z.number().int().optional(),
-        deleted: z.boolean().optional()
+        offset: z.number().int().optional()
     })
 })
 
 export const attioMeetingsTool = defineTool({
     name: "attio_meetings",
     inputSchema: attioMeetingsInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: z.string(),
+    outputSchema: attioToolOutputBaseSchema.extend({
         meetings: z.array(attioMeetingSchema).optional(),
         meeting: attioMeetingSchema.optional(),
         recordings: z.array(attioCallRecordingSchema).optional(),
@@ -2620,22 +2607,19 @@ export const attioMeetingsTool = defineTool({
 export const attioFilesTool = defineTool({
     name: "attio_files",
     inputSchema: attioFilesInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: z.string(),
+    outputSchema: attioToolOutputBaseSchema.extend({
         files: z.array(attioFileSchema).optional(),
         file: attioFileSchema.optional(),
         downloadUrl: z.string().optional(),
         count: z.number().int().optional(),
-        nextCursor: z.string().nullable().optional(),
-        deleted: z.boolean().optional()
+        nextCursor: z.string().nullable().optional()
     })
 })
 
 export const attioSchemaTool = defineTool({
     name: "attio_schema",
     inputSchema: attioSchemaInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: z.string(),
+    outputSchema: attioToolOutputBaseSchema.extend({
         objects: z.array(attioObjectWithAttributesSchema).optional(),
         object: attioObjectSchema.optional(),
         attributes: z.array(attioAttributeSchema).optional(),
@@ -2651,8 +2635,7 @@ export const attioSchemaTool = defineTool({
 export const attioWorkspaceMembersTool = defineTool({
     name: "attio_workspace_members",
     inputSchema: attioWorkspaceMembersInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: z.enum(["list", "get"]),
+    outputSchema: attioToolOutputBaseSchema.extend({
         members: z.array(attioWorkspaceMemberSchema).optional(),
         member: attioWorkspaceMemberSchema.optional(),
         count: z.number().int().optional()
@@ -2662,20 +2645,13 @@ export const attioWorkspaceMembersTool = defineTool({
 export const attioRecordsTool = defineTool({
     name: "attio_records",
     inputSchema: attioRecordsInputSchema,
-    outputSchema: toolOutputBaseSchema.extend({
-        action: attioRecordsActionSchema,
+    outputSchema: attioToolOutputBaseSchema.extend({
         records: z.array(attioRecordSchema).optional(),
         record: attioRecordSchema.optional(),
         matches: z.array(attioSearchMatchSchema).optional(),
         history: z.array(attioAttributeHistoryEntrySchema).optional(),
         count: z.number().int().optional(),
-        offset: z.number().int().optional(),
-        deleted: z.boolean().optional(),
-        requestedCount: z.number().int().optional(),
-        successCount: z.number().int().optional(),
-        failureCount: z.number().int().optional(),
-        partial: z.boolean().optional(),
-        errors: z.array(attioUpsertErrorSchema).optional()
+        offset: z.number().int().optional()
     })
 })
 

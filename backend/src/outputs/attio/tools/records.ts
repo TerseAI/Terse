@@ -82,8 +82,6 @@ async function queryRecords(request: AttioQueryRecordsRequest, accessToken: stri
     const records = await attioRequestData(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}/records/query`, z.array(attioRecordSchema), "records", { method: "POST", body })
 
     return {
-        success: true,
-        action: request.action,
         records,
         count: records.length,
         offset,
@@ -99,8 +97,6 @@ async function searchRecords(request: AttioSearchRecordsRequest, accessToken: st
     })
 
     return {
-        success: true,
-        action: request.action,
         matches,
         count: matches.length,
         actions: [readAction("Searched records", request.objectSlug, `Found ${matches.length} match(es) for "${request.query}"`)]
@@ -111,8 +107,6 @@ async function getRecord(request: AttioGetRecordRequest, accessToken: string): P
     const record = await attioRequestData(accessToken, recordPath(request.objectSlug, request.recordId), attioRecordSchema, "record")
 
     return {
-        success: true,
-        action: request.action,
         record,
         actions: [readAction("Fetched record", `${request.objectSlug}/${request.recordId}`, `Fetched ${request.objectSlug} record`)]
     }
@@ -126,8 +120,6 @@ async function createRecord(request: AttioCreateRecordRequest, accessToken: stri
     })
 
     return {
-        success: true,
-        action: request.action,
         record,
         actions: [writeAction("Created record", request.objectSlug, record, RunHistoryActionType.create, `Created ${request.objectSlug} record`)]
     }
@@ -142,8 +134,6 @@ async function updateRecord(request: AttioUpdateRecordRequest, accessToken: stri
     })
 
     return {
-        success: true,
-        action: request.action,
         record,
         actions: [writeAction("Updated record", request.objectSlug, record, RunHistoryActionType.update, `Updated ${request.objectSlug} record ${request.recordId}`)]
     }
@@ -178,24 +168,14 @@ async function upsertRecords(request: AttioUpsertRecordsRequest, accessToken: st
         )
     }
 
-    const successCount = successfulRecords.length
-    const failureCount = errors.length
-
-    if (failureCount > 0) {
+    if (errors.length > 0) {
         const failureLines = errors.map(failure => `record[${failure.index}]: ${failure.message}`).join("; ")
-        throw new AttioUpsertFailedError(request.objectSlug, successCount, parsedRecords.length, failureLines)
+        throw new AttioUpsertFailedError(request.objectSlug, successfulRecords.length, parsedRecords.length, failureLines)
     }
 
     return {
-        success: true,
-        action: request.action,
         records: successfulRecords,
-        count: successCount,
-        requestedCount: parsedRecords.length,
-        successCount,
-        failureCount,
-        partial: false,
-        errors,
+        count: successfulRecords.length,
         actions
     }
 }
@@ -220,9 +200,6 @@ async function deleteRecord(request: AttioDeleteRecordRequest, accessToken: stri
     await attioApiRequest(accessToken, recordPath(request.objectSlug, request.recordId), { method: "DELETE" })
 
     return {
-        success: true,
-        action: request.action,
-        deleted: true,
         actions: [
             {
                 action: "Deleted record",
@@ -248,8 +225,6 @@ async function getAttributeHistory(request: AttioGetAttributeHistoryRequest, acc
     )
 
     return {
-        success: true,
-        action: request.action,
         history,
         count: history.length,
         actions: [readAction("Fetched attribute history", `${request.objectSlug}/${request.recordId}`, `Fetched ${history.length} historic value(s) of "${request.attributeSlug}"`)]
