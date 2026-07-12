@@ -30,17 +30,21 @@ export function parseKeyValueFlags(values: string[] | undefined): Record<string,
     return out
 }
 
+export async function readRawStdin(): Promise<string> {
+    const chunks: Buffer[] = []
+    for await (const chunk of process.stdin) {
+        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk)
+    }
+    return Buffer.concat(chunks).toString("utf-8").trim()
+}
+
 /**
  * Read a JSON object from stdin and return it as a string map. Used by
  * `terse integrate connect --fields-stdin` so passwords and tokens never touch
  * argv.
  */
 export async function readFieldsFromStdin(): Promise<Record<string, string>> {
-    const chunks: Buffer[] = []
-    for await (const chunk of process.stdin) {
-        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk)
-    }
-    const raw = Buffer.concat(chunks).toString("utf-8").trim()
+    const raw = await readRawStdin()
     if (!raw) return {}
 
     let parsed: unknown

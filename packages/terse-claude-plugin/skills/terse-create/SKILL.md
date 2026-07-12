@@ -23,7 +23,7 @@ Terse evolves fast; the live docs are the source of truth for facts:
 - Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
 - CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse secrets`, `terse deploy`.
 
-Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured — and the "Testing Safety Conventions" section wins on how test runs and probes are conducted.
+Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured — and the "Testing Safety Conventions" section wins on how test runs and ad-hoc tool calls are conducted.
 
 ## Steps
 
@@ -76,7 +76,7 @@ Set the Bash timeout to 600000 (10 minutes). Dependency install and browser-side
 
 **Continue.** The CLI prints a "Next steps" block at the end of a successful `terse init`. Don't repeat it verbatim. Connect any integrations the requested workflow needs — run `terse integrate describe <type> --json` first to learn whether the install is form or OAuth and which fields it requires, then `terse integrate connect <type>` per step 7. Then continue with step 1 and build the workflow the user asked for.
 
-`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the file lists every integration currently available in Terse — never plan around an integration that is not in that list. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas.
+`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the file lists every integration currently available in Terse — never plan around an integration that is not in that list. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas. To see what a tool actually returns, `terse integrate tool run <tool> --params '<json>'` runs it one-shot — see "Testing tool calls from the CLI" in the testing conventions.
 
 If `src/terse.generated.ts` is missing in an existing project, run `terse generate` before inventing helpers. If it exists but does not expose the helper you need, rerun `terse generate`. Never edit the generated file directly.
 
@@ -84,7 +84,7 @@ If `src/terse.generated.ts` is missing in an existing project, run `terse genera
 
 Interview the user before doing any research: their answers set the direction the workspace scan and the researchers take in step 2.
 
-Ask about decisions and intent only — what should happen, on which events, for whom, and what a good outcome looks like. Do not ask about facts: what is connected, which triggers exist, what the docs support, and what an external API offers are exactly what step 2's scan and researchers retrieve. If the request already pins down the intent unambiguously, skip straight to step 2.
+Ask about decisions and intent only — what should happen, on which events, for whom, and what a good outcome looks like. Do not ask about how to implement it: what is connected, which triggers exist, what the docs support, and what an external API offers are exactly what step 2's scan and researchers retrieve. If the request already pins down the intent unambiguously, skip straight to step 2.
 
 Batch related questions, at most four per interruption. For every question, provide a recommended answer.
 
@@ -353,7 +353,7 @@ Example prompt:
 
 # Testing Safety Conventions
 
-These conventions govern every local execution of a job — `terse test run`, `terse replay`, and any probe. Local runs execute the real handler with real credentials: nothing about a test run is sandboxed unless you point it somewhere safe.
+These conventions govern every local execution of a job — `terse test run`, `terse replay`, and ad-hoc tool calls (`terse integrate tool run`). Local runs execute the real handler with real credentials: nothing about a test run is sandboxed unless you point it somewhere safe.
 
 ## Real events in, test targets out
 
@@ -374,22 +374,31 @@ Without a test key, local runs share credentials with production:
 - **Reads never need permission.** Listing, fetching, and querying production data during a test run is always fine.
 - **Writes ask per surface.** Before the first local run that writes to a production surface (a real repo, a live audience, a customer record), ask the user explicitly about that surface. One ask covers later runs against the same surface; a new surface is a new ask.
 
-## Probing external state
+## Testing tool calls from the CLI
 
-A probe is a read-only discovery run against an external API — list the audiences in Resend, find the verified domain — whose result feeds job code.
+To learn what an external API returns — the shape of a record, the options a status field takes, which channels exist — run the tool from the CLI:
 
-**Never probe by temporarily rewriting a job's function body.** Mutating job code that must be restored afterwards is how probe scaffolding leaks into production.
+```
+terse integrate tool run slack.listChannels
+terse integrate tool run attio.records --params '{"request":{"action":"query","objectSlug":"deals","filter":null,"limit":5,"offset":null}}'
+```
 
-Probe with a scratch probe job instead:
+- Name the tool by wire name (`attio_records`) or dotted form (`attio.records`); a wrong name errors with the list of valid ones.
+- `--params` takes the tool's wire-shape JSON — the exact input schema `terse integrate tool <type> <tool-name> --json` prints. Read that schema, not the generated `toolbox.*` signatures, which can differ from the wire shape. Pipe large params on stdin instead of `--params`.
+- The connection is auto-resolved when the workspace has one; with several, the error lists their IDs — retry with `--integration <id>`.
+- The result prints as raw JSON on stdout; failures exit nonzero with the error on stderr.
 
-1. Create `src/jobs/_probe.ts`: a throwaway job with a cron trigger whose handler does the reads and logs the results.
-2. Add its side-effect import to `src/terse.jobs.ts`. This import line is the only sanctioned temporary edit to existing files.
-3. Run it with `terse test run` (cron triggers get synthetic sample events), so secrets hydrate exactly as they do for real jobs.
-4. Record what it found, then delete both the probe file and its import line.
+Keep discovery runs read-only: query, list, get. Writes belong in the job, governed by the sections above.
 
-A probe must never be deployed — `terse deploy` syncs every job in the project, so delete the probe before any deploy. Probes are read-only; a probe that needs to write is not a probe, it is a milestone.
+For an API with no toolbox tools, where the call needs hydrated secrets, run the reads inside the existing job:
 
-What a probe finds lands in job code as named, explicitly typed constants — see "Discovered values are typed constants" in the code conventions.
+1. Insert one contiguous block at the top of the job's handler that does the reads, logs the results, and ends with `return` — nothing below it executes.
+2. Run it with `terse test run`, so secrets hydrate exactly as they do for real jobs.
+3. Record what it found, then delete the block and confirm with `git diff` that the handler is byte-for-byte back to its previous state.
+
+Never create a separate throwaway job for this, and never deploy while the block is in place — `terse deploy` syncs every job in the project.
+
+What discovery finds lands in job code as named, explicitly typed constants — see "Discovered values are typed constants" in the code conventions.
 
 ---
 

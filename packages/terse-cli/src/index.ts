@@ -29,6 +29,7 @@ import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./command
 import { stateGet, stateList, stateRemove, stateReset } from "./commands/state.js"
 import { targetClear, targetStatus, targetUse } from "./commands/target.js"
 import { test, testList, testRun, testShow } from "./commands/test.js"
+import { integrateToolRun } from "./commands/toolRun.js"
 import { isCliRunCommandEnabled } from "./env.js"
 import { isPromptCancellationError } from "./promptErrors.js"
 import { resolveProvider } from "./providers/resolveProvider.js"
@@ -252,6 +253,7 @@ Examples:
   $ terse integrate describe snowflake --json         # see required fields
   $ terse integrate tool slack --json                 # list an integration's tools
   $ terse integrate tool slack slack_send_message --json  # one tool's input/output schemas
+  $ terse integrate tool run slack.listChannels           # invoke a tool ad hoc, no job required
   $ terse integrate connect snowflake --field account=x --field username=y --fields-stdin <<< '{"password":"'"$PW"'"}'
   $ terse integrate connect slack                     # OAuth → opens browser, exit 2 (follow up with 'wait')
   $ terse integrate wait slack --timeout 300          # block until OAuth completes
@@ -320,9 +322,9 @@ integrateCommand
         await integrateDisconnect({ integrationType: type, json: opts.json })
     })
 
-integrateCommand
+const integrateToolCommand = integrateCommand
     .command("tool")
-    .description("List an integration's tools, or show one tool's description and input/output schemas")
+    .description("List an integration's tools, show one tool's schemas, or run a tool ad hoc")
     .argument("<type>", "Integration type (e.g. slack, snowflake)")
     .argument("[tool-name]", "Tool name (e.g. slack_send_message); omit to list every tool")
     .option("--json", "Emit JSON")
@@ -333,10 +335,34 @@ Examples:
   $ terse integrate tool slack                             # list Slack's tools
   $ terse integrate tool slack --json
   $ terse integrate tool slack slack_send_message --json   # one tool's description and input/output schemas
+  $ terse integrate tool run slack.listChannels            # invoke a tool without building a job
 `
     )
     .action(async (type: string, toolName: string | undefined, opts: JsonOpts) => {
         await integrateTool({ integrationType: type, toolName, json: opts.json })
+    })
+
+integrateToolCommand
+    .command("run")
+    .description("Invoke a toolbox tool ad hoc and print its JSON result — no job or deploy required")
+    .argument("<tool>", "Tool to run, as attio_records or attio.records")
+    .option("--params <json>", "Tool params as a JSON object; pass '-' (or pipe) to read from stdin")
+    .option("--integration <id>", "Integration connection ID (only needed when several connections exist)")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse integrate tool run slack.listChannels
+  $ terse integrate tool run attio.records --params '{"request":{"action":"query","objectSlug":"deals","limit":5}}'
+  $ echo '{"request":{"action":"search","objectSlug":"companies","query":"acme"}}' | terse integrate tool run attio_records
+  $ terse integrate tool run linear.searchTicket --integration cm123 --params '{"query":"TER-658"}'
+
+The result is printed to stdout as raw JSON; errors go to stderr with a nonzero exit code.
+Params are the tool's wire shape — see \`terse integrate tool <integration> <tool-name> --json\` for the input schema.
+`
+    )
+    .action(async (tool: string, opts: { params?: string; integration?: string }) => {
+        await integrateToolRun({ toolName: tool, params: opts.params, integrationId: opts.integration })
     })
 
 integrateCommand

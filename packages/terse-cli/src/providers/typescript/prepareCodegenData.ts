@@ -209,7 +209,7 @@ function toGeneratedIdentifier(raw: string, fallback: string): string {
     return name
 }
 
-function toCamelCase(value: string): string {
+export function toCamelCase(value: string): string {
     const pascal = toPascalCase(value)
     return pascal.charAt(0).toLowerCase() + pascal.slice(1)
 }

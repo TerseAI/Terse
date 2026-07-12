@@ -1,6 +1,6 @@
 # Testing Safety Conventions
 
-These conventions govern every local execution of a job — `terse test run`, `terse replay`, and any probe. Local runs execute the real handler with real credentials: nothing about a test run is sandboxed unless you point it somewhere safe.
+These conventions govern every local execution of a job — `terse test run`, `terse replay`, and ad-hoc tool calls (`terse integrate tool run`). Local runs execute the real handler with real credentials: nothing about a test run is sandboxed unless you point it somewhere safe.
 
 ## Real events in, test targets out
 
@@ -21,19 +21,28 @@ Without a test key, local runs share credentials with production:
 - **Reads never need permission.** Listing, fetching, and querying production data during a test run is always fine.
 - **Writes ask per surface.** Before the first local run that writes to a production surface (a real repo, a live audience, a customer record), ask the user explicitly about that surface. One ask covers later runs against the same surface; a new surface is a new ask.
 
-## Probing external state
+## Testing tool calls from the CLI
 
-A probe is a read-only discovery run against an external API — list the audiences in Resend, find the verified domain — whose result feeds job code.
+To learn what an external API returns — the shape of a record, the options a status field takes, which channels exist — run the tool from the CLI:
 
-**Never probe by temporarily rewriting a job's function body.** Mutating job code that must be restored afterwards is how probe scaffolding leaks into production.
+```
+terse integrate tool run slack.listChannels
+terse integrate tool run attio.records --params '{"request":{"action":"query","objectSlug":"deals","filter":null,"limit":5,"offset":null}}'
+```
 
-Probe with a scratch probe job instead:
+- Name the tool by wire name (`attio_records`) or dotted form (`attio.records`); a wrong name errors with the list of valid ones.
+- `--params` takes the tool's wire-shape JSON — the exact input schema `terse integrate tool <type> <tool-name> --json` prints. Read that schema, not the generated `toolbox.*` signatures, which can differ from the wire shape. Pipe large params on stdin instead of `--params`.
+- The connection is auto-resolved when the workspace has one; with several, the error lists their IDs — retry with `--integration <id>`.
+- The result prints as raw JSON on stdout; failures exit nonzero with the error on stderr.
 
-1. Create `src/jobs/_probe.ts`: a throwaway job with a cron trigger whose handler does the reads and logs the results.
-2. Add its side-effect import to `src/terse.jobs.ts`. This import line is the only sanctioned temporary edit to existing files.
-3. Run it with `terse test run` (cron triggers get synthetic sample events), so secrets hydrate exactly as they do for real jobs.
-4. Record what it found, then delete both the probe file and its import line.
+Keep discovery runs read-only: query, list, get. Writes belong in the job, governed by the sections above.
 
-A probe must never be deployed — `terse deploy` syncs every job in the project, so delete the probe before any deploy. Probes are read-only; a probe that needs to write is not a probe, it is a milestone.
+For an API with no toolbox tools, where the call needs hydrated secrets, run the reads inside the existing job:
 
-What a probe finds lands in job code as named, explicitly typed constants — see "Discovered values are typed constants" in the code conventions.
+1. Insert one contiguous block at the top of the job's handler that does the reads, logs the results, and ends with `return` — nothing below it executes.
+2. Run it with `terse test run`, so secrets hydrate exactly as they do for real jobs.
+3. Record what it found, then delete the block and confirm with `git diff` that the handler is byte-for-byte back to its previous state.
+
+Never create a separate throwaway job for this, and never deploy while the block is in place — `terse deploy` syncs every job in the project.
+
+What discovery finds lands in job code as named, explicitly typed constants — see "Discovered values are typed constants" in the code conventions.

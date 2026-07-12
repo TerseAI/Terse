@@ -1,0 +1,172 @@
+import { ApiRoutes, IntegrationType, integrationTypeEnum, isValidToolName, toolsWithIntegrationId } from "terse-types"
+import { z } from "zod"
+
+import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
+import { CliError, isCliError } from "../cliError.js"
+import { readRawStdin } from "../cliHelpers.js"
+import { toCamelCase } from "../providers/typescript/prepareCodegenData.js"
+import { type ToolDetails, fetchToolDetails } from "../toolCatalog.js"
+
+export async function integrateToolRun(opts: IntegrateToolRunOpts): Promise<void> {
+    const apiKey = readApiKeyOrBail()
+    const params = await readToolParams(opts.params)
+    const catalog = await fetchToolDetails(apiKey)
+    const tool = resolveTool(opts.toolName, catalog)
+    const finalParams = await withIntegrationId(params, tool, opts.integrationId, apiKey)
+    const result = await executeTool(tool.name, finalParams, apiKey)
+    process.stdout.write(JSON.stringify(result ?? null, null, 2) + "\n")
+}
+
+async function readToolParams(raw: string | undefined): Promise<Record<string, unknown>> {
+    if (raw !== undefined && raw !== "-") return parseParamsJson(raw, "--params")
+
+    if (raw === "-" || !process.stdin.isTTY) {
+        const fromStdin = await readRawStdin()
+        if (fromStdin) return parseParamsJson(fromStdin, "stdin")
+        if (raw === "-") {
+            throw new CliError("missing_params", "Expected JSON params on stdin (--params -), but stdin was empty.")
+        }
+    }
+
+    return {}
+}
+
+function parseParamsJson(raw: string, source: string): Record<string, unknown> {
+    let parsed: unknown
+    try {
+        parsed = JSON.parse(raw)
+    } catch (err) {
+        throw new CliError("invalid_params", `Could not parse JSON params from ${source}.`, {
+            detail: err instanceof Error ? err.message : String(err)
+        })
+    }
+
+    const result = z.record(z.string(), z.unknown()).safeParse(parsed)
+    if (!result.success || Array.isArray(parsed)) {
+        throw new CliError("invalid_params", `Params from ${source} must be a JSON object.`, {
+            detail: 'Example: --params \'{"objectSlug":"deals","request":{"action":"query"}}\''
+        })
+    }
+    return result.data
+}
+
+function resolveTool(input: string, catalog: ToolDetails[]): ToolDetails {
+    const exact = catalog.find(tool => tool.name === input)
+    if (exact) return exact
+
+    const dotIndex = input.indexOf(".")
+    if (dotIndex > 0) {
+        const integration = input.slice(0, dotIndex)
+        const method = input.slice(dotIndex + 1)
+        const match = catalog.find(tool => tool.integration === integration && toCamelCase(tool.displayName) === method)
+        if (match) return match
+
+        const available = catalog.filter(tool => tool.integration === integration)
+        if (available.length > 0) {
+            throw new CliError("unknown_tool", `Unknown tool '${method}' for integration '${integration}'.`, {
+                detail: `Available: ${available.map(tool => `${integration}.${toCamelCase(tool.displayName)} [${tool.name}]`).join(", ")}`
+            })
+        }
+    }
+
+    throw new CliError("unknown_tool", `Unknown tool '${input}'.`, {
+        detail: "Pass a wire name (attio_records) or dotted form (attio.records). Use `terse integrate tool <integration>` to list tools."
+    })
+}
+
+async function withIntegrationId(params: Record<string, unknown>, tool: ToolDetails, flagIntegrationId: string | undefined, apiKey: string): Promise<Record<string, unknown>> {
+    if (flagIntegrationId) return { ...params, integrationId: flagIntegrationId }
+    if (params.integrationId !== undefined) return params
+    if (!toolRequiresIntegrationId(tool.name)) return params
+    return { ...params, integrationId: await resolveSingleIntegrationId(tool.integration, apiKey) }
+}
+
+function toolRequiresIntegrationId(toolName: string): boolean {
+    return isValidToolName(toolName) && toolsWithIntegrationId.has(toolName)
+}
+
+async function resolveSingleIntegrationId(integration: string, apiKey: string): Promise<string> {
+    const route = instancesRouteFor(integration)
+    const raw = await fetchWithAuth<unknown>(route, apiKey)
+    const parsed = integrationInstancesSchema.safeParse(raw)
+    if (!parsed.success) {
+        throw new CliError("integration_resolution_failed", `Could not list connections for '${integration}'.`, {
+            detail: "Pass --integration <id> explicitly."
+        })
+    }
+
+    const instances = parsed.data
+    if (instances.length === 0) {
+        throw new CliError("integration_not_connected", `Integration '${integration}' is not connected.`, {
+            detail: `Run \`terse integrate connect ${integration}\` first.`,
+            actionRequired: true
+        })
+    }
+    if (instances.length > 1) {
+        const listing = instances.map(instance => describeInstance(instance)).join(", ")
+        throw new CliError("integration_ambiguous", `Integration '${integration}' has ${instances.length} connections.`, {
+            detail: `Pass --integration <id>. Connections: ${listing}`
+        })
+    }
+    return instances[0].id
+}
+
+function instancesRouteFor(integration: string): string {
+    const parsed = integrationTypeEnum.safeParse(integration)
+    const route = parsed.success ? INSTANCES_ROUTE_BY_INTEGRATION[parsed.data] : undefined
+    if (!route) {
+        throw new CliError("integration_resolution_unavailable", `Cannot auto-resolve a connection for '${integration}'.`, {
+            detail: "Pass --integration <id> explicitly."
+        })
+    }
+    return route
+}
+
+function describeInstance(instance: IntegrationInstance): string {
+    const label = INSTANCE_LABEL_FIELDS.map(field => instance[field]).find(value => typeof value === "string" && value)
+    return typeof label === "string" ? `${instance.id} (${label})` : instance.id
+}
+
+async function executeTool(toolName: string, params: Record<string, unknown>, apiKey: string): Promise<unknown> {
+    try {
+        const response = await fetchWithAuth<{ success: boolean; result?: unknown }>(ApiRoutes.SDK.TOOL_EXECUTE, apiKey, { toolName, params }, "POST")
+        return response.result
+    } catch (err) {
+        throw toToolExecutionError(err, toolName)
+    }
+}
+
+function toToolExecutionError(err: unknown, toolName: string): CliError {
+    if (isCliError(err)) return err
+    if (err instanceof ApiError && typeof err.body.error === "string") {
+        return new CliError("tool_execution_failed", `Tool '${toolName}' failed: ${err.body.error}`)
+    }
+    return new CliError("tool_execution_failed", `Tool '${toolName}' failed: ${err instanceof Error ? err.message : String(err)}`)
+}
+
+const INSTANCES_ROUTE_BY_INTEGRATION: Partial<Record<IntegrationType, string>> = {
+    [IntegrationType.GITHUB]: ApiRoutes.GITHUB.INTEGRATIONS,
+    [IntegrationType.GMAIL]: ApiRoutes.GMAIL.INTEGRATIONS,
+    [IntegrationType.SLACK]: ApiRoutes.SLACK.INTEGRATIONS,
+    [IntegrationType.LINEAR]: ApiRoutes.LINEAR.INTEGRATIONS,
+    [IntegrationType.NOTION]: ApiRoutes.NOTION.INTEGRATIONS,
+    [IntegrationType.POSTHOG]: ApiRoutes.POSTHOG.INTEGRATIONS,
+    [IntegrationType.DATADOG]: ApiRoutes.DATADOG.INTEGRATIONS,
+    [IntegrationType.LAUNCHDARKLY]: ApiRoutes.LAUNCHDARKLY.INTEGRATIONS,
+    [IntegrationType.WORKOS]: ApiRoutes.WORKOS_INTEGRATION.INTEGRATIONS,
+    [IntegrationType.ATTIO]: ApiRoutes.ATTIO.INTEGRATIONS,
+    [IntegrationType.SNOWFLAKE]: ApiRoutes.SNOWFLAKE.INTEGRATIONS,
+    [IntegrationType.HEY_REACH]: ApiRoutes.HEY_REACH.INTEGRATIONS
+}
+
+const INSTANCE_LABEL_FIELDS = ["teamName", "workspaceName", "orgName", "email", "region", "accountIdentifier", "environment", "tokenName", "name"] as const
+
+const integrationInstancesSchema = z.array(z.looseObject({ id: z.string() }))
+
+type IntegrationInstance = z.infer<typeof integrationInstancesSchema>[number]
+
+export type IntegrateToolRunOpts = {
+    toolName: string
+    params?: string
+    integrationId?: string
+}
