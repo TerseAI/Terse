@@ -1,7 +1,9 @@
-import { SdkInputRequestRegisterBody, SdkInputResponsePayload } from "terse-types/types"
+import { SdkInputRequestRegisterBody, SdkInputResponsePayload, sdkInputResponsePayloadSchema } from "terse-types/types"
 
 import logger from "../common/logger"
 import { db } from "../loaders/prisma"
+import { getRedisKv } from "../loaders/redisKv"
+import { RedisNamespace } from "../loaders/redisNamespace"
 import { claimSuspendedRun, markRunFailed } from "../modules/agents/AgentRunner/runHistory"
 import { enqueueRunExecution } from "../tasks/queues/runExecutionQueue"
 
@@ -18,6 +20,20 @@ export async function registerInputRequest(organizationId: string, body: SdkInpu
     if (!provider) return { ok: false, error: `No input provider is registered for "${body.via.provider}".` }
 
     return provider.deliver({ organizationId, jobName: run.jobName, body })
+}
+
+const INPUT_RESPONSE_TTL_SECONDS = 24 * 60 * 60
+
+export async function stashInputResponse(organizationId: string, token: string, response: SdkInputResponsePayload): Promise<void> {
+    const client = await getRedisKv()
+    await client.set(inputResponseKey(organizationId, token), JSON.stringify(response), { EX: INPUT_RESPONSE_TTL_SECONDS })
+}
+
+export async function readStashedInputResponse(organizationId: string, token: string): Promise<SdkInputResponsePayload | null> {
+    const client = await getRedisKv()
+    const raw = await client.get(inputResponseKey(organizationId, token))
+    if (!raw) return null
+    return sdkInputResponsePayloadSchema.parse(JSON.parse(raw))
 }
 
 // A response can beat the run's own parking (a fast click lands while the run is still
@@ -83,6 +99,10 @@ async function enqueueInputResume(run: RunForInput, runId: string, token: string
 }
 
 // helpers
+
+function inputResponseKey(organizationId: string, token: string): string {
+    return `${RedisNamespace.inputResponses}:${organizationId}:${token}`
+}
 
 async function findRunInOrganization(runId: string, organizationId: string): Promise<RunForInput | null> {
     const run = await db().run_history_records.findFirst({

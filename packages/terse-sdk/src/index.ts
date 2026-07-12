@@ -5,11 +5,6 @@ import type {
     SdkAgentRunResponseBody,
     SdkAgentStreamEvent,
     SdkApprovalDecisionRequestBody,
-    SdkInputRequestDelivery,
-    SdkInputRequestOption,
-    SdkInputRequestRegisterBody,
-    SdkInputRequestTarget,
-    SdkInputResponsePayload,
     SdkStateGetRequest,
     SdkStatePutRequest,
     WebhookJobChallengeResponse,
@@ -19,7 +14,6 @@ import {
     ApiRoutes,
     IntegrationType,
     sdkAgentRunRequestBodySchema,
-    sdkInputRequestRegisterResponseSchema,
     sdkStateGetResponseSchema,
     stripZodJsonSchemaMetadata,
     webhookJobChallengeRequestSchema,
@@ -106,10 +100,12 @@ import type {
     WorkOSUserTrigger as _RawWorkOSUserTrigger,
     WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
 } from "terse-types"
-import { createHook, fetch as workflowFetch, sleep as workflowSleep } from "workflow"
+import { sleep as workflowSleep } from "workflow"
 import { z } from "zod"
 
+import { buildSdkRequestHeaders, resolveApiBaseUrl, resolveTerseBackendUrl } from "./backendRequest.js"
 import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
+import { DurableOnlyError, isDurableExecution, isLocalTestRun } from "./execution.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { resolveRunIdentity } from "./runIdentity/index.js"
 import { openSessionStream } from "./sessionStream.js"
@@ -127,36 +123,18 @@ import {
 
 declare const process: { env: Record<string, string | undefined> }
 
-function resolveTerseBackendUrl(): string {
-    return process.env.TERSE_BACKEND_URL || "https://api.useterse.ai"
-}
-
-function resolveApiBaseUrl(): string {
-    return resolveTerseBackendUrl()
-}
-
-async function buildSdkRequestHeaders(): Promise<Record<string, string>> {
-    const apiKey = process.env.TERSE_API_KEY
-    if (!apiKey) {
-        throw new Error("TERSE_API_KEY environment variable is not set.")
-    }
-    const headers: Record<string, string> = {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        Accept: "text/event-stream"
-    }
-    const { sessionId, runId, projectId, jobName } = await resolveRunIdentity()
-    if (sessionId) headers["X-Terse-Session-Id"] = sessionId
-    if (runId) headers["X-Terse-Run-Id"] = runId
-    if (projectId) headers["X-Terse-Project-Id"] = projectId
-    if (jobName) headers["X-Terse-Job-Name"] = jobName
-    return headers
-}
-
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
+
+export { DurableOnlyError } from "./execution.js"
+
+export { slack, waitForInput } from "./inputRequest.js"
+export type { InputDelivery, InputOption, InputRespondent, InputResponse, InputTarget, SlackInputTarget, WaitForInputParams } from "./inputRequest.js"
 
 export { isAgentApprovalHandlingClaimed } from "./context.js"
 export type { TerseJobContext } from "./context.js"
+
+export { pollUntil } from "./poll.js"
+export type { PollUntilOptions } from "./poll.js"
 
 export { SessionStreamError, openListenStream, openSessionStream } from "./sessionStream.js"
 export type { ListenStreamHandle, OpenListenStreamOptions, OpenSessionStreamOptions, SessionStartedEvent, SessionStreamEvent, SessionStreamHandle } from "./sessionStream.js"
@@ -727,19 +705,6 @@ export async function generateText<OutputSchema extends z.ZodType>(params: Gener
     return await agent.runAndWait(params.prompt)
 }
 
-export class DurableOnlyError extends Error {
-    constructor(message: string) {
-        super(message)
-        this.name = "DurableOnlyError"
-    }
-}
-
-// The durable runtime injects its sleep implementation on globalThis; its presence is
-// how we detect that we're running inside a durable job.
-function isDurableExecution(): boolean {
-    return Boolean(Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP")))
-}
-
 export function jobStep<I extends z.ZodType, O>(opts: { input: z.infer<I>; inputSchema: I; outputSchema?: z.ZodType<O>; run: (input: z.infer<I>) => Promise<O> }): Promise<O>
 export function jobStep<O>(opts: { outputSchema?: z.ZodType<O>; run: () => Promise<O> }): Promise<O>
 export function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
@@ -787,9 +752,9 @@ export function sleep(duration: string | number | Date): Promise<void> {
     if (!isDurableExecution()) {
         throw new DurableOnlyError("sleep() is only available in durable jobs. Add `durable: true` to this job.")
     }
-    // Locally (`terse test`, no TERSE_RUN_ID) there is no suspend machinery, so skip the
-    // wait and note what production would have done instead.
-    if (!process.env.TERSE_RUN_ID) {
+    // Locally there is no suspend machinery, so skip the wait and note what production
+    // would have done instead.
+    if (isLocalTestRun()) {
         console.log(`[terse] Skipping sleep locally — in production this run would suspend and resume after ${describeDuration(duration)}.`)
         return Promise.resolve()
     }
@@ -800,189 +765,6 @@ function describeDuration(duration: string | number | Date): string {
     if (typeof duration === "string") return duration
     if (duration instanceof Date) return ms(Math.max(0, duration.getTime() - Date.now()), { long: true })
     return ms(duration, { long: true })
-}
-
-// Provider-neutral input targets and delivery refs; both unions live in terse-types.
-// Adding a provider: extend those unions, add a target constructor here, and register
-// an InputRequestProvider in the backend. Everything between is provider-agnostic.
-export type InputTarget = SdkInputRequestTarget
-export type InputDelivery = SdkInputRequestDelivery
-type DeliveryFor<Target extends InputTarget> = Extract<InputDelivery, { provider: Target["provider"] }>
-
-export type SlackInputTarget = Extract<InputTarget, { provider: "slack" }>
-
-// channel takes a Slack channel id; use the generated constants, e.g. SlackChannel.Launches.channelId.
-export function slack(target: { channel: string }): SlackInputTarget {
-    return { provider: "slack", channelId: target.channel }
-}
-
-export type InputOption<Id extends string = string> = {
-    id: Id
-    label: string
-    description?: string
-    freeText?: boolean
-}
-
-export type InputRespondent = { provider: string; userId: string; displayName?: string }
-
-export type InputResponse<Id extends string, Delivery extends InputDelivery = InputDelivery> = {
-    choice: Id
-    text?: string
-    respondent: InputRespondent
-    delivery: Delivery
-}
-
-export type WaitForInputParams<Options extends readonly InputOption[], Target extends InputTarget = InputTarget> = {
-    via: Target
-    prompt: string
-    details?: Record<string, string>
-    options: Options
-}
-
-export function waitForInput<const Options extends readonly InputOption[], Target extends InputTarget>(
-    params: WaitForInputParams<Options, Target>
-): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
-    if (!isDurableExecution()) {
-        throw new DurableOnlyError("waitForInput() is only available in durable jobs. Add `durable: true` to this job.")
-    }
-    if (!process.env.TERSE_RUN_ID) {
-        return promptForInputLocally(params)
-    }
-    return waitForInputDurable(params)
-}
-
-// No sleep, no race, no park signal: the hook entity this journals IS the wait. The run
-// parks by draining its queue and exiting; the backend reads the journal at exit and
-// suspends the sandbox.
-async function waitForInputDurable<Options extends readonly InputOption[], Target extends InputTarget>(
-    params: WaitForInputParams<Options, Target>
-): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
-    const hook = createHook<SdkInputResponsePayload>()
-    const delivery = await registerInputRequest(hook.token, params)
-    if (delivery.provider !== params.via.provider) {
-        throw new Error(`waitForInput: backend delivered via "${delivery.provider}" but the target was "${params.via.provider}"`)
-    }
-    const typedDelivery = delivery as DeliveryFor<Target>
-
-    const payload = await hook
-    hook.dispose()
-    return {
-        choice: payload.choice as Options[number]["id"],
-        text: payload.text,
-        respondent: payload.respondent,
-        delivery: typedDelivery
-    }
-}
-
-async function registerInputRequest(token: string, params: WaitForInputParams<readonly InputOption[], InputTarget>): Promise<InputDelivery> {
-    const body: SdkInputRequestRegisterBody = {
-        token,
-        runId: process.env.TERSE_RUN_ID!,
-        prompt: params.prompt,
-        details: params.details,
-        options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
-        via: params.via
-    }
-    const response = await postInputRequestStep(ApiRoutes.SDK.INPUT_REQUEST, body)
-    if (!response.ok) {
-        throw new Error(`waitForInput: failed to deliver input request: HTTP ${response.status}: ${await response.text()}`)
-    }
-    const parsed = sdkInputRequestRegisterResponseSchema.parse(await response.json())
-    if (!parsed.success || !parsed.delivery) {
-        throw new Error(`waitForInput: failed to deliver input request: ${parsed.error ?? "registration failed"}`)
-    }
-    return parsed.delivery
-}
-
-// workflowFetch is the workflow stdlib's hoisted "use step" fetch, so the HTTP call is
-// journaled and replays from cache instead of re-delivering on every workflow replay.
-async function postInputRequestStep(route: string, body: unknown): Promise<Response> {
-    const headers = { ...(await buildSdkRequestHeaders()), Accept: "application/json" }
-    return workflowFetch(`${resolveTerseBackendUrl()}${route}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body)
-    })
-}
-
-async function promptForInputLocally<Options extends readonly InputOption[], Target extends InputTarget>(
-    params: WaitForInputParams<Options, Target>
-): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
-    const answer = await runLocalInputPrompt({
-        prompt: params.prompt,
-        details: params.details,
-        options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
-        targetDescription: describeInputTarget(params.via)
-    })
-    return {
-        choice: answer.choice as Options[number]["id"],
-        text: answer.text,
-        respondent: { provider: "local", userId: "local" },
-        delivery: localDelivery(params.via)
-    }
-}
-
-// A step so local durable tests prompt exactly once; replays return the journaled answer.
-async function runLocalInputPrompt(params: {
-    prompt: string
-    details?: Record<string, string>
-    options: SdkInputRequestOption[]
-    targetDescription: string
-}): Promise<{ choice: string; text?: string }> {
-    "use step"
-    const { isCancel, select, text } = await import("@clack/prompts")
-    return localPromptUiPause()(async () => {
-        console.log(`[terse] waitForInput: in production this run would suspend and wait for a response via ${params.targetDescription}.`)
-        for (const [key, value] of Object.entries(params.details ?? {})) {
-            console.log(`  ${key}: ${value}`)
-        }
-
-        const choice = await select({
-            message: params.prompt,
-            options: params.options.map(o => ({ value: o.id, label: o.label, hint: o.description }))
-        })
-        if (isCancel(choice)) throw new Error("waitForInput: cancelled at local prompt")
-
-        const option = params.options.find(o => o.id === choice)
-        let freeTextAnswer: string | undefined
-        if (option?.freeText) {
-            const answer = await text({ message: `${option.label}:` })
-            if (isCancel(answer)) throw new Error("waitForInput: cancelled at local prompt")
-            freeTextAnswer = answer || undefined
-        }
-
-        return { choice: String(choice), text: freeTextAnswer }
-    })
-}
-
-// Keyed by a process-global Symbol so the steps bundle's copy of this module and the
-// CLI reach the same slot; the CLI installs its spinner-pause here during local runs.
-const TERSE_UI_PAUSE_KEY = Symbol.for("terse.ui.pause")
-type UiPauseFn = <T>(fn: () => Promise<T>) => Promise<T>
-type GlobalWithUiPause = typeof globalThis & { [TERSE_UI_PAUSE_KEY]?: UiPauseFn }
-
-export function setLocalPromptUiPause(pause: UiPauseFn | undefined): void {
-    const g = globalThis as GlobalWithUiPause
-    g[TERSE_UI_PAUSE_KEY] = pause
-}
-
-function localPromptUiPause(): UiPauseFn {
-    const g = globalThis as GlobalWithUiPause
-    return g[TERSE_UI_PAUSE_KEY] ?? (async fn => fn())
-}
-
-function describeInputTarget(target: InputTarget): string {
-    switch (target.provider) {
-        case "slack":
-            return `Slack channel ${target.channelId}`
-    }
-}
-
-function localDelivery<Target extends InputTarget>(target: Target): DeliveryFor<Target> {
-    switch (target.provider) {
-        case "slack":
-            return { provider: "slack", channelId: target.channelId, messageTs: "" } as DeliveryFor<Target>
-    }
 }
 
 export enum EventType {
