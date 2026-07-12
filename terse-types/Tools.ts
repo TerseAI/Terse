@@ -127,7 +127,8 @@ export const linearSearchPaginationSchema = z.object({
 
 export const slackUserResponseSchema = z.object({
     id: z.string(),
-    name: z.string()
+    name: z.string(),
+    email: z.string().optional()
 })
 
 export const slackChannelListItemSchema = z.object({
@@ -700,7 +701,7 @@ export const slackListChannelsInputSchema = z.object({
 
 export const slackListUsersInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
-    query: z.string().nullable().optional().describe("Optional search query to filter users by name. Case-insensitive partial match.")
+    query: z.string().nullable().optional().describe("Optional search query to filter users by name or email. Case-insensitive partial match.")
 })
 
 export const slackReadConversationInputSchema = z.object({
@@ -2085,13 +2086,13 @@ const attioObjectSlugField = z.string().describe("The Attio object type slug (e.
 const attioRecordIdField = z.string().describe("The record ID (UUID).")
 
 export const attioQueryRecordsRequestSchema = z.object({
-    action: z.literal("query").describe("List records of an object, with optional filtering and limit/offset pagination."),
+    action: z.literal("query").describe("List records of an object, with optional filtering and limit/offset pagination. The response's hasMore field indicates whether another page exists."),
     objectSlug: attioObjectSlugField,
     filter: z
         .string()
         .nullable()
         .describe(
-            'Optional Attio filter as a JSON string. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators ($eq, $contains, $starts_with, $ends_with) combined via $and/$or. Pass null for no filtering.'
+            'Optional Attio filter as a JSON string. Use shorthand (e.g. \'{"email_addresses":"test@example.com"}\') or verbose syntax with operators ($eq, $contains, $starts_with, $ends_with, $in, $not_empty) combined via $and/$or. Negate any condition by wrapping it in $not (e.g. \'{"$not":{"stage":{"$eq":"Won"}}}\'); there is no $ne/$neq operator. Pass null for no filtering.'
         ),
     limit: z.number().int().nullable().describe("Maximum number of records to return (default 20, max 500). Pass null for the default."),
     offset: z.number().int().nullable().describe("Number of records to skip, for pagination. Pass null for 0.")
@@ -2650,7 +2651,8 @@ export const attioRecordsTool = defineTool({
         matches: z.array(attioSearchMatchSchema).optional(),
         history: z.array(attioAttributeHistoryEntrySchema).optional(),
         count: z.number().int().optional(),
-        offset: z.number().int().optional()
+        offset: z.number().int().optional(),
+        hasMore: z.boolean().optional()
     })
 })
 

@@ -73,18 +73,22 @@ async function executeRecordsRequest(request: AttioRecordsRequest, accessToken: 
 async function queryRecords(request: AttioQueryRecordsRequest, accessToken: string): Promise<AttioRecordsOutput> {
     const limit = clampLimit(request.limit, QUERY_DEFAULT_LIMIT, QUERY_MAX_LIMIT)
     const offset = request.offset ?? 0
-    const body: Record<string, unknown> = { limit, offset }
+    // Attio's query response carries no has_more/total, so overfetch by one to detect a next page.
+    const body: Record<string, unknown> = { limit: limit + 1, offset }
     const filter = parseFilter(request.filter)
     if (filter) {
         body.filter = filter
     }
 
-    const records = await attioRequestData(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}/records/query`, z.array(attioRecordSchema), "records", { method: "POST", body })
+    const fetched = await attioRequestData(accessToken, `/objects/${encodeURIComponent(request.objectSlug)}/records/query`, z.array(attioRecordSchema), "records", { method: "POST", body })
+    const hasMore = fetched.length > limit
+    const records = hasMore ? fetched.slice(0, limit) : fetched
 
     return {
         records,
         count: records.length,
         offset,
+        hasMore,
         actions: [readAction("Queried records", request.objectSlug, `Found ${records.length} ${request.objectSlug} record(s) at offset ${offset}`)]
     }
 }

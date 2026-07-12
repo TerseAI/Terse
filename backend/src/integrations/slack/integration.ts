@@ -258,10 +258,10 @@ export class SlackIntegrationManager
         const redirect_uri = this.config.oauthCallbackUrl
         const isBotUser = options.isBotUser
         const scope =
-            "channels:history,groups:history,im:history,mpim:history,channels:read,groups:read,im:read,mpim:read,users:read,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
+            "channels:history,groups:history,im:history,mpim:history,channels:read,groups:read,im:read,mpim:read,users:read,users:read.email,chat:write,im:write,app_mentions:read,reactions:read,reactions:write,files:read"
         const user_scope = isBotUser
             ? ""
-            : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,chat:write,im:write,reactions:read,reactions:write,files:read"
+            : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,users:read.email,chat:write,im:write,reactions:read,reactions:write,files:read"
         const state = mintOAuthState(req, res, {
             userId,
             organizationId,
@@ -979,7 +979,8 @@ export const fetchSlackUsersForIntegration = async (userId: string, organization
             .filter((member): member is SlackUserMember & { id: string; name: string } => Boolean(member.id && member.name) && !member.is_bot)
             .map(member => ({
                 id: member.id,
-                name: member.name
+                name: member.name,
+                email: member.profile?.email
             }))
         users.push(...userSegment)
         cursor = res.response_metadata?.next_cursor
