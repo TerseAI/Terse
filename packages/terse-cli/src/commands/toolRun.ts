@@ -1,9 +1,11 @@
-import { ApiRoutes, IntegrationConnectionsResponseSchema, buildRoute, isValidToolName, toolsWithIntegrationId } from "terse-types"
+import { ApiRoutes, integrationTypeEnum, isValidToolName, toolsWithIntegrationId } from "terse-types"
 import { z } from "zod"
 
 import { ApiError, fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { CliError, isCliError } from "../cliError.js"
 import { readRawStdin } from "../cliHelpers.js"
+import { fetchIntegrationConnections } from "../integrationApi.js"
+import { readProjectConfig } from "../projectConfig.js"
 import { toCamelCase } from "../providers/typescript/prepareCodegenData.js"
 import { type ToolDetails, fetchToolDetails } from "../toolCatalog.js"
 
@@ -78,6 +80,10 @@ async function withIntegrationId(params: Record<string, unknown>, tool: ToolDeta
     if (flagIntegrationId) return { ...params, integrationId: flagIntegrationId }
     if (params.integrationId !== undefined) return params
     if (!toolRequiresIntegrationId(tool.name)) return params
+
+    const pinned = pinnedConnectionFor(tool.integration)
+    if (pinned) return { ...params, integrationId: pinned }
+
     return { ...params, integrationId: await resolveSingleIntegrationId(tool.integration, apiKey) }
 }
 
@@ -85,16 +91,14 @@ function toolRequiresIntegrationId(toolName: string): boolean {
     return isValidToolName(toolName) && toolsWithIntegrationId.has(toolName)
 }
 
-async function resolveSingleIntegrationId(integration: string, apiKey: string): Promise<string> {
-    const raw = await fetchConnections(integration, apiKey)
-    const parsed = IntegrationConnectionsResponseSchema.safeParse(raw)
-    if (!parsed.success) {
-        throw new CliError("integration_resolution_failed", `Could not list connections for '${integration}'.`, {
-            detail: "Pass --integration <id> explicitly."
-        })
-    }
+function pinnedConnectionFor(integration: string): string | undefined {
+    const parsed = integrationTypeEnum.safeParse(integration)
+    if (!parsed.success) return undefined
+    return readProjectConfig()?.connections?.[parsed.data]
+}
 
-    const { connections } = parsed.data
+async function resolveSingleIntegrationId(integration: string, apiKey: string): Promise<string> {
+    const connections = await fetchIntegrationConnections(apiKey, integration)
     if (connections.length === 0) {
         throw new CliError("integration_not_connected", `Integration '${integration}' is not connected.`, {
             detail: `Run \`terse integrate connect ${integration}\` first.`,
@@ -104,23 +108,10 @@ async function resolveSingleIntegrationId(integration: string, apiKey: string): 
     if (connections.length > 1) {
         const listing = connections.map(connection => (connection.name === connection.id ? connection.id : `${connection.id} (${connection.name})`)).join(", ")
         throw new CliError("integration_ambiguous", `Integration '${integration}' has ${connections.length} connections.`, {
-            detail: `Pass --integration <id>. Connections: ${listing}`
+            detail: `Pass --integration <id>, or pin one for this project with \`terse integrate use ${integration}\`. Connections: ${listing}`
         })
     }
     return connections[0].id
-}
-
-async function fetchConnections(integration: string, apiKey: string): Promise<unknown> {
-    try {
-        return await fetchWithAuth<unknown>(buildRoute(ApiRoutes.INTEGRATIONS.CONNECTIONS_BY_TYPE, { integrationType: integration }), apiKey)
-    } catch (err) {
-        if (err instanceof ApiError && err.status === 404) {
-            throw new CliError("integration_resolution_unavailable", `Cannot auto-resolve a connection for '${integration}'.`, {
-                detail: "Pass --integration <id> explicitly."
-            })
-        }
-        throw err
-    }
 }
 
 async function executeTool(toolName: string, params: Record<string, unknown>, apiKey: string): Promise<unknown> {

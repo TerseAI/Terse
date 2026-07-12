@@ -433,7 +433,7 @@ async function handleDisconnect(apiKey: string, integrationType: IntegrationType
     }
 }
 
-function abortIfCancelled<T>(value: T | symbol): T {
+export function abortIfCancelled<T>(value: T | symbol): T {
     if (isCancel(value)) {
         cancel("Operation cancelled.")
         process.exit(0)
@@ -446,7 +446,7 @@ function abortIfCancelled<T>(value: T | symbol): T {
 // Non-interactive subcommands
 // -------------------------------------------------------------------------
 
-function parseIntegrationTypeOrThrow(value: string): IntegrationType {
+export function parseIntegrationTypeOrThrow(value: string): IntegrationType {
     const normalized = value.toLowerCase()
     const match = Object.values(IntegrationType).find(v => v === normalized)
     if (!match) {

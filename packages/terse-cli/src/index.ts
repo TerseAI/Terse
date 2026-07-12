@@ -20,6 +20,7 @@ import { applyImprovement, listImprovements } from "./commands/improvements.js"
 import { init } from "./commands/init.js"
 import { install, update } from "./commands/install.js"
 import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateTool, integrateWait } from "./commands/integrate.js"
+import { integrateUse } from "./commands/integrateUse.js"
 import { listen } from "./commands/listen.js"
 import { memoryGet, memoryList, memoryPut, memoryRemove } from "./commands/memory.js"
 import { replay } from "./commands/replay.js"
@@ -254,6 +255,7 @@ Examples:
   $ terse integrate tool slack --json                 # list an integration's tools
   $ terse integrate tool slack slack_send_message --json  # one tool's input/output schemas
   $ terse integrate tool run slack.listChannels           # invoke a tool ad hoc, no job required
+  $ terse integrate use slack                              # pin which connection this project uses
   $ terse integrate connect snowflake --field account=x --field username=y --fields-stdin <<< '{"password":"'"$PW"'"}'
   $ terse integrate connect slack                     # OAuth → opens browser, exit 2 (follow up with 'wait')
   $ terse integrate wait slack --timeout 300          # block until OAuth completes
@@ -363,6 +365,27 @@ Params are the tool's wire shape — see \`terse integrate tool <integration> <t
     )
     .action(async (tool: string, opts: { params?: string; integration?: string }) => {
         await integrateToolRun({ toolName: tool, params: opts.params, integrationId: opts.integration })
+    })
+
+integrateCommand
+    .command("use")
+    .description("Pin which connection this project generates against, then regenerate terse.generated.ts")
+    .argument("<type>", "Integration type (e.g. slack)")
+    .argument("[connection-id]", "Connection ID; omit to pick interactively (or auto-pin a single connection)")
+    .option("--clear", "Remove this integration's pin and regenerate")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse integrate use slack                          # pick from the workspace's Slack connections
+  $ terse integrate use slack cmr3l8b3d0003bpq4rpifevze
+  $ terse integrate use slack --clear                  # back to the default (oldest) connection
+
+The pin is stored in terse.config.json and also drives \`terse integrate tool run\` resolution in this project.
+`
+    )
+    .action(async (type: string, connectionId: string | undefined, opts: { clear?: boolean }) => {
+        await integrateUse({ integrationType: type, connectionId, clear: opts.clear }, resolveProvider())
     })
 
 integrateCommand

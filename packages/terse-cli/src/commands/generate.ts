@@ -23,6 +23,7 @@ import { assertProjectRoot } from "../assertProjectRoot.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
 import { fetchIntegrations } from "../integrationApi.js"
+import { readProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import {
     type AttioAttributeData,
@@ -363,6 +364,13 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
 
     await Promise.all(promises)
 
+    try {
+        applyConnectionPins(input)
+    } catch (error) {
+        s.stop("Pinned connection missing")
+        throw error
+    }
+
     const integrationCount =
         input.github.length +
         input.slack.length +
@@ -405,6 +413,36 @@ async function safely(fn: () => Promise<void>): Promise<void> {
     } catch {
         /* skip failed integrations */
     }
+}
+
+function applyConnectionPins(input: CodegenInput): void {
+    const pins = readProjectConfig()?.connections
+    if (!pins) return
+
+    input.github = prioritizePinned(input.github, pins[IntegrationType.GITHUB], IntegrationType.GITHUB, data => data.integration.id)
+    input.slack = prioritizePinned(input.slack, pins[IntegrationType.SLACK], IntegrationType.SLACK, data => data.id)
+    input.gmail = prioritizePinned(input.gmail, pins[IntegrationType.GMAIL], IntegrationType.GMAIL, data => data.id)
+    input.linear = prioritizePinned(input.linear, pins[IntegrationType.LINEAR], IntegrationType.LINEAR, data => data.id)
+    input.notion = prioritizePinned(input.notion, pins[IntegrationType.NOTION], IntegrationType.NOTION, data => data.id)
+    input.posthog = prioritizePinned(input.posthog, pins[IntegrationType.POSTHOG], IntegrationType.POSTHOG, data => data.id)
+    input.datadog = prioritizePinned(input.datadog, pins[IntegrationType.DATADOG], IntegrationType.DATADOG, data => data.id)
+    input.launchdarkly = prioritizePinned(input.launchdarkly, pins[IntegrationType.LAUNCHDARKLY], IntegrationType.LAUNCHDARKLY, data => data.id)
+    input.workos = prioritizePinned(input.workos, pins[IntegrationType.WORKOS], IntegrationType.WORKOS, data => data.id)
+    input.attio = prioritizePinned(input.attio, pins[IntegrationType.ATTIO], IntegrationType.ATTIO, data => data.id)
+    input.snowflake = prioritizePinned(input.snowflake, pins[IntegrationType.SNOWFLAKE], IntegrationType.SNOWFLAKE, data => data.id)
+    input.heyreach = prioritizePinned(input.heyreach, pins[IntegrationType.HEY_REACH], IntegrationType.HEY_REACH, data => data.id)
+}
+
+function prioritizePinned<T>(instances: T[], pinnedId: string | undefined, integrationType: IntegrationType, idOf: (instance: T) => string): T[] {
+    if (!pinnedId || instances.length === 0) return instances
+
+    const index = instances.findIndex(instance => idOf(instance) === pinnedId)
+    if (index === -1) {
+        throw new CliError("pinned_connection_missing", `The pinned ${integrationType} connection '${pinnedId}' was not found in this workspace.`, {
+            detail: `Re-pin with \`terse integrate use ${integrationType}\`, or remove the pin with \`terse integrate use ${integrationType} --clear\`.`
+        })
+    }
+    return [instances[index], ...instances.filter((_, i) => i !== index)]
 }
 
 async function fetchPosthogProjectEventNames(integrationId: string, projectId: string, apiKey: string): Promise<string[]> {

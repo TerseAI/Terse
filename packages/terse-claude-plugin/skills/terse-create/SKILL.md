@@ -385,7 +385,7 @@ terse integrate tool run attio.records --params '{"request":{"action":"query","o
 
 - Name the tool by wire name (`attio_records`) or dotted form (`attio.records`); a wrong name errors with the list of valid ones.
 - `--params` takes the tool's wire-shape JSON — the exact input schema `terse integrate tool <type> <tool-name> --json` prints. Read that schema, not the generated `toolbox.*` signatures, which can differ from the wire shape. Pipe large params on stdin instead of `--params`.
-- The connection is auto-resolved when the workspace has one; with several, the error lists their IDs — retry with `--integration <id>`.
+- The connection is auto-resolved from the project's pinned connection (`terse integrate use <type>`) or the workspace's single connection; with several and no pin, the error lists their IDs — retry with `--integration <id>` or pin one.
 - The result prints as raw JSON on stdout; failures exit nonzero with the error on stderr.
 
 Keep discovery runs read-only: query, list, get. Writes belong in the job, governed by the sections above.
