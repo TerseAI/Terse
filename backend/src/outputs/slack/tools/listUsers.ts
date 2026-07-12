@@ -9,8 +9,8 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const slackListUsersTool = defineSessionTool({
     name: "slack_list_users",
-    description: `List Slack workspace users (id, name and email when available). Use this to resolve user IDs to names, or to map an email address (e.g. a CRM record owner) to a Slack user.
-Returns non-bot members. Optionally filter by name or email with the query parameter. Email requires the users:read.email scope; workspaces installed before that scope was added return users without email until the app is re-installed.`,
+    description: `List Slack workspace users (id, name, email). Use this to resolve user IDs to names when needed.
+Returns non-bot members. Optionally filter by name or email with the query parameter.`,
     execute: async ({ integrationId, query }, runContext) => {
         logger.debug("🛠️ Executing slack_list_users tool", { integrationId, query })
 

@@ -79,7 +79,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         sections.push(
             "\nWhen calling Slack tools, you MUST include `integrationId` from one of the configurations listed above. For channel-scoped configs, use the configured `channelId`. For DM-scoped configs, use `slack_list_channels` to discover DM channel IDs before calling read/send tools."
         )
-        sections.push("\nUse slack_list_users to resolve Slack user IDs to names, or to map an email address to a Slack user.")
+        sections.push("\nUse slack_list_users to resolve Slack user IDs to names when needed.")
         sections.push("\n" + SLACK_OUTPUT_INSTRUCTIONS)
         return sections.join("\n")
     }
@@ -90,7 +90,7 @@ const SLACK_OUTPUT_INSTRUCTIONS = `
 
 TOOLS:
 - slack_send_message: Send messages to Slack channels or DMs. Use channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM via conversations.open; you can still discover IDs with slack_list_channels. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
-- slack_list_users: List workspace users (id, name and email when available). Use to resolve user IDs to names, or to map an email address (e.g. a CRM record owner) to a Slack user.
+- slack_list_users: List workspace users (id, name, email). Use to resolve user IDs to names when needed.
 
 MESSAGE TYPES:
 - Plain text: Simple notifications, short updates. Use \`message\` parameter only.
