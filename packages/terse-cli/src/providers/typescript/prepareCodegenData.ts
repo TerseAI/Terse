@@ -1146,9 +1146,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             "export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number; offset: number }"
         )
         attioPreludeLines.push('export type AttioSearchRecordsResult = { matches: NonNullable<AttioRecordsResult["matches"]>; count: number }')
-        attioPreludeLines.push(
-            "export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number }"
-        )
+        attioPreludeLines.push("export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number }")
         attioPreludeLines.push("export type AttioSingleRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioRecordFor<TObject>")
         attioPreludeLines.push('export type AttioListsResult = ToolOutputByName["attio_lists"]')
         attioPreludeLines.push("export type AttioEntryValuesFor<TList> = TList extends { __entryValues: infer TValues } ? TValues : Record<string, unknown>")
@@ -1612,8 +1610,7 @@ function buildAttioListsMethods(integrationId: string): ToolMethodContext[] {
         },
         {
             description: "Create a new list over an object. This changes the workspace for every user.",
-            generatedSignature:
-                'createList(params: Omit<Extract<ToolInputByName["attio_lists"]["request"], { action: "create" }>, "action">): Promise<NonNullable<AttioListsResult["list"]>>',
+            generatedSignature: 'createList(params: Omit<Extract<ToolInputByName["attio_lists"]["request"], { action: "create" }>, "action">): Promise<NonNullable<AttioListsResult["list"]>>',
             runtimeLines: [
                 'createList: (params: Omit<Extract<ToolInputByName["attio_lists"]["request"], { action: "create" }>, "action">) =>',
                 `    ${call('{ action: "create", ...params }')}.then(result => __requireAttioPayload(result.list, "list")),`
@@ -1691,11 +1688,7 @@ function buildAttioListsMethods(integrationId: string): ToolMethodContext[] {
     ]
 }
 
-type AttioResultSpec =
-    | { kind: "single"; key: string; what?: string }
-    | { kind: "singleWithCursor"; key: string; what?: string }
-    | { kind: "list"; key: string; cursor?: boolean }
-    | { kind: "void" }
+type AttioResultSpec = { kind: "single"; key: string; what?: string } | { kind: "singleWithCursor"; key: string; what?: string } | { kind: "list"; key: string; cursor?: boolean } | { kind: "void" }
 
 interface AttioResourceMethodSpec {
     action: string

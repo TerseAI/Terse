@@ -2188,7 +2188,6 @@ export type AttioGetAttributeHistoryRequest = z.infer<typeof attioGetAttributeHi
 export type AttioRecordsRequest = z.infer<typeof attioRecordsRequestSchema>
 export type AttioRecordsAction = AttioRecordsRequest["action"]
 
-
 const attioTargetRecordFields = {
     objectSlug: z.string().describe("The object type slug of the record (e.g. 'people', 'companies')."),
     recordId: z.string().describe("The record ID (UUID).")
