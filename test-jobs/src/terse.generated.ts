@@ -29,8 +29,6 @@ import {
     SlackOutputConfig,
     TerseAgent,
     TimeTriggerConfig,
-    ToolInputByName,
-    ToolOutputByName,
     TypedSkill,
     TypedTrigger,
     WebConfig,
@@ -2768,17 +2766,457 @@ export function posthogSkill(opts: { project: PosthogProject }): TypedSkill<neve
 
 // ── Attio ─────────────────────────────────────────────────────
 
-export type AttioSelectOption = {
+export interface AttioSelectOption {
     id: string
     title: string
     is_archived: boolean
 }
 
-export type AttioActorReferenceInput = string | { workspace_member_email_address: string } | { referenced_actor_type: "workspace-member"; referenced_actor_id: string }
-export type AttioRecordReferenceInput = { target_object: string; target_record_id: string } | Record<string, unknown>
-export type AttioActorReference = { referenced_actor_type: string; referenced_actor_id: string | null }
-export type AttioRecordReferenceValue = { target_object: string; target_record_id: string }
-export type AttioCurrencyValue = { currency_value: number; currency_code: string | null }
+export type AttioActorReferenceInput =
+    | string
+    | {
+          workspace_member_email_address: string
+      }
+    | {
+          referenced_actor_type: "workspace-member"
+          referenced_actor_id: string
+      }
+
+export type AttioRecordReferenceInput =
+    | {
+          target_object: string
+          target_record_id: string
+      }
+    | {
+          [k: string]: unknown
+      }
+
+export interface AttioActorReference {
+    referenced_actor_type: string
+    referenced_actor_id: string | null
+}
+
+export interface AttioRecordReferenceValue {
+    target_object: string
+    target_record_id: string
+}
+
+export interface AttioCurrencyValue {
+    currency_value: number
+    currency_code: string | null
+}
+
+export type AttioWorkspaceRecordValues = {
+    record_id?: string
+    workspace_id?: string
+    name?: string
+    users?: AttioRecordReferenceValue[]
+    company?: AttioRecordReferenceValue
+    avatar_url?: string
+    created_at?: string
+    created_by?: AttioActorReference
+}
+
+export type AttioWorkspaceInputValues = {
+    record_id?: string
+    workspace_id?: string
+    name?: string
+    users?: AttioRecordReferenceInput[]
+    company?: AttioRecordReferenceInput
+    avatar_url?: string
+    created_at?: string
+    created_by?: AttioActorReferenceInput
+}
+
+export type AttioPersonRecordValues = {
+    record_id?: string
+    name?: string
+    email_addresses?: string[]
+    description?: string
+    company?: AttioRecordReferenceValue
+    job_title?: string
+    avatar_url?: string
+    phone_numbers?: number[]
+    primary_location?: {
+        [k: string]: unknown
+    }
+    angellist?: string
+    facebook?: string
+    instagram?: string
+    linkedin?: string
+    twitter?: string
+    twitter_follower_count?: number
+    first_calendar_interaction?: unknown
+    last_calendar_interaction?: unknown
+    next_calendar_interaction?: unknown
+    first_email_interaction?: unknown
+    last_email_interaction?: unknown
+    first_interaction?: unknown
+    last_interaction?: unknown
+    next_interaction?: unknown
+    strongest_connection_strength_legacy?: number
+    strongest_connection_strength?: AttioSelectOption
+    strongest_connection_user?: AttioActorReference
+    associated_deals?: AttioRecordReferenceValue[]
+    associated_users?: AttioRecordReferenceValue[]
+    created_at?: string
+    created_by?: AttioActorReference
+}
+
+export type AttioPersonInputValues = {
+    record_id?: string
+    name?: string
+    email_addresses?: string[]
+    description?: string
+    company?: AttioRecordReferenceInput
+    job_title?: string
+    avatar_url?: string
+    phone_numbers?: number[]
+    primary_location?: {
+        [k: string]: unknown
+    }
+    angellist?: string
+    facebook?: string
+    instagram?: string
+    linkedin?: string
+    twitter?: string
+    twitter_follower_count?: number
+    first_calendar_interaction?: unknown
+    last_calendar_interaction?: unknown
+    next_calendar_interaction?: unknown
+    first_email_interaction?: unknown
+    last_email_interaction?: unknown
+    first_interaction?: unknown
+    last_interaction?: unknown
+    next_interaction?: unknown
+    strongest_connection_strength_legacy?: number
+    strongest_connection_strength?: "Very weak" | "Weak" | "Good" | "Strong" | "Very strong"
+    strongest_connection_user?: AttioActorReferenceInput
+    associated_deals?: AttioRecordReferenceInput[]
+    associated_users?: AttioRecordReferenceInput[]
+    created_at?: string
+    created_by?: AttioActorReferenceInput
+}
+
+export type AttioCompanyRecordValues = {
+    record_id?: string
+    domains?: string[]
+    name?: string
+    description?: string
+    team?: AttioRecordReferenceValue[]
+    categories?: AttioSelectOption[]
+    primary_location?: {
+        [k: string]: unknown
+    }
+    logo_url?: string
+    angellist?: string
+    facebook?: string
+    instagram?: string
+    linkedin?: string
+    twitter?: string
+    twitter_follower_count?: number
+    estimated_arr_usd?: AttioSelectOption
+    funding_raised_usd?: AttioCurrencyValue
+    foundation_date?: string
+    employee_range?: AttioSelectOption
+    first_calendar_interaction?: unknown
+    last_calendar_interaction?: unknown
+    next_calendar_interaction?: unknown
+    first_email_interaction?: unknown
+    last_email_interaction?: unknown
+    first_interaction?: unknown
+    last_interaction?: unknown
+    next_interaction?: unknown
+    strongest_connection_strength_legacy?: number
+    strongest_connection_strength?: AttioSelectOption
+    strongest_connection_user?: AttioActorReference
+    associated_deals?: AttioRecordReferenceValue[]
+    associated_workspaces?: AttioRecordReferenceValue[]
+    created_at?: string
+    created_by?: AttioActorReference
+}
+
+export type AttioCompanyInputValues = {
+    record_id?: string
+    domains?: string[]
+    name?: string
+    description?: string
+    team?: AttioRecordReferenceInput[]
+    categories?: (
+        | "3D Printing"
+        | "Accounting"
+        | "Aerospace & Defense"
+        | "Agriculture"
+        | "Airlines"
+        | "Alternative Medicine"
+        | "Animation"
+        | "Apparel & Footwear"
+        | "Architecture"
+        | "Arts"
+        | "Arts & Crafts"
+        | "Asset Management"
+        | "Audio"
+        | "Automation"
+        | "Automotive"
+        | "B2B"
+        | "B2C"
+        | "Banking & Mortgages"
+        | "Beverages"
+        | "Biotechnology"
+        | "Broadcasting"
+        | "Building Materials"
+        | "Business Supplies"
+        | "Chemicals"
+        | "Civil Engineering"
+        | "Cloud Services"
+        | "Communications"
+        | "Computer Hardware"
+        | "Construction"
+        | "Construction Contractors & Services"
+        | "Consulting & Professional Services"
+        | "Consumer Discretionary"
+        | "Consumer Electronics"
+        | "Consumer Goods"
+        | "Consumer Staples"
+        | "Corporate & Business"
+        | "Cosmetics"
+        | "Design"
+        | "E-commerce"
+        | "E-Commerce & Marketplaces"
+        | "E-Learning"
+        | "Education"
+        | "Electrical"
+        | "Energy"
+        | "Energy & Utilities"
+        | "Enterprise"
+        | "Entertainment & Recreation"
+        | "Events"
+        | "Eyewear"
+        | "Facilities"
+        | "Family Services"
+        | "Finance"
+        | "Financial Services"
+        | "Fine Art"
+        | "Firearms"
+        | "Fishery"
+        | "Food"
+        | "Food Production"
+        | "Forums"
+        | "Fundraising"
+        | "Gambling & Casinos"
+        | "Government"
+        | "Ground Transportation"
+        | "Health & Wellness"
+        | "Health Care"
+        | "Higher Education"
+        | "Home & Furniture"
+        | "Home Improvement"
+        | "Human Resources"
+        | "Import & Export"
+        | "Industrials & Manufacturing"
+        | "Information Technology & Services"
+        | "Insurance"
+        | "International Relations"
+        | "International Trade"
+        | "Internet"
+        | "Investment"
+        | "Investment Banking"
+        | "Investment Management"
+        | "ISP"
+        | "Jewelry Watches & Luxury Goods"
+        | "Judiciary"
+        | "Law Enforcement"
+        | "Legal Services"
+        | "Libraries"
+        | "Machinery"
+        | "Maritime"
+        | "Market Research"
+        | "Marketing & Advertising"
+        | "Marketplace"
+        | "Mechanical Engineering"
+        | "Media"
+        | "Medicine"
+        | "Military"
+        | "Mining & Metals"
+        | "Mobile"
+        | "Movies & TV"
+        | "Museums"
+        | "Music"
+        | "Nanotechnology"
+        | "Networking"
+        | "Non-Profit & Philanthropy"
+        | "Oil & Gas"
+        | "Outsourcing"
+        | "Packaging & Containers"
+        | "Paper Goods"
+        | "Payments"
+        | "Performing Arts"
+        | "Pharmaceuticals"
+        | "Pharmacy"
+        | "Photography"
+        | "Plastics"
+        | "Plumbing"
+        | "Political Organization"
+        | "Pornography"
+        | "Primary & Secondary Education"
+        | "Printing"
+        | "Public Relations"
+        | "Publishing"
+        | "Ranching"
+        | "Real Estate"
+        | "Religion"
+        | "Renewables & Environment"
+        | "Restaurants"
+        | "Retail"
+        | "SAAS"
+        | "Sanitization Services"
+        | "Scientific & Academic Research"
+        | "Security"
+        | "Services"
+        | "Shipbuilding"
+        | "Shipping & Logistics"
+        | "Society"
+        | "Sporting Goods"
+        | "Sports & Fitness"
+        | "Stores"
+        | "Talent Agencies"
+        | "Technology"
+        | "Telecommunications"
+        | "Textiles"
+        | "Tobacco"
+        | "Tools"
+        | "Translation"
+        | "Transportation"
+        | "Travel & Leisure"
+        | "Utilities"
+        | "Venture Capital"
+        | "Veterinary"
+        | "Video Games"
+        | "Warehousing"
+        | "Web Services & Apps"
+        | "Wholesale"
+    )[]
+    primary_location?: {
+        [k: string]: unknown
+    }
+    logo_url?: string
+    angellist?: string
+    facebook?: string
+    instagram?: string
+    linkedin?: string
+    twitter?: string
+    twitter_follower_count?: number
+    estimated_arr_usd?:
+        | "$0-$1M"
+        | "$1M-$10M"
+        | "$10M-$50M"
+        | "$50M-$100M"
+        | "$100M-$250M"
+        | "$250M-$500M"
+        | "$500M-$1B"
+        | "$1B-$10B"
+        | "$10B+"
+    funding_raised_usd?: number
+    foundation_date?: string
+    employee_range?: "1-10" | "11-50" | "51-250" | "251-1K" | "1K-5K" | "5K-10K" | "10K-50K" | "50K-100K" | "100K+"
+    first_calendar_interaction?: unknown
+    last_calendar_interaction?: unknown
+    next_calendar_interaction?: unknown
+    first_email_interaction?: unknown
+    last_email_interaction?: unknown
+    first_interaction?: unknown
+    last_interaction?: unknown
+    next_interaction?: unknown
+    strongest_connection_strength_legacy?: number
+    strongest_connection_strength?: "Very weak" | "Weak" | "Good" | "Strong" | "Very strong"
+    strongest_connection_user?: AttioActorReferenceInput
+    associated_deals?: AttioRecordReferenceInput[]
+    associated_workspaces?: AttioRecordReferenceInput[]
+    created_at?: string
+    created_by?: AttioActorReferenceInput
+}
+
+export type AttioDealRecordValues = {
+    record_id?: string
+    name?: string
+    stage?: AttioSelectOption
+    owner?: AttioActorReference
+    value?: AttioCurrencyValue
+    associated_people?: AttioRecordReferenceValue[]
+    associated_company?: AttioRecordReferenceValue
+    created_at?: string
+    created_by?: AttioActorReference
+    trial_pipeline?: AttioSelectOption
+    lead_key?: string
+    metrics?: string
+    economic_buyer?: string
+    decision_criteria?: string
+    decision_process?: string
+    identify_pain?: string
+    champion?: string
+    competitors?: AttioSelectOption[]
+    lost_reason?: string
+}
+
+export type AttioDealInputValues = {
+    record_id?: string
+    name?: string
+    stage?: "Lead" | "In Progress" | "Won 🎉" | "Lost" | "Negotiation" | "Proposal"
+    owner?: AttioActorReferenceInput
+    value?: number
+    associated_people?: AttioRecordReferenceInput[]
+    associated_company?: AttioRecordReferenceInput
+    created_at?: string
+    created_by?: AttioActorReferenceInput
+    trial_pipeline?: "Invited"
+    lead_key?: string
+    metrics?: string
+    economic_buyer?: string
+    decision_criteria?: string
+    decision_process?: string
+    identify_pain?: string
+    champion?: string
+    competitors?: ("Workato" | "Zapier Enterprise")[]
+    lost_reason?: string
+}
+
+export type AttioUserRecordValues = {
+    record_id?: string
+    person?: AttioRecordReferenceValue
+    primary_email_address?: string
+    created_at?: string
+    created_by?: AttioActorReference
+    user_id?: string
+    workspace?: AttioRecordReferenceValue[]
+    first_name?: string
+    last_name?: string
+    full_name?: string
+}
+
+export type AttioUserInputValues = {
+    record_id?: string
+    person?: AttioRecordReferenceInput
+    primary_email_address?: string
+    created_at?: string
+    created_by?: AttioActorReferenceInput
+    user_id?: string
+    workspace?: AttioRecordReferenceInput[]
+    first_name?: string
+    last_name?: string
+    full_name?: string
+}
+
+export type AttioFeedbackRequestsEntryRecordValues = {
+    entry_id?: string
+    created_at?: string
+    created_by?: AttioActorReference
+}
+
+export type AttioFeedbackRequestsEntryValues = {
+    entry_id?: string
+    created_at?: string
+    created_by?: AttioActorReferenceInput
+}
 
 export const AttioPersonConnectionStrength = {
     VeryWeak: "Very weak",
@@ -3016,25 +3454,7 @@ export class AttioObject<
     declare readonly __recordValues: TRecordValues
     declare readonly __inputValues: TInputValues
 
-    static Workspace = new AttioObject<"workspaces", {
-    "record_id"?: string
-    "workspace_id"?: string
-    "name"?: string
-    "users"?: AttioRecordReferenceValue[]
-    "company"?: AttioRecordReferenceValue
-    "avatar_url"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-}, {
-    "record_id"?: string
-    "workspace_id"?: string
-    "name"?: string
-    "users"?: AttioRecordReferenceInput[]
-    "company"?: AttioRecordReferenceInput
-    "avatar_url"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-}>("workspaces", "Workspace", "1438f767-a019-4481-988c-a8b9652e9316", [
+    static Workspace = new AttioObject<"workspaces", AttioWorkspaceRecordValues, AttioWorkspaceInputValues>("workspaces", "Workspace", "1438f767-a019-4481-988c-a8b9652e9316", [
         { apiSlug: "record_id", title: "Record ID", type: "text", isRequired: false, isUnique: true },
         { apiSlug: "workspace_id", title: "Workspace ID", type: "text", isRequired: true, isUnique: true },
         { apiSlug: "name", title: "Name", type: "text", isRequired: false, isUnique: false },
@@ -3044,69 +3464,7 @@ export class AttioObject<
         { apiSlug: "created_at", title: "Created at", type: "timestamp", isRequired: false, isUnique: false },
         { apiSlug: "created_by", title: "Created by", type: "actor-reference", isRequired: false, isUnique: false }
     ])
-    static Person = new AttioObject<"people", {
-    "record_id"?: string
-    "name"?: string
-    "email_addresses"?: string[]
-    "description"?: string
-    "company"?: AttioRecordReferenceValue
-    "job_title"?: string
-    "avatar_url"?: string
-    "phone_numbers"?: number[]
-    "primary_location"?: Record<string, unknown>
-    "angellist"?: string
-    "facebook"?: string
-    "instagram"?: string
-    "linkedin"?: string
-    "twitter"?: string
-    "twitter_follower_count"?: number
-    "first_calendar_interaction"?: unknown
-    "last_calendar_interaction"?: unknown
-    "next_calendar_interaction"?: unknown
-    "first_email_interaction"?: unknown
-    "last_email_interaction"?: unknown
-    "first_interaction"?: unknown
-    "last_interaction"?: unknown
-    "next_interaction"?: unknown
-    "strongest_connection_strength_legacy"?: number
-    "strongest_connection_strength"?: AttioSelectOption
-    "strongest_connection_user"?: AttioActorReference
-    "associated_deals"?: AttioRecordReferenceValue[]
-    "associated_users"?: AttioRecordReferenceValue[]
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-}, {
-    "record_id"?: string
-    "name"?: string
-    "email_addresses"?: string[]
-    "description"?: string
-    "company"?: AttioRecordReferenceInput
-    "job_title"?: string
-    "avatar_url"?: string
-    "phone_numbers"?: number[]
-    "primary_location"?: Record<string, unknown>
-    "angellist"?: string
-    "facebook"?: string
-    "instagram"?: string
-    "linkedin"?: string
-    "twitter"?: string
-    "twitter_follower_count"?: number
-    "first_calendar_interaction"?: unknown
-    "last_calendar_interaction"?: unknown
-    "next_calendar_interaction"?: unknown
-    "first_email_interaction"?: unknown
-    "last_email_interaction"?: unknown
-    "first_interaction"?: unknown
-    "last_interaction"?: unknown
-    "next_interaction"?: unknown
-    "strongest_connection_strength_legacy"?: number
-    "strongest_connection_strength"?: "Very weak" | "Weak" | "Good" | "Strong" | "Very strong"
-    "strongest_connection_user"?: AttioActorReferenceInput
-    "associated_deals"?: AttioRecordReferenceInput[]
-    "associated_users"?: AttioRecordReferenceInput[]
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-}>("people", "Person", "1bcfaec9-d780-435d-8088-05032f38cf71", [
+    static Person = new AttioObject<"people", AttioPersonRecordValues, AttioPersonInputValues>("people", "Person", "1bcfaec9-d780-435d-8088-05032f38cf71", [
         { apiSlug: "record_id", title: "Record ID", type: "text", isRequired: false, isUnique: true },
         { apiSlug: "name", title: "Name", type: "personal-name", isRequired: false, isUnique: false },
         { apiSlug: "email_addresses", title: "Email addresses", type: "email-address", isRequired: false, isUnique: true },
@@ -3138,75 +3496,7 @@ export class AttioObject<
         { apiSlug: "created_at", title: "Created at", type: "timestamp", isRequired: false, isUnique: false },
         { apiSlug: "created_by", title: "Created by", type: "actor-reference", isRequired: false, isUnique: false }
     ])
-    static Company = new AttioObject<"companies", {
-    "record_id"?: string
-    "domains"?: string[]
-    "name"?: string
-    "description"?: string
-    "team"?: AttioRecordReferenceValue[]
-    "categories"?: AttioSelectOption[]
-    "primary_location"?: Record<string, unknown>
-    "logo_url"?: string
-    "angellist"?: string
-    "facebook"?: string
-    "instagram"?: string
-    "linkedin"?: string
-    "twitter"?: string
-    "twitter_follower_count"?: number
-    "estimated_arr_usd"?: AttioSelectOption
-    "funding_raised_usd"?: AttioCurrencyValue
-    "foundation_date"?: string
-    "employee_range"?: AttioSelectOption
-    "first_calendar_interaction"?: unknown
-    "last_calendar_interaction"?: unknown
-    "next_calendar_interaction"?: unknown
-    "first_email_interaction"?: unknown
-    "last_email_interaction"?: unknown
-    "first_interaction"?: unknown
-    "last_interaction"?: unknown
-    "next_interaction"?: unknown
-    "strongest_connection_strength_legacy"?: number
-    "strongest_connection_strength"?: AttioSelectOption
-    "strongest_connection_user"?: AttioActorReference
-    "associated_deals"?: AttioRecordReferenceValue[]
-    "associated_workspaces"?: AttioRecordReferenceValue[]
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-}, {
-    "record_id"?: string
-    "domains"?: string[]
-    "name"?: string
-    "description"?: string
-    "team"?: AttioRecordReferenceInput[]
-    "categories"?: ("3D Printing" | "Accounting" | "Aerospace & Defense" | "Agriculture" | "Airlines" | "Alternative Medicine" | "Animation" | "Apparel & Footwear" | "Architecture" | "Arts" | "Arts & Crafts" | "Asset Management" | "Audio" | "Automation" | "Automotive" | "B2B" | "B2C" | "Banking & Mortgages" | "Beverages" | "Biotechnology" | "Broadcasting" | "Building Materials" | "Business Supplies" | "Chemicals" | "Civil Engineering" | "Cloud Services" | "Communications" | "Computer Hardware" | "Construction" | "Construction Contractors & Services" | "Consulting & Professional Services" | "Consumer Discretionary" | "Consumer Electronics" | "Consumer Goods" | "Consumer Staples" | "Corporate & Business" | "Cosmetics" | "Design" | "E-commerce" | "E-Commerce & Marketplaces" | "E-Learning" | "Education" | "Electrical" | "Energy" | "Energy & Utilities" | "Enterprise" | "Entertainment & Recreation" | "Events" | "Eyewear" | "Facilities" | "Family Services" | "Finance" | "Financial Services" | "Fine Art" | "Firearms" | "Fishery" | "Food" | "Food Production" | "Forums" | "Fundraising" | "Gambling & Casinos" | "Government" | "Ground Transportation" | "Health & Wellness" | "Health Care" | "Higher Education" | "Home & Furniture" | "Home Improvement" | "Human Resources" | "Import & Export" | "Industrials & Manufacturing" | "Information Technology & Services" | "Insurance" | "International Relations" | "International Trade" | "Internet" | "Investment" | "Investment Banking" | "Investment Management" | "ISP" | "Jewelry Watches & Luxury Goods" | "Judiciary" | "Law Enforcement" | "Legal Services" | "Libraries" | "Machinery" | "Maritime" | "Market Research" | "Marketing & Advertising" | "Marketplace" | "Mechanical Engineering" | "Media" | "Medicine" | "Military" | "Mining & Metals" | "Mobile" | "Movies & TV" | "Museums" | "Music" | "Nanotechnology" | "Networking" | "Non-Profit & Philanthropy" | "Oil & Gas" | "Outsourcing" | "Packaging & Containers" | "Paper Goods" | "Payments" | "Performing Arts" | "Pharmaceuticals" | "Pharmacy" | "Photography" | "Plastics" | "Plumbing" | "Political Organization" | "Pornography" | "Primary & Secondary Education" | "Printing" | "Public Relations" | "Publishing" | "Ranching" | "Real Estate" | "Religion" | "Renewables & Environment" | "Restaurants" | "Retail" | "SAAS" | "Sanitization Services" | "Scientific & Academic Research" | "Security" | "Services" | "Shipbuilding" | "Shipping & Logistics" | "Society" | "Sporting Goods" | "Sports & Fitness" | "Stores" | "Talent Agencies" | "Technology" | "Telecommunications" | "Textiles" | "Tobacco" | "Tools" | "Translation" | "Transportation" | "Travel & Leisure" | "Utilities" | "Venture Capital" | "Veterinary" | "Video Games" | "Warehousing" | "Web Services & Apps" | "Wholesale")[]
-    "primary_location"?: Record<string, unknown>
-    "logo_url"?: string
-    "angellist"?: string
-    "facebook"?: string
-    "instagram"?: string
-    "linkedin"?: string
-    "twitter"?: string
-    "twitter_follower_count"?: number
-    "estimated_arr_usd"?: "$0-$1M" | "$1M-$10M" | "$10M-$50M" | "$50M-$100M" | "$100M-$250M" | "$250M-$500M" | "$500M-$1B" | "$1B-$10B" | "$10B+"
-    "funding_raised_usd"?: number
-    "foundation_date"?: string
-    "employee_range"?: "1-10" | "11-50" | "51-250" | "251-1K" | "1K-5K" | "5K-10K" | "10K-50K" | "50K-100K" | "100K+"
-    "first_calendar_interaction"?: unknown
-    "last_calendar_interaction"?: unknown
-    "next_calendar_interaction"?: unknown
-    "first_email_interaction"?: unknown
-    "last_email_interaction"?: unknown
-    "first_interaction"?: unknown
-    "last_interaction"?: unknown
-    "next_interaction"?: unknown
-    "strongest_connection_strength_legacy"?: number
-    "strongest_connection_strength"?: "Very weak" | "Weak" | "Good" | "Strong" | "Very strong"
-    "strongest_connection_user"?: AttioActorReferenceInput
-    "associated_deals"?: AttioRecordReferenceInput[]
-    "associated_workspaces"?: AttioRecordReferenceInput[]
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-}>("companies", "Company", "32b97358-5905-46af-963b-83fc48bd8188", [
+    static Company = new AttioObject<"companies", AttioCompanyRecordValues, AttioCompanyInputValues>("companies", "Company", "32b97358-5905-46af-963b-83fc48bd8188", [
         { apiSlug: "record_id", title: "Record ID", type: "text", isRequired: false, isUnique: true },
         { apiSlug: "domains", title: "Domains", type: "domain", isRequired: false, isUnique: true },
         { apiSlug: "name", title: "Name", type: "text", isRequired: false, isUnique: false },
@@ -3241,47 +3531,7 @@ export class AttioObject<
         { apiSlug: "created_at", title: "Created at", type: "timestamp", isRequired: false, isUnique: false },
         { apiSlug: "created_by", title: "Created by", type: "actor-reference", isRequired: false, isUnique: false }
     ])
-    static Deal = new AttioObject<"deals", {
-    "record_id"?: string
-    "name"?: string
-    "stage"?: AttioSelectOption
-    "owner"?: AttioActorReference
-    "value"?: AttioCurrencyValue
-    "associated_people"?: AttioRecordReferenceValue[]
-    "associated_company"?: AttioRecordReferenceValue
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-    "trial_pipeline"?: AttioSelectOption
-    "lead_key"?: string
-    "metrics"?: string
-    "economic_buyer"?: string
-    "decision_criteria"?: string
-    "decision_process"?: string
-    "identify_pain"?: string
-    "champion"?: string
-    "competitors"?: AttioSelectOption[]
-    "lost_reason"?: string
-}, {
-    "record_id"?: string
-    "name"?: string
-    "stage"?: "Lead" | "In Progress" | "Won 🎉" | "Lost" | "Negotiation" | "Proposal"
-    "owner"?: AttioActorReferenceInput
-    "value"?: number
-    "associated_people"?: AttioRecordReferenceInput[]
-    "associated_company"?: AttioRecordReferenceInput
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-    "trial_pipeline"?: "Invited"
-    "lead_key"?: string
-    "metrics"?: string
-    "economic_buyer"?: string
-    "decision_criteria"?: string
-    "decision_process"?: string
-    "identify_pain"?: string
-    "champion"?: string
-    "competitors"?: ("Workato" | "Zapier Enterprise")[]
-    "lost_reason"?: string
-}>("deals", "Deal", "3aa184f1-23e9-445d-bbb7-13ea0fac7bf4", [
+    static Deal = new AttioObject<"deals", AttioDealRecordValues, AttioDealInputValues>("deals", "Deal", "3aa184f1-23e9-445d-bbb7-13ea0fac7bf4", [
         { apiSlug: "record_id", title: "Record ID", type: "text", isRequired: false, isUnique: true },
         { apiSlug: "name", title: "Deal name", type: "text", isRequired: true, isUnique: false },
         { apiSlug: "stage", title: "Deal stage", type: "status", isRequired: true, isUnique: false },
@@ -3302,29 +3552,7 @@ export class AttioObject<
         { apiSlug: "competitors", title: "Competitors", type: "select", isRequired: false, isUnique: false },
         { apiSlug: "lost_reason", title: "Lost Reason", type: "text", isRequired: false, isUnique: false }
     ])
-    static User = new AttioObject<"users", {
-    "record_id"?: string
-    "person"?: AttioRecordReferenceValue
-    "primary_email_address"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-    "user_id"?: string
-    "workspace"?: AttioRecordReferenceValue[]
-    "first_name"?: string
-    "last_name"?: string
-    "full_name"?: string
-}, {
-    "record_id"?: string
-    "person"?: AttioRecordReferenceInput
-    "primary_email_address"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-    "user_id"?: string
-    "workspace"?: AttioRecordReferenceInput[]
-    "first_name"?: string
-    "last_name"?: string
-    "full_name"?: string
-}>("users", "User", "adaa14a2-967b-4101-8a95-31b68087379a", [
+    static User = new AttioObject<"users", AttioUserRecordValues, AttioUserInputValues>("users", "User", "adaa14a2-967b-4101-8a95-31b68087379a", [
         { apiSlug: "record_id", title: "Record ID", type: "text", isRequired: false, isUnique: true },
         { apiSlug: "person", title: "Person", type: "record-reference", isRequired: false, isUnique: false },
         { apiSlug: "primary_email_address", title: "Primary email address", type: "email-address", isRequired: true, isUnique: true },
@@ -3361,15 +3589,7 @@ export class AttioList<
     declare readonly __entryValues: TEntryValues
     declare readonly __entryRecordValues: TEntryRecordValues
 
-    static FeedbackRequests = new AttioList<"feedback_requests", {
-    "entry_id"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-}, {
-    "entry_id"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-}>("feedback_requests", "Feedback Requests", "ee49fa72-4e4e-41b6-8c60-2d0e23a464cf", "people", [
+    static FeedbackRequests = new AttioList<"feedback_requests", AttioFeedbackRequestsEntryValues, AttioFeedbackRequestsEntryRecordValues>("feedback_requests", "Feedback Requests", "ee49fa72-4e4e-41b6-8c60-2d0e23a464cf", "people", [
         { apiSlug: "entry_id", title: "Entry ID", type: "text", isRequired: false, isUnique: true },
         { apiSlug: "created_at", title: "Added to list at", type: "timestamp", isRequired: true, isUnique: false },
         { apiSlug: "created_by", title: "Added to list by", type: "actor-reference", isRequired: false, isUnique: false }
@@ -3486,17 +3706,17 @@ function __enhanceAttioListEntry<TList>(list: TList, entry: unknown): AttioListE
     return { ...(raw as object), entry_values: __getAttioEntryValues(__normalizeAttioObjectSlug(list), raw.entry_values) } as AttioListEntryFor<TList>
 }
 
-function __enhanceAttioListEntriesResult<TList>(list: TList, result: ToolOutputByName["attio_read_list_entries"]): AttioListEntriesResult<TList> {
+function __enhanceAttioListEntriesResult<TList>(list: TList, result: AttioListsResult): AttioListEntriesResult<TList> {
     const entries = (result.entries || []).map(entry => __enhanceAttioListEntry(list, entry))
     return { entries, count: entries.length, offset: result.offset ?? 0 }
 }
 
-function __enhanceAttioListEntryResult<TList>(list: TList, result: ToolOutputByName["attio_read_list_entries"]): AttioListEntryResult<TList> {
+function __enhanceAttioListEntryResult<TList>(list: TList, result: AttioListsResult): AttioListEntryResult<TList> {
     if (!result.entry) throw new Error("Attio returned a response without the expected list entry payload.")
     return __enhanceAttioListEntry(list, result.entry)
 }
 
-function __enhanceAttioHistoryResult<TValue>(result: ToolOutputByName["attio_read_records"]): AttioAttributeHistoryResult<TValue> {
+function __enhanceAttioHistoryResult<TValue>(result: AttioRecordsResult): AttioAttributeHistoryResult<TValue> {
     const history = (result.history || []).map(entry => ({ active_from: entry.active_from, active_until: entry.active_until, value: __flattenAttioLeafValue(entry) as TValue }))
     return { history, count: history.length }
 }
@@ -3512,6 +3732,858 @@ registerEventTransform("attio", (event) => {
 
 // ── Attio tools ───────────────────────────────────────────────
 
+export interface AttioRecordBase {
+    id?: {
+        workspace_id?: string
+        object_id?: string
+        record_id?: string
+        [k: string]: unknown
+    }
+    values?: {
+        [k: string]: unknown
+    }
+    web_url?: string
+    created_at?: string
+    [k: string]: unknown
+}
+
+export interface AttioSearchMatch {
+    id?: {
+        workspace_id?: string
+        object_id?: string
+        record_id?: string
+        [k: string]: unknown
+    }
+    record_text?: string
+    object_slug?: string
+    [k: string]: unknown
+}
+
+export interface AttioAttributeHistoryEntry {
+    active_from: string
+    active_until: string | null
+    attribute_type?: string
+    [k: string]: unknown
+}
+
+export interface AttioTask {
+    id: {
+        workspace_id: string
+        task_id: string
+    }
+    content_plaintext: string
+    deadline_at: string | null
+    is_completed: boolean
+    linked_records: {
+        target_object_id: string
+        target_record_id: string
+        [k: string]: unknown
+    }[]
+    assignees: {
+        referenced_actor_type: string
+        referenced_actor_id: string | null
+        [k: string]: unknown
+    }[]
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioNote {
+    id: {
+        workspace_id: string
+        note_id: string
+    }
+    parent_object: string
+    parent_record_id: string
+    title: string
+    content_plaintext: string | null
+    content_markdown: string | null
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioComment {
+    id: {
+        workspace_id: string
+        comment_id: string
+    }
+    thread_id: string
+    content_plaintext: string
+    author: {
+        [k: string]: unknown
+    }
+    resolved_at: string | null
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioThread {
+    id: {
+        workspace_id: string
+        thread_id: string
+    }
+    comments: AttioComment[]
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioMeeting {
+    id: {
+        workspace_id: string
+        meeting_id: string
+    }
+    title: string | null
+    description?: string | null
+    is_all_day?: boolean
+    start?: {
+        datetime?: string
+        timezone?: string | null
+        date?: string
+        [k: string]: unknown
+    }
+    end?: {
+        datetime?: string
+        timezone?: string | null
+        date?: string
+        [k: string]: unknown
+    }
+    participants: {
+        [k: string]: unknown
+    }[]
+    linked_records: {
+        [k: string]: unknown
+    }[]
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioCallRecording {
+    id: {
+        workspace_id: string
+        meeting_id: string
+        call_recording_id: string
+    }
+    status: string
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioTranscript {
+    id?: {
+        workspace_id: string
+        meeting_id: string
+        call_recording_id: string
+    }
+    transcript: {
+        speech: string
+        start_time?: number
+        end_time?: number
+        [k: string]: unknown
+    }[]
+    [k: string]: unknown
+}
+
+export interface AttioFile {
+    id: {
+        [k: string]: unknown
+    }
+    name: string
+    content_type?: string | null
+    content_size?: number | null
+    record_id?: string
+    object_slug?: string
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioObjectSummary {
+    id: {
+        workspace_id: string
+        object_id: string
+    }
+    api_slug: string
+    singular_noun: string
+    plural_noun: string
+}
+
+export interface AttioObjectInfo {
+    id: {
+        workspace_id: string
+        object_id: string
+    }
+    api_slug: string
+    singular_noun: string
+    plural_noun: string
+    attributes?: AttioAttributeInfo[]
+}
+
+export interface AttioAttributeInfo {
+    api_slug?: string
+    title?: string
+    type?: string
+    is_required?: boolean
+    is_unique?: boolean
+    is_multiselect?: boolean
+    options?: string[]
+    [k: string]: unknown
+}
+
+export interface AttioStatusEntity {
+    id: {
+        workspace_id?: string
+        object_id?: string
+        attribute_id?: string
+        status_id?: string
+        [k: string]: unknown
+    }
+    title: string
+    is_archived: boolean
+    [k: string]: unknown
+}
+
+export interface AttioSelectOptionEntity {
+    id: {
+        workspace_id?: string
+        object_id?: string
+        attribute_id?: string
+        option_id?: string
+        [k: string]: unknown
+    }
+    title: string
+    is_archived: boolean
+    [k: string]: unknown
+}
+
+export interface AttioWorkspaceMember {
+    id: {
+        workspace_id: string
+        workspace_member_id: string
+    }
+    first_name: string | null
+    last_name: string | null
+    avatar_url: string | null
+    email_address: string
+    access_level: string
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioListInfo {
+    id: {
+        workspace_id: string
+        list_id: string
+    }
+    api_slug: string
+    name: string
+    parent_object: string[] | string
+    created_at: string
+    web_url?: string
+    [k: string]: unknown
+}
+
+export interface AttioListEntryInfo {
+    id: {
+        workspace_id: string
+        list_id: string
+        entry_id: string
+    }
+    parent_record_id: string
+    parent_object: string
+    entry_values: {
+        [k: string]: unknown
+    }
+    created_at: string
+    [k: string]: unknown
+}
+
+export interface AttioRecordsResult {
+    actions?: RunHistoryAction[]
+    records?: AttioRecordBase[]
+    record?: AttioRecordBase
+    matches?: AttioSearchMatch[]
+    history?: AttioAttributeHistoryEntry[]
+    count?: number
+    offset?: number
+}
+
+export interface AttioWorkspaceMembersResult {
+    actions?: RunHistoryAction[]
+    members?: AttioWorkspaceMember[]
+    member?: AttioWorkspaceMember
+    count?: number
+}
+
+export interface AttioTasksOutput {
+    actions?: RunHistoryAction[]
+    tasks?: AttioTask[]
+    task?: AttioTask
+    count?: number
+}
+
+export interface AttioNotesOutput {
+    actions?: RunHistoryAction[]
+    notes?: AttioNote[]
+    note?: AttioNote
+    count?: number
+}
+
+export interface AttioCommentsOutput {
+    actions?: RunHistoryAction[]
+    comment?: AttioComment
+    threads?: AttioThread[]
+    thread?: AttioThread
+    count?: number
+}
+
+export interface AttioListsResult {
+    actions?: RunHistoryAction[]
+    lists?: AttioListInfo[]
+    list?: AttioListInfo
+    entries?: AttioListEntryInfo[]
+    entry?: AttioListEntryInfo
+    count?: number
+    offset?: number
+}
+
+export interface AttioMeetingsOutput {
+    actions?: RunHistoryAction[]
+    meetings?: AttioMeeting[]
+    meeting?: AttioMeeting
+    recordings?: AttioCallRecording[]
+    transcript?: AttioTranscript
+    count?: number
+    nextCursor?: string | null
+}
+
+export interface AttioFilesOutput {
+    actions?: RunHistoryAction[]
+    files?: AttioFile[]
+    file?: AttioFile
+    downloadUrl?: string
+    count?: number
+    nextCursor?: string | null
+}
+
+export interface AttioSchemaOutput {
+    actions?: RunHistoryAction[]
+    objects?: AttioObjectInfo[]
+    object?: AttioObjectSummary
+    attributes?: AttioAttributeInfo[]
+    attribute?: AttioAttributeInfo
+    statuses?: AttioStatusEntity[]
+    status?: AttioStatusEntity
+    selectOptions?: AttioSelectOptionEntity[]
+    selectOption?: AttioSelectOptionEntity
+    count?: number
+}
+
+export interface AttioListWorkspaceMembersParams {}
+
+export interface AttioGetWorkspaceMemberParams {
+    /**
+     * The workspace member ID (UUID).
+     */
+    workspaceMemberId: string
+}
+
+export interface AttioListTasksParams {
+    /**
+     * Filter to tasks linked to records of this object slug. Requires linkedRecordId.
+     */
+    linkedObjectSlug?: string | null
+    /**
+     * Filter to tasks linked to this record ID.
+     */
+    linkedRecordId?: string | null
+    /**
+     * Filter by completion state. Omit for all tasks.
+     */
+    isCompleted?: boolean | null
+    /**
+     * Maximum tasks to return.
+     */
+    limit?: number | null
+    /**
+     * Number of tasks to skip, for pagination.
+     */
+    offset?: number | null
+}
+
+export interface AttioGetTaskParams {
+    taskId: string
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioCreateTaskParams {
+    /**
+     * The task text (plaintext, max 2000 chars).
+     */
+    content: string
+    /**
+     * Deadline as an ISO 8601 timestamp, or null for no deadline.
+     */
+    deadlineAt?: string | null
+    /**
+     * Whether the task starts completed. Defaults to false.
+     */
+    isCompleted?: boolean | null
+    /**
+     * Workspace member email addresses or member IDs (UUIDs) to assign.
+     */
+    assignees?: string[] | null
+    /**
+     * Records to link the task to.
+     */
+    linkedRecords?:
+        | {
+              /**
+               * The object type slug of the record (e.g. 'people', 'companies').
+               */
+              objectSlug: string
+              /**
+               * The record ID (UUID).
+               */
+              recordId: string
+          }[]
+        | null
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioUpdateTaskParams {
+    taskId: string
+    /**
+     * New deadline (ISO 8601), or null to clear.
+     */
+    deadlineAt?: string | null
+    /**
+     * New completion state. Omit to leave unchanged.
+     */
+    isCompleted?: boolean | null
+    /**
+     * Replacement assignee emails/IDs. Omit to leave unchanged.
+     */
+    assignees?: string[] | null
+    /**
+     * Replacement linked records. Omit to leave unchanged.
+     */
+    linkedRecords?:
+        | {
+              /**
+               * The object type slug of the record (e.g. 'people', 'companies').
+               */
+              objectSlug: string
+              /**
+               * The record ID (UUID).
+               */
+              recordId: string
+          }[]
+        | null
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioDeleteTaskParams {
+    taskId: string
+}
+
+export interface AttioListNotesParams {
+    /**
+     * Filter to notes on records of this object slug. Requires parentRecordId.
+     */
+    parentObjectSlug?: string | null
+    /**
+     * Filter to notes on this record ID.
+     */
+    parentRecordId?: string | null
+    limit?: number | null
+    offset?: number | null
+}
+
+export interface AttioGetNoteParams {
+    noteId: string
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioCreateNoteParams {
+    /**
+     * The object type slug of the record the note belongs to.
+     */
+    parentObjectSlug: string
+    /**
+     * The record ID the note belongs to.
+     */
+    parentRecordId: string
+    /**
+     * The note title.
+     */
+    title: string
+    /**
+     * The note body.
+     */
+    content: string
+    /**
+     * Content format. Defaults to markdown.
+     */
+    format?: ("plaintext" | "markdown") | null
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioDeleteNoteParams {
+    noteId: string
+}
+
+export interface AttioGetCommentParams {
+    commentId: string
+}
+
+export interface AttioListThreadsParams {
+    /**
+     * With recordId: threads on this record.
+     */
+    objectSlug?: string | null
+    recordId?: string | null
+    limit?: number | null
+    offset?: number | null
+}
+
+export interface AttioGetThreadParams {
+    threadId: string
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioCreateCommentParams {
+    /**
+     * The comment text (plaintext).
+     */
+    content: string
+    /**
+     * The workspace member ID the comment is authored as. Use attio_workspace_members to find it.
+     */
+    authorWorkspaceMemberId: string
+    /**
+     * Reply to this thread. Pass null/omit when commenting on a record.
+     */
+    threadId?: string | null
+    /**
+     * With recordId: start a new comment thread on this record.
+     */
+    objectSlug?: string | null
+    recordId?: string | null
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioDeleteCommentParams {
+    commentId: string
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioCreateListParams {
+    /**
+     * Display name of the list.
+     */
+    name: string
+    /**
+     * Unique slug for the list (snake_case).
+     */
+    apiSlug: string
+    /**
+     * The object the list contains records of (e.g. 'companies').
+     */
+    parentObjectSlug: string
+    /**
+     * Workspace-wide access level. Defaults to full-access.
+     */
+    workspaceAccess?: ("full-access" | "read-and-write" | "read-only") | null
+}
+
+export interface AttioListMeetingsParams {
+    linkedObjectSlug?: string | null
+    linkedRecordId?: string | null
+    /**
+     * Comma-separated participant email addresses.
+     */
+    participants?: string | null
+    /**
+     * Only meetings starting before this ISO timestamp.
+     */
+    startsBefore?: string | null
+    /**
+     * Only meetings ending at/after this ISO timestamp.
+     */
+    endsFrom?: string | null
+    /**
+     * Maximum meetings to return (max 200).
+     */
+    limit?: number | null
+    /**
+     * Pagination cursor from a previous response's nextCursor.
+     */
+    cursor?: string | null
+}
+
+export interface AttioGetMeetingParams {
+    meetingId: string
+}
+
+export interface AttioListCallRecordingsParams {
+    meetingId: string
+    limit?: number | null
+    cursor?: string | null
+}
+
+export interface AttioGetCallTranscriptParams {
+    meetingId: string
+    callRecordingId: string
+    cursor?: string | null
+}
+
+export interface AttioListFilesParams {
+    /**
+     * Object slug of the record.
+     */
+    objectSlug: string
+    /**
+     * Record ID.
+     */
+    recordId: string
+    limit?: number | null
+    cursor?: string | null
+}
+
+export interface AttioGetFileParams {
+    fileId: string
+}
+
+export interface AttioGetFileDownloadUrlParams {
+    fileId: string
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioUploadFileParams {
+    objectSlug: string
+    recordId: string
+    /**
+     * File name including extension.
+     */
+    fileName: string
+    /**
+     * The file content, base64-encoded.
+     */
+    contentBase64: string
+    /**
+     * MIME type. Defaults to application/octet-stream.
+     */
+    contentType?: string | null
+}
+
+/**
+ * The operation to perform and its arguments.
+ */
+export interface AttioDeleteFileParams {
+    fileId: string
+}
+
+export interface AttioListObjectsParams {}
+
+export interface AttioGetObjectParams {
+    objectSlug: string
+}
+
+export interface AttioListAttributesParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+}
+
+export interface AttioListStatusesParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+    attributeSlug: string
+}
+
+export interface AttioListSelectOptionsParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+    attributeSlug: string
+}
+
+export interface AttioCreateObjectParams {
+    /**
+     * Unique slug (snake_case).
+     */
+    apiSlug: string
+    /**
+     * Singular display name (e.g. 'Ticket').
+     */
+    singularNoun: string
+    /**
+     * Plural display name (e.g. 'Tickets').
+     */
+    pluralNoun: string
+}
+
+export interface AttioUpdateObjectParams {
+    objectSlug: string
+    newApiSlug?: string | null
+    singularNoun?: string | null
+    pluralNoun?: string | null
+}
+
+export interface AttioCreateAttributeParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+    /**
+     * Display name of the attribute.
+     */
+    title: string
+    /**
+     * Unique attribute slug (snake_case).
+     */
+    apiSlug: string
+    /**
+     * Attio attribute type, e.g. 'text', 'number', 'checkbox', 'currency', 'date', 'timestamp', 'rating', 'status', 'select', 'record-reference', 'actor-reference', 'location', 'domain', 'email-address', 'phone-number'.
+     */
+    attributeType: string
+    /**
+     * Whether a value is required. Defaults to false.
+     */
+    isRequired?: boolean | null
+    /**
+     * Whether values must be unique. Defaults to false.
+     */
+    isUnique?: boolean | null
+    /**
+     * Whether the attribute holds multiple values. Defaults to false.
+     */
+    isMultiselect?: boolean | null
+    /**
+     * Optional JSON object string for type-specific config, e.g. '{"record_reference":{"allowed_objects":["people"]}}'.
+     */
+    config?: string | null
+}
+
+export interface AttioUpdateAttributeParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+    attributeSlug: string
+    title?: string | null
+    isRequired?: boolean | null
+}
+
+export interface AttioCreateStatusParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+    attributeSlug: string
+    /**
+     * The status title.
+     */
+    title: string
+}
+
+export interface AttioUpdateStatusParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+    attributeSlug: string
+    /**
+     * The status ID (UUID).
+     */
+    statusId: string
+    title?: string | null
+    isArchived?: boolean | null
+}
+
+export interface AttioCreateSelectOptionParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+    attributeSlug: string
+    /**
+     * The option title.
+     */
+    title: string
+}
+
+export interface AttioUpdateSelectOptionParams {
+    /**
+     * Whether the attribute lives on an object or a list.
+     */
+    target: "objects" | "lists"
+    /**
+     * The object slug (e.g. 'deals') or list ID/slug the attribute belongs to.
+     */
+    identifier: string
+    attributeSlug: string
+    /**
+     * The option ID (UUID).
+     */
+    optionId: string
+    title?: string | null
+    isArchived?: boolean | null
+}
+
 type __AttioPrimitive = string | number | boolean | null
 type __AttioStructuredValue = Record<string, unknown>
 type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]
@@ -3519,233 +4591,22 @@ type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T extends Att
 type __AttioFilterShorthand<T> = T extends (infer U)[] ? __AttioFilterAtom<U> | __AttioFilterAtom<U>[] : __AttioFilterAtom<T>
 type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>
 type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }
-type __AttioRecordBase = { id?: { workspace_id?: string; object_id?: string; record_id?: string }; record_id?: string; web_url?: string; created_at?: string }
-type __AttioRecordWithValues<TValues extends Record<string, unknown>> = __AttioRecordBase & TValues & { values: TValues; attributes: TValues }
+type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }
 
 export type AttioInputValuesByObject = {
-    "workspaces": {
-    "record_id"?: string
-    "workspace_id"?: string
-    "name"?: string
-    "users"?: AttioRecordReferenceInput[]
-    "company"?: AttioRecordReferenceInput
-    "avatar_url"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-}
-    "people": {
-    "record_id"?: string
-    "name"?: string
-    "email_addresses"?: string[]
-    "description"?: string
-    "company"?: AttioRecordReferenceInput
-    "job_title"?: string
-    "avatar_url"?: string
-    "phone_numbers"?: number[]
-    "primary_location"?: Record<string, unknown>
-    "angellist"?: string
-    "facebook"?: string
-    "instagram"?: string
-    "linkedin"?: string
-    "twitter"?: string
-    "twitter_follower_count"?: number
-    "first_calendar_interaction"?: unknown
-    "last_calendar_interaction"?: unknown
-    "next_calendar_interaction"?: unknown
-    "first_email_interaction"?: unknown
-    "last_email_interaction"?: unknown
-    "first_interaction"?: unknown
-    "last_interaction"?: unknown
-    "next_interaction"?: unknown
-    "strongest_connection_strength_legacy"?: number
-    "strongest_connection_strength"?: "Very weak" | "Weak" | "Good" | "Strong" | "Very strong"
-    "strongest_connection_user"?: AttioActorReferenceInput
-    "associated_deals"?: AttioRecordReferenceInput[]
-    "associated_users"?: AttioRecordReferenceInput[]
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-}
-    "companies": {
-    "record_id"?: string
-    "domains"?: string[]
-    "name"?: string
-    "description"?: string
-    "team"?: AttioRecordReferenceInput[]
-    "categories"?: ("3D Printing" | "Accounting" | "Aerospace & Defense" | "Agriculture" | "Airlines" | "Alternative Medicine" | "Animation" | "Apparel & Footwear" | "Architecture" | "Arts" | "Arts & Crafts" | "Asset Management" | "Audio" | "Automation" | "Automotive" | "B2B" | "B2C" | "Banking & Mortgages" | "Beverages" | "Biotechnology" | "Broadcasting" | "Building Materials" | "Business Supplies" | "Chemicals" | "Civil Engineering" | "Cloud Services" | "Communications" | "Computer Hardware" | "Construction" | "Construction Contractors & Services" | "Consulting & Professional Services" | "Consumer Discretionary" | "Consumer Electronics" | "Consumer Goods" | "Consumer Staples" | "Corporate & Business" | "Cosmetics" | "Design" | "E-commerce" | "E-Commerce & Marketplaces" | "E-Learning" | "Education" | "Electrical" | "Energy" | "Energy & Utilities" | "Enterprise" | "Entertainment & Recreation" | "Events" | "Eyewear" | "Facilities" | "Family Services" | "Finance" | "Financial Services" | "Fine Art" | "Firearms" | "Fishery" | "Food" | "Food Production" | "Forums" | "Fundraising" | "Gambling & Casinos" | "Government" | "Ground Transportation" | "Health & Wellness" | "Health Care" | "Higher Education" | "Home & Furniture" | "Home Improvement" | "Human Resources" | "Import & Export" | "Industrials & Manufacturing" | "Information Technology & Services" | "Insurance" | "International Relations" | "International Trade" | "Internet" | "Investment" | "Investment Banking" | "Investment Management" | "ISP" | "Jewelry Watches & Luxury Goods" | "Judiciary" | "Law Enforcement" | "Legal Services" | "Libraries" | "Machinery" | "Maritime" | "Market Research" | "Marketing & Advertising" | "Marketplace" | "Mechanical Engineering" | "Media" | "Medicine" | "Military" | "Mining & Metals" | "Mobile" | "Movies & TV" | "Museums" | "Music" | "Nanotechnology" | "Networking" | "Non-Profit & Philanthropy" | "Oil & Gas" | "Outsourcing" | "Packaging & Containers" | "Paper Goods" | "Payments" | "Performing Arts" | "Pharmaceuticals" | "Pharmacy" | "Photography" | "Plastics" | "Plumbing" | "Political Organization" | "Pornography" | "Primary & Secondary Education" | "Printing" | "Public Relations" | "Publishing" | "Ranching" | "Real Estate" | "Religion" | "Renewables & Environment" | "Restaurants" | "Retail" | "SAAS" | "Sanitization Services" | "Scientific & Academic Research" | "Security" | "Services" | "Shipbuilding" | "Shipping & Logistics" | "Society" | "Sporting Goods" | "Sports & Fitness" | "Stores" | "Talent Agencies" | "Technology" | "Telecommunications" | "Textiles" | "Tobacco" | "Tools" | "Translation" | "Transportation" | "Travel & Leisure" | "Utilities" | "Venture Capital" | "Veterinary" | "Video Games" | "Warehousing" | "Web Services & Apps" | "Wholesale")[]
-    "primary_location"?: Record<string, unknown>
-    "logo_url"?: string
-    "angellist"?: string
-    "facebook"?: string
-    "instagram"?: string
-    "linkedin"?: string
-    "twitter"?: string
-    "twitter_follower_count"?: number
-    "estimated_arr_usd"?: "$0-$1M" | "$1M-$10M" | "$10M-$50M" | "$50M-$100M" | "$100M-$250M" | "$250M-$500M" | "$500M-$1B" | "$1B-$10B" | "$10B+"
-    "funding_raised_usd"?: number
-    "foundation_date"?: string
-    "employee_range"?: "1-10" | "11-50" | "51-250" | "251-1K" | "1K-5K" | "5K-10K" | "10K-50K" | "50K-100K" | "100K+"
-    "first_calendar_interaction"?: unknown
-    "last_calendar_interaction"?: unknown
-    "next_calendar_interaction"?: unknown
-    "first_email_interaction"?: unknown
-    "last_email_interaction"?: unknown
-    "first_interaction"?: unknown
-    "last_interaction"?: unknown
-    "next_interaction"?: unknown
-    "strongest_connection_strength_legacy"?: number
-    "strongest_connection_strength"?: "Very weak" | "Weak" | "Good" | "Strong" | "Very strong"
-    "strongest_connection_user"?: AttioActorReferenceInput
-    "associated_deals"?: AttioRecordReferenceInput[]
-    "associated_workspaces"?: AttioRecordReferenceInput[]
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-}
-    "deals": {
-    "record_id"?: string
-    "name"?: string
-    "stage"?: "Lead" | "In Progress" | "Won 🎉" | "Lost" | "Negotiation" | "Proposal"
-    "owner"?: AttioActorReferenceInput
-    "value"?: number
-    "associated_people"?: AttioRecordReferenceInput[]
-    "associated_company"?: AttioRecordReferenceInput
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-    "trial_pipeline"?: "Invited"
-    "lead_key"?: string
-    "metrics"?: string
-    "economic_buyer"?: string
-    "decision_criteria"?: string
-    "decision_process"?: string
-    "identify_pain"?: string
-    "champion"?: string
-    "competitors"?: ("Workato" | "Zapier Enterprise")[]
-    "lost_reason"?: string
-}
-    "users": {
-    "record_id"?: string
-    "person"?: AttioRecordReferenceInput
-    "primary_email_address"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReferenceInput
-    "user_id"?: string
-    "workspace"?: AttioRecordReferenceInput[]
-    "first_name"?: string
-    "last_name"?: string
-    "full_name"?: string
-}
+    "workspaces": AttioWorkspaceInputValues
+    "people": AttioPersonInputValues
+    "companies": AttioCompanyInputValues
+    "deals": AttioDealInputValues
+    "users": AttioUserInputValues
 }
 
 export type AttioRecordValuesByObject = {
-    "workspaces": {
-    "record_id"?: string
-    "workspace_id"?: string
-    "name"?: string
-    "users"?: AttioRecordReferenceValue[]
-    "company"?: AttioRecordReferenceValue
-    "avatar_url"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-}
-    "people": {
-    "record_id"?: string
-    "name"?: string
-    "email_addresses"?: string[]
-    "description"?: string
-    "company"?: AttioRecordReferenceValue
-    "job_title"?: string
-    "avatar_url"?: string
-    "phone_numbers"?: number[]
-    "primary_location"?: Record<string, unknown>
-    "angellist"?: string
-    "facebook"?: string
-    "instagram"?: string
-    "linkedin"?: string
-    "twitter"?: string
-    "twitter_follower_count"?: number
-    "first_calendar_interaction"?: unknown
-    "last_calendar_interaction"?: unknown
-    "next_calendar_interaction"?: unknown
-    "first_email_interaction"?: unknown
-    "last_email_interaction"?: unknown
-    "first_interaction"?: unknown
-    "last_interaction"?: unknown
-    "next_interaction"?: unknown
-    "strongest_connection_strength_legacy"?: number
-    "strongest_connection_strength"?: AttioSelectOption
-    "strongest_connection_user"?: AttioActorReference
-    "associated_deals"?: AttioRecordReferenceValue[]
-    "associated_users"?: AttioRecordReferenceValue[]
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-}
-    "companies": {
-    "record_id"?: string
-    "domains"?: string[]
-    "name"?: string
-    "description"?: string
-    "team"?: AttioRecordReferenceValue[]
-    "categories"?: AttioSelectOption[]
-    "primary_location"?: Record<string, unknown>
-    "logo_url"?: string
-    "angellist"?: string
-    "facebook"?: string
-    "instagram"?: string
-    "linkedin"?: string
-    "twitter"?: string
-    "twitter_follower_count"?: number
-    "estimated_arr_usd"?: AttioSelectOption
-    "funding_raised_usd"?: AttioCurrencyValue
-    "foundation_date"?: string
-    "employee_range"?: AttioSelectOption
-    "first_calendar_interaction"?: unknown
-    "last_calendar_interaction"?: unknown
-    "next_calendar_interaction"?: unknown
-    "first_email_interaction"?: unknown
-    "last_email_interaction"?: unknown
-    "first_interaction"?: unknown
-    "last_interaction"?: unknown
-    "next_interaction"?: unknown
-    "strongest_connection_strength_legacy"?: number
-    "strongest_connection_strength"?: AttioSelectOption
-    "strongest_connection_user"?: AttioActorReference
-    "associated_deals"?: AttioRecordReferenceValue[]
-    "associated_workspaces"?: AttioRecordReferenceValue[]
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-}
-    "deals": {
-    "record_id"?: string
-    "name"?: string
-    "stage"?: AttioSelectOption
-    "owner"?: AttioActorReference
-    "value"?: AttioCurrencyValue
-    "associated_people"?: AttioRecordReferenceValue[]
-    "associated_company"?: AttioRecordReferenceValue
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-    "trial_pipeline"?: AttioSelectOption
-    "lead_key"?: string
-    "metrics"?: string
-    "economic_buyer"?: string
-    "decision_criteria"?: string
-    "decision_process"?: string
-    "identify_pain"?: string
-    "champion"?: string
-    "competitors"?: AttioSelectOption[]
-    "lost_reason"?: string
-}
-    "users": {
-    "record_id"?: string
-    "person"?: AttioRecordReferenceValue
-    "primary_email_address"?: string
-    "created_at"?: string
-    "created_by"?: AttioActorReference
-    "user_id"?: string
-    "workspace"?: AttioRecordReferenceValue[]
-    "first_name"?: string
-    "last_name"?: string
-    "full_name"?: string
-}
+    "workspaces": AttioWorkspaceRecordValues
+    "people": AttioPersonRecordValues
+    "companies": AttioCompanyRecordValues
+    "deals": AttioDealRecordValues
+    "users": AttioUserRecordValues
 }
 
 export type AttioFilterByObject = {
@@ -3777,13 +4638,10 @@ export type AttioUpdateRecordParams<TObject extends GeneratedAttioObject = Gener
 export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; records: AttioValuesFor<TObject>[] }
 export type AttioDeleteRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }
 export type AttioGetAttributeHistoryParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; attribute: AttioAttributeSlug<TObject>; limit?: number | null; offset?: number | null }
-export type AttioWorkspaceMembersResult = ToolOutputByName["attio_workspace_members"]
-export type AttioRecordsResult = ToolOutputByName["attio_read_records"]
 export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number; offset: number }
 export type AttioSearchRecordsResult = { matches: NonNullable<AttioRecordsResult["matches"]>; count: number }
 export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number }
 export type AttioSingleRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioRecordFor<TObject>
-export type AttioListsResult = ToolOutputByName["attio_read_lists"]
 export type AttioEntryValuesFor<TList> = TList extends { __entryValues: infer TValues } ? TValues : Record<string, unknown>
 export type AttioEntryRecordValuesFor<TList> = TList extends { __entryRecordValues: infer TValues extends Record<string, unknown> } ? TValues : Record<string, unknown>
 export type AttioEntryFilterFor<TList> = __AttioFilterExpression<AttioEntryRecordValuesFor<TList>>
@@ -3819,7 +4677,7 @@ function __serializeAttioRecords(records: unknown): string {
 function __enhanceAttioRecord<TObject extends GeneratedAttioObject>(object: TObject, record: unknown): __AttioRecordWithValues<AttioRecordValuesFor<TObject>> | undefined {
     if (!record || typeof record !== "object") return undefined
     const values = __getAttioRecordValues<AttioRecordValuesFor<TObject>>(__normalizeAttioObjectSlug(object), record)
-    return { ...values, ...(record as __AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>
+    return { ...values, ...(record as AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>
 }
 
 function __requireAttioPayload<T>(value: T | null | undefined, what: string): T {
@@ -3827,22 +4685,22 @@ function __requireAttioPayload<T>(value: T | null | undefined, what: string): T 
     return value
 }
 
-function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_read_records"]): AttioQueryRecordsResult<TObject> {
+function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioQueryRecordsResult<TObject> {
     const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>
     return { records, count: records.length, offset: result.offset ?? 0 }
 }
 
-function __enhanceAttioSearchResult(result: ToolOutputByName["attio_read_records"]): AttioSearchRecordsResult {
+function __enhanceAttioSearchResult(result: AttioRecordsResult): AttioSearchRecordsResult {
     const matches = result.matches ?? []
     return { matches, count: matches.length }
 }
 
-function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_upsert_record"]): AttioUpsertRecordResult<TObject> {
+function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioUpsertRecordResult<TObject> {
     const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>
     return { records, count: records.length }
 }
 
-function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_read_records"]): AttioSingleRecordResult<TObject> {
+function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioSingleRecordResult<TObject> {
     return __requireAttioPayload(__enhanceAttioRecord(object, result.record), "record")
 }
 
@@ -3864,43 +4722,43 @@ export type AttioGeneratedTools = {
     /** Permanently delete an Attio record by its ID. This cannot be undone. */
     deleteRecord<TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>): Promise<void>
     /** List every workspace member (name, email address, access level). Use to resolve a record's owner to a person, or to find the ID/email to write into an actor-reference attribute. */
-    listWorkspaceMembers(params?: Omit<Extract<ToolInputByName["attio_workspace_members"]["request"], { action: "list" }>, "action">): Promise<{ members: NonNullable<ToolOutputByName["attio_workspace_members"]["members"]>; count: number }>
+    listWorkspaceMembers(params?: AttioListWorkspaceMembersParams): Promise<{ members: NonNullable<AttioWorkspaceMembersResult["members"]>; count: number }>
     /** Fetch a single workspace member by ID (e.g. the referenced_actor_id of a record's owner value). */
-    getWorkspaceMember(params: Omit<Extract<ToolInputByName["attio_workspace_members"]["request"], { action: "get" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_workspace_members"]["member"]>>
+    getWorkspaceMember(params: AttioGetWorkspaceMemberParams): Promise<NonNullable<AttioWorkspaceMembersResult["member"]>>
     /** List tasks, optionally filtered by linked record, assignee or completion state. */
-    listTasks(params?: Omit<Extract<ToolInputByName["attio_read_tasks"]["request"], { action: "list" }>, "action">): Promise<{ tasks: NonNullable<ToolOutputByName["attio_read_tasks"]["tasks"]>; count: number }>
+    listTasks(params?: AttioListTasksParams): Promise<{ tasks: NonNullable<AttioTasksOutput["tasks"]>; count: number }>
     /** Fetch a single task by ID. */
-    getTask(params: Omit<Extract<ToolInputByName["attio_read_tasks"]["request"], { action: "get" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_read_tasks"]["task"]>>
+    getTask(params: AttioGetTaskParams): Promise<NonNullable<AttioTasksOutput["task"]>>
     /** Create an Attio task: content (plaintext) plus optional deadline, assignees (workspace-member emails or IDs) and linked records. */
-    createTask(params: ToolInputByName["attio_create_task"]["request"]): Promise<NonNullable<ToolOutputByName["attio_create_task"]["task"]>>
+    createTask(params: AttioCreateTaskParams): Promise<NonNullable<AttioTasksOutput["task"]>>
     /** Update an Attio task's deadline, completion state, assignees or linked records. Task content cannot be changed. */
-    updateTask(params: ToolInputByName["attio_update_task"]["request"]): Promise<NonNullable<ToolOutputByName["attio_update_task"]["task"]>>
+    updateTask(params: AttioUpdateTaskParams): Promise<NonNullable<AttioTasksOutput["task"]>>
     /** Permanently delete an Attio task. */
-    deleteTask(params: ToolInputByName["attio_delete_task"]["request"]): Promise<void>
+    deleteTask(params: AttioDeleteTaskParams): Promise<void>
     /** List notes, optionally scoped to one record. */
-    listNotes(params?: Omit<Extract<ToolInputByName["attio_read_notes"]["request"], { action: "list" }>, "action">): Promise<{ notes: NonNullable<ToolOutputByName["attio_read_notes"]["notes"]>; count: number }>
+    listNotes(params?: AttioListNotesParams): Promise<{ notes: NonNullable<AttioNotesOutput["notes"]>; count: number }>
     /** Fetch a single note by ID. */
-    getNote(params: Omit<Extract<ToolInputByName["attio_read_notes"]["request"], { action: "get" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_read_notes"]["note"]>>
+    getNote(params: AttioGetNoteParams): Promise<NonNullable<AttioNotesOutput["note"]>>
     /** Create a note on an Attio record: title + markdown or plaintext content. Use for logging research, call summaries or context onto CRM records. */
-    createNote(params: ToolInputByName["attio_create_note"]["request"]): Promise<NonNullable<ToolOutputByName["attio_create_note"]["note"]>>
+    createNote(params: AttioCreateNoteParams): Promise<NonNullable<AttioNotesOutput["note"]>>
     /** Permanently delete an Attio note. */
-    deleteNote(params: ToolInputByName["attio_delete_note"]["request"]): Promise<void>
+    deleteNote(params: AttioDeleteNoteParams): Promise<void>
     /** Fetch a single comment by ID. */
-    getComment(params: Omit<Extract<ToolInputByName["attio_read_comments"]["request"], { action: "get" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_read_comments"]["comment"]>>
+    getComment(params: AttioGetCommentParams): Promise<NonNullable<AttioCommentsOutput["comment"]>>
     /** List comment threads on a record. */
-    listThreads(params?: Omit<Extract<ToolInputByName["attio_read_comments"]["request"], { action: "list_threads" }>, "action">): Promise<{ threads: NonNullable<ToolOutputByName["attio_read_comments"]["threads"]>; count: number }>
+    listThreads(params?: AttioListThreadsParams): Promise<{ threads: NonNullable<AttioCommentsOutput["threads"]>; count: number }>
     /** Fetch a thread with all of its comments. */
-    getThread(params: Omit<Extract<ToolInputByName["attio_read_comments"]["request"], { action: "get_thread" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_read_comments"]["thread"]>>
+    getThread(params: AttioGetThreadParams): Promise<NonNullable<AttioCommentsOutput["thread"]>>
     /** Create an Attio comment: reply to a thread via threadId, or start a new thread on a record via objectSlug + recordId. Requires an author workspace member ID (use attio_workspace_members to find it). */
-    createComment(params: ToolInputByName["attio_create_comment"]["request"]): Promise<NonNullable<ToolOutputByName["attio_create_comment"]["comment"]>>
+    createComment(params: AttioCreateCommentParams): Promise<NonNullable<AttioCommentsOutput["comment"]>>
     /** Permanently delete an Attio comment. */
-    deleteComment(params: ToolInputByName["attio_delete_comment"]["request"]): Promise<void>
+    deleteComment(params: AttioDeleteCommentParams): Promise<void>
     /** List all lists in the workspace. */
     listLists(): Promise<{ lists: NonNullable<AttioListsResult["lists"]>; count: number }>
     /** Fetch a list's configuration by ID or slug. */
     getList(params: { list: GeneratedAttioList | string }): Promise<NonNullable<AttioListsResult["list"]>>
     /** Create a new Attio list over an object. This changes the workspace for every user. */
-    createList(params: ToolInputByName["attio_create_list"]["request"]): Promise<NonNullable<AttioListsResult["list"]>>
+    createList(params: AttioCreateListParams): Promise<NonNullable<AttioListsResult["list"]>>
     /** Rename an Attio list. */
     updateList(params: { list: GeneratedAttioList | string; name: string }): Promise<NonNullable<AttioListsResult["list"]>>
     /** List entries in a list, with optional filter, parent-record lookup, and limit/offset pagination. */
@@ -3916,164 +4774,164 @@ export type AttioGeneratedTools = {
     /** Remove an entry from an Attio list. The parent record itself is untouched. */
     removeListEntry(params: { list: GeneratedAttioList | string; entryId: string }): Promise<void>
     /** List meetings, optionally filtered by linked record, participants or time range. Uses cursor pagination. */
-    listMeetings(params?: Omit<Extract<ToolInputByName["attio_meetings"]["request"], { action: "list" }>, "action">): Promise<{ meetings: NonNullable<ToolOutputByName["attio_meetings"]["meetings"]>; count: number; nextCursor: string | null }>
+    listMeetings(params?: AttioListMeetingsParams): Promise<{ meetings: NonNullable<AttioMeetingsOutput["meetings"]>; count: number; nextCursor: string | null }>
     /** Fetch a single meeting by ID. */
-    getMeeting(params: Omit<Extract<ToolInputByName["attio_meetings"]["request"], { action: "get" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_meetings"]["meeting"]>>
+    getMeeting(params: AttioGetMeetingParams): Promise<NonNullable<AttioMeetingsOutput["meeting"]>>
     /** List call recordings for a meeting. */
-    listCallRecordings(params: Omit<Extract<ToolInputByName["attio_meetings"]["request"], { action: "list_recordings" }>, "action">): Promise<{ recordings: NonNullable<ToolOutputByName["attio_meetings"]["recordings"]>; count: number; nextCursor: string | null }>
+    listCallRecordings(params: AttioListCallRecordingsParams): Promise<{ recordings: NonNullable<AttioMeetingsOutput["recordings"]>; count: number; nextCursor: string | null }>
     /** Fetch the transcript of a call recording. */
-    getCallTranscript(params: Omit<Extract<ToolInputByName["attio_meetings"]["request"], { action: "get_transcript" }>, "action">): Promise<{ transcript: NonNullable<ToolOutputByName["attio_meetings"]["transcript"]>; nextCursor: string | null }>
+    getCallTranscript(params: AttioGetCallTranscriptParams): Promise<{ transcript: NonNullable<AttioMeetingsOutput["transcript"]>; nextCursor: string | null }>
     /** List files attached to a record. */
-    listFiles(params: Omit<Extract<ToolInputByName["attio_read_files"]["request"], { action: "list" }>, "action">): Promise<{ files: NonNullable<ToolOutputByName["attio_read_files"]["files"]>; count: number; nextCursor: string | null }>
+    listFiles(params: AttioListFilesParams): Promise<{ files: NonNullable<AttioFilesOutput["files"]>; count: number; nextCursor: string | null }>
     /** Fetch a file's metadata by ID. */
-    getFile(params: Omit<Extract<ToolInputByName["attio_read_files"]["request"], { action: "get" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_read_files"]["file"]>>
+    getFile(params: AttioGetFileParams): Promise<NonNullable<AttioFilesOutput["file"]>>
     /** Get a signed download URL for a file. */
-    getFileDownloadUrl(params: Omit<Extract<ToolInputByName["attio_read_files"]["request"], { action: "get_download_url" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_read_files"]["downloadUrl"]>>
+    getFileDownloadUrl(params: AttioGetFileDownloadUrlParams): Promise<NonNullable<AttioFilesOutput["downloadUrl"]>>
     /** Upload a file to an Attio record from base64 content (native Attio storage, max 50 MB). */
-    uploadFile(params: ToolInputByName["attio_upload_file"]["request"]): Promise<NonNullable<ToolOutputByName["attio_upload_file"]["file"]>>
+    uploadFile(params: AttioUploadFileParams): Promise<NonNullable<AttioFilesOutput["file"]>>
     /** Permanently delete a file from Attio (deleting a folder deletes its descendants). */
-    deleteFile(params: ToolInputByName["attio_delete_file"]["request"]): Promise<void>
+    deleteFile(params: AttioDeleteFileParams): Promise<void>
     /** List all object types in the workspace with their attributes and field definitions. Call this before creating or updating records. */
-    listObjects(params?: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "list_objects" }>, "action">): Promise<{ objects: NonNullable<ToolOutputByName["attio_read_schema"]["objects"]>; count: number }>
+    listObjects(params?: AttioListObjectsParams): Promise<{ objects: NonNullable<AttioSchemaOutput["objects"]>; count: number }>
     /** Fetch one object's configuration. */
-    getObject(params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "get_object" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_read_schema"]["object"]>>
+    getObject(params: AttioGetObjectParams): Promise<NonNullable<AttioSchemaOutput["object"]>>
     /** List the attributes defined on an object or list. */
-    listAttributes(params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "list_attributes" }>, "action">): Promise<{ attributes: NonNullable<ToolOutputByName["attio_read_schema"]["attributes"]>; count: number }>
+    listAttributes(params: AttioListAttributesParams): Promise<{ attributes: NonNullable<AttioSchemaOutput["attributes"]>; count: number }>
     /** List the statuses of a status attribute (e.g. deal stages). */
-    listStatuses(params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "list_statuses" }>, "action">): Promise<{ statuses: NonNullable<ToolOutputByName["attio_read_schema"]["statuses"]>; count: number }>
+    listStatuses(params: AttioListStatusesParams): Promise<{ statuses: NonNullable<AttioSchemaOutput["statuses"]>; count: number }>
     /** List the options of a select attribute. */
-    listSelectOptions(params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "list_select_options" }>, "action">): Promise<{ selectOptions: NonNullable<ToolOutputByName["attio_read_schema"]["selectOptions"]>; count: number }>
+    listSelectOptions(params: AttioListSelectOptionsParams): Promise<{ selectOptions: NonNullable<AttioSchemaOutput["selectOptions"]>; count: number }>
     /** Create a custom object type. This changes the workspace schema for every user. */
-    createObject(params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "create_object" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_modify_schema"]["object"]>>
+    createObject(params: AttioCreateObjectParams): Promise<NonNullable<AttioSchemaOutput["object"]>>
     /** Update an object's slug or display names. */
-    updateObject(params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "update_object" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_modify_schema"]["object"]>>
+    updateObject(params: AttioUpdateObjectParams): Promise<NonNullable<AttioSchemaOutput["object"]>>
     /** Create a new attribute on an object or list. This changes the workspace schema for every user. */
-    createAttribute(params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "create_attribute" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_modify_schema"]["attribute"]>>
+    createAttribute(params: AttioCreateAttributeParams): Promise<NonNullable<AttioSchemaOutput["attribute"]>>
     /** Update an attribute's title or constraints. */
-    updateAttribute(params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "update_attribute" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_modify_schema"]["attribute"]>>
+    updateAttribute(params: AttioUpdateAttributeParams): Promise<NonNullable<AttioSchemaOutput["attribute"]>>
     /** Add a new status to a status attribute. Rerun terse generate afterwards to refresh generated constants. */
-    createStatus(params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "create_status" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_modify_schema"]["status"]>>
+    createStatus(params: AttioCreateStatusParams): Promise<NonNullable<AttioSchemaOutput["status"]>>
     /** Rename or archive a status. */
-    updateStatus(params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "update_status" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_modify_schema"]["status"]>>
+    updateStatus(params: AttioUpdateStatusParams): Promise<NonNullable<AttioSchemaOutput["status"]>>
     /** Add an option to a select attribute. Rerun terse generate afterwards to refresh generated constants. */
-    createSelectOption(params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "create_select_option" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_modify_schema"]["selectOption"]>>
+    createSelectOption(params: AttioCreateSelectOptionParams): Promise<NonNullable<AttioSchemaOutput["selectOption"]>>
     /** Rename or archive a select option. */
-    updateSelectOption(params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "update_select_option" }>, "action">): Promise<NonNullable<ToolOutputByName["attio_modify_schema"]["selectOption"]>>
+    updateSelectOption(params: AttioUpdateSelectOptionParams): Promise<NonNullable<AttioSchemaOutput["selectOption"]>>
 }
 
 export const attioTools: AttioGeneratedTools = {
     queryRecords: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_records"]>("attio_read_records", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "query", objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, offset: params.offset ?? null } }).then(result => __enhanceAttioQueryResult(params.object, result)),
+        TerseAgent.executeTool<AttioRecordsResult>("attio_read_records", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "query", objectSlug: __normalizeAttioObjectSlug(params.object), filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, offset: params.offset ?? null } }).then(result => __enhanceAttioQueryResult(params.object, result)),
     searchRecords: <TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_records"]>("attio_read_records", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "search", objectSlug: __normalizeAttioObjectSlug(params.object), query: params.query, limit: params.limit ?? null } }).then(result => __enhanceAttioSearchResult(result)),
+        TerseAgent.executeTool<AttioRecordsResult>("attio_read_records", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "search", objectSlug: __normalizeAttioObjectSlug(params.object), query: params.query, limit: params.limit ?? null } }).then(result => __enhanceAttioSearchResult(result)),
     getRecord: <TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_records"]>("attio_read_records", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", objectSlug: __normalizeAttioObjectSlug(params.object), recordId: params.recordId } }).then(result => __enhanceAttioSingleRecordResult(params.object, result)),
+        TerseAgent.executeTool<AttioRecordsResult>("attio_read_records", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", objectSlug: __normalizeAttioObjectSlug(params.object), recordId: params.recordId } }).then(result => __enhanceAttioSingleRecordResult(params.object, result)),
     getAttributeHistory: <TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_records"]>("attio_read_records", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_attribute_history", objectSlug: __normalizeAttioObjectSlug(params.object), recordId: params.recordId, attributeSlug: params.attribute, limit: params.limit ?? null, offset: params.offset ?? null } }).then(result => __enhanceAttioHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>(result)),
+        TerseAgent.executeTool<AttioRecordsResult>("attio_read_records", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_attribute_history", objectSlug: __normalizeAttioObjectSlug(params.object), recordId: params.recordId, attributeSlug: params.attribute, limit: params.limit ?? null, offset: params.offset ?? null } }).then(result => __enhanceAttioHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>(result)),
     createRecord: <TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_create_record"]>("attio_create_record", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { objectSlug: __normalizeAttioObjectSlug(params.object), values: JSON.stringify(params.values) } }).then(result => __enhanceAttioSingleRecordResult(params.object, result)),
+        TerseAgent.executeTool<AttioRecordsResult>("attio_create_record", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { objectSlug: __normalizeAttioObjectSlug(params.object), values: JSON.stringify(params.values) } }).then(result => __enhanceAttioSingleRecordResult(params.object, result)),
     updateRecord: <TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_update_record"]>("attio_update_record", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { objectSlug: __normalizeAttioObjectSlug(params.object), recordId: params.recordId, values: JSON.stringify(params.values), multiselectMode: params.multiselectMode ?? null } }).then(result => __enhanceAttioSingleRecordResult(params.object, result)),
+        TerseAgent.executeTool<AttioRecordsResult>("attio_update_record", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { objectSlug: __normalizeAttioObjectSlug(params.object), recordId: params.recordId, values: JSON.stringify(params.values), multiselectMode: params.multiselectMode ?? null } }).then(result => __enhanceAttioSingleRecordResult(params.object, result)),
     upsertRecord: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_upsert_record"]>("attio_upsert_record", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records) } }).then(result => __enhanceAttioUpsertResult(params.object, result)),
+        TerseAgent.executeTool<AttioRecordsResult>("attio_upsert_record", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { objectSlug: __normalizeAttioObjectSlug(params.object), matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records) } }).then(result => __enhanceAttioUpsertResult(params.object, result)),
     deleteRecord: <TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_delete_record"]>("attio_delete_record", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { objectSlug: __normalizeAttioObjectSlug(params.object), recordId: params.recordId } }).then(() => undefined),
-    listWorkspaceMembers: (params: Omit<Extract<ToolInputByName["attio_workspace_members"]["request"], { action: "list" }>, "action"> = {}) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_workspace_members"]>("attio_workspace_members", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ members: result.members ?? [], count: (result.members ?? []).length })),
-    getWorkspaceMember: (params: Omit<Extract<ToolInputByName["attio_workspace_members"]["request"], { action: "get" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_workspace_members"]>("attio_workspace_members", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.member, "workspace member")),
-    listTasks: (params: Omit<Extract<ToolInputByName["attio_read_tasks"]["request"], { action: "list" }>, "action"> = {}) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_tasks"]>("attio_read_tasks", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ tasks: result.tasks ?? [], count: (result.tasks ?? []).length })),
-    getTask: (params: Omit<Extract<ToolInputByName["attio_read_tasks"]["request"], { action: "get" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_tasks"]>("attio_read_tasks", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.task, "task")),
-    createTask: (params: ToolInputByName["attio_create_task"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_create_task"]>("attio_create_task", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.task, "task")),
-    updateTask: (params: ToolInputByName["attio_update_task"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_update_task"]>("attio_update_task", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.task, "task")),
-    deleteTask: (params: ToolInputByName["attio_delete_task"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_delete_task"]>("attio_delete_task", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(() => undefined),
-    listNotes: (params: Omit<Extract<ToolInputByName["attio_read_notes"]["request"], { action: "list" }>, "action"> = {}) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_notes"]>("attio_read_notes", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ notes: result.notes ?? [], count: (result.notes ?? []).length })),
-    getNote: (params: Omit<Extract<ToolInputByName["attio_read_notes"]["request"], { action: "get" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_notes"]>("attio_read_notes", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.note, "note")),
-    createNote: (params: ToolInputByName["attio_create_note"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_create_note"]>("attio_create_note", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.note, "note")),
-    deleteNote: (params: ToolInputByName["attio_delete_note"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_delete_note"]>("attio_delete_note", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(() => undefined),
-    getComment: (params: Omit<Extract<ToolInputByName["attio_read_comments"]["request"], { action: "get" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_comments"]>("attio_read_comments", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.comment, "comment")),
-    listThreads: (params: Omit<Extract<ToolInputByName["attio_read_comments"]["request"], { action: "list_threads" }>, "action"> = {}) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_comments"]>("attio_read_comments", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_threads", ...params } }).then(result => ({ threads: result.threads ?? [], count: (result.threads ?? []).length })),
-    getThread: (params: Omit<Extract<ToolInputByName["attio_read_comments"]["request"], { action: "get_thread" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_comments"]>("attio_read_comments", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_thread", ...params } }).then(result => __requireAttioPayload(result.thread, "thread")),
-    createComment: (params: ToolInputByName["attio_create_comment"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_create_comment"]>("attio_create_comment", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.comment, "comment")),
-    deleteComment: (params: ToolInputByName["attio_delete_comment"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_delete_comment"]>("attio_delete_comment", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(() => undefined),
+        TerseAgent.executeTool<AttioRecordsResult>("attio_delete_record", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { objectSlug: __normalizeAttioObjectSlug(params.object), recordId: params.recordId } }).then(() => undefined),
+    listWorkspaceMembers: (params: AttioListWorkspaceMembersParams = {}) =>
+        TerseAgent.executeTool<AttioWorkspaceMembersResult>("attio_workspace_members", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ members: result.members ?? [], count: (result.members ?? []).length })),
+    getWorkspaceMember: (params: AttioGetWorkspaceMemberParams) =>
+        TerseAgent.executeTool<AttioWorkspaceMembersResult>("attio_workspace_members", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.member, "workspace member")),
+    listTasks: (params: AttioListTasksParams = {}) =>
+        TerseAgent.executeTool<AttioTasksOutput>("attio_read_tasks", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ tasks: result.tasks ?? [], count: (result.tasks ?? []).length })),
+    getTask: (params: AttioGetTaskParams) =>
+        TerseAgent.executeTool<AttioTasksOutput>("attio_read_tasks", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.task, "task")),
+    createTask: (params: AttioCreateTaskParams) =>
+        TerseAgent.executeTool<AttioTasksOutput>("attio_create_task", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.task, "task")),
+    updateTask: (params: AttioUpdateTaskParams) =>
+        TerseAgent.executeTool<AttioTasksOutput>("attio_update_task", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.task, "task")),
+    deleteTask: (params: AttioDeleteTaskParams) =>
+        TerseAgent.executeTool<AttioTasksOutput>("attio_delete_task", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(() => undefined),
+    listNotes: (params: AttioListNotesParams = {}) =>
+        TerseAgent.executeTool<AttioNotesOutput>("attio_read_notes", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ notes: result.notes ?? [], count: (result.notes ?? []).length })),
+    getNote: (params: AttioGetNoteParams) =>
+        TerseAgent.executeTool<AttioNotesOutput>("attio_read_notes", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.note, "note")),
+    createNote: (params: AttioCreateNoteParams) =>
+        TerseAgent.executeTool<AttioNotesOutput>("attio_create_note", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.note, "note")),
+    deleteNote: (params: AttioDeleteNoteParams) =>
+        TerseAgent.executeTool<AttioNotesOutput>("attio_delete_note", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(() => undefined),
+    getComment: (params: AttioGetCommentParams) =>
+        TerseAgent.executeTool<AttioCommentsOutput>("attio_read_comments", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.comment, "comment")),
+    listThreads: (params: AttioListThreadsParams = {}) =>
+        TerseAgent.executeTool<AttioCommentsOutput>("attio_read_comments", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_threads", ...params } }).then(result => ({ threads: result.threads ?? [], count: (result.threads ?? []).length })),
+    getThread: (params: AttioGetThreadParams) =>
+        TerseAgent.executeTool<AttioCommentsOutput>("attio_read_comments", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_thread", ...params } }).then(result => __requireAttioPayload(result.thread, "thread")),
+    createComment: (params: AttioCreateCommentParams) =>
+        TerseAgent.executeTool<AttioCommentsOutput>("attio_create_comment", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.comment, "comment")),
+    deleteComment: (params: AttioDeleteCommentParams) =>
+        TerseAgent.executeTool<AttioCommentsOutput>("attio_delete_comment", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(() => undefined),
     listLists: () =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_lists"]>("attio_read_lists", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list" } }).then(result => ({ lists: result.lists ?? [], count: (result.lists ?? []).length })),
+        TerseAgent.executeTool<AttioListsResult>("attio_read_lists", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list" } }).then(result => ({ lists: result.lists ?? [], count: (result.lists ?? []).length })),
     getList: (params: { list: GeneratedAttioList | string }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_lists"]>("attio_read_lists", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", listIdOrSlug: __normalizeAttioObjectSlug(params.list) } }).then(result => __requireAttioPayload(result.list, "list")),
-    createList: (params: ToolInputByName["attio_create_list"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_create_list"]>("attio_create_list", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.list, "list")),
+        TerseAgent.executeTool<AttioListsResult>("attio_read_lists", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", listIdOrSlug: __normalizeAttioObjectSlug(params.list) } }).then(result => __requireAttioPayload(result.list, "list")),
+    createList: (params: AttioCreateListParams) =>
+        TerseAgent.executeTool<AttioListsResult>("attio_create_list", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.list, "list")),
     updateList: (params: { list: GeneratedAttioList | string; name: string }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_update_list"]>("attio_update_list", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), name: params.name } }).then(result => __requireAttioPayload(result.list, "list")),
+        TerseAgent.executeTool<AttioListsResult>("attio_update_list", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), name: params.name } }).then(result => __requireAttioPayload(result.list, "list")),
     queryListEntries: <TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; parentRecordId?: string | null; parentObjectSlug?: string; limit?: number | null; offset?: number | null }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_list_entries"]>("attio_read_list_entries", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "query_entries", listIdOrSlug: __normalizeAttioObjectSlug(params.list), filter: __serializeAttioFilter(params.filter), parentRecordId: params.parentRecordId ?? null, parentObjectSlug: params.parentRecordId ? __requireAttioListParentObject(params.list, params.parentObjectSlug) : null, limit: params.limit ?? null, offset: params.offset ?? null } }).then(result => __enhanceAttioListEntriesResult(params.list, result)),
+        TerseAgent.executeTool<AttioListsResult>("attio_read_list_entries", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "query_entries", listIdOrSlug: __normalizeAttioObjectSlug(params.list), filter: __serializeAttioFilter(params.filter), parentRecordId: params.parentRecordId ?? null, parentObjectSlug: params.parentRecordId ? __requireAttioListParentObject(params.list, params.parentObjectSlug) : null, limit: params.limit ?? null, offset: params.offset ?? null } }).then(result => __enhanceAttioListEntriesResult(params.list, result)),
     getListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_list_entries"]>("attio_read_list_entries", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId } }).then(result => __enhanceAttioListEntryResult(params.list, result)),
+        TerseAgent.executeTool<AttioListsResult>("attio_read_list_entries", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId } }).then(result => __enhanceAttioListEntryResult(params.list, result)),
     addListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_add_list_entry"]>("attio_add_list_entry", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) } }).then(result => __enhanceAttioListEntryResult(params.list, result)),
+        TerseAgent.executeTool<AttioListsResult>("attio_add_list_entry", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) } }).then(result => __enhanceAttioListEntryResult(params.list, result)),
     upsertListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_upsert_list_entry"]>("attio_upsert_list_entry", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) } }).then(result => __enhanceAttioListEntryResult(params.list, result)),
+        TerseAgent.executeTool<AttioListsResult>("attio_upsert_list_entry", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) } }).then(result => __enhanceAttioListEntryResult(params.list, result)),
     updateListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string; entryValues: Partial<AttioEntryValuesFor<TList>>; multiselectMode?: "overwrite" | "append" | null }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_update_list_entry"]>("attio_update_list_entry", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId, entryValues: __serializeAttioValues(params.entryValues), multiselectMode: params.multiselectMode ?? null } }).then(result => __enhanceAttioListEntryResult(params.list, result)),
+        TerseAgent.executeTool<AttioListsResult>("attio_update_list_entry", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId, entryValues: __serializeAttioValues(params.entryValues), multiselectMode: params.multiselectMode ?? null } }).then(result => __enhanceAttioListEntryResult(params.list, result)),
     removeListEntry: (params: { list: GeneratedAttioList | string; entryId: string }) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_remove_list_entry"]>("attio_remove_list_entry", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId } }).then(() => undefined),
-    listMeetings: (params: Omit<Extract<ToolInputByName["attio_meetings"]["request"], { action: "list" }>, "action"> = {}) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_meetings"]>("attio_meetings", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ meetings: result.meetings ?? [], count: (result.meetings ?? []).length, nextCursor: result.nextCursor ?? null })),
-    getMeeting: (params: Omit<Extract<ToolInputByName["attio_meetings"]["request"], { action: "get" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_meetings"]>("attio_meetings", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.meeting, "meeting")),
-    listCallRecordings: (params: Omit<Extract<ToolInputByName["attio_meetings"]["request"], { action: "list_recordings" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_meetings"]>("attio_meetings", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_recordings", ...params } }).then(result => ({ recordings: result.recordings ?? [], count: (result.recordings ?? []).length, nextCursor: result.nextCursor ?? null })),
-    getCallTranscript: (params: Omit<Extract<ToolInputByName["attio_meetings"]["request"], { action: "get_transcript" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_meetings"]>("attio_meetings", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_transcript", ...params } }).then(result => ({ transcript: __requireAttioPayload(result.transcript, "transcript"), nextCursor: result.nextCursor ?? null })),
-    listFiles: (params: Omit<Extract<ToolInputByName["attio_read_files"]["request"], { action: "list" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_files"]>("attio_read_files", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ files: result.files ?? [], count: (result.files ?? []).length, nextCursor: result.nextCursor ?? null })),
-    getFile: (params: Omit<Extract<ToolInputByName["attio_read_files"]["request"], { action: "get" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_files"]>("attio_read_files", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.file, "file")),
-    getFileDownloadUrl: (params: Omit<Extract<ToolInputByName["attio_read_files"]["request"], { action: "get_download_url" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_files"]>("attio_read_files", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_download_url", ...params } }).then(result => __requireAttioPayload(result.downloadUrl, "download URL")),
-    uploadFile: (params: ToolInputByName["attio_upload_file"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_upload_file"]>("attio_upload_file", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.file, "file")),
-    deleteFile: (params: ToolInputByName["attio_delete_file"]["request"]) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_delete_file"]>("attio_delete_file", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(() => undefined),
-    listObjects: (params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "list_objects" }>, "action"> = {}) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_schema"]>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_objects", ...params } }).then(result => ({ objects: result.objects ?? [], count: (result.objects ?? []).length })),
-    getObject: (params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "get_object" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_schema"]>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_object", ...params } }).then(result => __requireAttioPayload(result.object, "object")),
-    listAttributes: (params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "list_attributes" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_schema"]>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_attributes", ...params } }).then(result => ({ attributes: result.attributes ?? [], count: (result.attributes ?? []).length })),
-    listStatuses: (params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "list_statuses" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_schema"]>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_statuses", ...params } }).then(result => ({ statuses: result.statuses ?? [], count: (result.statuses ?? []).length })),
-    listSelectOptions: (params: Omit<Extract<ToolInputByName["attio_read_schema"]["request"], { action: "list_select_options" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_read_schema"]>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_select_options", ...params } }).then(result => ({ selectOptions: result.selectOptions ?? [], count: (result.selectOptions ?? []).length })),
-    createObject: (params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "create_object" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_modify_schema"]>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "create_object", ...params } }).then(result => __requireAttioPayload(result.object, "object")),
-    updateObject: (params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "update_object" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_modify_schema"]>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "update_object", ...params } }).then(result => __requireAttioPayload(result.object, "object")),
-    createAttribute: (params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "create_attribute" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_modify_schema"]>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "create_attribute", ...params } }).then(result => __requireAttioPayload(result.attribute, "attribute")),
-    updateAttribute: (params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "update_attribute" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_modify_schema"]>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "update_attribute", ...params } }).then(result => __requireAttioPayload(result.attribute, "attribute")),
-    createStatus: (params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "create_status" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_modify_schema"]>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "create_status", ...params } }).then(result => __requireAttioPayload(result.status, "status")),
-    updateStatus: (params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "update_status" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_modify_schema"]>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "update_status", ...params } }).then(result => __requireAttioPayload(result.status, "status")),
-    createSelectOption: (params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "create_select_option" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_modify_schema"]>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "create_select_option", ...params } }).then(result => __requireAttioPayload(result.selectOption, "selectOption")),
-    updateSelectOption: (params: Omit<Extract<ToolInputByName["attio_modify_schema"]["request"], { action: "update_select_option" }>, "action">) =>
-        TerseAgent.executeTool<ToolOutputByName["attio_modify_schema"]>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "update_select_option", ...params } }).then(result => __requireAttioPayload(result.selectOption, "selectOption")),
+        TerseAgent.executeTool<AttioListsResult>("attio_remove_list_entry", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId } }).then(() => undefined),
+    listMeetings: (params: AttioListMeetingsParams = {}) =>
+        TerseAgent.executeTool<AttioMeetingsOutput>("attio_meetings", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ meetings: result.meetings ?? [], count: (result.meetings ?? []).length, nextCursor: result.nextCursor ?? null })),
+    getMeeting: (params: AttioGetMeetingParams) =>
+        TerseAgent.executeTool<AttioMeetingsOutput>("attio_meetings", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.meeting, "meeting")),
+    listCallRecordings: (params: AttioListCallRecordingsParams) =>
+        TerseAgent.executeTool<AttioMeetingsOutput>("attio_meetings", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_recordings", ...params } }).then(result => ({ recordings: result.recordings ?? [], count: (result.recordings ?? []).length, nextCursor: result.nextCursor ?? null })),
+    getCallTranscript: (params: AttioGetCallTranscriptParams) =>
+        TerseAgent.executeTool<AttioMeetingsOutput>("attio_meetings", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_transcript", ...params } }).then(result => ({ transcript: __requireAttioPayload(result.transcript, "transcript"), nextCursor: result.nextCursor ?? null })),
+    listFiles: (params: AttioListFilesParams) =>
+        TerseAgent.executeTool<AttioFilesOutput>("attio_read_files", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list", ...params } }).then(result => ({ files: result.files ?? [], count: (result.files ?? []).length, nextCursor: result.nextCursor ?? null })),
+    getFile: (params: AttioGetFileParams) =>
+        TerseAgent.executeTool<AttioFilesOutput>("attio_read_files", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get", ...params } }).then(result => __requireAttioPayload(result.file, "file")),
+    getFileDownloadUrl: (params: AttioGetFileDownloadUrlParams) =>
+        TerseAgent.executeTool<AttioFilesOutput>("attio_read_files", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_download_url", ...params } }).then(result => __requireAttioPayload(result.downloadUrl, "download URL")),
+    uploadFile: (params: AttioUploadFileParams) =>
+        TerseAgent.executeTool<AttioFilesOutput>("attio_upload_file", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(result => __requireAttioPayload(result.file, "file")),
+    deleteFile: (params: AttioDeleteFileParams) =>
+        TerseAgent.executeTool<AttioFilesOutput>("attio_delete_file", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: params }).then(() => undefined),
+    listObjects: (params: AttioListObjectsParams = {}) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_objects", ...params } }).then(result => ({ objects: result.objects ?? [], count: (result.objects ?? []).length })),
+    getObject: (params: AttioGetObjectParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "get_object", ...params } }).then(result => __requireAttioPayload(result.object, "object")),
+    listAttributes: (params: AttioListAttributesParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_attributes", ...params } }).then(result => ({ attributes: result.attributes ?? [], count: (result.attributes ?? []).length })),
+    listStatuses: (params: AttioListStatusesParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_statuses", ...params } }).then(result => ({ statuses: result.statuses ?? [], count: (result.statuses ?? []).length })),
+    listSelectOptions: (params: AttioListSelectOptionsParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_read_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "list_select_options", ...params } }).then(result => ({ selectOptions: result.selectOptions ?? [], count: (result.selectOptions ?? []).length })),
+    createObject: (params: AttioCreateObjectParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "create_object", ...params } }).then(result => __requireAttioPayload(result.object, "object")),
+    updateObject: (params: AttioUpdateObjectParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "update_object", ...params } }).then(result => __requireAttioPayload(result.object, "object")),
+    createAttribute: (params: AttioCreateAttributeParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "create_attribute", ...params } }).then(result => __requireAttioPayload(result.attribute, "attribute")),
+    updateAttribute: (params: AttioUpdateAttributeParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "update_attribute", ...params } }).then(result => __requireAttioPayload(result.attribute, "attribute")),
+    createStatus: (params: AttioCreateStatusParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "create_status", ...params } }).then(result => __requireAttioPayload(result.status, "status")),
+    updateStatus: (params: AttioUpdateStatusParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "update_status", ...params } }).then(result => __requireAttioPayload(result.status, "status")),
+    createSelectOption: (params: AttioCreateSelectOptionParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "create_select_option", ...params } }).then(result => __requireAttioPayload(result.selectOption, "selectOption")),
+    updateSelectOption: (params: AttioUpdateSelectOptionParams) =>
+        TerseAgent.executeTool<AttioSchemaOutput>("attio_modify_schema", { integrationId: "cmrh25jl700058owx4fbaz7lm", request: { action: "update_select_option", ...params } }).then(result => __requireAttioPayload(result.selectOption, "selectOption")),
 }
 
 // ── Attio triggers ────────────────────────────────────────────
@@ -4973,6 +5831,37 @@ export interface AttioWorkspaceMemberCreatedTriggerPayload {
 export type AttioWorkspaceMemberCreatedTrigger = SDKTrigger<AttioWorkspaceMemberCreatedTriggerPayload>
 
 export type AttioTrigger = AttioCallRecordingCreatedTrigger | AttioCommentCreatedTrigger | AttioCommentResolvedTrigger | AttioCommentUnresolvedTrigger | AttioCommentDeletedTrigger | AttioListCreatedTrigger | AttioListUpdatedTrigger | AttioListDeletedTrigger | AttioListAttributeCreatedTrigger | AttioListAttributeUpdatedTrigger | AttioListEntryCreatedTrigger | AttioListEntryUpdatedTrigger | AttioListEntryDeletedTrigger | AttioObjectAttributeCreatedTrigger | AttioObjectAttributeUpdatedTrigger | AttioNoteCreatedTrigger | AttioNoteContentUpdatedTrigger | AttioNoteUpdatedTrigger | AttioNoteDeletedTrigger | AttioRecordCreatedTrigger | AttioRecordMergedTrigger | AttioRecordUpdatedTrigger | AttioRecordDeletedTrigger | AttioTaskCreatedTrigger | AttioTaskUpdatedTrigger | AttioTaskDeletedTrigger | AttioWorkspaceMemberCreatedTrigger
+
+export type AttioWorkspaceRecordCreatedPayload = AttioRecordCreatedTriggerPayload<AttioWorkspaceRecordValues>
+export type AttioWorkspaceRecordCreatedTrigger = AttioRecordCreatedTrigger<AttioWorkspaceRecordValues>
+export type AttioWorkspaceRecordUpdatedPayload = AttioRecordUpdatedTriggerPayload<AttioWorkspaceRecordValues>
+export type AttioWorkspaceRecordUpdatedTrigger = AttioRecordUpdatedTrigger<AttioWorkspaceRecordValues>
+export type AttioWorkspaceRecordMergedPayload = AttioRecordMergedTriggerPayload<AttioWorkspaceRecordValues>
+export type AttioWorkspaceRecordMergedTrigger = AttioRecordMergedTrigger<AttioWorkspaceRecordValues>
+export type AttioPersonRecordCreatedPayload = AttioRecordCreatedTriggerPayload<AttioPersonRecordValues>
+export type AttioPersonRecordCreatedTrigger = AttioRecordCreatedTrigger<AttioPersonRecordValues>
+export type AttioPersonRecordUpdatedPayload = AttioRecordUpdatedTriggerPayload<AttioPersonRecordValues>
+export type AttioPersonRecordUpdatedTrigger = AttioRecordUpdatedTrigger<AttioPersonRecordValues>
+export type AttioPersonRecordMergedPayload = AttioRecordMergedTriggerPayload<AttioPersonRecordValues>
+export type AttioPersonRecordMergedTrigger = AttioRecordMergedTrigger<AttioPersonRecordValues>
+export type AttioCompanyRecordCreatedPayload = AttioRecordCreatedTriggerPayload<AttioCompanyRecordValues>
+export type AttioCompanyRecordCreatedTrigger = AttioRecordCreatedTrigger<AttioCompanyRecordValues>
+export type AttioCompanyRecordUpdatedPayload = AttioRecordUpdatedTriggerPayload<AttioCompanyRecordValues>
+export type AttioCompanyRecordUpdatedTrigger = AttioRecordUpdatedTrigger<AttioCompanyRecordValues>
+export type AttioCompanyRecordMergedPayload = AttioRecordMergedTriggerPayload<AttioCompanyRecordValues>
+export type AttioCompanyRecordMergedTrigger = AttioRecordMergedTrigger<AttioCompanyRecordValues>
+export type AttioDealRecordCreatedPayload = AttioRecordCreatedTriggerPayload<AttioDealRecordValues>
+export type AttioDealRecordCreatedTrigger = AttioRecordCreatedTrigger<AttioDealRecordValues>
+export type AttioDealRecordUpdatedPayload = AttioRecordUpdatedTriggerPayload<AttioDealRecordValues>
+export type AttioDealRecordUpdatedTrigger = AttioRecordUpdatedTrigger<AttioDealRecordValues>
+export type AttioDealRecordMergedPayload = AttioRecordMergedTriggerPayload<AttioDealRecordValues>
+export type AttioDealRecordMergedTrigger = AttioRecordMergedTrigger<AttioDealRecordValues>
+export type AttioUserRecordCreatedPayload = AttioRecordCreatedTriggerPayload<AttioUserRecordValues>
+export type AttioUserRecordCreatedTrigger = AttioRecordCreatedTrigger<AttioUserRecordValues>
+export type AttioUserRecordUpdatedPayload = AttioRecordUpdatedTriggerPayload<AttioUserRecordValues>
+export type AttioUserRecordUpdatedTrigger = AttioRecordUpdatedTrigger<AttioUserRecordValues>
+export type AttioUserRecordMergedPayload = AttioRecordMergedTriggerPayload<AttioUserRecordValues>
+export type AttioUserRecordMergedTrigger = AttioRecordMergedTrigger<AttioUserRecordValues>
 
 export const attioTriggers = {
     /** Trigger when a call recording is created */

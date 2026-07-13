@@ -17,8 +17,15 @@ export async function printType(options: PrintTypeOptions): Promise<string> {
     if (/_?_[Ss]chema\d+/.test(compiled)) {
         throw new AnonymousSchemaError(options.typeName)
     }
-    const declared = options.typeParams ? injectTypeParams(compiled, options.typeName, options.typeParams) : compiled
+    const shaped = options.declareAs === "alias" ? interfaceToAlias(compiled, options.typeName) : compiled
+    const declared = options.typeParams ? injectTypeParams(shaped, options.typeName, options.typeParams) : shaped
     return declared.trimEnd()
+}
+
+// Interfaces lack the implicit index signature object-literal aliases have, so shapes used under
+// `extends Record<string, unknown>` bounds must print as aliases.
+function interfaceToAlias(source: string, typeName: string): string {
+    return source.replace(new RegExp(`export interface ${typeName}\\b`), `export type ${typeName} =`)
 }
 
 export class AnonymousSchemaError extends Error {
@@ -133,6 +140,7 @@ export type PrintTypeOptions = {
     readonly fieldOverrides?: Readonly<Record<string, string>>
     readonly hoisted?: readonly HoistedShape[]
     readonly typeParams?: string
+    readonly declareAs?: "alias"
 }
 
 type HoistedTarget = {

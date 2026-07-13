@@ -17,6 +17,20 @@ import type {
     SnowflakeInstanceData
 } from "../codegenTypes.js"
 
+import {
+    ATTIO_RESOURCE_METHOD_SPECS,
+    type AttioResourceMethodSpec,
+    type AttioResultSpec,
+    attioIsMultiValue,
+    attioListValueTypeNames,
+    attioMethodParamsTypeName,
+    attioObjectValueTypeNames,
+    attioOutputTypeName,
+    buildAttioObjectTypeDeclarations,
+    buildAttioRecordTriggerAliases,
+    buildAttioToolTypeDeclarations,
+    buildAttioValueTypeDeclarations
+} from "./attioProjection.js"
 import { buildTriggerTypeDeclarations } from "./triggerTypeDeclarations.js"
 import { type HoistedShape, printHoistedShape, printType } from "./typePrinter.js"
 
@@ -121,6 +135,7 @@ interface AttioSectionContext {
     objects: AttioObjectContext[]
     lists: AttioListContext[]
     valueTypeLines: string[]
+    recordTriggerAliases: string[]
     runtimeLines: string[]
 }
 
@@ -272,73 +287,11 @@ function sectionData<T>(imports: string[], data?: T): SectionContext<T> {
     return { imports: new Set(imports), data }
 }
 
-function isProbablyAttioMultiValue(attr: AttioAttributeData): boolean {
-    const slug = (attr.api_slug || "").toLowerCase()
-    const type = (attr.type || "").toLowerCase()
-
-    return (
-        type.includes("multi") ||
-        type.includes("array") ||
-        type.includes("list") ||
-        slug === "email_addresses" ||
-        slug === "domains" ||
-        slug === "phone_numbers" ||
-        slug === "social_profiles" ||
-        slug === "links" ||
-        slug === "tags" ||
-        slug.endsWith("_addresses") ||
-        slug.endsWith("_ids")
-    )
-}
-
-function attioAttributeBaseType(attr: AttioAttributeData): string {
-    const slug = (attr.api_slug || "").toLowerCase()
-    const type = (attr.type || "").toLowerCase()
-
-    if (type.includes("checkbox") || type.includes("boolean")) return "boolean"
-    if (type.includes("number") || type.includes("currency") || type.includes("rating") || type.includes("percent")) {
-        return "number"
-    }
-    if (type.includes("date") || type.includes("time")) return "string"
-    if (
-        type.includes("email") ||
-        type.includes("domain") ||
-        type.includes("phone") ||
-        type.includes("url") ||
-        type.includes("select") ||
-        type.includes("status") ||
-        type.includes("text") ||
-        type.includes("string") ||
-        type.includes("name")
-    ) {
-        return "string"
-    }
-    if (type.includes("location") || type.includes("address") || type.includes("reference") || type.includes("record") || type.includes("actor")) {
-        return "Record<string, unknown>"
-    }
-    if (slug === "email_addresses" || slug === "domains" || slug === "phone_numbers" || slug === "name") {
-        return "string"
-    }
-    return "unknown"
-}
-
-function attioValueTypeLines(
-    objects: Array<{ staticName: string; attributes: Array<AttioAttributeData & { api_slug: string }> }> = [],
-    lists: Array<{ staticName: string; attributes: Array<AttioAttributeData & { api_slug: string }> }> = []
+function attioOptionConstLines(
+    objects: Array<{ staticName: string; attributes: Array<AttioAttributeData & { api_slug: string }> }>,
+    lists: Array<{ staticName: string; attributes: Array<AttioAttributeData & { api_slug: string }> }>
 ): string[] {
-    const lines = [
-        "export type AttioSelectOption = {",
-        "    id: string",
-        "    title: string",
-        "    is_archived: boolean",
-        "}",
-        "",
-        'export type AttioActorReferenceInput = string | { workspace_member_email_address: string } | { referenced_actor_type: "workspace-member"; referenced_actor_id: string }',
-        "export type AttioRecordReferenceInput = { target_object: string; target_record_id: string } | Record<string, unknown>",
-        "export type AttioActorReference = { referenced_actor_type: string; referenced_actor_id: string | null }",
-        "export type AttioRecordReferenceValue = { target_object: string; target_record_id: string }",
-        "export type AttioCurrencyValue = { currency_value: number; currency_code: string | null }"
-    ]
+    const lines: string[] = []
 
     const usedConstNames = new Set<string>()
     for (const object of [...objects, ...lists]) {
@@ -364,55 +317,6 @@ function attioValueTypeLines(
     }
 
     return lines
-}
-
-function attioIsMultiValue(attr: AttioAttributeData): boolean {
-    if (typeof attr.is_multiselect === "boolean") return attr.is_multiselect
-    return isProbablyAttioMultiValue(attr)
-}
-
-function attioAttributeInputBaseType(attr: AttioAttributeData): string {
-    const type = (attr.type || "").toLowerCase()
-
-    if (type.includes("actor")) return "AttioActorReferenceInput"
-    if (type.includes("record") && type.includes("reference")) return "AttioRecordReferenceInput"
-    if ((type.includes("select") || type.includes("status")) && attr.options && attr.options.length > 0) {
-        return renderStringLiteralUnion(attr.options)
-    }
-    return attioAttributeBaseType(attr)
-}
-
-function attioAttributeRecordBaseType(attr: AttioAttributeData): string {
-    const type = (attr.type || "").toLowerCase()
-
-    if (type.includes("select") || type.includes("status")) return "AttioSelectOption"
-    if (type.includes("actor")) return "AttioActorReference"
-    if (type.includes("record") && type.includes("reference")) return "AttioRecordReferenceValue"
-    if (type.includes("currency")) return "AttioCurrencyValue"
-    return attioAttributeBaseType(attr)
-}
-
-function attioAttributeInputTsType(attr: AttioAttributeData): string {
-    const baseType = attioAttributeInputBaseType(attr)
-    if (!attioIsMultiValue(attr)) return baseType
-    return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
-}
-
-function attioAttributeRecordTsType(attr: AttioAttributeData): string {
-    const baseType = attioAttributeRecordBaseType(attr)
-    if (!attioIsMultiValue(attr)) return baseType
-    return baseType.includes("|") ? `(${baseType})[]` : `${baseType}[]`
-}
-
-function renderAttioObjectValueShape(attributes: AttioAttributeData[], mode: "input" | "record"): string {
-    if (attributes.length === 0) return "Record<string, unknown>"
-
-    const lines = attributes.map(attr => {
-        const valueType = mode === "input" ? attioAttributeInputTsType(attr) : attioAttributeRecordTsType(attr)
-        return `    "${escapeString(attr.api_slug || "")}"?: ${valueType}`
-    })
-
-    return `{\n${lines.join("\n")}\n}`
 }
 
 function toolIntegrationToIntegrationType(toolIntegration: string): string {
@@ -698,8 +602,8 @@ function buildGeneratedAttioObjects(inst: AttioInstanceData | undefined): Array<
             objectId: object.id.object_id,
             singularNoun: object.singular_noun,
             attributeSource: renderAttioAttributeSource(attributes),
-            recordValuesType: renderAttioObjectValueShape(attributes, "record"),
-            inputValuesType: renderAttioObjectValueShape(attributes, "input"),
+            recordValuesType: attioObjectValueTypeNames(staticName).record,
+            inputValuesType: attioObjectValueTypeNames(staticName).input,
             attributes
         }
     })
@@ -724,8 +628,8 @@ function buildGeneratedAttioLists(inst: AttioInstanceData | undefined): Array<At
             listId: list.id.list_id,
             parentObject,
             attributeSource: renderAttioAttributeSource(attributes),
-            entryValuesType: renderAttioObjectValueShape(attributes, "input"),
-            entryRecordValuesType: renderAttioObjectValueShape(attributes, "record"),
+            entryValuesType: attioListValueTypeNames(staticName).entry,
+            entryRecordValuesType: attioListValueTypeNames(staticName).entryRecord,
             attributes
         }
     })
@@ -859,17 +763,17 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     lines.push("    return { ...(raw as object), entry_values: __getAttioEntryValues(__normalizeAttioObjectSlug(list), raw.entry_values) } as AttioListEntryFor<TList>")
     lines.push("}")
     lines.push("")
-    lines.push('function __enhanceAttioListEntriesResult<TList>(list: TList, result: ToolOutputByName["attio_read_list_entries"]): AttioListEntriesResult<TList> {')
+    lines.push("function __enhanceAttioListEntriesResult<TList>(list: TList, result: AttioListsResult): AttioListEntriesResult<TList> {")
     lines.push("    const entries = (result.entries || []).map(entry => __enhanceAttioListEntry(list, entry))")
     lines.push("    return { entries, count: entries.length, offset: result.offset ?? 0 }")
     lines.push("}")
     lines.push("")
-    lines.push('function __enhanceAttioListEntryResult<TList>(list: TList, result: ToolOutputByName["attio_read_list_entries"]): AttioListEntryResult<TList> {')
+    lines.push("function __enhanceAttioListEntryResult<TList>(list: TList, result: AttioListsResult): AttioListEntryResult<TList> {")
     lines.push('    if (!result.entry) throw new Error("Attio returned a response without the expected list entry payload.")')
     lines.push("    return __enhanceAttioListEntry(list, result.entry)")
     lines.push("}")
     lines.push("")
-    lines.push('function __enhanceAttioHistoryResult<TValue>(result: ToolOutputByName["attio_read_records"]): AttioAttributeHistoryResult<TValue> {')
+    lines.push("function __enhanceAttioHistoryResult<TValue>(result: AttioRecordsResult): AttioAttributeHistoryResult<TValue> {")
     lines.push("    const history = (result.history || []).map(entry => ({ active_from: entry.active_from, active_until: entry.active_until, value: __flattenAttioLeafValue(entry) as TValue }))")
     lines.push("    return { history, count: history.length }")
     lines.push("}")
@@ -885,10 +789,11 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     return lines
 }
 
-function prepareAttioSection(inst: AttioInstanceData | undefined, tools: ToolDefinition[]): SectionContext<AttioSectionContext> {
+async function prepareAttioSection(inst: AttioInstanceData | undefined, tools: ToolDefinition[]): Promise<SectionContext<AttioSectionContext>> {
     if (!inst) return sectionData([])
     const objects = buildGeneratedAttioObjects(inst)
     const lists = buildGeneratedAttioLists(inst)
+    const valueTypeLines = [...(await buildAttioValueTypeDeclarations()), ...(await buildAttioObjectTypeDeclarations(objects, lists)), ...attioOptionConstLines(objects, lists)]
     return sectionData(
         [
             "registerEventTransform",
@@ -931,7 +836,8 @@ function prepareAttioSection(inst: AttioInstanceData | undefined, tools: ToolDef
             skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
             objects,
             lists,
-            valueTypeLines: attioValueTypeLines(objects, lists),
+            valueTypeLines,
+            recordTriggerAliases: buildAttioRecordTriggerAliases(objects),
             runtimeLines: buildAttioRuntimeLines(objects, lists)
         }
     )
@@ -1030,12 +936,10 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
     const attioGeneratedObjects = buildGeneratedAttioObjects(active.attio)
 
     if (tools.some(isAttioTool)) {
-        imports.add("ToolInputByName")
-        imports.add("ToolOutputByName")
         if (!active.attio) {
-            attioPreludeLines.push(...attioValueTypeLines())
-            attioPreludeLines.push("")
+            attioPreludeLines.push(...(await buildAttioValueTypeDeclarations()))
         }
+        attioPreludeLines.push(...(await buildAttioToolTypeDeclarations(tools.filter(isAttioTool).map(tool => tool.name))))
         attioPreludeLines.push("type __AttioPrimitive = string | number | boolean | null")
         attioPreludeLines.push("type __AttioStructuredValue = Record<string, unknown>")
         attioPreludeLines.push("type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
@@ -1049,22 +953,19 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
         attioPreludeLines.push(
             "type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }"
         )
-        attioPreludeLines.push("type __AttioRecordBase = { id?: { workspace_id?: string; object_id?: string; record_id?: string }; record_id?: string; web_url?: string; created_at?: string }")
-        attioPreludeLines.push("type __AttioRecordWithValues<TValues extends Record<string, unknown>> = __AttioRecordBase & TValues & { values: TValues; attributes: TValues }")
+        attioPreludeLines.push('type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }')
         attioPreludeLines.push("")
 
         if (attioGeneratedObjects.length > 0) {
             attioPreludeLines.push("export type AttioInputValuesByObject = {")
             for (const object of attioGeneratedObjects) {
-                const inputShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "input")
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${inputShape}`)
+                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${attioObjectValueTypeNames(object.staticName).input}`)
             }
             attioPreludeLines.push("}")
             attioPreludeLines.push("")
             attioPreludeLines.push("export type AttioRecordValuesByObject = {")
             for (const object of attioGeneratedObjects) {
-                const recordShape = object.attributes.length === 0 ? "Record<string, __AttioValue>" : renderAttioObjectValueShape(object.attributes, "record")
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${recordShape}`)
+                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${attioObjectValueTypeNames(object.staticName).record}`)
             }
             attioPreludeLines.push("}")
             attioPreludeLines.push("")
@@ -1112,15 +1013,12 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
         attioPreludeLines.push(
             "export type AttioGetAttributeHistoryParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; attribute: AttioAttributeSlug<TObject>; limit?: number | null; offset?: number | null }"
         )
-        attioPreludeLines.push('export type AttioWorkspaceMembersResult = ToolOutputByName["attio_workspace_members"]')
-        attioPreludeLines.push('export type AttioRecordsResult = ToolOutputByName["attio_read_records"]')
         attioPreludeLines.push(
             "export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number; offset: number }"
         )
         attioPreludeLines.push('export type AttioSearchRecordsResult = { matches: NonNullable<AttioRecordsResult["matches"]>; count: number }')
         attioPreludeLines.push("export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number }")
         attioPreludeLines.push("export type AttioSingleRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioRecordFor<TObject>")
-        attioPreludeLines.push('export type AttioListsResult = ToolOutputByName["attio_read_lists"]')
         attioPreludeLines.push("export type AttioEntryValuesFor<TList> = TList extends { __entryValues: infer TValues } ? TValues : Record<string, unknown>")
         attioPreludeLines.push(
             "export type AttioEntryRecordValuesFor<TList> = TList extends { __entryRecordValues: infer TValues extends Record<string, unknown> } ? TValues : Record<string, unknown>"
@@ -1162,7 +1060,7 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
         )
         attioPreludeLines.push('    if (!record || typeof record !== "object") return undefined')
         attioPreludeLines.push("    const values = __getAttioRecordValues<AttioRecordValuesFor<TObject>>(__normalizeAttioObjectSlug(object), record)")
-        attioPreludeLines.push("    return { ...values, ...(record as __AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
+        attioPreludeLines.push("    return { ...values, ...(record as AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
         attioPreludeLines.push("function __requireAttioPayload<T>(value: T | null | undefined, what: string): T {")
@@ -1170,28 +1068,22 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
         attioPreludeLines.push("    return value")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
-        attioPreludeLines.push(
-            'function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_read_records"]): AttioQueryRecordsResult<TObject> {'
-        )
+        attioPreludeLines.push("function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioQueryRecordsResult<TObject> {")
         attioPreludeLines.push("    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>")
         attioPreludeLines.push("    return { records, count: records.length, offset: result.offset ?? 0 }")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
-        attioPreludeLines.push('function __enhanceAttioSearchResult(result: ToolOutputByName["attio_read_records"]): AttioSearchRecordsResult {')
+        attioPreludeLines.push("function __enhanceAttioSearchResult(result: AttioRecordsResult): AttioSearchRecordsResult {")
         attioPreludeLines.push("    const matches = result.matches ?? []")
         attioPreludeLines.push("    return { matches, count: matches.length }")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
-        attioPreludeLines.push(
-            'function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_upsert_record"]): AttioUpsertRecordResult<TObject> {'
-        )
+        attioPreludeLines.push("function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioUpsertRecordResult<TObject> {")
         attioPreludeLines.push("    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>")
         attioPreludeLines.push("    return { records, count: records.length }")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
-        attioPreludeLines.push(
-            'function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_read_records"]): AttioSingleRecordResult<TObject> {'
-        )
+        attioPreludeLines.push("function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioSingleRecordResult<TObject> {")
         attioPreludeLines.push('    return __requireAttioPayload(__enhanceAttioRecord(object, result.record), "record")')
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
@@ -1331,7 +1223,7 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
 function buildAttioRecordsMethods(integrationId: string, tool: ToolDefinition): ToolMethodContext[] {
     const id = escapeString(integrationId)
     const toolName = tool.name
-    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })`
+    const call = (requestExpr: string) => `TerseAgent.executeTool<${attioOutputTypeName(toolName)}>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })`
     const objectSlug = "objectSlug: __normalizeAttioObjectSlug(params.object)"
 
     switch (toolName) {
@@ -1472,67 +1364,10 @@ const attioActionBranchJsonSchema = z.object({
     properties: z.object({ action: z.object({ const: z.string(), description: z.string().optional() }) })
 })
 
-const ATTIO_RESOURCE_METHOD_SPECS: Record<string, AttioResourceMethodSpec[]> = {
-    attio_workspace_members: [
-        { action: "list", methodName: "listWorkspaceMembers", emptyParams: true, result: { kind: "list", key: "members" } },
-        { action: "get", methodName: "getWorkspaceMember", result: { kind: "single", key: "member", what: "workspace member" } }
-    ],
-    attio_read_tasks: [
-        { action: "list", methodName: "listTasks", emptyParams: true, result: { kind: "list", key: "tasks" } },
-        { action: "get", methodName: "getTask", result: { kind: "single", key: "task" } }
-    ],
-    attio_create_task: [{ methodName: "createTask", result: { kind: "single", key: "task" } }],
-    attio_update_task: [{ methodName: "updateTask", result: { kind: "single", key: "task" } }],
-    attio_delete_task: [{ methodName: "deleteTask", result: { kind: "void" } }],
-    attio_read_notes: [
-        { action: "list", methodName: "listNotes", emptyParams: true, result: { kind: "list", key: "notes" } },
-        { action: "get", methodName: "getNote", result: { kind: "single", key: "note" } }
-    ],
-    attio_create_note: [{ methodName: "createNote", result: { kind: "single", key: "note" } }],
-    attio_delete_note: [{ methodName: "deleteNote", result: { kind: "void" } }],
-    attio_read_comments: [
-        { action: "get", methodName: "getComment", result: { kind: "single", key: "comment" } },
-        { action: "list_threads", methodName: "listThreads", emptyParams: true, result: { kind: "list", key: "threads" } },
-        { action: "get_thread", methodName: "getThread", result: { kind: "single", key: "thread" } }
-    ],
-    attio_create_comment: [{ methodName: "createComment", result: { kind: "single", key: "comment" } }],
-    attio_delete_comment: [{ methodName: "deleteComment", result: { kind: "void" } }],
-    attio_meetings: [
-        { action: "list", methodName: "listMeetings", emptyParams: true, result: { kind: "list", key: "meetings", cursor: true } },
-        { action: "get", methodName: "getMeeting", result: { kind: "single", key: "meeting" } },
-        { action: "list_recordings", methodName: "listCallRecordings", result: { kind: "list", key: "recordings", cursor: true } },
-        { action: "get_transcript", methodName: "getCallTranscript", result: { kind: "singleWithCursor", key: "transcript" } }
-    ],
-    attio_read_files: [
-        { action: "list", methodName: "listFiles", result: { kind: "list", key: "files", cursor: true } },
-        { action: "get", methodName: "getFile", result: { kind: "single", key: "file" } },
-        { action: "get_download_url", methodName: "getFileDownloadUrl", result: { kind: "single", key: "downloadUrl", what: "download URL" } }
-    ],
-    attio_upload_file: [{ methodName: "uploadFile", result: { kind: "single", key: "file" } }],
-    attio_delete_file: [{ methodName: "deleteFile", result: { kind: "void" } }],
-    attio_read_schema: [
-        { action: "list_objects", methodName: "listObjects", emptyParams: true, result: { kind: "list", key: "objects" } },
-        { action: "get_object", methodName: "getObject", result: { kind: "single", key: "object" } },
-        { action: "list_attributes", methodName: "listAttributes", result: { kind: "list", key: "attributes" } },
-        { action: "list_statuses", methodName: "listStatuses", result: { kind: "list", key: "statuses" } },
-        { action: "list_select_options", methodName: "listSelectOptions", result: { kind: "list", key: "selectOptions" } }
-    ],
-    attio_modify_schema: [
-        { action: "create_object", methodName: "createObject", result: { kind: "single", key: "object" } },
-        { action: "update_object", methodName: "updateObject", result: { kind: "single", key: "object" } },
-        { action: "create_attribute", methodName: "createAttribute", result: { kind: "single", key: "attribute" } },
-        { action: "update_attribute", methodName: "updateAttribute", result: { kind: "single", key: "attribute" } },
-        { action: "create_status", methodName: "createStatus", result: { kind: "single", key: "status" } },
-        { action: "update_status", methodName: "updateStatus", result: { kind: "single", key: "status" } },
-        { action: "create_select_option", methodName: "createSelectOption", result: { kind: "single", key: "selectOption" } },
-        { action: "update_select_option", methodName: "updateSelectOption", result: { kind: "single", key: "selectOption" } }
-    ]
-}
-
 // Each method narrows the wire result to its action's payload at runtime: singles unwrap to the bare
 // entity (throwing if absent), lists rebuild a { items, count, nextCursor? } wrapper, deletes resolve void.
 function attioResultParts(toolName: string, result: AttioResultSpec): { resultType: string; thenExpr: string } {
-    const base = `ToolOutputByName["${toolName}"]`
+    const base = attioOutputTypeName(toolName)
     switch (result.kind) {
         case "single":
             return {
@@ -1563,7 +1398,7 @@ function buildAttioResourceMethods(integrationId: string, tool: ToolDefinition, 
     const id = escapeString(integrationId)
     const toolName = tool.name
     return specs.map(spec => {
-        const paramsType = spec.action ? `Omit<Extract<ToolInputByName["${toolName}"]["request"], { action: "${spec.action}" }>, "action">` : `ToolInputByName["${toolName}"]["request"]`
+        const paramsType = attioMethodParamsTypeName(spec.methodName)
         const requestExpr = spec.action ? `{ action: "${spec.action}", ...params }` : "params"
         const { resultType, thenExpr } = attioResultParts(toolName, spec.result)
         return {
@@ -1571,7 +1406,7 @@ function buildAttioResourceMethods(integrationId: string, tool: ToolDefinition, 
             generatedSignature: `${spec.methodName}(${spec.emptyParams ? `params?: ${paramsType}` : `params: ${paramsType}`}): Promise<${resultType}>`,
             runtimeLines: [
                 `${spec.methodName}: (params: ${paramsType}${spec.emptyParams ? " = {}" : ""}) =>`,
-                `    TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })${thenExpr},`
+                `    TerseAgent.executeTool<${attioOutputTypeName(toolName)}>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })${thenExpr},`
             ]
         }
     })
@@ -1580,7 +1415,7 @@ function buildAttioResourceMethods(integrationId: string, tool: ToolDefinition, 
 function buildAttioListsMethods(integrationId: string, tool: ToolDefinition): ToolMethodContext[] {
     const id = escapeString(integrationId)
     const toolName = tool.name
-    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })`
+    const call = (requestExpr: string) => `TerseAgent.executeTool<${attioOutputTypeName(toolName)}>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })`
     const listKey = "listIdOrSlug: __normalizeAttioObjectSlug(params.list)"
     const listParam = "list: GeneratedAttioList | string"
 
@@ -1602,8 +1437,8 @@ function buildAttioListsMethods(integrationId: string, tool: ToolDefinition): To
             return [
                 {
                     description: tool.description || undefined,
-                    generatedSignature: 'createList(params: ToolInputByName["attio_create_list"]["request"]): Promise<NonNullable<AttioListsResult["list"]>>',
-                    runtimeLines: ['createList: (params: ToolInputByName["attio_create_list"]["request"]) =>', `    ${call("params")}.then(result => __requireAttioPayload(result.list, "list")),`]
+                    generatedSignature: `createList(params: ${attioMethodParamsTypeName("createList")}): Promise<NonNullable<AttioListsResult["list"]>>`,
+                    runtimeLines: [`createList: (params: ${attioMethodParamsTypeName("createList")}) =>`, `    ${call("params")}.then(result => __requireAttioPayload(result.list, "list")),`]
                 }
             ]
         case "attio_update_list":
@@ -1697,16 +1532,6 @@ function buildAttioListsMethods(integrationId: string, tool: ToolDefinition): To
     }
 }
 
-type AttioResultSpec = { kind: "single"; key: string; what?: string } | { kind: "singleWithCursor"; key: string; what?: string } | { kind: "list"; key: string; cursor?: boolean } | { kind: "void" }
-
-interface AttioResourceMethodSpec {
-    /** Discriminant to inject into the request; omitted for single-op tools with flat request schemas. */
-    action?: string
-    methodName: string
-    emptyParams?: boolean
-    result: AttioResultSpec
-}
-
 function prepareSystemSection(): SectionContext<SystemSectionContext> {
     return sectionData(
         [
@@ -1741,7 +1566,7 @@ export async function prepareTemplateContext(input: CodegenInput): Promise<Templ
     const datadog = prepareDatadogSection(active.datadog, input.tools)
     const launchdarkly = prepareLaunchDarklySection(active.launchdarkly, input.tools)
     const workos = prepareWorkOSSection(active.workos, input.tools)
-    const attio = prepareAttioSection(active.attio, input.tools)
+    const attio = await prepareAttioSection(active.attio, input.tools)
     const snowflake = prepareSnowflakeSection(active.snowflake, input.tools)
     const heyreach = prepareHeyReachSection(active.heyreach)
     const tools = await prepareToolsSection(input.tools, input, active)

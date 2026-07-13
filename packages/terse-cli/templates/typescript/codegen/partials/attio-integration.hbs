@@ -15,6 +15,10 @@
 {{{this}}}
 
 {{/each}}
+{{#each attio.recordTriggerAliases}}
+{{{this}}}
+{{/each}}
+
 export const attioTriggers = {
     /** Trigger when a call recording is created */
     onCallRecordingCreated(): TypedTrigger<AttioCallRecordingCreatedTrigger> {
