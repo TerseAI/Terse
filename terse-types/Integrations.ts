@@ -4,6 +4,7 @@ import * as z from "zod"
 export enum IntegrationType {
     GITHUB = "github",
     HEY_REACH = "hey_reach",
+    RESEND = "resend",
     GMAIL = "gmail",
     LINEAR = "linear",
     SLACK = "slack",
@@ -159,6 +160,14 @@ export const HeyReachIntegrationMetadata = {
     isOutput: false
 } as const satisfies IntegrationDetails
 
+export const ResendIntegrationMetadata = {
+    type: IntegrationType.RESEND,
+    name: "Resend",
+    description: "Send transactional email using published Resend templates",
+    isInput: false,
+    isOutput: true
+} as const satisfies IntegrationDetails
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails> // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -177,7 +186,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.SNOWFLAKE]: SnowflakeIntegrationMetadata,
     [IntegrationType.WEBHOOK]: WebhookIntegrationMetadata,
     [IntegrationType.WEBMONITOR]: WebMonitorIntegrationMetadata,
-    [IntegrationType.HEY_REACH]: HeyReachIntegrationMetadata
+    [IntegrationType.HEY_REACH]: HeyReachIntegrationMetadata,
+    [IntegrationType.RESEND]: ResendIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -216,7 +226,8 @@ export const InstallationOptionsSchemas = {
     [IntegrationType.SNOWFLAKE]: NoInstallationOptionsSchema,
     [IntegrationType.WEBHOOK]: NoInstallationOptionsSchema,
     [IntegrationType.WEBMONITOR]: NoInstallationOptionsSchema,
-    [IntegrationType.HEY_REACH]: NoInstallationOptionsSchema
+    [IntegrationType.HEY_REACH]: NoInstallationOptionsSchema,
+    [IntegrationType.RESEND]: NoInstallationOptionsSchema
 } as const satisfies Record<IntegrationType, z.ZodTypeAny>
 
 export type InstallationOptionsFor<T extends IntegrationType> = z.infer<(typeof InstallationOptionsSchemas)[T]>
@@ -260,6 +271,25 @@ export type PosthogIntegration = z.infer<typeof PosthogIntegrationSchema>
 
 export const HeyReachIntegrationSchema = IntegrationInstanceSchema
 export type HeyReachIntegration = z.infer<typeof HeyReachIntegrationSchema>
+
+export const ResendIntegrationSchema = IntegrationInstanceSchema
+export type ResendIntegration = z.infer<typeof ResendIntegrationSchema>
+
+export const ResendTemplateVariableSchema = z.object({
+    key: z.string(),
+    type: z.enum(["string", "number"]),
+    fallbackValue: z.union([z.string(), z.number()]).nullable()
+})
+export type ResendTemplateVariable = z.infer<typeof ResendTemplateVariableSchema>
+
+export const ResendTemplateSchema = z.object({
+    id: z.string(),
+    alias: z.string().nullable(),
+    name: z.string(),
+    status: z.string(),
+    variables: z.array(ResendTemplateVariableSchema)
+})
+export type ResendTemplate = z.infer<typeof ResendTemplateSchema>
 
 export const LaunchDarklyIntegrationSchema = IntegrationInstanceSchema.extend({
     email: z.email().optional(),

@@ -103,3 +103,12 @@ export function WorkOSIcon() {
 export function HeyReachIcon() {
     return <img src="/HeyReach.png" alt="HeyReach" className="w-full h-full object-contain" />
 }
+
+export function ResendIcon() {
+    return (
+        <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" aria-label="Resend">
+            <rect width="24" height="24" rx="5" fill="currentColor" />
+            <path d="M7 6.5h5.2c3 0 4.8 1.45 4.8 4 0 1.8-.9 3.05-2.45 3.65L18 17.5h-3.15l-3.05-3H9.7v3H7v-11Zm2.7 2.3v3.4h2.35c1.4 0 2.15-.55 2.15-1.7s-.75-1.7-2.15-1.7H9.7Z" fill="white" />
+        </svg>
+    )
+}

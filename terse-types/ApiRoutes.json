@@ -94,6 +94,10 @@
         "INTEGRATIONS": "/heyreach/integrations",
         "CAMPAIGNS": "/heyreach/campaigns"
     },
+    "RESEND": {
+        "INTEGRATIONS": "/resend/integrations",
+        "TEMPLATES": "/resend/templates"
+    },
     "AGENTS": {
         "LIST": "/agents",
         "RECENT": "/agents/recent",

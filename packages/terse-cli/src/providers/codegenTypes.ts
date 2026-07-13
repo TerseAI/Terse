@@ -1,4 +1,4 @@
-import type { GithubIntegration, ToolDefinition } from "terse-types"
+import type { GithubIntegration, ResendTemplate, ToolDefinition } from "terse-types"
 
 interface GitHubRepo {
     id: number
@@ -133,6 +133,10 @@ export interface HeyReachInstanceData extends IntegrationInstanceData {
     campaigns: HeyReachCampaignData[]
 }
 
+export interface ResendInstanceData extends IntegrationInstanceData {
+    templates: ResendTemplate[]
+}
+
 export interface CodegenInput {
     availableIntegrations: string[]
     github: GitHubInstanceData[]
@@ -147,5 +151,6 @@ export interface CodegenInput {
     attio: AttioInstanceData[]
     snowflake: SnowflakeInstanceData[]
     heyreach: HeyReachInstanceData[]
+    resend: ResendInstanceData[]
     tools: ToolDefinition[]
 }

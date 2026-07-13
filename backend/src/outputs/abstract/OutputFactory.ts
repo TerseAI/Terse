@@ -12,6 +12,7 @@ import {
     MemoryConfig,
     NotionConfig,
     PosthogConfig,
+    ResendOutputConfig,
     SlackOutputConfig,
     SnowflakeOutputConfig,
     WebConfig,
@@ -31,6 +32,7 @@ import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
 import { NotionOutput } from "../notion/NotionOutput"
 import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
+import { ResendOutput } from "../resend/ResendOutput"
 import { SlackOutput } from "../slack/SlackOutput"
 import { SnowflakeSkillOutput } from "../snowflake/SnowflakeSkillOutput"
 import { ImageEditOutput } from "../terse/ImageEditOutput"
@@ -62,6 +64,7 @@ export class OutputFactory {
             [OutputConfigType.LAUNCHDARKLY, () => new LaunchDarklySkillOutput()],
             [OutputConfigType.WORKOS, () => new WorkOSOutput()],
             [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()],
+            [OutputConfigType.RESEND, () => new ResendOutput()],
             [OutputConfigType.MEMORY, () => new MemoryOutput()]
         ]
         if (settings.tavily.apiKey) entries.push([OutputConfigType.WEB, () => new WebOutput()])
@@ -127,6 +130,9 @@ export class OutputFactory {
                 break
             case OutputConfigType.SNOWFLAKE:
                 ;(output as Output<SnowflakeOutputConfig>).configs = configs as SnowflakeOutputConfig[]
+                break
+            case OutputConfigType.RESEND:
+                ;(output as Output<ResendOutputConfig>).configs = configs as ResendOutputConfig[]
                 break
             default:
                 throw configType satisfies never

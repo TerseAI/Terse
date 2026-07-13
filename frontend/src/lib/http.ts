@@ -27,6 +27,7 @@ import {
     LinearIntegration,
     NotionIntegration,
     PosthogIntegration,
+    ResendIntegration,
     SlackIntegration,
     SnowflakeIntegration,
     WorkOSIntegration
@@ -289,6 +290,9 @@ interface BackendService {
      * Creates or updates a HeyReach integration with an API key
      */
     createOrUpdateHeyReachIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
+
+    getResendIntegrations(): Promise<ResendIntegration[]>
+    createOrUpdateResendIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
 
     /**
      * Gets available channels for a Slack integration
@@ -828,6 +832,16 @@ export const BackendProvider: BackendService = {
             body.state = stateToken
         }
         return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
+    },
+
+    getResendIntegrations: () => {
+        return axios.get<ResendIntegration[]>(`${backendBaseUrl}${ApiRoutes.RESEND.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    createOrUpdateResendIntegration: (apiKey: string, stateToken?: string) => {
+        const body: Record<string, string> = { apiKey }
+        if (stateToken) body.state = stateToken
+        return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.RESEND.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
     },
 
     getSlackIntegrations: () => {

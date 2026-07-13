@@ -26,6 +26,7 @@ export function getOutputConfigInclude() {
         launchdarkly_config: true,
         workos_output_config: true,
         attio_config: true,
-        snowflake_config: true
+        snowflake_config: true,
+        resend_config: true
     } as const
 }

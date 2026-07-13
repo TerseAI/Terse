@@ -12,6 +12,7 @@ import type {
     LinearIntegration,
     NotionIntegration,
     PosthogIntegration,
+    ResendIntegration,
     SlackIntegration,
     SnowflakeIntegration,
     WorkOSIntegration
@@ -36,6 +37,7 @@ import {
     type LinearInstanceData,
     type NotionInstanceData,
     type PosthogInstanceData,
+    type ResendInstanceData,
     type SlackInstanceData
 } from "../providers/codegenTypes.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
@@ -130,6 +132,7 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
         attio: [],
         snowflake: [],
         heyreach: [],
+        resend: [],
         tools: toolDefs
     }
 
@@ -361,6 +364,23 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
         )
     }
 
+    if (has(IntegrationType.RESEND)) {
+        promises.push(
+            safely(async () => {
+                const instances = await fetchWithAuth<ResendIntegration[]>(ApiRoutes.RESEND.INTEGRATIONS, apiKey)
+                input.resend = await Promise.all(
+                    instances.map(async (inst): Promise<ResendInstanceData> => {
+                        const response = await fetchWithAuth<{ templates: ResendInstanceData["templates"] }>(
+                            `${ApiRoutes.RESEND.TEMPLATES}?integrationId=${encodeURIComponent(inst.id)}`,
+                            apiKey
+                        ).catch(() => ({ templates: [] }))
+                        return { id: inst.id, displayName: "Resend", templates: response.templates }
+                    })
+                )
+            })
+        )
+    }
+
     await Promise.all(promises)
 
     const integrationCount =
@@ -374,7 +394,9 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
         input.launchdarkly.length +
         input.workos.length +
         input.attio.length +
-        input.heyreach.length
+        input.snowflake.length +
+        input.heyreach.length +
+        input.resend.length
 
     s.message("Generating code")
 
@@ -441,6 +463,7 @@ function summarizeIntegrations(input: CodegenInput): string {
     if (input.attio.length > 0) parts.push(labelWithCount("Attio", input.attio.length))
     if (input.snowflake.length > 0) parts.push(labelWithCount("Snowflake", input.snowflake.length))
     if (input.heyreach.length > 0) parts.push(labelWithCount("HeyReach", input.heyreach.length))
+    if (input.resend.length > 0) parts.push(labelWithCount("Resend", input.resend.length))
 
     return formatSummaryList(parts, 10)
 }

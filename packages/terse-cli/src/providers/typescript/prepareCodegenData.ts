@@ -13,6 +13,7 @@ import type {
     LinearInstanceData,
     NotionInstanceData,
     PosthogInstanceData,
+    ResendInstanceData,
     SlackInstanceData,
     SnowflakeInstanceData
 } from "../codegenTypes.js"
@@ -142,6 +143,19 @@ interface HeyReachSectionContext {
     campaignClass: ResourceClassContext
 }
 
+interface ResendSectionContext {
+    id: string
+    skillToolType: string
+    templates: Array<{
+        staticName: string
+        id: string
+        alias: string | null
+        name: string
+        variablesType: string
+        variablesMetadata: string
+    }>
+}
+
 interface ToolParamTypeContext {
     description?: string
     typeName: string
@@ -185,6 +199,7 @@ export interface TemplateContext {
     attio?: AttioSectionContext
     snowflake?: SnowflakeSectionContext
     heyreach?: HeyReachSectionContext
+    resend?: ResendSectionContext
     tools?: ToolsSectionContext
     system: SystemSectionContext
 }
@@ -978,6 +993,41 @@ function prepareHeyReachSection(instances: HeyReachInstanceData[]): SectionConte
     )
 }
 
+function prepareResendSection(instances: ResendInstanceData[], tools: ToolDefinition[]): SectionContext<ResendSectionContext> {
+    if (instances.length === 0) return sectionData([])
+    const instance = instances[0]
+    const usedNames = new Set<string>()
+    const templates = instance.templates.map(template => {
+        let staticName = toGeneratedIdentifier(template.alias || template.name || "Template", "Template")
+        while (usedNames.has(staticName)) staticName += "_"
+        usedNames.add(staticName)
+
+        const fields = template.variables.map(variable => {
+            const optional = variable.fallbackValue !== null ? "?" : ""
+            return `    "${escapeString(variable.key)}"${optional}: ${variable.type}`
+        })
+        const variablesType = fields.length > 0 ? `{\n${fields.join("\n")}\n}` : "Record<string, never>"
+        const variablesMetadata = template.variables
+            .map(variable =>
+                JSON.stringify({
+                    key: variable.key,
+                    type: variable.type,
+                    required: variable.fallbackValue === null,
+                    fallbackValue: variable.fallbackValue
+                })
+            )
+            .join(", ")
+
+        return { staticName, id: template.id, alias: template.alias, name: template.name, variablesType, variablesMetadata }
+    })
+
+    return sectionData(["ResendOutputConfig", "TypedSkill"], {
+        id: instance.id,
+        skillToolType: buildSkillToolTypeForIntegration(tools, "resend"),
+        templates
+    })
+}
+
 function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionContext<ToolsSectionContext> {
     if (tools.length === 0) return sectionData([])
 
@@ -1028,6 +1078,10 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     instanceMap.set(
         "snowflake",
         input.snowflake.map(inst => ({ id: inst.id, displayName: inst.name }))
+    )
+    instanceMap.set(
+        "resend",
+        input.resend.map(inst => ({ id: inst.id, displayName: inst.displayName }))
     )
 
     const byIntegration = new Map<string, ToolDefinition[]>()
@@ -1742,10 +1796,11 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const attio = prepareAttioSection(input.attio, input.tools)
     const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
     const heyreach = prepareHeyReachSection(input.heyreach)
+    const resend = prepareResendSection(input.resend, input.tools)
     const tools = prepareToolsSection(input.tools, input)
     const system = prepareSystemSection()
 
-    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
+    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, resend, tools, system]
 
     for (const section of sections) {
         section.imports.forEach(value => allImports.add(value))
@@ -1769,6 +1824,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         attio: attio.data,
         snowflake: snowflake.data,
         heyreach: heyreach.data,
+        resend: resend.data,
         tools: tools.data,
         system: system.data!
     }

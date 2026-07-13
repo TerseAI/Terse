@@ -10,6 +10,7 @@ import { LaunchDarklyIntegrationManager } from "../launchdarkly/integration"
 import { LinearIntegrationManager } from "../linear/integration"
 import { NotionIntegrationManager } from "../notion/integration"
 import { PosthogIntegrationManager } from "../posthog/integration"
+import { ResendIntegrationManager } from "../resend/integration"
 import { SlackIntegrationManager } from "../slack/integration"
 import { SnowflakeIntegrationManager } from "../snowflake/integration"
 import { WebMonitorIntegrationManager } from "../webMonitor/integration"
@@ -41,7 +42,8 @@ function buildIntegrationTuple() {
         new WorkOSIntegrationManager(),
         new AttioIntegrationManager(),
         new SnowflakeIntegrationManager(),
-        new HeyReachIntegrationManager()
+        new HeyReachIntegrationManager(),
+        new ResendIntegrationManager()
     ] as const satisfies readonly IntegrationWithInstallation[]
 }
 

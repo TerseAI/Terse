@@ -12,6 +12,7 @@ import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard"
 import LinearIntegrationCard from "./LinearIntegrationCard"
 import NotionIntegrationCard from "./NotionIntegrationCard"
 import PosthogIntegrationCard from "./PosthogIntegrationCard"
+import ResendIntegrationCard from "./ResendIntegrationCard"
 import SlackIntegrationCard from "./SlackIntegrationCard"
 import SnowflakeIntegrationCard from "./SnowflakeIntegrationCard"
 import WorkOSIntegrationCard from "./WorkOSIntegrationCard"
@@ -47,6 +48,8 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <SnowflakeIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.HEY_REACH:
             return <HeyReachIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.RESEND:
+            return <ResendIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:
         case IntegrationType.WEBMONITOR:
             return null

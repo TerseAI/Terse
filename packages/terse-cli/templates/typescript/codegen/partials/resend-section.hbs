@@ -1,0 +1,26 @@
+{{sectionHeader "Resend Templates"}}
+
+export type ResendTemplateVariableValue = string | number
+
+export interface GeneratedResendTemplate<TVariables extends Record<string, ResendTemplateVariableValue>> {
+    readonly templateId: string
+    readonly alias: string | null
+    readonly name: string
+    readonly variables: readonly { key: string; type: "string" | "number"; required: boolean; fallbackValue: ResendTemplateVariableValue | null }[]
+    withVariables(variables: TVariables): { templateId: string; variables: TVariables }
+}
+
+export const ResendTemplates = {
+{{#each templates}}
+    {{staticName}}: {
+        templateId: "{{escape id}}",
+        alias: {{#if alias}}"{{escape alias}}"{{else}}null{{/if}},
+        name: "{{escape name}}",
+        variables: [{{{variablesMetadata}}}],
+        withVariables: (variables: {{{variablesType}}}) => ({ templateId: "{{escape id}}", variables }),
+    } satisfies GeneratedResendTemplate<{{{variablesType}}}>,
+{{/each}}
+} as const
+
+export type ResendTemplate = (typeof ResendTemplates)[keyof typeof ResendTemplates]
+
