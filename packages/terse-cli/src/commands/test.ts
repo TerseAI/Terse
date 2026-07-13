@@ -5,7 +5,7 @@ import fs from "node:fs"
 import type { CreateJobParameters } from "terse-sdk"
 import { IntegrationType } from "terse-sdk"
 import { ApiRoutes, hydrateSerializedEvent, toEventFixture } from "terse-types"
-import type { SdkSampleEventsResponse, SerializedEvent } from "terse-types"
+import type { RunHistoryAction, SdkSampleEventsResponse, SerializedEvent } from "terse-types"
 
 import { fetchWithAuth, readApiKeyOrBail } from "../api.js"
 import { assertProjectRoot } from "../assertProjectRoot.js"
@@ -183,8 +183,42 @@ export async function testRun(opts: TestRunOpts): Promise<void> {
 
     const apiKey = readApiKeyOrBail()
     const projectId = readProjectConfigOrBail().projectId
-    const { runId, local } = await runLocalTestJob(provider, job, event, { projectId, apiKey, verbose: !!opts.verbose, entryFile: opts.entryFile, freshState: opts.freshState })
-    if (!local) console.log(chalk.cyan(`  ${remoteDispatchNotice(runId)}`))
+    const sideEffects: RunHistoryAction[] = []
+    try {
+        const { runId, local } = await runLocalTestJob(provider, job, event, {
+            projectId,
+            apiKey,
+            verbose: !!opts.verbose,
+            entryFile: opts.entryFile,
+            freshState: opts.freshState,
+            onSessionEvent: sessionEvent => {
+                if (sessionEvent.type === "action" && isSideEffect(sessionEvent.action)) sideEffects.push(sessionEvent.action)
+            }
+        })
+        if (!local) console.log(chalk.cyan(`  ${remoteDispatchNotice(runId)}`))
+        if (isNonInteractive()) printAgentTestReport(job.name, local ? "passed" : "dispatched", sideEffects)
+    } catch (error) {
+        if (isNonInteractive()) printAgentTestReport(job.name, "failed", sideEffects, error)
+        throw error
+    }
+}
+
+function isSideEffect(action: RunHistoryAction): boolean {
+    return action.type === "create" || action.type === "update" || action.type === "delete" || action.type === "approve"
+}
+
+function printAgentTestReport(jobName: string, result: "passed" | "failed" | "dispatched", sideEffects: RunHistoryAction[], error?: unknown): void {
+    const lines = ["--- TERSE TEST REPORT: surface this to the user ---", `Tested: ${jobName}`, `Result: ${result}`]
+    if (sideEffects.length > 0) {
+        lines.push("Observed side effects:")
+        for (const effect of sideEffects) lines.push(`- ${effect.action} — ${effect.details}${effect.url ? ` (${effect.url})` : ""}`)
+    }
+    if (error instanceof CliError) lines.push(`Error: ${error.message}${error.opts.detail ? ` — ${normalizeSingleLine(error.opts.detail)}` : ""}`)
+    else if (error instanceof Error) lines.push(`Error: ${error.message}`)
+    lines.push(
+        'CODING AGENT: Your first sentence after this command must be either "The test ran as expected" or "The test did not run as expected." Then list the observed side effects exactly and explain any mismatch with the expectation you stated before the run.'
+    )
+    process.stdout.write(`\n${lines.join("\n")}\n`)
 }
 
 async function resolveEventById(provider: LanguageProvider, id: string, jobNameHint: string | undefined, entryFile: string | undefined): Promise<SerializedEvent> {

@@ -43,6 +43,8 @@ One marker per command: the command verbatim in backticks, then the why in a few
 
 **Explain every test before it runs.** A marker line is not enough for `terse replay` or `terse test run`: immediately before one, say in one to three casual sentences what the run exercises, why now, and what a good result looks like — "This replay re-runs the exact production event that failed on Tuesday; with the new filter I expect it to skip the bot comment instead of crashing." When it finishes, give the verdict against that stated expectation in the same voice. Cheap reads (`terse test list`, `terse test show`) keep just the marker.
 
+If `terse test run` prints a `TERSE TEST REPORT`, surface it immediately in your own message. Your first sentence must be either "The test ran as expected" or "The test did not run as expected." Then list the reported side effects exactly and explain any mismatch with your stated expectation.
+
 ### 1. Find the workflow
 
 Open `src/terse.jobs.ts` and `src/terse.generated.ts`. If the entry file is a manifest of side-effect imports, follow them into `src/jobs/`. Find the job matching the requested workflow name and read the full implementation — triggers, skills, filter, and handler.

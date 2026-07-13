@@ -8,10 +8,17 @@ import { openSessionStream, promptForToolApproval, submitApprovalDecision } from
 let sessionPaused = false
 
 // Holds a session stream open (for tool-approval routing) for the duration of `action`.
-export async function withSession<T>(apiKey: string, isVerbose: boolean, pauseUiAround: <U>(fn: () => Promise<U>) => Promise<U>, action: (sessionId: string) => Promise<T>): Promise<T> {
+export async function withSession<T>(
+    apiKey: string,
+    isVerbose: boolean,
+    pauseUiAround: <U>(fn: () => Promise<U>) => Promise<U>,
+    action: (sessionId: string) => Promise<T>,
+    onEvent?: (event: SessionStreamEvent) => void
+): Promise<T> {
     let latestRunId: string | null = null
 
     const handleSessionEvent = async (event: SessionStreamEvent): Promise<void> => {
+        onEvent?.(event)
         if (event.type === "run_started") {
             latestRunId = event.runId
             return

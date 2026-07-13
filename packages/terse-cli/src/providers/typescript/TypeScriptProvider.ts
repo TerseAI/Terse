@@ -4,7 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
-import type { CreateJobParameters } from "terse-sdk"
+import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
 import { __resetRegisteredTerseInstances, fetchRegisteredJobs } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 import { tsImport } from "tsx/esm/api"
@@ -176,6 +176,7 @@ class TypeScriptProvider implements LanguageProvider {
             verbose?: boolean
             entryFile?: string
             projectId?: string
+            onSessionEvent?: (event: SessionStreamEvent) => void
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {

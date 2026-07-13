@@ -1,10 +1,11 @@
-import type { CreateJobParameters } from "terse-sdk"
+import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 
 export type RunJobOptions = {
     verbose?: boolean
     entryFile?: string
     projectId?: string
+    onSessionEvent?: (event: SessionStreamEvent) => void
     pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
 }
 
