@@ -331,6 +331,65 @@ Options:
 | -------- | -------------------------- |
 | `--json` | Emit machine-readable JSON |
 
+#### `terse integrate tool run <tool>`
+
+Invokes a read-only toolbox tool ad hoc and prints its JSON result. No job or deploy required, so you can check external state (does a duplicate deal exist? which channels are in this workspace?) straight from the terminal.
+
+```bash
+terse integrate tool run slack_list_channels
+terse integrate tool run attio_records --params '{"request":{"action":"query","objectSlug":"deals","limit":5}}'
+echo '{"request":{"action":"search","objectSlug":"companies","query":"acme"}}' | terse integrate tool run attio_records
+terse integrate tool run linear_search_ticket --integration cm123 --params '{"query":"TER-658"}'
+```
+
+Tool names are accepted as `attio_records` or `attio.records`. Only read-only tools can run ad hoc: write tools and approval-gated tools are rejected and run inside jobs. Params use the tool's wire shape; see `terse integrate tool <type> <tool-name> --json` for the input schema. The result prints to stdout as raw JSON, and errors go to stderr with a nonzero exit code.
+
+When the integration has several connections, the CLI resolves which one to call in this order: `--integration`, then the project pin set with `terse integrate use`, then the sole connection. An ambiguous call fails with the list of available connections.
+
+Options:
+
+| Flag                 | Description                                                            |
+| -------------------- | ---------------------------------------------------------------------- |
+| `--params <json>`    | Tool params as a JSON object; pass `-` (or pipe) to read from stdin    |
+| `--integration <id>` | Integration connection ID (only needed when several connections exist) |
+
+#### `terse integrate connections <type>`
+
+Lists an integration's connections with their IDs and which one this project pins. This is the non-interactive counterpart to the `terse integrate use` picker: list here, then pin with `terse integrate use <type> <connection-id>`.
+
+```bash
+terse integrate connections slack
+terse integrate connections slack --json
+```
+
+With `--json`, the output is a `{ id, name, pinned }` object per connection.
+
+Options:
+
+| Flag     | Description                |
+| -------- | -------------------------- |
+| `--json` | Emit machine-readable JSON |
+
+#### `terse integrate use <type> [connection-id]`
+
+Pins which connection this project generates against, then reruns `terse generate` so `src/terse.generated.ts` always matches the pin. Without a pin, generation uses the integration's oldest connection.
+
+```bash
+terse integrate use slack                            # interactive picker (auto-pins a single connection)
+terse integrate use slack cmr3l8b3d0003bpq4rpifevze  # explicit id, for agents and scripts
+terse integrate use slack --clear                    # remove the pin and regenerate
+```
+
+The pin is written to the `connections` map in `terse.config.json` and committed with the project, so every machine and CI generates against the same connection. `terse integrate` and `terse integrate list` show a pinned connection with a `(pinned)` marker; a pin whose connection no longer exists shows `(pinned, missing)` and fails `terse generate` with a re-pin hint.
+
+In non-interactive terminals, omitting `connection-id` fails unless the integration has exactly one connection, which is auto-pinned. Use `terse integrate connections <type>` to find the id first.
+
+Options:
+
+| Flag      | Description                                  |
+| --------- | -------------------------------------------- |
+| `--clear` | Remove this integration's pin and regenerate |
+
 #### `terse integrate connect <type>`
 
 Connects or refreshes one integration without using the interactive picker.
@@ -386,7 +445,7 @@ Options:
 | `--timeout <seconds>` | Timeout in seconds. Defaults to 300 and caps at 900 |
 | `--json`              | Emit machine-readable JSON                          |
 
-The `list`, `describe`, `tool`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`.
+The `list`, `describe`, `tool`, `tool run`, `connections`, `connect`, `disconnect`, and `wait` subcommands do not rerun code generation for you. After a connection change, run `terse generate`. `terse integrate use` is the exception: it reruns generation as part of pinning.
 
 ### `terse secrets`
 

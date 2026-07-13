@@ -1,7 +1,7 @@
 {
     "name": "terse",
     "description": "Terse, the AI workflow platform for coding agents. Create and improve workflows that react to events and take actions across GitHub, Slack, Linear, and more.",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "author": {
         "name": "Terse AI",
         "email": "support@useterse.ai"
