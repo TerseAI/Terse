@@ -16,15 +16,15 @@ Read-only access to repositories.
 skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })]
 ```
 
-| Tool                              | Description                                  | Access |
-| --------------------------------- | -------------------------------------------- | ------ |
-| `searchGitHubCode`                | Semantic code search across repositories     | Read   |
-| `grepGitHubCode`                  | Exact-match code search (grep-like)          | Read   |
-| `readGitHubFile`                  | Read file contents                           | Read   |
-| `listGitHubDirectory`             | List directory contents                      | Read   |
-| `listGitHubPullRequests`          | List pull requests                           | Read   |
-| `listGitHubCommits`               | List commits                                 | Read   |
-| `summarizeGitHubPullRequestDiff`  | Summarize PR changes                         | Read   |
+| Tool                             | Description                              | Access |
+| -------------------------------- | ---------------------------------------- | ------ |
+| `searchGitHubCode`               | Semantic code search across repositories | Read   |
+| `grepGitHubCode`                 | Exact-match code search (grep-like)      | Read   |
+| `readGitHubFile`                 | Read file contents                       | Read   |
+| `listGitHubDirectory`            | List directory contents                  | Read   |
+| `listGitHubPullRequests`         | List pull requests                       | Read   |
+| `listGitHubCommits`              | List commits                             | Read   |
+| `summarizeGitHubPullRequestDiff` | Summarize PR changes                     | Read   |
 
 ## Slack
 
@@ -34,12 +34,12 @@ Send messages and read conversations.
 skills: [Skills.slack({ channel: SlackChannel.Engineering })]
 ```
 
-| Tool                      | Description                      | Access |
-| ------------------------- | -------------------------------- | ------ |
+| Tool                      | Description                                                                      | Access |
+| ------------------------- | -------------------------------------------------------------------------------- | ------ |
 | `slack_send_message`      | Send to a channel, an existing DM (`channelId`), or a member 1:1 (`slackUserId`) | Write  |
-| `slack_list_users`        | List workspace users             | Read   |
-| `slack_list_channels`     | List channels                    | Read   |
-| `slack_read_conversation` | Read conversation history        | Read   |
+| `slack_list_users`        | List workspace users                                                             | Read   |
+| `slack_list_channels`     | List channels                                                                    | Read   |
+| `slack_read_conversation` | Read conversation history                                                        | Read   |
 
 For `slack_send_message`, pass either `channelId` (a public or private channel id, or an existing DM channel id) or `slackUserId` (a member id, `U…`). Terse opens the DM if needed. If you pass both, `channelId` wins and the message goes there. After `terse generate`, use `SlackChannel.*.channelId` and `SlackUser.*.userId` from `src/terse.generated.ts` instead of hand-copying ids.
 
@@ -51,18 +51,18 @@ Create, update, and search issues.
 skills: [Skills.linear()]
 ```
 
-| Tool                    | Description               | Access |
-| ----------------------- | ------------------------- | ------ |
-| `linear_search_ticket`  | Search tickets            | Read   |
-| `linear_get_teams`      | List teams                | Read   |
-| `linear_get_states`     | Get issue states          | Read   |
-| `linear_get_labels`     | Get available labels      | Read   |
-| `linear_get_projects`   | List projects             | Read   |
-| `linear_get_users`      | List team members         | Read   |
-| `linear_read_ticket`    | Read ticket details       | Read   |
-| `linear_create_ticket`  | Create a new ticket       | Write  |
-| `linear_update_ticket`  | Update a ticket           | Write  |
-| `linear_add_comment`    | Add a comment to a ticket | Write  |
+| Tool                   | Description               | Access |
+| ---------------------- | ------------------------- | ------ |
+| `linear_search_ticket` | Search tickets            | Read   |
+| `linear_get_teams`     | List teams                | Read   |
+| `linear_get_states`    | Get issue states          | Read   |
+| `linear_get_labels`    | Get available labels      | Read   |
+| `linear_get_projects`  | List projects             | Read   |
+| `linear_get_users`     | List team members         | Read   |
+| `linear_read_ticket`   | Read ticket details       | Read   |
+| `linear_create_ticket` | Create a new ticket       | Write  |
+| `linear_update_ticket` | Update a ticket           | Write  |
+| `linear_add_comment`   | Add a comment to a ticket | Write  |
 
 ## Attio
 
@@ -71,8 +71,6 @@ Query and manage CRM records.
 ```ts
 skills: [Skills.attio({ object: AttioObject.People })]
 ```
-
-Every tool is either read-only or performs exactly one kind of write, so approvals can gate writes without gating reads.
 
 | Tool                      | Description                                                                              | Access |
 | ------------------------- | ---------------------------------------------------------------------------------------- | ------ |
@@ -197,13 +195,13 @@ skills: [Skills.posthog({ project: PosthogProject.MyTeam })]
 
 `terse generate` also emits a `PosthogEventName` union of the custom event names observed in your project over the last 180 days, so `eventName` filters are checked at compile time. Built-in `$`-prefixed events like `$pageview` are always accepted.
 
-| Tool                       | Description                              | Access |
-| -------------------------- | ---------------------------------------- | ------ |
-| `searchPosthogLogs`        | Search logs                              | Read   |
-| `searchPosthogSessions`    | Search sessions                          | Read   |
-| `getPosthogSessionEvents`  | Get events for a session                 | Read   |
-| `listPosthogEventNames`    | List event names with occurrence counts  | Read   |
-| `searchPosthogEvents`      | Search events                            | Read   |
+| Tool                      | Description                             | Access |
+| ------------------------- | --------------------------------------- | ------ |
+| `searchPosthogLogs`       | Search logs                             | Read   |
+| `searchPosthogSessions`   | Search sessions                         | Read   |
+| `getPosthogSessionEvents` | Get events for a session                | Read   |
+| `listPosthogEventNames`   | List event names with occurrence counts | Read   |
+| `searchPosthogEvents`     | Search events                           | Read   |
 
 ## LaunchDarkly
 
@@ -274,8 +272,8 @@ Gives a job a persistent `/memories` directory it can read and write across runs
 skills: [Skills.memory()]
 ```
 
-| Tool     | Description                                                                                     | Access |
-| -------- | ----------------------------------------------------------------------------------------------- | ------ |
+| Tool     | Description                                                                                                             | Access |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- | ------ |
 | `memory` | Read, write, edit, and organize files under `/memories` (`view`, `create`, `str_replace`, `insert`, `delete`, `rename`) | Write  |
 
 ### What persists between runs

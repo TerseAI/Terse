@@ -1327,8 +1327,9 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     }
 }
 
-function buildAttioRecordsMethods(integrationId: string, toolName: string): ToolMethodContext[] {
+function buildAttioRecordsMethods(integrationId: string, tool: ToolDefinition): ToolMethodContext[] {
     const id = escapeString(integrationId)
+    const toolName = tool.name
     const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })`
     const objectSlug = "objectSlug: __normalizeAttioObjectSlug(params.object)"
 
@@ -1336,7 +1337,7 @@ function buildAttioRecordsMethods(integrationId: string, toolName: string): Tool
         case "attio_read_records":
             return [
                 {
-                    description: "Query records of an Attio object, with optional filtering and limit/offset pagination (limit defaults to 20, max 500).",
+                    description: attioActionDescription(toolName, "query"),
                     generatedSignature: "queryRecords<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>",
                     runtimeLines: [
                         "queryRecords: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>",
@@ -1344,8 +1345,7 @@ function buildAttioRecordsMethods(integrationId: string, toolName: string): Tool
                     ]
                 },
                 {
-                    description:
-                        "Fuzzy-search records (max 25 matches) following Attio's in-product matching: names/domains/emails/phones on people and companies, the record label on other objects. Query with a distinctive substring of the target name; extra tokens absent from it can prevent matches. Results are eventually consistent (a just-created record may not be indexed) — use queryRecords for read-after-write.",
+                    description: attioActionDescription(toolName, "search"),
                     generatedSignature: "searchRecords<TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>): Promise<AttioSearchRecordsResult>",
                     runtimeLines: [
                         "searchRecords: <TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>) =>",
@@ -1353,7 +1353,7 @@ function buildAttioRecordsMethods(integrationId: string, toolName: string): Tool
                     ]
                 },
                 {
-                    description: "Fetch a single record by its ID.",
+                    description: attioActionDescription(toolName, "get"),
                     generatedSignature: "getRecord<TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
                     runtimeLines: [
                         "getRecord: <TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>) =>",
@@ -1361,8 +1361,7 @@ function buildAttioRecordsMethods(integrationId: string, toolName: string): Tool
                     ]
                 },
                 {
-                    description:
-                        "Fetch the historic values of one attribute on a record (e.g. every stage a deal has been in), with limit/offset pagination. Entries come back as { active_from, active_until, value } with the value flattened and typed by the attribute.",
+                    description: attioActionDescription(toolName, "get_attribute_history"),
                     generatedSignature:
                         "getAttributeHistory<TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }): Promise<AttioAttributeHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>>",
                     runtimeLines: [
@@ -1374,7 +1373,7 @@ function buildAttioRecordsMethods(integrationId: string, toolName: string): Tool
         case "attio_create_record":
             return [
                 {
-                    description: "Create a new record. Unlike upsertRecord, no matching attribute is needed, so this works for objects without a unique writable attribute (e.g. deals).",
+                    description: tool.description || undefined,
                     generatedSignature: "createRecord<TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
                     runtimeLines: [
                         "createRecord: <TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>) =>",
@@ -1385,8 +1384,7 @@ function buildAttioRecordsMethods(integrationId: string, toolName: string): Tool
         case "attio_update_record":
             return [
                 {
-                    description:
-                        "Update an existing record by its ID. Only the attributes present in values are touched; multiselectMode 'append' adds to multi-value attributes instead of overwriting them.",
+                    description: tool.description || undefined,
                     generatedSignature: "updateRecord<TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
                     runtimeLines: [
                         "updateRecord: <TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>) =>",
@@ -1397,8 +1395,7 @@ function buildAttioRecordsMethods(integrationId: string, toolName: string): Tool
         case "attio_upsert_record":
             return [
                 {
-                    description:
-                        "Create or update one or more records, matched on a unique writable attribute (e.g. email_addresses for people, domains for companies). Throws if ANY record fails, naming each failure; records earlier in the batch may already be written (upserts are safe to retry).",
+                    description: tool.description || undefined,
                     generatedSignature: "upsertRecord<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>",
                     runtimeLines: [
                         "upsertRecord: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>",
@@ -1409,7 +1406,7 @@ function buildAttioRecordsMethods(integrationId: string, toolName: string): Tool
         case "attio_delete_record":
             return [
                 {
-                    description: "Permanently delete a record by its ID. This cannot be undone.",
+                    description: tool.description || undefined,
                     generatedSignature: "deleteRecord<TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>): Promise<void>",
                     runtimeLines: [
                         "deleteRecord: <TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>) =>",
@@ -1429,7 +1426,7 @@ function buildAttioToolMethods(integrationId: string, tool: ToolDefinition): Too
         case "attio_update_record":
         case "attio_upsert_record":
         case "attio_delete_record":
-            return buildAttioRecordsMethods(integrationId, tool.name)
+            return buildAttioRecordsMethods(integrationId, tool)
         case "attio_read_lists":
         case "attio_create_list":
         case "attio_update_list":
@@ -1438,7 +1435,7 @@ function buildAttioToolMethods(integrationId: string, tool: ToolDefinition): Too
         case "attio_upsert_list_entry":
         case "attio_update_list_entry":
         case "attio_remove_list_entry":
-            return buildAttioListsMethods(integrationId, tool.name)
+            return buildAttioListsMethods(integrationId, tool)
         default: {
             const specs = ATTIO_RESOURCE_METHOD_SPECS[tool.name]
             return specs ? buildAttioResourceMethods(integrationId, tool, specs) : null
@@ -1579,8 +1576,9 @@ function buildAttioResourceMethods(integrationId: string, tool: ToolDefinition, 
     })
 }
 
-function buildAttioListsMethods(integrationId: string, toolName: string): ToolMethodContext[] {
+function buildAttioListsMethods(integrationId: string, tool: ToolDefinition): ToolMethodContext[] {
     const id = escapeString(integrationId)
+    const toolName = tool.name
     const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })`
     const listKey = "listIdOrSlug: __normalizeAttioObjectSlug(params.list)"
     const listParam = "list: GeneratedAttioList | string"
@@ -1589,12 +1587,12 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
         case "attio_read_lists":
             return [
                 {
-                    description: "List all Attio lists in the workspace.",
+                    description: attioActionDescription(toolName, "list"),
                     generatedSignature: 'listLists(): Promise<{ lists: NonNullable<AttioListsResult["lists"]>; count: number }>',
                     runtimeLines: ["listLists: () =>", `    ${call('{ action: "list" }')}.then(result => ({ lists: result.lists ?? [], count: (result.lists ?? []).length })),`]
                 },
                 {
-                    description: "Fetch a list's configuration. Accepts a generated AttioList constant or a plain list ID/slug.",
+                    description: attioActionDescription(toolName, "get"),
                     generatedSignature: `getList(params: { ${listParam} }): Promise<NonNullable<AttioListsResult["list"]>>`,
                     runtimeLines: [`getList: (params: { ${listParam} }) =>`, `    ${call(`{ action: "get", ${listKey} }`)}.then(result => __requireAttioPayload(result.list, "list")),`]
                 }
@@ -1602,7 +1600,7 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
         case "attio_create_list":
             return [
                 {
-                    description: "Create a new list over an object. This changes the workspace for every user.",
+                    description: tool.description || undefined,
                     generatedSignature: 'createList(params: ToolInputByName["attio_create_list"]["request"]): Promise<NonNullable<AttioListsResult["list"]>>',
                     runtimeLines: ['createList: (params: ToolInputByName["attio_create_list"]["request"]) =>', `    ${call("params")}.then(result => __requireAttioPayload(result.list, "list")),`]
                 }
@@ -1610,7 +1608,7 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
         case "attio_update_list":
             return [
                 {
-                    description: "Rename a list.",
+                    description: tool.description || undefined,
                     generatedSignature: `updateList(params: { ${listParam}; name: string }): Promise<NonNullable<AttioListsResult["list"]>>`,
                     runtimeLines: [
                         `updateList: (params: { ${listParam}; name: string }) =>`,
@@ -1621,8 +1619,7 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
         case "attio_read_list_entries":
             return [
                 {
-                    description:
-                        "List entries in a list with a typed filter, an optional parent-record lookup, and limit/offset pagination. Entry values come back flattened (statuses/selects as AttioSelectOption).",
+                    description: attioActionDescription(toolName, "query_entries"),
                     generatedSignature:
                         "queryListEntries<TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; parentRecordId?: string | null; parentObjectSlug?: string; limit?: number | null; offset?: number | null }): Promise<AttioListEntriesResult<TList>>",
                     runtimeLines: [
@@ -1633,7 +1630,7 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
                     ]
                 },
                 {
-                    description: "Fetch a single list entry with flattened, typed entry values.",
+                    description: attioActionDescription(toolName, "get_entry"),
                     generatedSignature: "getListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string }): Promise<AttioListEntryResult<TList>>",
                     runtimeLines: [
                         "getListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string }) =>",
@@ -1644,7 +1641,7 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
         case "attio_add_list_entry":
             return [
                 {
-                    description: "Add a record to a list as a new entry, with typed entry values. parentObjectSlug is inferred from a generated AttioList constant.",
+                    description: tool.description || undefined,
                     generatedSignature:
                         "addListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }): Promise<AttioListEntryResult<TList>>",
                     runtimeLines: [
@@ -1658,7 +1655,7 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
         case "attio_upsert_list_entry":
             return [
                 {
-                    description: "Create or update a list entry keyed by its parent record (idempotent list membership), with typed entry values.",
+                    description: tool.description || undefined,
                     generatedSignature:
                         "upsertListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }): Promise<AttioListEntryResult<TList>>",
                     runtimeLines: [
@@ -1672,7 +1669,7 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
         case "attio_update_list_entry":
             return [
                 {
-                    description: "Update a list entry's attribute values (e.g. move its stage), typed against the list's entry attributes.",
+                    description: tool.description || undefined,
                     generatedSignature:
                         'updateListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string; entryValues: Partial<AttioEntryValuesFor<TList>>; multiselectMode?: "overwrite" | "append" | null }): Promise<AttioListEntryResult<TList>>',
                     runtimeLines: [
@@ -1686,7 +1683,7 @@ function buildAttioListsMethods(integrationId: string, toolName: string): ToolMe
         case "attio_remove_list_entry":
             return [
                 {
-                    description: "Remove an entry from a list; the parent record is untouched.",
+                    description: tool.description || undefined,
                     generatedSignature: `removeListEntry(params: { ${listParam}; entryId: string }): Promise<void>`,
                     runtimeLines: [
                         `removeListEntry: (params: { ${listParam}; entryId: string }) =>`,

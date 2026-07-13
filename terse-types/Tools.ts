@@ -2912,7 +2912,7 @@ export const attioReadListEntriesTool = defineTool({
 })
 export const attioAddListEntryTool = defineTool({
     name: "attio_add_list_entry",
-    description: `Add a record to an Attio list as a new entry, with optional entry attribute values (entryValues as a JSON object string, e.g. a stage). Throws on unique-attribute conflicts; the same record may appear in multiple entries.`,
+    description: `Add a record to an Attio list as a new entry, with optional entry attribute values (e.g. a stage). Throws on unique-attribute conflicts; the same record may appear in multiple entries.`,
     inputSchema: attioAddListEntryInputSchema,
     outputSchema: attioListsOutputSchema
 })
@@ -2924,7 +2924,7 @@ export const attioUpsertListEntryTool = defineTool({
 })
 export const attioUpdateListEntryTool = defineTool({
     name: "attio_update_list_entry",
-    description: `Update an Attio list entry's attribute values (e.g. move its stage). Entry writes go through entryValues as a JSON object string; multiselectMode 'append' adds to multi-value attributes instead of overwriting.`,
+    description: `Update an Attio list entry's attribute values (e.g. move its stage). multiselectMode 'append' adds to multi-value attributes instead of overwriting.`,
     inputSchema: attioUpdateListEntryInputSchema,
     outputSchema: attioListsOutputSchema
 })
