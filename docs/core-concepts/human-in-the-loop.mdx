@@ -24,7 +24,7 @@ createJob({
                 Skills.web(),
                 Skills.slack({ channel: SlackChannel.DealDesk })
             ],
-            toolApprovals: ["attio_records", "slack_send_message"]
+            toolApprovals: ["attio_upsert_record", "slack_send_message"]
         })
 
         // Agentic: web research runs immediately (read-only)
@@ -59,7 +59,7 @@ The approval experience adapts to your environment:
 When you test locally, approval requests appear as interactive prompts in your terminal:
 
 ```
-  Approval required: attio_records
+  Approval required: attio_upsert_record
     {
       "request": {
         "action": "upsert",
@@ -69,7 +69,7 @@ When you test locally, approval requests appear as interactive prompts in your t
       }
     }
 
-  Approve attio_records? (Y/n)
+  Approve attio_upsert_record? (Y/n)
 ```
 
 Type `Y` to approve or `n` to reject. The run resumes immediately in the same terminal session.

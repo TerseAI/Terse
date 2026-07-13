@@ -17,7 +17,7 @@ const MEMORY_SYSTEM_INSTRUCTIONS = [
 
 export class MemoryOutput extends Output<MemoryConfig> {
     constructor() {
-        super(OutputConfigType.MEMORY, [{ tool: memoryTool, isReadOnly: false, integration: IntegrationType.TERSE, displayName: "Memory", validateACL: unrestricted }])
+        super(OutputConfigType.MEMORY, [{ tool: memoryTool, isReadOnly: true, integration: IntegrationType.TERSE, displayName: "Memory", validateACL: unrestricted }])
     }
 
     async validateConfig(_output: MemoryConfig, _userId: string): Promise<void> {}

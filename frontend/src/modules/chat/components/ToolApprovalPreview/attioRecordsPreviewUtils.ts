@@ -1,27 +1,22 @@
-import type { AttioRecordsRequest } from "terse-types"
+import type { AttioCreateRecordRequest, AttioUpdateRecordRequest, AttioUpsertRecordsRequest } from "terse-types"
 import type { AttioAttribute } from "terse-types/types"
 
-export function safeParseParams(parameters?: string): AttioRecordsParams | null {
+export function safeParseParams<TRequest>(parameters?: string): AttioRecordsParams<TRequest> | null {
     if (!parameters) return null
 
     try {
-        const parsed = JSON.parse(parameters) as AttioRecordsParams
+        const parsed = JSON.parse(parameters) as AttioRecordsParams<TRequest>
         return parsed && typeof parsed === "object" ? parsed : null
     } catch {
         return null
     }
 }
 
-export function extractRecords(request?: AttioRecordsRequest): Array<Record<string, unknown>> {
-    switch (request?.action) {
-        case "upsert":
-            return parseRecordsBatch(request.records)
-        case "create":
-        case "update":
-            return parseSingleValues(request.values)
-        default:
-            return []
-    }
+export function extractRecords(action: AttioRecordsWriteAction, request?: AttioRecordsWriteRequest): Array<Record<string, unknown>> {
+    if (!request) return []
+    if (action === "upsert" && "records" in request) return parseRecordsBatch(request.records)
+    if ((action === "create" || action === "update") && "values" in request) return parseSingleValues(request.values)
+    return []
 }
 
 export function writeActionLabel(action: "create" | "update" | "upsert"): string {
@@ -140,10 +135,14 @@ function isEmptyValue(value: unknown): boolean {
     return false
 }
 
-export interface AttioRecordsParams {
+export interface AttioRecordsParams<TRequest> {
     integrationId?: string
-    request?: AttioRecordsRequest
+    request?: TRequest
 }
+
+export type AttioRecordsWriteAction = "create" | "update" | "upsert"
+
+export type AttioRecordsWriteRequest = AttioCreateRecordRequest | AttioUpdateRecordRequest | AttioUpsertRecordsRequest
 
 export type ValidationNotice = {
     rowIndex: number

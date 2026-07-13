@@ -45,6 +45,12 @@ export abstract class Output<TConfig extends ConfigData> {
 type ToolboxEntryInput<TConfig extends ConfigData> = {
     [TName in ToolName]: {
         tool: TypedToolOptions<TName, SessionWithTracking<Session>>
+        /**
+         * True when the tool cannot mutate EXTERNAL systems. Tools that only touch Terse-internal,
+         * agent-owned state (e.g. memory) count as read-only. Read-only tools are excluded from the
+         * approval candidate list (unless supportsApproval is set), so a write-capable tool labeled
+         * true can never be gated behind human approval.
+         */
         isReadOnly: boolean
         integration: IntegrationType
         displayName: string

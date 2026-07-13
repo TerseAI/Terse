@@ -135,7 +135,30 @@ export const Skills = {
         /* … */
     },
     /** Attio — read and write records, tasks, notes, lists and more on a CRM object */
-    attio(opts: { object: AttioObject<any> }): TypedSkill<"attio_records" | "attio_workspace_members" | "attio_tasks" | "attio_notes" | "attio_comments" | "attio_lists" | "attio_meetings" | "attio_files" | "attio_schema"> {
+    attio(opts: {
+        object: AttioObject<any>
+    }): TypedSkill<
+        | "attio_add_list_entry"
+        | "attio_create_comment"
+        | "attio_create_list"
+        | "attio_create_note"
+        | "attio_create_record"
+        | "attio_create_task"
+        | "attio_delete_comment"
+        | "attio_delete_file"
+        | "attio_delete_note"
+        | "attio_delete_record"
+        | "attio_delete_task"
+        | "attio_modify_schema"
+        | "attio_remove_list_entry"
+        | "attio_update_list"
+        | "attio_update_list_entry"
+        | "attio_update_record"
+        | "attio_update_task"
+        | "attio_upload_file"
+        | "attio_upsert_list_entry"
+        | "attio_upsert_record"
+    > {
         /* … */
     }
 }
