@@ -1,6 +1,6 @@
 # Common Improvement Patterns
 
-Before/after shapes for the fixes the analysis pass most often lands on. Method and constant names come from the project's `src/terse.generated.ts`; never invent them.
+Before/after shapes for the fixes the analysis pass most often lands on. Method and constant names come from the project's generated files; never invent them.
 
 ## Add bot filtering
 

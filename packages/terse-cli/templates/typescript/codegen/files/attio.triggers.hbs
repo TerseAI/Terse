@@ -1,14 +1,3 @@
-{{> attio-section attio}}
-
-{{#if toolFiles.attio}}
-{{sectionHeader "Attio tools"}}
-
-{{#each attioPreludeLines}}
-{{{this}}}
-{{/each}}
-{{> tools-slice toolFiles.attio}}
-
-{{/if}}
 {{sectionHeader "Attio triggers"}}
 
 {{#each triggerFiles.attio}}
@@ -18,6 +7,11 @@
 {{#each attio.recordTriggerAliases}}
 {{{this}}}
 {{/each}}
+
+function attioParentObjectFilter(object: GeneratedAttioObject | undefined) {
+    if (!object) return null
+    return { $and: [{ field: "id.object_id", operator: "equals" as const, value: object.objectId }] }
+}
 
 export const attioTriggers = {
     /** Trigger when a call recording is created */
@@ -133,11 +127,4 @@ export const attioTriggers = {
         const filter = attioParentObjectFilter(opts.object)
         return new AttioInputConfig("{{escape attio.id}}", opts.eventTypes.map(eventType => ({ eventType, filter })))
     },
-}
-
-{{sectionHeader "Attio skill"}}
-
-/** Attio — query and upsert records on a CRM object */
-export function attioSkill(opts: { object: AttioObject<any> }): TypedSkill<{{{attio.skillToolType}}}> {
-    return new AttioOutputConfig("{{escape attio.id}}", opts.object.apiSlug)
 }

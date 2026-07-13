@@ -391,7 +391,7 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
     const files = await provider.renderGeneratedFiles(input)
     const codegenMs = performance.now() - codegenStart
 
-    s.message("Writing generated file")
+    s.message("Writing generated files")
     writeOutput(files, provider)
     s.stop(`Fetched ${integrationCount} integration(s)`)
 
@@ -404,7 +404,10 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
     if (input.tools.length > 0) {
         console.log(chalk.dim(`Generated types for ${input.tools.length} ${input.tools.length === 1 ? "tool" : "tools"}`))
     }
-    console.log(chalk.dim(`Generated ${path.relative(process.cwd(), provider.resolveGeneratedCodePath(process.cwd()))}`))
+    const generatedPath = path.relative(process.cwd(), provider.resolveGeneratedCodePath(process.cwd()))
+    console.log(
+        chalk.dim(files.length > 1 ? `Generated ${generatedPath} + ${files.length - 1} file(s) under ${path.join(path.dirname(generatedPath), "terse.generated")}/` : `Generated ${generatedPath}`)
+    )
     console.log(chalk.dim(`Codegen: ${codegenMs.toFixed(0)}ms | Total: ${totalMs.toFixed(0)}ms`))
 }
 

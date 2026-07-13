@@ -16,18 +16,18 @@ Create a Terse workflow based on: **$ARGUMENTS**
 
 A workflow is the thing being automated; in code it is defined as a job (`createJob` in `src/terse.jobs.ts`).
 
-## Reference docs
+## Learning how to build the workflow
 
-Terse evolves fast; the live docs are the source of truth for facts:
+You should use the following sources to get context on the Terse platform:
 
-- Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
-- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for `terse init`, `terse generate`, `terse test`, `terse secrets`, `terse deploy`.
+1. The code in the project itself if it is present: (src/terse.jobs.ts, src/jobs/)
+2. The generated files should be the primary source of truth and explain how Terse works: `src/terse.generated.ts` is the entry point — its header lists every available integration and carries a line-numbered index of the `src/terse.generated/` folder, which holds one file per integration and kind (`<integration>.triggers.ts` for trigger factories and payload types, `<integration>.tools.ts` for typed tool methods, resources and skills, workspace schema files like `attio.schemas.ts`, plus shared plumbing in `common.ts`). Use the index to open only the files the workflow needs. The generated files answer what exists and its exact shape; when they disagree with the live docs, the generated files win — a missing helper means rerun `terse generate`, never code against a docs claim the generated files don't back.
+3. The terse cli: (terse --help)
+4. The fourth and last option should be to use the live terse docs (docs.useterse.ai). Fetch first the index page (https://docs.useterse.ai/llms.txt) to discover available pages and then only pull the specific pages you need to implement the workflow.
 
-Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured — and the "Testing Safety Conventions" section wins on how test runs and ad-hoc tool calls are conducted.
+**Do not search or read the dist files for the terse-sdk package.**
 
 ## Steps
-
-**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/jobs/`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
 
 **Narrate the run.** Speak to the user in casual first person about the work itself: "I'm going to check if the project is set up", "I need some help understanding this use case better", "I'm launching some research agents to figure out how to build this for you", "Based on the research, I have a few more questions". The steps below group into phases — bootstrap (step 0), interview (1), research (2), shared understanding (3), design (4–8), build (9), swap and verify (10–11), deploy (12). Step numbers are internal and never spoken, but the phases are not: at every phase transition, say in plain casual words which phase just finished and which comes next, with its place in the overall sequence — "Research is done — that's 1 of 5 for this build. Next up: agreeing on the design." The user should always know where the build stands from the prose alone.
 
@@ -78,9 +78,9 @@ Set the Bash timeout to 600000 (10 minutes). Dependency install and browser-side
 
 **Continue.** The CLI prints a "Next steps" block at the end of a successful `terse init`. Don't repeat it verbatim. Connect any integrations the requested workflow needs — run `terse integrate describe <type> --json` first to learn whether the install is form or OAuth and which fields it requires, then `terse integrate connect <type>` per step 7. Then continue with step 1 and build the workflow the user asked for.
 
-`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the file lists every integration currently available in Terse — never plan around an integration that is not in that list. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas. To see what a tool actually returns, `terse integrate tool run <tool> --params '<json>'` runs it one-shot — see "Testing tool calls from the CLI" in the testing conventions.
+`src/terse.generated.ts` and the `src/terse.generated/` folder are the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the root file lists every integration currently available in Terse — never plan around an integration that is not in that list — and indexes the per-integration files with the exact file and line for every tool, trigger, and resource. Do not run `terse integrate list` — the generated files already reflect what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas. To see what a tool actually returns, `terse integrate tool run <tool> --params '<json>'` runs it one-shot — see "Testing tool calls from the CLI" in the testing conventions.
 
-If `src/terse.generated.ts` is missing in an existing project, run `terse generate` before inventing helpers. If it exists but does not expose the helper you need, rerun `terse generate`. Never edit the generated file directly.
+If `src/terse.generated.ts` is missing in an existing project, run `terse generate` before inventing helpers. If it exists but does not expose the helper you need, or the header index disagrees with what a leaf file actually contains, rerun `terse generate`. Never edit the generated files directly.
 
 ### 1. Initial interview
 
@@ -99,15 +99,16 @@ While interviewing, sharpen the domain language:
 
 **Workspace scan — always yours, never a subagent's.** The exact types and signatures must be in your context to write the job in step 9, so delegating this read would only add a wasted pass. Read, in full:
 
-1. `src/terse.generated.ts`. The comment at the top lists every integration currently available in Terse; the generated sections below it reflect what is connected. Do not read `node_modules/`.
+1. `src/terse.generated.ts` (the root file). The header lists every integration currently available in Terse and carries the line-numbered index of the `src/terse.generated/` folder; the re-exports below it reflect what is connected.
 2. `src/terse.jobs.ts` (or the project's custom entry file, or the legacy `src/index.ts`) — note existing jobs that overlap or conflict with this workflow.
 
-From the scan, carry forward the exact trigger factories (`Triggers.*`), skill factories (`Skills.*`), `toolbox.<integration>.<method>` signatures, and resource constants that match this workflow — only names that literally appear in the file, never invented — plus the gaps. Classify each gap against the available-integrations comment: a platform in the list but with no generated section is a connectable built-in (`terse integrate tool <type> --json` lists its tools); a platform absent from the list has no Terse built-in — leave those to the researchers below.
+Then follow the index into the leaf files selectively: for every integration this workflow will touch, read its `terse.generated/<integration>.triggers.ts` and `<integration>.tools.ts` in full before any code is written against them — step 9 needs the exact signatures in your context. Skip only the files for integrations the workflow does not involve. If the index disagrees with what a leaf file actually contains, treat the whole bundle as stale and rerun `terse generate`.
+
+From the scan, carry forward the exact trigger factories (`Triggers.*`), skill factories (`Skills.*`), `toolbox.<integration>.<method>` signatures, and resource constants that match this workflow — only names that literally appear in the generated files, never invented — plus the gaps. Classify each gap against the available-integrations comment: a platform in the list but with no generated files under `terse.generated/` is a connectable built-in (`terse integrate tool <type> --json` lists its tools); a platform absent from the list has no Terse built-in — leave those to the researchers below.
 
 **Researchers** are focused, read-only background research tasks defined by self-contained templates in `references/`. Each produces a research brief in a fixed shape.
 
-- **Docs researcher** ([research-docs.md](references/research-docs.md)) — dispatch right after the scan, unless the workflow only uses primitives you have already verified against the live docs in this session. Reads the live Terse docs and reports the features relevant to this workflow, including whether each involved platform has a built-in integration type. Sharpen its objectives with the scan: name the platforms whose coverage is actually in question instead of asking about everything.
-- **Integration researcher** ([research-integrations.md](references/research-integrations.md)) — dispatch only after the scan and the docs brief confirm a needed service has no built-in Terse integration (rungs 3–4 of the integration ladder in the conventions section). Researches the platform's official SDK, auth model, and key endpoints.
+- **Integration researcher** ([research-integrations.md](references/research-integrations.md)) — dispatch only after the scan confirms a needed service has no built-in Terse integration (rungs 3–4 of the integration ladder in the conventions section). Researches the platform's official SDK, auth model, and key endpoints.
 
 **Dispatching a researcher.** For each one:
 
@@ -116,15 +117,15 @@ From the scan, carry forward the exact trigger factories (`Triggers.*`), skill f
 3. If your harness can spawn subagents (an Agent/Task tool), pass the entire filled-in template as the subagent's prompt, using a read-only, web-capable agent type. The template is self-contained: the subagent needs no other context, and its reply is the research brief.
 4. If it cannot, follow the filled-in template yourself, inline, and write out the same brief before moving on.
 
-**Background where the harness allows.** Dispatch the docs researcher as soon as the scan is done, and collect its brief. Dispatch the integration researcher as soon as the scan and docs brief justify it — it can run while you conduct step 3. Inline execution runs the templates sequentially, in the order above.
+**Background where the harness allows.** Dispatch the integration researcher as soon as the scan justifies it — it can run while you conduct step 3. Inline execution runs the template before moving on.
 
 Researchers are read-only: they must not edit files or run state-changing commands (`terse integrate connect`, `terse generate`, `terse deploy`).
 
 ### 3. Reach a shared understanding
 
-Combine your workspace scan with the research briefs, then bring the user everything that changes the design:
+Combine your workspace scan with any research briefs, then bring the user everything that changes the design:
 
-- Decisions the research raised: a missing integration to connect or work around, two plausible trigger choices, a docs feature that suggests a different shape for the workflow.
+- Decisions the research raised: a missing integration to connect or work around, two plausible trigger choices, a capability the research surfaced that suggests a different shape for the workflow.
 - Contradictions between what the user asked for and what exists. Surface them; do not silently resolve them.
 
 The same interview rules apply: batch at most four questions, recommend an answer for each, look up facts instead of asking. Walk down each branch of the design tree, resolving dependencies between decisions one by one.
@@ -226,7 +227,7 @@ For durable jobs, the style rules in the conventions section ("Durable job style
 
 Choose triggers based on what events the job should respond to. Your workspace scan surfaced the candidates; import trigger factories and resource constants from `./terse.generated`.
 
-Only use triggers and resources that actually exist in `src/terse.generated.ts`. Do not invent constants that are not defined there.
+Only use triggers and resources that actually exist in the generated files. Do not invent constants that are not defined there.
 
 ### 7. Pick skills and connect integrations
 
@@ -236,7 +237,7 @@ Rules of thumb:
 - If a step is fully deterministic, call `toolbox.<integration>.<method>` directly. No skill required.
 - If the model needs to choose actions on an integration during a `generateText` run, that integration must be in `skills`.
 
-When the workflow needs a platform, step 2 has already walked the integration ladder in the conventions section ("Integrating with a platform"): the workspace scan settles what is connected, the docs brief settles whether a built-in type exists, and the integration brief covers the external rungs. Confirm the rung and stop at the first one that works; for the community-wrapper rung, put the choice to the user with the brief's evidence.
+When the workflow needs a platform, step 2 has already walked the integration ladder in the conventions section ("Integrating with a platform"): the workspace scan settles what is connected and whether a built-in type exists, and the integration brief covers the external rungs. Confirm the rung and stop at the first one that works; for the community-wrapper rung, put the choice to the user with the brief's evidence.
 
 Connecting a missing built-in integration type:
 
@@ -249,7 +250,7 @@ Connecting a missing built-in integration type:
   3. Give the user the `url` from the payload as a clickable fallback: "If no tab appeared, here's the link: <url>".
   4. Run the `waitCommand` (e.g. `terse integrate wait gmail`) to block until they finish authorization — it exits 0 when the connection is live. Only then continue.
 - If you need multiple OAuth integrations, do them one at a time: announce → `connect <a> --json` → `wait <a>` → announce → `connect <b> --json` → `wait <b>`. Do not batch the connect calls; the user can only authorize one browser tab at a time anyway.
-- After any connection or refresh, rerun `terse generate` and reopen `src/terse.generated.ts`
+- After any connection or refresh, rerun `terse generate` and reread the header index plus the leaf files for the integrations this workflow touches
 
 For anything past the built-in rungs, credentials follow the Credentials rule in the conventions section ("Integrating with a platform").
 
@@ -266,7 +267,7 @@ Filters prevent unnecessary agent runs and save cost.
 
 ### 9. Build the handler in milestones
 
-The "Terse Job Code Conventions" section at the bottom of this file governs every line of handler code below. Exact names and signatures come from your step 2 read of `src/terse.generated.ts`, never from memory of the design discussion; reopen the file only if `terse generate` has rerun since the scan (step 7 reruns it after connecting an integration).
+The "Terse Job Code Conventions" section at the bottom of this file governs every line of handler code below. Exact names and signatures come from your step 2 read of the generated files, never from memory of the design discussion; reopen them only if `terse generate` has rerun since the scan (step 7 reruns it after connecting an integration).
 
 Never build the whole handler and test at the end. Slice the workflow into milestones — logical groupings like gather context, decide, act — and prove each one green before starting the next. The worked examples in the conventions section (durable and non-durable) show the target shape; the durable one is sliced into milestones — anchor your slicing on it.
 
@@ -331,7 +332,7 @@ This run fires the real side effects once; tell the user before running it.
 ### 11. Final check
 
 Verify the things that are easy to get wrong:
-- Every `Triggers.<integration>.…`, `Skills.<integration>(…)`, resource constant, and tool call exists in `src/terse.generated.ts`. Inventing constants that aren't there is the most common failure.
+- Every `Triggers.<integration>.…`, `Skills.<integration>(…)`, resource constant, and tool call exists in the generated files. Inventing constants that aren't there is the most common failure.
 - Known calls use `toolbox`; only steps that need judgment use `generateText`. `TerseAgent.create()` appears only when streaming or reusing an agent.
 - `skills` lists every integration the model must call during a `generateText` run.
 - Agent prompts include full event context via `event.formatForAgentRunner()`.
@@ -513,7 +514,7 @@ Job files import generated helpers via `../terse.generated`. Pure, step-free hel
 
 Work down this ladder and stop at the first rung that can do the job:
 
-1. **Built-in Terse integration, already connected** — anything in `src/terse.generated.ts` (`toolbox.*`, `Skills.*`, `Triggers.*`).
+1. **Built-in Terse integration, already connected** — anything in `src/terse.generated.ts` and its `terse.generated/` folder (`toolbox.*`, `Skills.*`, `Triggers.*`).
 2. **Built-in integration type, not yet connected** — connect it with `terse integrate connect`, then rerun `terse generate`.
 3. **No built-in integration** — use the platform's official TypeScript SDK, after validating it is official: published under the vendor's npm org or linked from the vendor's official developer docs / GitHub org (e.g. `@slack/web-api`, `octokit`, `@linear/sdk`, `stripe`). Lean on its built-in types.
 4. **No official SDK** — research the leading community wrapper and present the user a choice between:
@@ -568,7 +569,7 @@ With neither signal, default to non-durable.
 
 ## Worked examples
 
-Method and constant names in both examples come from your project's `src/terse.generated.ts`; never invent them.
+Method and constant names in both examples come from your project's generated files; never invent them.
 
 ### Durable
 

@@ -1,65 +1,9 @@
-{{> header}}
-
-{{sectionHeader "Shared types"}}
-
-{{#each commonToolDeclarations}}
-{{{this}}}
-
-{{/each}}
 {{sectionHeader "Built-in triggers"}}
 
 {{#each commonTriggerDeclarations}}
 {{{this}}}
 
 {{/each}}
-{{#if github}}
-{{> github-integration}}
-
-{{/if}}
-{{#if gmail}}
-{{> gmail-integration}}
-
-{{/if}}
-{{#if slack}}
-{{> slack-integration}}
-
-{{/if}}
-{{#if linear}}
-{{> linear-integration}}
-
-{{/if}}
-{{#if notion}}
-{{> notion-integration}}
-
-{{/if}}
-{{#if posthog}}
-{{> posthog-integration}}
-
-{{/if}}
-{{#if datadog}}
-{{> datadog-integration}}
-
-{{/if}}
-{{#if launchdarkly}}
-{{> launchdarkly-integration}}
-
-{{/if}}
-{{#if workos}}
-{{> workos-integration}}
-
-{{/if}}
-{{#if attio}}
-{{> attio-integration}}
-
-{{/if}}
-{{#if snowflake}}
-{{> snowflake-integration}}
-
-{{/if}}
-{{#if heyreach}}
-{{> heyreach-integration}}
-
-{{/if}}
 {{sectionHeader "Triggers"}}
 
 /**

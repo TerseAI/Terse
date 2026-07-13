@@ -107,7 +107,7 @@ Job files import generated helpers via `../terse.generated`. Pure, step-free hel
 
 Work down this ladder and stop at the first rung that can do the job:
 
-1. **Built-in Terse integration, already connected** — anything in `src/terse.generated.ts` (`toolbox.*`, `Skills.*`, `Triggers.*`).
+1. **Built-in Terse integration, already connected** — anything in `src/terse.generated.ts` and its `terse.generated/` folder (`toolbox.*`, `Skills.*`, `Triggers.*`).
 2. **Built-in integration type, not yet connected** — connect it with `terse integrate connect`, then rerun `terse generate`.
 3. **No built-in integration** — use the platform's official TypeScript SDK, after validating it is official: published under the vendor's npm org or linked from the vendor's official developer docs / GitHub org (e.g. `@slack/web-api`, `octokit`, `@linear/sdk`, `stripe`). Lean on its built-in types.
 4. **No official SDK** — research the leading community wrapper and present the user a choice between:
@@ -162,7 +162,7 @@ With neither signal, default to non-durable.
 
 ## Worked examples
 
-Method and constant names in both examples come from your project's `src/terse.generated.ts`; never invent them.
+Method and constant names in both examples come from your project's generated files; never invent them.
 
 ### Durable
 

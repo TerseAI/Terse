@@ -14,22 +14,22 @@ Improve the Terse workflow named: **$ARGUMENTS**
 
 A workflow is defined in code as a job (`createJob` in `src/terse.jobs.ts`); the CLI commands below take that job name.
 
-## Reference docs
+## Learning how to improve the workflow
 
-Terse evolves fast; the live docs are the source of truth for facts:
+You should use the following sources to get context on the Terse platform:
 
-- Doc index: https://docs.useterse.ai/llms.txt — fetch this first to discover every page available, then pull the specific pages you need (triggers, skills, hosting, observability, etc.).
-- CLI reference: https://docs.useterse.ai/reference/cli — authoritative source for every `terse` command, including `history`, `replay`, and `test`.
+1. The code in the project itself if it is present: (src/terse.jobs.ts, src/jobs/)
+2. The generated files should be the primary source of truth and explain how Terse works: `src/terse.generated.ts` is the entry point — its header lists every available integration and carries a line-numbered index of the `src/terse.generated/` folder, which holds one file per integration and kind (`<integration>.triggers.ts` for trigger factories and payload types, `<integration>.tools.ts` for typed tool methods, resources and skills, workspace schema files like `attio.schemas.ts`, plus shared plumbing in `common.ts`). Use the index to open only the files the job touches. The generated files answer what exists and its exact shape; when they disagree with the live docs, the generated files win — a missing helper means rerun `terse generate`, never code against a docs claim the generated files don't back.
+3. The terse cli: (terse --help)
+4. The fourth and last option should be to use the live terse docs (docs.useterse.ai). Fetch first the index page (https://docs.useterse.ai/llms.txt) to discover available pages and then only pull the specific pages you need to improve the workflow.
 
-Precedence: live docs win on facts (API signatures, CLI flags, availability). The "Terse Job Code Conventions" section at the bottom of this file wins on style — how job code is structured — and the "Testing Safety Conventions" section wins on how test runs, replays, and ad-hoc tool calls are conducted.
+**Do not search or read the dist files for the terse-sdk package.**
 
 ## Steps
 
-**Do not search or read `node_modules/`.** Everything you need is in `src/terse.jobs.ts`, `src/jobs/`, `src/terse.generated.ts`, the bundled references, and live Terse docs — not inside dependency install dirs.
+`src/terse.generated.ts` and the `src/terse.generated/` folder are the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the root file lists every integration currently available in Terse — never plan around an integration that is not in that list — and indexes the per-integration files with the exact file and line for every tool, trigger, and resource. Read the root file alongside the job implementation. Do not run `terse integrate list` — the generated files already reflect what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas. To see what a tool actually returns, `terse integrate tool run <tool> --params '<json>'` runs it one-shot — see "Testing tool calls from the CLI" in the testing conventions.
 
-`src/terse.generated.ts` is the source of truth for connected integrations, available triggers, skills, resources, and deterministic wrappers. The comment at the top of the file lists every integration currently available in Terse — never plan around an integration that is not in that list. Read it alongside the job implementation. Do not run `terse integrate list` — the generated file already reflects what `terse integrate` connected or what is available to connect in this workspace. For what an available integration can do, `terse integrate tool <type> --json` lists its tools with descriptions, and `terse integrate tool <type> <tool-name> --json` returns one tool's input/output schemas. To see what a tool actually returns, `terse integrate tool run <tool> --params '<json>'` runs it one-shot — see "Testing tool calls from the CLI" in the testing conventions.
-
-If `src/terse.generated.ts` is missing or stale for the integrations the job uses, rerun `terse generate` instead of guessing at missing helpers. Never edit the generated file directly.
+If the generated files are missing or stale for the integrations the job uses, or the header index disagrees with what a leaf file actually contains, rerun `terse generate` instead of guessing at missing helpers. Never edit the generated files directly.
 
 **Narrate the run.** Speak to the user in casual first person about the work itself: "I'm pulling production history to see what actually went wrong", "the replay passes now with the new filter". At every phase transition, name the phase in plain casual words with its place in the sequence — diagnose, analyze, implement, verify — "Diagnosis is done — that's 1 of 4. Next I'll comb the job for improvements." Never speak internal step numbers; the user should always know where the work stands from the prose alone.
 
@@ -45,7 +45,7 @@ If `terse test run` prints a `TERSE TEST REPORT`, surface it immediately in your
 
 ### 1. Find the workflow
 
-Open `src/terse.jobs.ts` and `src/terse.generated.ts`. If the entry file is a manifest of side-effect imports, follow them into `src/jobs/`. Find the job matching the requested workflow name and read the full implementation — triggers, skills, filter, and handler.
+Open `src/terse.jobs.ts` and `src/terse.generated.ts` (the root generated file). If the entry file is a manifest of side-effect imports, follow them into `src/jobs/`. Find the job matching the requested workflow name and read the full implementation — triggers, skills, filter, and handler. Then follow the root file's index into only the `terse.generated/` leaf files for the integrations the job imports or uses, and read those in full — the analysis below needs their exact signatures in your context.
 
 The CLI can still load `src/index.ts` as a legacy fallback, and custom layouts can override the entry file with `--entry-file`.
 
@@ -85,7 +85,7 @@ The "Terse Job Code Conventions" section at the bottom of this file is what the 
 
 #### Tool Usage
 
-- **Known calls vs judgment**: For actions with known parameters, use `toolbox`, not `generateText`. Read available methods in `src/terse.generated.ts`.
+- **Known calls vs judgment**: For actions with known parameters, use `toolbox`, not `generateText`. Read available methods in `terse.generated/<integration>.tools.ts` — the root file's index points at the exact lines.
 - **Unnecessary agents**: If the handler only runs deterministic tools, drop `generateText` entirely and call `toolbox` directly.
 - **Prompts doing integration work**: Phrases like "post to Slack", "create a Linear issue", or "add label X" in a prompt usually mean that step should be code. Keep prompts for judgment only (summarize, triage, draft).
 - **Skill scoping**: `skills` controls what tools the model can pick during a `generateText` run. `toolbox.<integration>` is unaffected by `skills` — use it when you want a deterministic call without configuring an agent.
@@ -140,7 +140,7 @@ Edit the job's file — `src/terse.jobs.ts` in a single-job project, its `src/jo
 
 If an improvement needs a new integration, describe before connecting: `terse integrate describe <type> --json` returns the `installationType` (form or OAuth) and, for form installs, the exact fields `connect` requires — never guess field names. Form installs take values via `--field key=value` with secrets on `--fields-stdin`; OAuth installs open a browser and exit 2 with a handoff, so tell the user first and follow with `terse integrate wait <type>`.
 
-After connecting a new integration or when you need updated helpers, rerun `terse generate` and reopen `src/terse.generated.ts` — never edit the generated file by hand.
+After connecting a new integration or when you need updated helpers, rerun `terse generate` and reread the header index plus the affected leaf files — never edit the generated files by hand.
 
 ### 6. Verify the changes locally
 

@@ -182,7 +182,8 @@ interface ToolsSectionContext {
     toolFiles: Record<string, ToolFileContext>
     toolboxEntries: ToolboxEntryContext[]
     commonToolDeclarations: string[]
-    attioPreludeLines: string[]
+    attioSchemaLines: string[]
+    attioRuntimeHelperLines: string[]
     githubRepoMappings: Array<{ name: string; fullName: string }>
 }
 
@@ -197,7 +198,8 @@ export interface TemplateContext {
     triggerFiles: Record<string, string[]>
     commonTriggerDeclarations: string[]
     commonToolDeclarations: string[]
-    attioPreludeLines: string[]
+    attioSchemaLines: string[]
+    attioRuntimeHelperLines: string[]
     githubRepoMappings: Array<{ name: string; fullName: string }>
     github?: GitHubSectionContext
     gmail?: GmailSectionContext
@@ -890,7 +892,8 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
     if (tools.length === 0) return sectionData([])
 
     const imports = new Set(["TerseAgent"])
-    const attioPreludeLines: string[] = []
+    const attioSchemaLines: string[] = []
+    const attioRuntimeHelperLines: string[] = []
     const hoistedShapes: HoistedShape[] = [{ name: "RunHistoryAction", schema: runHistoryActionBaseSchema }]
 
     const activeIdByIntegration = new Map<string, string | undefined>([
@@ -937,156 +940,156 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
 
     if (tools.some(isAttioTool)) {
         if (!active.attio) {
-            attioPreludeLines.push(...(await buildAttioValueTypeDeclarations()))
+            attioSchemaLines.push(...(await buildAttioValueTypeDeclarations()))
         }
-        attioPreludeLines.push(...(await buildAttioToolTypeDeclarations(tools.filter(isAttioTool).map(tool => tool.name))))
-        attioPreludeLines.push("type __AttioPrimitive = string | number | boolean | null")
-        attioPreludeLines.push("type __AttioStructuredValue = Record<string, unknown>")
-        attioPreludeLines.push("type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
-        attioPreludeLines.push(
-            "type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T extends AttioActorReference ? string : T extends AttioRecordReferenceValue ? string : T extends AttioCurrencyValue ? number : T"
+        attioSchemaLines.push(...(await buildAttioToolTypeDeclarations(tools.filter(isAttioTool).map(tool => tool.name))))
+        attioSchemaLines.push("export type __AttioPrimitive = string | number | boolean | null")
+        attioSchemaLines.push("export type __AttioStructuredValue = Record<string, unknown>")
+        attioSchemaLines.push("export type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]")
+        attioSchemaLines.push(
+            "export type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T extends AttioActorReference ? string : T extends AttioRecordReferenceValue ? string : T extends AttioCurrencyValue ? number : T"
         )
-        attioPreludeLines.push("type __AttioFilterShorthand<T> = T extends (infer U)[] ? __AttioFilterAtom<U> | __AttioFilterAtom<U>[] : __AttioFilterAtom<T>")
-        attioPreludeLines.push(
-            "type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>"
+        attioSchemaLines.push("export type __AttioFilterShorthand<T> = T extends (infer U)[] ? __AttioFilterAtom<U> | __AttioFilterAtom<U>[] : __AttioFilterAtom<T>")
+        attioSchemaLines.push(
+            "export type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>"
         )
-        attioPreludeLines.push(
-            "type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }"
+        attioSchemaLines.push(
+            "export type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }"
         )
-        attioPreludeLines.push('type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }')
-        attioPreludeLines.push("")
+        attioSchemaLines.push('export type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }')
+        attioSchemaLines.push("")
 
         if (attioGeneratedObjects.length > 0) {
-            attioPreludeLines.push("export type AttioInputValuesByObject = {")
+            attioSchemaLines.push("export type AttioInputValuesByObject = {")
             for (const object of attioGeneratedObjects) {
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${attioObjectValueTypeNames(object.staticName).input}`)
+                attioSchemaLines.push(`    "${escapeString(object.apiSlug)}": ${attioObjectValueTypeNames(object.staticName).input}`)
             }
-            attioPreludeLines.push("}")
-            attioPreludeLines.push("")
-            attioPreludeLines.push("export type AttioRecordValuesByObject = {")
+            attioSchemaLines.push("}")
+            attioSchemaLines.push("")
+            attioSchemaLines.push("export type AttioRecordValuesByObject = {")
             for (const object of attioGeneratedObjects) {
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": ${attioObjectValueTypeNames(object.staticName).record}`)
+                attioSchemaLines.push(`    "${escapeString(object.apiSlug)}": ${attioObjectValueTypeNames(object.staticName).record}`)
             }
-            attioPreludeLines.push("}")
-            attioPreludeLines.push("")
-            attioPreludeLines.push("export type AttioFilterByObject = {")
+            attioSchemaLines.push("}")
+            attioSchemaLines.push("")
+            attioSchemaLines.push("export type AttioFilterByObject = {")
             for (const object of attioGeneratedObjects) {
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": __AttioFilterExpression<AttioRecordValuesByObject["${escapeString(object.apiSlug)}"]>`)
+                attioSchemaLines.push(`    "${escapeString(object.apiSlug)}": __AttioFilterExpression<AttioRecordValuesByObject["${escapeString(object.apiSlug)}"]>`)
             }
-            attioPreludeLines.push("}")
-            attioPreludeLines.push("")
-            attioPreludeLines.push("export type AttioRecordByObject = {")
+            attioSchemaLines.push("}")
+            attioSchemaLines.push("")
+            attioSchemaLines.push("export type AttioRecordByObject = {")
             for (const object of attioGeneratedObjects) {
-                attioPreludeLines.push(`    "${escapeString(object.apiSlug)}": __AttioRecordWithValues<AttioRecordValuesByObject["${escapeString(object.apiSlug)}"]>`)
+                attioSchemaLines.push(`    "${escapeString(object.apiSlug)}": __AttioRecordWithValues<AttioRecordValuesByObject["${escapeString(object.apiSlug)}"]>`)
             }
-            attioPreludeLines.push("}")
+            attioSchemaLines.push("}")
         } else {
-            attioPreludeLines.push("export type AttioInputValuesByObject = Record<string, Record<string, __AttioValue>>")
-            attioPreludeLines.push("export type AttioRecordValuesByObject = Record<string, Record<string, __AttioValue>>")
-            attioPreludeLines.push("export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>")
-            attioPreludeLines.push("export type AttioRecordByObject = Record<string, __AttioRecordWithValues<Record<string, __AttioValue>>>")
+            attioSchemaLines.push("export type AttioInputValuesByObject = Record<string, Record<string, __AttioValue>>")
+            attioSchemaLines.push("export type AttioRecordValuesByObject = Record<string, Record<string, __AttioValue>>")
+            attioSchemaLines.push("export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>")
+            attioSchemaLines.push("export type AttioRecordByObject = Record<string, __AttioRecordWithValues<Record<string, __AttioValue>>>")
         }
 
-        attioPreludeLines.push("")
-        attioPreludeLines.push(
+        attioSchemaLines.push("")
+        attioSchemaLines.push(
             'export type AttioValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __inputValues: infer TInputValues } ? TInputValues : AttioInputValuesByObject[TObject["apiSlug"]]'
         )
-        attioPreludeLines.push(
+        attioSchemaLines.push(
             'export type AttioRecordValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __recordValues: infer TRecordValues } ? TRecordValues : AttioRecordValuesByObject[TObject["apiSlug"]]'
         )
-        attioPreludeLines.push("export type AttioAttributeSlug<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Extract<keyof AttioValuesFor<TObject>, string>")
-        attioPreludeLines.push("export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioFilterExpression<AttioRecordValuesFor<TObject>>")
-        attioPreludeLines.push("export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
-        attioPreludeLines.push(
+        attioSchemaLines.push("export type AttioAttributeSlug<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Extract<keyof AttioValuesFor<TObject>, string>")
+        attioSchemaLines.push("export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioFilterExpression<AttioRecordValuesFor<TObject>>")
+        attioSchemaLines.push("export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
+        attioSchemaLines.push(
             "export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null; offset?: number | null }"
         )
-        attioPreludeLines.push("export type AttioSearchRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; query: string; limit?: number | null }")
-        attioPreludeLines.push("export type AttioGetRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }")
-        attioPreludeLines.push("export type AttioCreateRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; values: AttioValuesFor<TObject> }")
-        attioPreludeLines.push(
+        attioSchemaLines.push("export type AttioSearchRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; query: string; limit?: number | null }")
+        attioSchemaLines.push("export type AttioGetRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }")
+        attioSchemaLines.push("export type AttioCreateRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; values: AttioValuesFor<TObject> }")
+        attioSchemaLines.push(
             'export type AttioUpdateRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; values: Partial<AttioValuesFor<TObject>>; multiselectMode?: "overwrite" | "append" | null }'
         )
-        attioPreludeLines.push(
+        attioSchemaLines.push(
             "export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; records: AttioValuesFor<TObject>[] }"
         )
-        attioPreludeLines.push("export type AttioDeleteRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }")
-        attioPreludeLines.push(
+        attioSchemaLines.push("export type AttioDeleteRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }")
+        attioSchemaLines.push(
             "export type AttioGetAttributeHistoryParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; attribute: AttioAttributeSlug<TObject>; limit?: number | null; offset?: number | null }"
         )
-        attioPreludeLines.push(
+        attioSchemaLines.push(
             "export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number; offset: number }"
         )
-        attioPreludeLines.push('export type AttioSearchRecordsResult = { matches: NonNullable<AttioRecordsResult["matches"]>; count: number }')
-        attioPreludeLines.push("export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number }")
-        attioPreludeLines.push("export type AttioSingleRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioRecordFor<TObject>")
-        attioPreludeLines.push("export type AttioEntryValuesFor<TList> = TList extends { __entryValues: infer TValues } ? TValues : Record<string, unknown>")
-        attioPreludeLines.push(
-            "export type AttioEntryRecordValuesFor<TList> = TList extends { __entryRecordValues: infer TValues extends Record<string, unknown> } ? TValues : Record<string, unknown>"
-        )
-        attioPreludeLines.push("export type AttioEntryFilterFor<TList> = __AttioFilterExpression<AttioEntryRecordValuesFor<TList>>")
-        attioPreludeLines.push(
+        attioSchemaLines.push('export type AttioSearchRecordsResult = { matches: NonNullable<AttioRecordsResult["matches"]>; count: number }')
+        attioSchemaLines.push("export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number }")
+        attioSchemaLines.push("export type AttioSingleRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioRecordFor<TObject>")
+        attioSchemaLines.push("export type AttioEntryValuesFor<TList> = TList extends { __entryValues: infer TValues } ? TValues : Record<string, unknown>")
+        attioSchemaLines.push("export type AttioEntryRecordValuesFor<TList> = TList extends { __entryRecordValues: infer TValues extends Record<string, unknown> } ? TValues : Record<string, unknown>")
+        attioSchemaLines.push("export type AttioEntryFilterFor<TList> = __AttioFilterExpression<AttioEntryRecordValuesFor<TList>>")
+        attioSchemaLines.push(
             "export type AttioListEntryFor<TList> = { id: { workspace_id: string; list_id: string; entry_id: string }; parent_record_id: string; parent_object: string; created_at: string; entry_values: AttioEntryRecordValuesFor<TList> }"
         )
-        attioPreludeLines.push("export type AttioListEntriesResult<TList> = { entries: Array<AttioListEntryFor<TList>>; count: number; offset: number }")
-        attioPreludeLines.push("export type AttioListEntryResult<TList> = AttioListEntryFor<TList>")
-        attioPreludeLines.push("type __AttioSingleValue<T> = T extends (infer U)[] ? U : T")
-        attioPreludeLines.push("export type AttioAttributeHistoryEntryFor<TValue> = { active_from: string; active_until: string | null; value: TValue }")
-        attioPreludeLines.push("export type AttioAttributeHistoryResult<TValue = unknown> = { history: Array<AttioAttributeHistoryEntryFor<TValue>>; count: number }")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __normalizeAttioObjectSlug(object: unknown): string {")
-        attioPreludeLines.push('    if (object && typeof object === "object" && "apiSlug" in (object as Record<string, unknown>)) {')
-        attioPreludeLines.push("        const apiSlug = (object as { apiSlug?: unknown }).apiSlug")
-        attioPreludeLines.push('        if (typeof apiSlug === "string" && apiSlug.length > 0) return apiSlug')
-        attioPreludeLines.push("    }")
-        attioPreludeLines.push('    return typeof object === "string" ? object : ""')
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __serializeAttioFilter(filter: unknown): string | null {")
-        attioPreludeLines.push("    if (filter === undefined || filter === null) return null")
-        attioPreludeLines.push("    return JSON.stringify(filter)")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __serializeAttioValues(values: unknown): string {")
-        attioPreludeLines.push("    return JSON.stringify(values ?? {})")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __serializeAttioRecords(records: unknown): string {")
-        attioPreludeLines.push("    if (!Array.isArray(records)) return JSON.stringify([])")
-        attioPreludeLines.push('    return JSON.stringify(records.filter((record): record is Record<string, unknown> => typeof record === "object" && record !== null && !Array.isArray(record)))')
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push(
+        attioSchemaLines.push("export type AttioListEntriesResult<TList> = { entries: Array<AttioListEntryFor<TList>>; count: number; offset: number }")
+        attioSchemaLines.push("export type AttioListEntryResult<TList> = AttioListEntryFor<TList>")
+        attioSchemaLines.push("export type __AttioSingleValue<T> = T extends (infer U)[] ? U : T")
+        attioSchemaLines.push("export type AttioAttributeHistoryEntryFor<TValue> = { active_from: string; active_until: string | null; value: TValue }")
+        attioSchemaLines.push("export type AttioAttributeHistoryResult<TValue = unknown> = { history: Array<AttioAttributeHistoryEntryFor<TValue>>; count: number }")
+        attioSchemaLines.push("")
+        attioRuntimeHelperLines.push("function __normalizeAttioObjectSlug(object: unknown): string {")
+        attioRuntimeHelperLines.push('    if (object && typeof object === "object" && "apiSlug" in (object as Record<string, unknown>)) {')
+        attioRuntimeHelperLines.push("        const apiSlug = (object as { apiSlug?: unknown }).apiSlug")
+        attioRuntimeHelperLines.push('        if (typeof apiSlug === "string" && apiSlug.length > 0) return apiSlug')
+        attioRuntimeHelperLines.push("    }")
+        attioRuntimeHelperLines.push('    return typeof object === "string" ? object : ""')
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push("function __serializeAttioFilter(filter: unknown): string | null {")
+        attioRuntimeHelperLines.push("    if (filter === undefined || filter === null) return null")
+        attioRuntimeHelperLines.push("    return JSON.stringify(filter)")
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push("function __serializeAttioValues(values: unknown): string {")
+        attioRuntimeHelperLines.push("    return JSON.stringify(values ?? {})")
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push("function __serializeAttioRecords(records: unknown): string {")
+        attioRuntimeHelperLines.push("    if (!Array.isArray(records)) return JSON.stringify([])")
+        attioRuntimeHelperLines.push(
+            '    return JSON.stringify(records.filter((record): record is Record<string, unknown> => typeof record === "object" && record !== null && !Array.isArray(record)))'
+        )
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push(
             "function __enhanceAttioRecord<TObject extends GeneratedAttioObject>(object: TObject, record: unknown): __AttioRecordWithValues<AttioRecordValuesFor<TObject>> | undefined {"
         )
-        attioPreludeLines.push('    if (!record || typeof record !== "object") return undefined')
-        attioPreludeLines.push("    const values = __getAttioRecordValues<AttioRecordValuesFor<TObject>>(__normalizeAttioObjectSlug(object), record)")
-        attioPreludeLines.push("    return { ...values, ...(record as AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __requireAttioPayload<T>(value: T | null | undefined, what: string): T {")
-        attioPreludeLines.push('    if (value === null || value === undefined) throw new Error("Attio returned a response without the expected " + what + " payload.")')
-        attioPreludeLines.push("    return value")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioQueryRecordsResult<TObject> {")
-        attioPreludeLines.push("    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>")
-        attioPreludeLines.push("    return { records, count: records.length, offset: result.offset ?? 0 }")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __enhanceAttioSearchResult(result: AttioRecordsResult): AttioSearchRecordsResult {")
-        attioPreludeLines.push("    const matches = result.matches ?? []")
-        attioPreludeLines.push("    return { matches, count: matches.length }")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioUpsertRecordResult<TObject> {")
-        attioPreludeLines.push("    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>")
-        attioPreludeLines.push("    return { records, count: records.length }")
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
-        attioPreludeLines.push("function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioSingleRecordResult<TObject> {")
-        attioPreludeLines.push('    return __requireAttioPayload(__enhanceAttioRecord(object, result.record), "record")')
-        attioPreludeLines.push("}")
-        attioPreludeLines.push("")
+        attioRuntimeHelperLines.push('    if (!record || typeof record !== "object") return undefined')
+        attioRuntimeHelperLines.push("    const values = __getAttioRecordValues<AttioRecordValuesFor<TObject>>(__normalizeAttioObjectSlug(object), record)")
+        attioRuntimeHelperLines.push("    return { ...values, ...(record as AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>")
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push("function __requireAttioPayload<T>(value: T | null | undefined, what: string): T {")
+        attioRuntimeHelperLines.push('    if (value === null || value === undefined) throw new Error("Attio returned a response without the expected " + what + " payload.")')
+        attioRuntimeHelperLines.push("    return value")
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push("function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioQueryRecordsResult<TObject> {")
+        attioRuntimeHelperLines.push("    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>")
+        attioRuntimeHelperLines.push("    return { records, count: records.length, offset: result.offset ?? 0 }")
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push("function __enhanceAttioSearchResult(result: AttioRecordsResult): AttioSearchRecordsResult {")
+        attioRuntimeHelperLines.push("    const matches = result.matches ?? []")
+        attioRuntimeHelperLines.push("    return { matches, count: matches.length }")
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push("function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioUpsertRecordResult<TObject> {")
+        attioRuntimeHelperLines.push("    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>")
+        attioRuntimeHelperLines.push("    return { records, count: records.length }")
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
+        attioRuntimeHelperLines.push("function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioSingleRecordResult<TObject> {")
+        attioRuntimeHelperLines.push('    return __requireAttioPayload(__enhanceAttioRecord(object, result.record), "record")')
+        attioRuntimeHelperLines.push("}")
+        attioRuntimeHelperLines.push("")
     }
 
     const hasPosthogEventNames = (input.posthog[0]?.projects ?? []).some(project => project.events.length > 0)
@@ -1214,7 +1217,8 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
             toolFiles,
             toolboxEntries,
             commonToolDeclarations,
-            attioPreludeLines,
+            attioSchemaLines,
+            attioRuntimeHelperLines,
             githubRepoMappings
         }
     }
@@ -1596,7 +1600,8 @@ export async function prepareTemplateContext(input: CodegenInput): Promise<Templ
         triggerFiles,
         commonTriggerDeclarations,
         commonToolDeclarations: tools.data?.commonToolDeclarations ?? [],
-        attioPreludeLines: tools.data?.attioPreludeLines ?? [],
+        attioSchemaLines: tools.data?.attioSchemaLines ?? [],
+        attioRuntimeHelperLines: tools.data?.attioRuntimeHelperLines ?? [],
         githubRepoMappings: tools.data?.githubRepoMappings ?? [],
         github: github.data,
         gmail: gmail.data,

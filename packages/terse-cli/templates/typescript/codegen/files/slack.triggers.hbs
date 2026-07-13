@@ -1,11 +1,3 @@
-{{> slack-section slack}}
-
-{{#if toolFiles.slack}}
-{{sectionHeader "Slack tools"}}
-
-{{> tools-slice toolFiles.slack}}
-
-{{/if}}
 {{sectionHeader "Slack triggers"}}
 
 {{#each triggerFiles.slack}}
@@ -33,11 +25,4 @@ export const slackTriggers = {
     trigger(opts?: { channel?: SlackChannel; listenToUserDms?: boolean; userIds?: string[]; eventTypes?: SlackEventType[] }): TypedTrigger<SlackTrigger> {
         return new SlackConfig("{{escape slack.id}}", opts?.channel?.channelId, opts?.channel?.name, opts?.listenToUserDms, opts?.userIds ?? [], opts?.eventTypes)
     },
-}
-
-{{sectionHeader "Slack skill"}}
-
-/** Slack — send messages and manage threads in a specific channel */
-export function slackSkill(opts: { channel: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<{{{slack.skillToolType}}}> {
-    return new SlackOutputConfig("{{escape slack.id}}", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? [], opts.userNames ?? null, opts.listenToUserDms)
 }

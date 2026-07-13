@@ -1,11 +1,3 @@
-{{> linear-section linear}}
-
-{{#if toolFiles.linear}}
-{{sectionHeader "Linear tools"}}
-
-{{> tools-slice toolFiles.linear}}
-
-{{/if}}
 {{sectionHeader "Linear triggers"}}
 
 {{#each triggerFiles.linear}}
@@ -29,16 +21,4 @@ export const linearTriggers = {
     trigger(opts?: { team?: LinearTeam; project?: LinearProject; eventTypes?: LinearEventType[] }): TypedTrigger<LinearTrigger> {
         return new LinearInputConfig("{{escape linear.id}}", opts?.project?.projectId ?? null, opts?.eventTypes, opts?.team?.teamId ?? null)
     },
-}
-
-{{sectionHeader "Linear skill"}}
-
-/** Linear — read and write issues, optionally scoped to a team or project */
-export function linearSkill(opts?: { team?: LinearTeam; project?: LinearProject }): TypedSkill<{{{linear.skillToolType}}}> {
-    return new LinearOutputConfig(
-        "{{escape linear.id}}",
-        opts?.team?.teamId ?? null,
-        opts?.team?.name ?? null,
-        opts?.project?.projectId ?? null
-    )
 }

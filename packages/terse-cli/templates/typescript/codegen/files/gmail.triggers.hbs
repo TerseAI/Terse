@@ -1,9 +1,3 @@
-{{#if toolFiles.gmail}}
-{{sectionHeader "Gmail tools"}}
-
-{{> tools-slice toolFiles.gmail}}
-
-{{/if}}
 {{sectionHeader "Gmail triggers"}}
 
 {{#each triggerFiles.gmail}}
@@ -19,16 +13,4 @@ export const gmailTriggers = {
     trigger(opts?: { eventTypes?: GmailEventType[] }): TypedTrigger<GmailTrigger> {
         return new GmailConfig("{{escape gmail.id}}", opts?.eventTypes)
     },
-}
-
-{{sectionHeader "Gmail skills"}}
-
-/** Gmail — send emails */
-export function gmailSkill(): TypedSkill<{{{gmail.skillToolType}}}> {
-    return new GmailOutputConfig("{{escape gmail.id}}")
-}
-
-/** Gmail — create draft emails (no auto-send) */
-export function gmailDraftSkill(): TypedSkill<{{{gmail.skillToolType}}}> {
-    return new GmailDraftOutputConfig("{{escape gmail.id}}")
 }

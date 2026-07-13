@@ -1,6 +1,6 @@
-{{sectionHeader "Attio"}}
+{{sectionHeader "Attio workspace schemas"}}
 
-{{#each valueTypeLines}}
+{{#each attio.valueTypeLines}}
 {{{this}}}
 {{/each}}
 
@@ -26,17 +26,17 @@ export class AttioObject<
 
     declare readonly __recordValues: TRecordValues
     declare readonly __inputValues: TInputValues
-{{#if objects.length}}
+{{#if attio.objects.length}}
 
-{{#each objects}}
+{{#each attio.objects}}
     static {{staticName}} = new AttioObject<"{{escape apiSlug}}", {{{recordValuesType}}}, {{{inputValuesType}}}>("{{escape apiSlug}}", "{{escape singularNoun}}", "{{escape objectId}}", {{{attributeSource}}})
 {{/each}}
 {{/if}}
 }
 
-{{#if objects.length}}
+{{#if attio.objects.length}}
 export type GeneratedAttioObject =
-{{#each objects}}
+{{#each attio.objects}}
     | typeof AttioObject.{{staticName}}
 {{/each}}
 {{else}}
@@ -58,29 +58,25 @@ export class AttioList<
 
     declare readonly __entryValues: TEntryValues
     declare readonly __entryRecordValues: TEntryRecordValues
-{{#if lists.length}}
+{{#if attio.lists.length}}
 
-{{#each lists}}
+{{#each attio.lists}}
     static {{staticName}} = new AttioList<"{{escape apiSlug}}", {{{entryValuesType}}}, {{{entryRecordValuesType}}}>("{{escape apiSlug}}", "{{escape name}}", "{{escape listId}}", "{{escape parentObject}}", {{{attributeSource}}})
 {{/each}}
 {{/if}}
 }
 
-{{#if lists.length}}
+{{#if attio.lists.length}}
 export type GeneratedAttioList =
-{{#each lists}}
+{{#each attio.lists}}
     | typeof AttioList.{{staticName}}
 {{/each}}
 {{else}}
 export type GeneratedAttioList = AttioList
 {{/if}}
 
-function attioParentObjectFilter(object: GeneratedAttioObject | undefined) {
-    if (!object) return null
-    return { $and: [{ field: "id.object_id", operator: "equals" as const, value: object.objectId }] }
-}
+{{sectionHeader "Attio type machinery"}}
 
-{{#each runtimeLines}}
+{{#each attioSchemaLines}}
 {{{this}}}
 {{/each}}
-

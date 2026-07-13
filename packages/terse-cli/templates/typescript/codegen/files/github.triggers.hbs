@@ -1,36 +1,3 @@
-{{> github-section github}}
-
-{{#if githubRepoMappings.length}}
-const __githubRepoNameToFullName = new Map<string, string>([
-{{#each githubRepoMappings}}
-    ["{{escape name}}", "{{escape fullName}}"],
-{{/each}}
-])
-
-function __normalizeGitHubRepos(repo: unknown): string {
-    if (repo && typeof repo === "object" && "fullName" in (repo as Record<string, unknown>)) {
-        const fullName = (repo as { fullName?: unknown }).fullName
-        if (typeof fullName === "string" && fullName.length > 0) return fullName
-    }
-    if (typeof repo === "string") {
-        if (repo.includes("/")) return repo
-        return __githubRepoNameToFullName.get(repo) ?? repo
-    }
-    return String(repo ?? "")
-}
-
-function __normalizeGitHubReposNames(repositories: unknown): string[] {
-    if (!Array.isArray(repositories)) return []
-    return repositories.map(repo => __normalizeGitHubRepos(repo))
-}
-
-{{/if}}
-{{#if toolFiles.github}}
-{{sectionHeader "GitHub tools"}}
-
-{{> tools-slice toolFiles.github}}
-
-{{/if}}
 {{sectionHeader "GitHub triggers"}}
 
 {{#each triggerFiles.github}}
@@ -70,11 +37,4 @@ export const githubTriggers = {
     trigger(opts: { repos: Repos[]; eventTypes?: GitHubEventType[] }): TypedTrigger<GithubTrigger> {
         return new GitHubConfig("{{escape github.id}}", opts.repos.map(r => r.repositoryId), opts.eventTypes)
     },
-}
-
-{{sectionHeader "GitHub skill"}}
-
-/** GitHub — read code and pull requests from the given repositories */
-export function githubSkill(opts: { repos: Repos[] }): TypedSkill<{{{github.skillToolType}}}> {
-    return new GitHubConfig("{{escape github.id}}", opts.repos.map(r => r.repositoryId))
 }

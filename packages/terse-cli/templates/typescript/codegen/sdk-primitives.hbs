@@ -1,0 +1,42 @@
+// ── Platform primitives (from "terse-sdk") ────────────────────
+//
+// Everything below ships with the terse-sdk package. This summary is the
+// reference for job code — do not read the terse-sdk dist to rediscover it.
+//
+// Defining jobs:
+//   createJob({ name, triggers: [...], states?, filter?, onTrigger, durable? })
+//     Registers a workflow. `filter` and `onTrigger` receive (event, state);
+//     `filter` returns boolean to decide whether the run proceeds.
+//   Every trigger event has event.formatForAgentRunner(): string — the
+//     canonical way to inline the triggering event into an agent prompt.
+//
+// Agentic execution:
+//   generateText({ prompt, skills: [...], toolApprovals?, outputSchema? })
+//     One-shot agent run. Returns Promise<string>, or Promise<z.infer<schema>>
+//     when `outputSchema` (a zod schema) is given. Skills come from the
+//     generated `Skills` export below; the agent can only touch integrations
+//     whose skills are passed.
+//   TerseAgent.create({ prompt, skills, toolApprovals? })
+//     Streaming variant: `for await (const result of agent.run(message))`.
+//     `agent.tools` is typed to the generated tools of the passed skills.
+//
+// Per-job state (typed key/value store):
+//   states: [{ key: "runCount", value: z.number().default(0) }]
+//   then `await state.get("runCount")` / `await state.set("runCount", n)`
+//   in `filter`/`onTrigger`. Keys and value types come from the declaration.
+//
+// Durability (all of these require `durable: true` on the job):
+//   step(client.method(args))   Journals a single wrapped call; arguments and
+//                               result must be serializable.
+//   jobStep({ run, input?, inputSchema?, outputSchema? })
+//                               Journals a code block as one step.
+//   sleep("2h" | ms | Date)     Suspends the run; resumes after the duration.
+//   await log(...args)          Replay-safe console.log (prints exactly once).
+//   waitForInput({ via: slack({ channel: SlackChannel.X.channelId }), prompt, options })
+//                               Suspends until a human answers; resolves to
+//                               { choice, text?, respondent }. `options` is
+//                               [{ id, label, description?, freeText? }].
+//
+// Secrets:
+//   Write with `terse secrets add`; read in job code via process.env.MY_SECRET.
+//   There is no value-returning secrets API — env vars are the read side.

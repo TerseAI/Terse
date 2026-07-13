@@ -1,0 +1,18 @@
+{{sectionHeader "Slack resources"}}
+
+{{> resource-class slack.channelClass}}
+
+{{> resource-class slack.userClass}}
+
+{{#if toolFiles.slack}}
+{{sectionHeader "Slack tools"}}
+
+{{> tools-slice toolFiles.slack}}
+
+{{/if}}
+{{sectionHeader "Slack skill"}}
+
+/** Slack — send messages and manage threads in a specific channel */
+export function slackSkill(opts: { channel: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<{{{slack.skillToolType}}}> {
+    return new SlackOutputConfig("{{escape slack.id}}", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? [], opts.userNames ?? null, opts.listenToUserDms)
+}

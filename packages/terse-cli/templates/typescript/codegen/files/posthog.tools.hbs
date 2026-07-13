@@ -1,0 +1,28 @@
+{{sectionHeader "PostHog resources"}}
+
+{{> resource-class posthog.projectClass}}
+
+{{#if posthog.eventNames.length}}
+/**
+ * Custom event names observed in your PostHog project over the last 180 days.
+ * Built-in $-prefixed events (e.g. "$pageview") are always accepted alongside these.
+ * Terse supports US PostHog Cloud (us.posthog.com) only; EU-hosted PostHog is not supported.
+ */
+export type PosthogEventName =
+{{#each posthog.eventNames}}
+    | "{{escape this}}"
+{{/each}}
+
+{{/if}}
+{{#if toolFiles.posthog}}
+{{sectionHeader "PostHog tools"}}
+
+{{> tools-slice toolFiles.posthog}}
+
+{{/if}}
+{{sectionHeader "PostHog skill"}}
+
+/** PostHog — query analytics for a specific project */
+export function posthogSkill(opts: { project: PosthogProject }): TypedSkill<{{{posthog.skillToolType}}}> {
+    return new PosthogConfig("{{escape posthog.id}}", opts.project.projectId, opts.project.name)
+}

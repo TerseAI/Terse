@@ -1,0 +1,21 @@
+{{#if toolFiles.attio}}
+{{sectionHeader "Attio tools"}}
+
+{{> tools-slice toolFiles.attio}}
+
+{{/if}}
+{{sectionHeader "Attio skill"}}
+
+/** Attio — query and upsert records on a CRM object */
+export function attioSkill(opts: { object: AttioObject<any> }): TypedSkill<{{{attio.skillToolType}}}> {
+    return new AttioOutputConfig("{{escape attio.id}}", opts.object.apiSlug)
+}
+
+{{sectionHeader "Attio internals (generated plumbing — no need to read)"}}
+
+{{#each attioRuntimeHelperLines}}
+{{{this}}}
+{{/each}}
+{{#each attio.runtimeLines}}
+{{{this}}}
+{{/each}}
