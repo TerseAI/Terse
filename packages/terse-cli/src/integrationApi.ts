@@ -1,12 +1,46 @@
 import { pollUntil } from "terse-sdk"
-import { ApiRoutes, ConfigurationFieldDefinition, FormFieldDefinition, IntegrationFieldsResponse, IntegrationType, IntegrationWithStatus, OAuthInstallationDetails, buildRoute } from "terse-types"
+import {
+    ApiRoutes,
+    ConfigurationFieldDefinition,
+    FormFieldDefinition,
+    IntegrationConnection,
+    IntegrationConnectionsResponseSchema,
+    IntegrationFieldsResponse,
+    IntegrationType,
+    IntegrationWithStatus,
+    OAuthInstallationDetails,
+    buildRoute
+} from "terse-types"
 
-import { fetchWithAuth } from "./api.js"
+import { ApiError, fetchWithAuth } from "./api.js"
+import { CliError } from "./cliError.js"
 
 export type { IntegrationFieldsResponse, FormFieldDefinition, ConfigurationFieldDefinition }
 
 export async function fetchIntegrations(apiKey: string): Promise<IntegrationWithStatus[]> {
     return fetchWithAuth<IntegrationWithStatus[]>(ApiRoutes.INTEGRATIONS.LIST, apiKey)
+}
+
+export async function fetchIntegrationConnections(apiKey: string, integrationType: string): Promise<IntegrationConnection[]> {
+    let raw: unknown
+    try {
+        raw = await fetchWithAuth<unknown>(buildRoute(ApiRoutes.INTEGRATIONS.CONNECTIONS_BY_TYPE, { integrationType }), apiKey)
+    } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+            throw new CliError("integration_connections_unavailable", `Could not list connections for '${integrationType}'.`, {
+                detail: "The backend does not recognize this integration type."
+            })
+        }
+        throw err
+    }
+
+    const parsed = IntegrationConnectionsResponseSchema.safeParse(raw)
+    if (!parsed.success) {
+        throw new CliError("integration_connections_malformed", `The connections returned for '${integrationType}' did not match the expected shape.`, {
+            detail: parsed.error.message
+        })
+    }
+    return parsed.data.connections
 }
 
 export async function fetchIntegrationFields(apiKey: string, integrationType: string): Promise<IntegrationFieldsResponse> {

@@ -3,7 +3,7 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
-import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./controller"
+import { disconnectIntegration, getActiveIntegrations, getAllIntegrations, getIntegrationConnections, getIntegrationInstallationDetails } from "./controller"
 
 const router = Router()
 
@@ -14,6 +14,7 @@ const limit = rateLimit(RateLimitKind.Default)
 router.get("/active", limit, auth, getActiveIntegrations)
 router.get("/", limit, auth, getAllIntegrations)
 router.get("/:integrationType/installation-details", limit, auth, getIntegrationInstallationDetails)
+router.get("/:integrationType/connections", limit, auth, getIntegrationConnections)
 router.delete("/:integrationType/disconnect", limit, auth, disconnectIntegration)
 
 export default router

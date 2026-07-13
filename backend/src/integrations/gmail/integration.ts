@@ -61,7 +61,15 @@ export class GmailIntegrationManager extends Integration<GmailIntegration, Gmail
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Account", integration.email, integration.id)
+        return createConnectedCliDisplayState(
+            "Account",
+            this.getConnectionName({ id: integration.id, email: integration.email, historyId: integration.history_id, watchExpiration: integration.watch_expiration }),
+            integration.id
+        )
+    }
+
+    getConnectionName(instance: GmailIntegration): string {
+        return instance.email || instance.id
     }
 
     formatIntegrationInstanceForAgent(instance: GmailIntegration): string {

@@ -52,7 +52,8 @@ export class SlackIntegrationManager
             },
             include: {
                 slack_integration: true
-            }
+            },
+            orderBy: { created_at: "asc" }
         })
         return userSlackIntegrations.map(usi => ({
             id: usi.id,
@@ -63,19 +64,17 @@ export class SlackIntegrationManager
     }
 
     async getCliDisplayStateForOrganization(organizationId: string) {
-        const integration = await db().user_slack_integrations.findFirst({
-            where: { organization_id: organizationId },
-            include: {
-                slack_integration: true
-            },
-            orderBy: { created_at: "asc" }
-        })
+        const [instance] = await this.getInstancesForOrganization(organizationId)
 
-        if (!integration) {
+        if (!instance) {
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Workspace", integration.slack_integration.team_name, integration.id)
+        return createConnectedCliDisplayState("Workspace", this.getConnectionName(instance), instance.id)
+    }
+
+    getConnectionName(instance: SlackIntegration): string {
+        return instance.teamName || instance.id
     }
 
     async fetchResourcesForOrganization(

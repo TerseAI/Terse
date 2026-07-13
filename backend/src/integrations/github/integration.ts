@@ -122,6 +122,10 @@ export class GithubIntegrationManager
         return `Github${detailText} [id: ${instance.id}]`
     }
 
+    getConnectionName(instance: GithubIntegration): string {
+        return instance.account_name || instance.id
+    }
+
     async processWebhookEvent(event: GithubTrigger): Promise<void> {
         const userIds = await resolveUserIdsForGithubInstallation(event.installationId)
 

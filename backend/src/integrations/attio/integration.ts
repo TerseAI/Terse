@@ -81,7 +81,11 @@ export class AttioIntegrationManager extends Integration<AttioIntegration, never
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Workspace", integration.workspaceName || "Attio Workspace", integration.id)
+        return createConnectedCliDisplayState("Workspace", this.getConnectionName(integration), integration.id)
+    }
+
+    getConnectionName(instance: AttioIntegration): string {
+        return instance.workspaceName || instance.id
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<AttioIntegration, AttioObject>[]> {

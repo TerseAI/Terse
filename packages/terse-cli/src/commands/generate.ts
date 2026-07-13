@@ -23,6 +23,7 @@ import { assertProjectRoot } from "../assertProjectRoot.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
 import { fetchIntegrations } from "../integrationApi.js"
+import { readProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import {
     type AttioAttributeData,
@@ -130,7 +131,8 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
         attio: [],
         snowflake: [],
         heyreach: [],
-        tools: toolDefs
+        tools: toolDefs,
+        activeConnections: readProjectConfig()?.connections ?? {}
     }
 
     const has = (t: IntegrationType) => activeTypes.includes(t)
@@ -363,6 +365,13 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
 
     await Promise.all(promises)
 
+    try {
+        validateConnectionPins(input)
+    } catch (error) {
+        s.stop("Pinned connection missing")
+        throw error
+    }
+
     const integrationCount =
         input.github.length +
         input.slack.length +
@@ -405,6 +414,32 @@ async function safely(fn: () => Promise<void>): Promise<void> {
     } catch {
         /* skip failed integrations */
     }
+}
+
+function validateConnectionPins(input: CodegenInput): void {
+    const pins = input.activeConnections
+
+    assertPinExists(input.github, pins[IntegrationType.GITHUB], IntegrationType.GITHUB, data => data.integration.id)
+    assertPinExists(input.slack, pins[IntegrationType.SLACK], IntegrationType.SLACK, data => data.id)
+    assertPinExists(input.gmail, pins[IntegrationType.GMAIL], IntegrationType.GMAIL, data => data.id)
+    assertPinExists(input.linear, pins[IntegrationType.LINEAR], IntegrationType.LINEAR, data => data.id)
+    assertPinExists(input.notion, pins[IntegrationType.NOTION], IntegrationType.NOTION, data => data.id)
+    assertPinExists(input.posthog, pins[IntegrationType.POSTHOG], IntegrationType.POSTHOG, data => data.id)
+    assertPinExists(input.datadog, pins[IntegrationType.DATADOG], IntegrationType.DATADOG, data => data.id)
+    assertPinExists(input.launchdarkly, pins[IntegrationType.LAUNCHDARKLY], IntegrationType.LAUNCHDARKLY, data => data.id)
+    assertPinExists(input.workos, pins[IntegrationType.WORKOS], IntegrationType.WORKOS, data => data.id)
+    assertPinExists(input.attio, pins[IntegrationType.ATTIO], IntegrationType.ATTIO, data => data.id)
+    assertPinExists(input.snowflake, pins[IntegrationType.SNOWFLAKE], IntegrationType.SNOWFLAKE, data => data.id)
+    assertPinExists(input.heyreach, pins[IntegrationType.HEY_REACH], IntegrationType.HEY_REACH, data => data.id)
+}
+
+function assertPinExists<T>(instances: T[], pinnedId: string | undefined, integrationType: IntegrationType, idOf: (instance: T) => string): void {
+    if (!pinnedId || instances.length === 0) return
+    if (instances.some(instance => idOf(instance) === pinnedId)) return
+
+    throw new CliError("pinned_connection_missing", `The pinned ${integrationType} connection '${pinnedId}' was not found in this workspace.`, {
+        detail: `Re-pin with \`terse integrate use ${integrationType}\`, or remove the pin with \`terse integrate use ${integrationType} --clear\`.`
+    })
 }
 
 async function fetchPosthogProjectEventNames(integrationId: string, projectId: string, apiKey: string): Promise<string[]> {

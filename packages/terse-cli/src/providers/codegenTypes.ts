@@ -1,4 +1,4 @@
-import type { GithubIntegration, ToolDefinition } from "terse-types"
+import type { GithubIntegration, ProjectConnections, ToolDefinition } from "terse-types"
 
 interface GitHubRepo {
     id: number
@@ -148,4 +148,5 @@ export interface CodegenInput {
     snowflake: SnowflakeInstanceData[]
     heyreach: HeyReachInstanceData[]
     tools: ToolDefinition[]
+    activeConnections: ProjectConnections
 }
