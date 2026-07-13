@@ -995,9 +995,9 @@ function prepareResendSection(instance: ResendInstanceData | undefined, tools: T
 
         const fields = template.variables.map(variable => {
             const optional = variable.fallbackValue !== null ? "?" : ""
-            return `    "${escapeString(variable.key)}"${optional}: ${variable.type}`
+            return `"${escapeString(variable.key)}"${optional}: ${variable.type}`
         })
-        const variablesType = fields.length > 0 ? `{\n${fields.join("\n")}\n}` : "Record<string, never>"
+        const variablesType = fields.length > 0 ? `{ ${fields.join("; ")} }` : "Record<string, never>"
         const variablesMetadata = template.variables
             .map(variable =>
                 JSON.stringify({
@@ -1012,7 +1012,8 @@ function prepareResendSection(instance: ResendInstanceData | undefined, tools: T
         return { staticName, id: template.id, alias: template.alias, name: template.name, variablesType, variablesMetadata }
     })
 
-    return sectionData(["ResendOutputConfig", "TypedSkill"], {
+    const sectionImports = templates.length > 0 ? ["ResendOutputConfig", "TypedSkill", "ToolInputByName"] : ["ResendOutputConfig", "TypedSkill"]
+    return sectionData(sectionImports, {
         id: instance.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "resend"),
         templates
@@ -1036,7 +1037,8 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, activ
         ["launchdarkly", active.launchdarkly?.id],
         ["workos", active.workos?.id],
         ["attio", active.attio?.id],
-        ["snowflake", active.snowflake?.id]
+        ["snowflake", active.snowflake?.id],
+        ["resend", active.resend?.id]
     ])
 
     const byIntegration = new Map<string, ToolDefinition[]>()
@@ -1234,10 +1236,13 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, activ
     }
 
     const hasPosthogEventNames = (input.posthog[0]?.projects ?? []).some(project => project.events.length > 0)
+    const hasResendTemplates = (active.resend?.templates.length ?? 0) > 0
 
     const paramTypes: ToolParamTypeContext[] = []
     for (const tool of tools) {
         if (isAttioTool(tool)) continue
+        // Emitted by the Resend section as a per-template discriminated union
+        if (tool.name === "resend_send_template" && hasResendTemplates) continue
         const key = `"${escapeString(tool.name)}"`
         let tsType = hasAutoFillId(tool) ? `Omit<ToolInputByName[${key}], "integrationId">` : `ToolInputByName[${key}]`
         if (tool.name === "searchPosthogEvents" && hasPosthogEventNames) {

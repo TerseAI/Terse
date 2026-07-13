@@ -26,6 +26,10 @@ export class ResendIntegrationManager extends Integration<ResendIntegration, nev
         return `Resend [id: ${instance.id}]`
     }
 
+    getConnectionName(instance: ResendIntegration): string {
+        return instance.id
+    }
+
     async getAllActiveInstances(): Promise<ResendIntegration[]> {
         return db().resend_integrations.findMany({ select: { id: true } })
     }

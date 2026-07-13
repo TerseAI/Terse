@@ -3,7 +3,7 @@ import { z } from "zod"
 
 // Triggers, Skills, and resource constants for your workspace live here.
 // Run `terse generate` to refresh after connecting new integrations.
-import { SlackChannel, Triggers, toolbox } from "./terse.generated"
+import { ResendTemplates, SlackChannel, Triggers, toolbox } from "./terse.generated"
 
 // `createJob` registers a job with Terse. Each job has a name, one or more
 // triggers, and an `onTrigger` handler. `terse test` and `terse run` execute
@@ -163,12 +163,18 @@ createJob({
 })
 
 createJob({
-    name: "Basic Test - Success. sleep in durable job works",
+    name: "Basic Test - Test Resend",
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
     durable: true,
     onTrigger: async event => {
         console.log("trying to sleep in durable job")
-        await sleep("2m")
-        console.log("sleep in durable job completed")
+        await toolbox.resend.sendTemplate({
+            templateId: ResendTemplates.TerseCreditsSent.templateId,
+            to: ["thomas@useterse.ai"],
+            variables: {
+                ORG_NAME: "Really Cool Org",
+                CREDITS: "78900"
+            }
+        })
     }
 })

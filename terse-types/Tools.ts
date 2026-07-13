@@ -3228,12 +3228,12 @@ export const resendSendTemplateInputSchema = z.object({
     templateId: z.string().describe("Published template ID or alias"),
     to: z.array(z.email()).min(1).max(50).describe("Recipient email addresses"),
     variables: z.record(z.string(), z.union([z.string(), z.number()])).describe("Template variables keyed exactly as defined by the template"),
-    from: z.string().nullable().describe("Optional sender override; omit when the template defines one"),
-    subject: z.string().nullable().describe("Optional subject override; omit when the template defines one"),
-    replyTo: z.email().nullable().describe("Optional reply-to override"),
-    cc: z.array(z.email()).nullable().describe("Optional CC recipients"),
-    bcc: z.array(z.email()).nullable().describe("Optional BCC recipients"),
-    idempotencyKey: z.string().max(256).nullable().describe("Optional idempotency key, retained by Resend for 24 hours")
+    from: z.string().nullable().optional().describe("Optional sender override; omit when the template defines one"),
+    subject: z.string().nullable().optional().describe("Optional subject override; omit when the template defines one"),
+    replyTo: z.email().nullable().optional().describe("Optional reply-to override"),
+    cc: z.array(z.email()).nullable().optional().describe("Optional CC recipients"),
+    bcc: z.array(z.email()).nullable().optional().describe("Optional BCC recipients"),
+    idempotencyKey: z.string().max(256).nullable().optional().describe("Optional idempotency key, retained by Resend for 24 hours")
 })
 
 export const resendSendTemplateOutputSchema = toolOutputBaseSchema.extend({
