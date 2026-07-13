@@ -13,6 +13,7 @@ import {
     LinearIcon,
     NotionIcon,
     PosthogIcon,
+    ResendIcon,
     SlackIcon,
     SnowflakeIcon,
     TerseIcon,
@@ -62,6 +63,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <HeyReachIcon />
         case ConfigType.ATTIO_INPUT:
             return <AttioIcon />
+        case ConfigType.RESEND_OUTPUT:
+            return <ResendIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -101,6 +104,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <SnowflakeIcon />
         case IntegrationType.HEY_REACH:
             return <HeyReachIcon />
+        case IntegrationType.RESEND:
+            return <ResendIcon />
         default:
             throw integration satisfies never
     }
