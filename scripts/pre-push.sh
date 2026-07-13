@@ -16,6 +16,9 @@ pnpm run build
 echo "Installing workspace dependencies..."
 pnpm install
 
+echo "Checking terse-claude-plugin version bump..."
+node packages/terse-claude-plugin/scripts/check-version-bump.mjs
+
 if [[ -d docs ]]; then
   if ! command -v mint >/dev/null 2>&1; then
     echo "Mintlify CLI is required to validate docs before push. Install it with: npm i -g mint"
