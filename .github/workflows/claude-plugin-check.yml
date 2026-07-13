@@ -12,9 +12,15 @@ jobs:
         runs-on: blacksmith-4vcpu-ubuntu-2404
         steps:
             - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
             - uses: actions/setup-node@v4
               with:
                   node-version: "22.19.0"
+            - name: Require a version bump for plugin changes
+              env:
+                  PLUGIN_CHECK_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+              run: node packages/terse-claude-plugin/scripts/check-version-bump.mjs
             - name: Check generated skills are in sync
               run: |
                   node packages/terse-claude-plugin/scripts/build-skills.mjs
