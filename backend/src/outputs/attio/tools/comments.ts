@@ -9,19 +9,16 @@ import { attioApiRequest, attioRequestData, attioToolExecute, buildQueryString }
 
 export const attioReadCommentsTool = defineSessionTool({
     name: "attio_read_comments",
-    description: `Read Attio comments and threads on records. Actions: 'get' (a single comment), 'list_threads' (threads on a record), 'get_thread' (a thread with all its comments).`,
     execute: attioToolExecute("attio_read_comments", executeReadCommentsRequest)
 })
 
 export const attioCreateCommentTool = defineSessionTool({
     name: "attio_create_comment",
-    description: `Create an Attio comment: reply to a thread via threadId, or start a new thread on a record via objectSlug + recordId. Requires an author workspace member ID (use attio_workspace_members to find it).`,
     execute: attioToolExecute("attio_create_comment", createComment)
 })
 
 export const attioDeleteCommentTool = defineSessionTool({
     name: "attio_delete_comment",
-    description: `Permanently delete an Attio comment.`,
     execute: attioToolExecute("attio_delete_comment", deleteComment)
 })
 

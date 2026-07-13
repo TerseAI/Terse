@@ -13,10 +13,10 @@ export type TypedToolOptions<TName extends ToolName, Context = UnknownContext> =
     execute: (input: ToolInputByName[TName], context?: RunContext<Context>) => Promise<ToolOutputByName[TName]> | ToolOutputByName[TName]
 }
 
-type ToolDefinitionInput<TName extends ToolName, Context = UnknownContext> = Omit<TypedToolOptions<TName, Context>, "parameters">
+type ToolDefinitionInput<TName extends ToolName, Context = UnknownContext> = Omit<TypedToolOptions<TName, Context>, "parameters" | "description">
 
 export function defineTool<TName extends ToolName, Context = UnknownContext>(tool: ToolDefinitionInput<TName, Context>): TypedToolOptions<TName, Context> {
-    return { ...tool, parameters: ToolDefinitions[tool.name].inputSchema, strict: true } as TypedToolOptions<TName, Context>
+    return { ...tool, description: ToolDefinitions[tool.name].description, parameters: ToolDefinitions[tool.name].inputSchema, strict: true } as TypedToolOptions<TName, Context>
 }
 
 export function defineSessionTool<TName extends ToolName, Context = SessionWithTracking<Session>>(tool: ToolDefinitionInput<TName, Context>): TypedToolOptions<TName, Context> {

@@ -60,16 +60,6 @@ function buildPropertySchema(propertyName: string, propertyConfig: any): any {
 
 export const notionGetSchemaTool = defineSessionTool({
     name: "notion_get_schema",
-    description: `Gets the schema/structure of the Notion data source. This tool retrieves all property definitions including property names, types, valid options for select/status fields, and exact format examples for how to construct each property when writing to the database.
-
-Use this tool:
-- Before writing any data to determine available properties and their correct formats
-- To understand what property names exist and their data types
-- To get valid option values for select, multi_select, and status properties
-- To see exact format examples for constructing properties in the Notion API format
-- To determine how to write to the Notion database by understanding its structure
-
-The schema information returned by this tool should be used to properly format properties when calling notion_create_or_update_database_row to create or update rows in the database.`,
     execute: async ({ integrationId, databaseId }, runContext) => {
         logger.debug("Executing notion_get_schema tool")
         if (!runContext?.context) {

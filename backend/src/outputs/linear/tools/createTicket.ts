@@ -11,7 +11,6 @@ import { ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../..
 
 export const linearCreateTicketTool = defineSessionTool({
     name: "linear_create_ticket",
-    description: "Create a new Linear issue/ticket.",
     execute: async ({ integrationId, ticket }, runContext) => {
         logger.debug("🛠️ Executing linear_create_ticket tool", { integrationId })
 

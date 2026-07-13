@@ -10,7 +10,6 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const linearGetTeamsTool = defineSessionTool({
     name: "linear_get_teams",
-    description: `List teams in the Linear workspace. Use to pick teamId when creating tickets or when calling linear_get_states, linear_get_labels, or linear_get_projects for a specific team.`,
     execute: async ({ integrationId }, runContext) => {
         logger.debug("🛠️ Executing linear_get_teams tool", { integrationId })
 

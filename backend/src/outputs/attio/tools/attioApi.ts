@@ -11,10 +11,7 @@ import { formatError } from "../../../tools/toolUtils"
 
 const ATTIO_API_BASE = "https://api.attio.com/v2"
 
-export function attioToolExecute<TName extends AttioToolName>(
-    toolName: TName,
-    handler: (request: ToolInputByName[TName]["request"], accessToken: string) => Promise<ToolOutputByName[TName]>
-) {
+export function attioToolExecute<TName extends AttioToolName>(toolName: TName, handler: (request: ToolInputByName[TName]["request"], accessToken: string) => Promise<ToolOutputByName[TName]>) {
     return async (input: ToolInputByName[TName], runContext?: RunContext<SessionWithTracking<Session>>): Promise<ToolOutputByName[TName]> => {
         logger.debug(`Executing ${toolName} tool`, { integrationId: input.integrationId })
         if (!runContext?.context) {

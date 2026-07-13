@@ -3,8 +3,6 @@ import { defineTool } from "../../../tools/toolUtils"
 
 export const webSearchTool = defineTool({
     name: "web_search",
-    description:
-        "Search the web for up-to-date information. Returns ranked results with titles, URLs, and content snippets. Use for questions about current events, facts, or topics requiring web sources.",
     execute: async ({ query, max_results, search_depth, include_answer, topic, time_range, include_domains }) => {
         const service = getWebSearchService()
         return await service.search({

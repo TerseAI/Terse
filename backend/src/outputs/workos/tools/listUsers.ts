@@ -8,8 +8,6 @@ import { getWorkOSApiKeyByIntegrationId, listWorkOSUsers } from "../workosApiCli
 
 export const listWorkOSUsersTool = defineSessionTool({
     name: "listWorkOSUsers",
-    description:
-        "List users from the customer's WorkOS account. Supports filtering by email and organization ID. Returns user profiles including email, name, and creation date. Use pagination (after cursor) for large user sets.",
     execute: async ({ integrationId, email, organizationId, limit = 20, after }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

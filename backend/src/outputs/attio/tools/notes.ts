@@ -9,19 +9,16 @@ import { attioApiRequest, attioRequestData, attioToolExecute, buildQueryString }
 
 export const attioReadNotesTool = defineSessionTool({
     name: "attio_read_notes",
-    description: `Read Attio notes on records. Actions: 'list' (optionally scoped to one record; limit/offset pagination) and 'get' (fetch by note ID).`,
     execute: attioToolExecute("attio_read_notes", executeReadNotesRequest)
 })
 
 export const attioCreateNoteTool = defineSessionTool({
     name: "attio_create_note",
-    description: `Create a note on an Attio record: title + markdown or plaintext content. Use for logging research, call summaries or context onto CRM records.`,
     execute: attioToolExecute("attio_create_note", createNote)
 })
 
 export const attioDeleteNoteTool = defineSessionTool({
     name: "attio_delete_note",
-    description: `Permanently delete an Attio note.`,
     execute: attioToolExecute("attio_delete_note", deleteNote)
 })
 

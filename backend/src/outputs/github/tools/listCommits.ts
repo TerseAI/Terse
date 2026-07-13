@@ -14,14 +14,6 @@ import { validateGitHubRepository } from "./searchCode"
  */
 export const listGitHubCommitsTool = defineSessionTool({
     name: "listGitHubCommits",
-    description: `List commits in GitHub repositories within a time window. Use this to:
-- Review recent changes and development activity
-- Track what code was modified in a specific period
-- Find commits by a specific author
-- See commit history for a specific file or directory
-- Understand the pace and nature of development
-
-The tool returns commit details including message, author, date, and SHA.`,
     strict: true,
     execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext) => {
         if (!runContext?.context) {

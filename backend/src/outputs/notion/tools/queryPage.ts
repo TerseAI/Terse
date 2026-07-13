@@ -229,9 +229,6 @@ async function fetchAllBlocks(notion: Client, blockId: string): Promise<any[]> {
 
 export const notionQueryPageTool = defineSessionTool({
     name: "notion_query_page",
-    description: `Call this tool ONCE at the beginning of your run to get the page state. After calling it once, remember and reuse the results - DO NOT call it multiple times in the same run.
-
-This tool returns the current state of the page including all properties, metadata, and content blocks.`,
     execute: async ({ integrationId, pageId }, runContext) => {
         logger.debug("Executing notion_query_page tool")
         if (!runContext?.context) {

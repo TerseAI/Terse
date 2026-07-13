@@ -22,7 +22,7 @@ export type ToolOutputBase = z.infer<typeof toolOutputBaseSchema>
 export type ToolOutputSuccessBase = z.infer<typeof toolOutputSuccessSchema>
 export type ToolOutputFailureBase = z.infer<typeof toolOutputFailureSchema>
 
-export function defineTool<const TName extends string, TInput extends AnySchema, TOutput extends AnySchema>(def: { name: TName; inputSchema: TInput; outputSchema: TOutput }) {
+export function defineTool<const TName extends string, TInput extends AnySchema, TOutput extends AnySchema>(def: { name: TName; description: string; inputSchema: TInput; outputSchema: TOutput }) {
     return def
 }
 
@@ -1132,6 +1132,7 @@ export const searchPosthogEventsInputSchema = z.object({
 
 export const linearCreateTicketTool = defineTool({
     name: "linear_create_ticket",
+    description: "Create a new Linear issue/ticket.",
     inputSchema: linearCreateTicketInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         issue: linearIssueHandleSchema
@@ -1140,6 +1141,7 @@ export const linearCreateTicketTool = defineTool({
 
 export const linearUpdateTicketTool = defineTool({
     name: "linear_update_ticket",
+    description: `Update an existing Linear issue/ticket. Use linear_search_ticket to find the issue ID, and linear_get_states, linear_get_users, linear_get_projects, linear_get_teams to find valid IDs for each field.`,
     inputSchema: linearUpdateTicketInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         issue: linearIssueHandleSchema
@@ -1148,6 +1150,7 @@ export const linearUpdateTicketTool = defineTool({
 
 export const linearAddCommentTool = defineTool({
     name: "linear_add_comment",
+    description: `Add a comment to an existing Linear issue. Use linear_search_ticket to find the issue ID.`,
     inputSchema: linearAddCommentInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         comment: linearCommentHandleSchema
@@ -1156,6 +1159,7 @@ export const linearAddCommentTool = defineTool({
 
 export const linearSearchTicketTool = defineTool({
     name: "linear_search_ticket",
+    description: `Searches Linear issues by keyword, state filter, and/or date range filters. Use this before reading individual tickets. Results are ordered by most recently updated first. Use 'after' cursor to paginate.`,
     inputSchema: linearSearchTicketInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         issues: z.array(linearIssueSummarySchema),
@@ -1167,6 +1171,8 @@ export const linearSearchTicketTool = defineTool({
 
 export const linearReadTicketTool = defineTool({
     name: "linear_read_ticket",
+    description: `Read detailed information about a Linear issue/ticket including title, description, state, assignee, and optionally all comments.
+Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this after searching for tickets to get full details.`,
     inputSchema: linearReadTicketInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         issue: linearIssueDetailSchema,
@@ -1176,6 +1182,7 @@ export const linearReadTicketTool = defineTool({
 
 export const linearGetStatesTool = defineTool({
     name: "linear_get_states",
+    description: `List workflow states for the Linear workspace or a specific team. Use when creating or updating issues to pick a valid stateId (e.g. "Todo", "In Progress", "Done").`,
     inputSchema: linearGetStatesInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         states: z.array(linearStateSummarySchema)
@@ -1184,6 +1191,7 @@ export const linearGetStatesTool = defineTool({
 
 export const linearGetLabelsTool = defineTool({
     name: "linear_get_labels",
+    description: `List issue labels for the Linear workspace or a specific team. Use to pick labelIds for linear_create_ticket or linear_update_ticket.`,
     inputSchema: linearGetLabelsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         labels: z.array(linearLabelSummarySchema)
@@ -1192,6 +1200,7 @@ export const linearGetLabelsTool = defineTool({
 
 export const linearGetProjectsTool = defineTool({
     name: "linear_get_projects",
+    description: `List projects for the Linear workspace or a specific team. Use to pick projectId when creating or updating issues.`,
     inputSchema: linearGetProjectsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         projects: z.array(linearProjectSummarySchema)
@@ -1200,6 +1209,7 @@ export const linearGetProjectsTool = defineTool({
 
 export const linearGetTeamsTool = defineTool({
     name: "linear_get_teams",
+    description: `List teams in the Linear workspace. Use to pick teamId when creating tickets or when calling linear_get_states, linear_get_labels, or linear_get_projects for a specific team.`,
     inputSchema: linearGetTeamsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         teams: z.array(linearTeamSchema)
@@ -1208,6 +1218,7 @@ export const linearGetTeamsTool = defineTool({
 
 export const linearGetUsersTool = defineTool({
     name: "linear_get_users",
+    description: `List users in the Linear workspace. Use to pick assigneeId or subscriberIds when creating or updating issues.`,
     inputSchema: linearGetUsersInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         users: z.array(linearUserSummarySchema)
@@ -1216,6 +1227,7 @@ export const linearGetUsersTool = defineTool({
 
 export const slackSendMessageTool = defineTool({
     name: "slack_send_message",
+    description: `Send message to a Slack channel or DM. Provide channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). If both are set, channelId is used.`,
     inputSchema: slackSendMessageInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         message_ts: z.string().optional(),
@@ -1228,6 +1240,9 @@ export const slackSendMessageTool = defineTool({
 
 export const slackListChannelsTool = defineTool({
     name: "slack_list_channels",
+    description: `List available Slack channels and conversations (public, private, DMs, multi-person DMs) that the integration can access.
+Use this to discover channel IDs before reading conversation history.
+Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more.`,
     inputSchema: slackListChannelsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         channels: z.array(slackChannelListItemSchema),
@@ -1239,6 +1254,8 @@ export const slackListChannelsTool = defineTool({
 
 export const slackListUsersTool = defineTool({
     name: "slack_list_users",
+    description: `List Slack workspace users (id, name, email). Use this to resolve user IDs to names when needed.
+Returns non-bot members. Optionally filter by name or email with the query parameter.`,
     inputSchema: slackListUsersInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         users: z.array(slackUserResponseSchema),
@@ -1248,6 +1265,9 @@ export const slackListUsersTool = defineTool({
 
 export const slackReadConversationTool = defineTool({
     name: "slack_read_conversation",
+    description: `Read message history from a Slack channel or DM.
+Use the channel ID from slack_list_channels. Supports public channels, private channels, and DMs.
+Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more messages.`,
     inputSchema: slackReadConversationInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         channelId: z.string(),
@@ -1261,6 +1281,26 @@ export const slackReadConversationTool = defineTool({
 
 export const searchGitHubCodeTool = defineTool({
     name: "searchGitHubCode",
+    description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
+
+Use searchGitHubCode for:
+- Concepts and patterns: "authentication", "error handling", "database connections"
+- Unknown implementations: "how is validation done?", "where are API routes?"
+- Exploring codebases: "logging implementations", "payment processing"
+- Finding code by what it DOES, not what it's CALLED
+
+Use grepGitHubCode instead when you KNOW the exact text string (function name, import, etc.)
+
+Examples:
+- ✅ "authentication middleware" (finds login, auth, verifyToken, etc.)
+- ✅ "error handling patterns" (finds try/catch, error handlers, etc.)
+- ✅ "database queries" (finds prisma, mysql, query builders)
+- ❌ "getUserById(" → Use grepGitHubCode for exact matches
+
+Tips:
+- Start with broad searches, then narrow down
+- Use natural language or domain terms
+- Combine multiple terms for more specific results`,
     inputSchema: searchGitHubCodeInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         totalCount: z.number().int(),
@@ -1276,6 +1316,24 @@ export const searchGitHubCodeTool = defineTool({
 
 export const grepGitHubCodeTool = defineTool({
     name: "grepGitHubCode",
+    description: `Search GitHub repositories for EXACT TEXT MATCHES (like grep). Use this when you KNOW the exact string you're looking for.
+
+Use grepGitHubCode for:
+- Exact function calls: "getUserById(", "processPayment()"
+- Exact imports: "from '@prisma/client'", "import React from"
+- Exact strings: "API_KEY", "TODO:", "FIXME:"
+- Known identifiers: class names, constants, variable names you know exist
+
+Use searchGitHubCode instead when you DON'T know the exact text (looking for concepts/patterns).
+
+Examples:
+- ✅ "getUserById(" (exact function call)
+- ✅ "from '@prisma/client'" (exact import statement)
+- ✅ "TODO: refactor" (exact comment)
+- ✅ "useState" (exact React hook name)
+- ❌ "state management" → Use searchGitHubCode for concepts
+
+This is more precise than semantic search - use it when you know exactly what text to find.`,
     inputSchema: grepGitHubCodeInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         totalCount: z.number().int(),
@@ -1292,6 +1350,13 @@ export const grepGitHubCodeTool = defineTool({
 
 export const readGitHubFileTool = defineTool({
     name: "readGitHubFile",
+    description: `Read the full contents of a file from a GitHub repository. Use this after finding relevant files via search to:
+- Understand the complete implementation of a function or class
+- See imports and dependencies
+- Review the full context around a code snippet
+- Understand file structure and organization
+
+Note: This reads from the default branch (main/master). Large files may be truncated.`,
     inputSchema: readGitHubFileInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         repository: z.string(),
@@ -1307,6 +1372,13 @@ export const readGitHubFileTool = defineTool({
 
 export const listGitHubDirectoryTool = defineTool({
     name: "listGitHubDirectory",
+    description: `List files and directories in a GitHub repository. Use this to:
+- Explore the repository structure
+- Find where specific types of files are located
+- Understand the project organization
+- Navigate to specific directories before reading files
+
+Start with the root directory (empty path) to see the top-level structure, then drill down into interesting directories.`,
     inputSchema: listGitHubDirectoryInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         repository: z.string(),
@@ -1324,6 +1396,14 @@ export const listGitHubDirectoryTool = defineTool({
 
 export const listGitHubPullRequestsTool = defineTool({
     name: "listGitHubPullRequests",
+    description: `List pull requests in GitHub repositories within a time window. Use this to:
+- Find recently merged PRs to understand recent changes
+- Review what work has been completed in a given period
+- Track PR activity for specific repositories
+- Understand the development history and velocity
+
+The tool returns PR details including title, description, author, merge status, and dates.
+Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is interpreted as the start of that day (00:00:00), and the until date is interpreted as the end of that day (23:59:59).`,
     inputSchema: listGitHubPullRequestsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         repository: z.string(),
@@ -1337,6 +1417,14 @@ export const listGitHubPullRequestsTool = defineTool({
 
 export const listGitHubCommitsTool = defineTool({
     name: "listGitHubCommits",
+    description: `List commits in GitHub repositories within a time window. Use this to:
+- Review recent changes and development activity
+- Track what code was modified in a specific period
+- Find commits by a specific author
+- See commit history for a specific file or directory
+- Understand the pace and nature of development
+
+The tool returns commit details including message, author, date, and SHA.`,
     inputSchema: listGitHubCommitsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         repository: z.string(),
@@ -1351,6 +1439,22 @@ export const listGitHubCommitsTool = defineTool({
 
 export const summarizeGitHubPullRequestDiffTool = defineTool({
     name: "summarizeGitHubPullRequestDiff",
+    description: `Summarize the diff of a pull request from a GitHub repository using an intelligent sub-agent. Use this to:
+- Understand what changes were made in a specific PR without loading the full diff into context
+- Get a concise summary of code changes before merging
+- Analyze the impact of a PR on the codebase efficiently
+- See file-by-file changes with key insights
+
+The tool launches a sub-agent that:
+- Reads the full PR diff from GitHub
+- Analyzes the changes using a compact model
+- Provides a structured summary including:
+  - Overview of changes
+  - Key files modified
+  - Notable additions/removals
+  - Impact assessment
+
+You can optionally provide high-level context about what you're looking for in the PR, which will help the sub-agent focus its analysis.`,
     inputSchema: summarizeGitHubPullRequestDiffInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         repository: z.string(),
@@ -1364,24 +1468,60 @@ export const summarizeGitHubPullRequestDiffTool = defineTool({
 
 export const notionCreateOrUpdatePageTool = defineTool({
     name: "notion_create_or_update_page",
+    description: `Create or update a **standalone page**. Not for database entries — use notion_create_or_update_database_row for those.
+
+**Create**: Omit page_id (or pass null). Supply parentPageId (allowed page ID from config), title. Creates a new empty subpage under the parent. Use notion_modify_blocks on the returned page_id to add content.
+**Update**: Pass page_id of an existing page to update its title. parentPageId is ignored when updating. Use notion_modify_blocks to change page content.`,
     inputSchema: notionCreateOrUpdatePageInputSchema,
     outputSchema: notionDatabaseRowMutationResultSchema
 })
 
 export const notionCreateOrUpdateDatabaseRowTool = defineTool({
     name: "notion_create_or_update_database_row",
+    description: `Create or update a **row** (entry) in a Notion database. Use with databaseId and properties_json. Not for standalone pages — use notion_create_or_update_page for those.
+
+Use notion_get_schema first to understand property names and types. Use notion_query_database to find page_id for updates. Provide page_id null to create a new row, or a valid page_id to update. Property format: Title, Rich Text, Select, Status, etc. per notion_get_schema.`,
     inputSchema: notionCreateOrUpdateDatabaseRowInputSchema,
     outputSchema: notionDatabaseRowMutationResultSchema
 })
 
 export const notionModifyBlocksTool = defineTool({
     name: "notion_modify_blocks",
+    description: `Add, update, or delete blocks in page content. Use this to modify page content (paragraphs, headings, lists, etc.).
+
+Accepts a single operation object (backwards compatible) OR an array of operation objects executed sequentially. One approval covers the whole batch.
+
+Operations:
+- append: Add new blocks to the page (or to a parent block if parent_block_id is provided). Use optional after_block_id to insert after a specific block instead of at the end. Get block IDs from notion_query_page.
+- update: Update an existing block by block_id
+- delete: Delete (archive) a block by block_id
+
+Positional insertion: Use after_block_id with append to insert blocks after a specific block instead of at the end.
+
+Moving blocks within a page:
+1. Retrieve the block content with notion_query_page.
+2. Append the block at the desired position (use after_block_id for position, or parent_block_id for container).
+3. Delete the original block with the "delete" operation.
+
+Examples — single operation:
+- Append: {"operation": "append", "blocks": [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Hello world"}}]}}]}
+- Append after a block: {"operation": "append", "after_block_id": "xyz789", "blocks": [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Inserted here"}}]}}]}
+- Update: {"operation": "update", "block_id": "abc123", "block": {"paragraph": {"rich_text": [{"type": "text", "text": {"content": "Updated text"}}]}}}
+- Delete: {"operation": "delete", "block_id": "abc123"}
+
+Examples — batch (array):
+[{"operation": "append", "blocks": [...]}, {"operation": "update", "block_id": "abc", "block": {...}}, {"operation": "delete", "block_id": "def"}]
+
+Error recovery: If Notion returns an error that suggests JSON/body/validation incompatibility, retry. First fix the specific issue mentioned in the error; if that is unclear or still failing, retry with a simpler payload (fewer blocks, simpler block types like plain paragraphs).`,
     inputSchema: notionModifyBlocksInputSchema,
     outputSchema: z.union([notionModifyBlocksSuccessSchema, notionModifyBlocksFailureSchema])
 })
 
 export const notionQueryPageTool = defineTool({
     name: "notion_query_page",
+    description: `Call this tool ONCE at the beginning of your run to get the page state. After calling it once, remember and reuse the results - DO NOT call it multiple times in the same run.
+
+This tool returns the current state of the page including all properties, metadata, and content blocks.`,
     inputSchema: notionQueryPageInputSchema,
     outputSchema: notionPageQueryMetadataSchema.extend({
         success: z.literal(true),
@@ -1395,12 +1535,64 @@ export const notionQueryPageTool = defineTool({
 
 export const notionQueryDatabaseTool = defineTool({
     name: "notion_query_database",
+    description: `Query a Notion data source (database) to retrieve pages that match specific criteria.
+
+WHEN TO USE THIS TOOL:
+- Verify if the database contains any existing records and avoid creating duplicates.
+- When you need to find specific pages matching certain criteria (e.g., status, date ranges, property values)
+- When you need to retrieve a subset of pages rather than all pages in the database
+- When working with large databases and need pagination to retrieve results in batches
+- When you only need specific properties from pages (use filter_properties for efficiency)
+
+WHAT THIS TOOL DOES:
+1. Filters pages at the Notion API level (not client-side) for maximum efficiency
+2. Supports complex filtering with AND/OR logic, property filters, and timestamp filters
+3. Supports pagination - use start_cursor from previous responses to get next page
+4. Supports filter_properties to only fetch needed fields, reducing response size and improving speed
+
+FILTERING:
+- Property filters: Filter by any database property (title, number, date, select, status, checkbox, etc.)
+- Timestamp filters: Filter by created_time or last_edited_time (these are SYSTEM FIELDS, not database properties)
+- Compound filters: Combine filters with AND/OR logic
+- All filtering happens server-side at Notion for efficiency
+
+SYSTEM FIELDS (available on ALL pages, not shown in schema):
+- created_time: When the page was created. Use timestamp filter format (NO "property" field).
+- last_edited_time: When the page was last edited. Use timestamp filter format (NO "property" field).
+- created_by: User who created the page. Use people filter WITH "property" field.
+- last_edited_by: User who last edited the page. Use people filter WITH "property" field.
+
+IMPORTANT: Timestamp filters (created_time, last_edited_time) use a DIFFERENT format than property filters:
+- CORRECT: {"timestamp": "created_time", "created_time": {"on_or_after": "2024-01-01"}}
+- WRONG: {"property": "created_time", "date": {"on_or_after": "2024-01-01"}}
+
+PAGINATION:
+- Use page_size to control how many results per page (default: all results)
+- Use start_cursor from the response to fetch the next page
+- The response includes has_more and next_cursor when more pages are available
+
+FILTER_PROPERTIES:
+- Specify only the properties you need to reduce response size and improve performance
+- Especially important for databases with many properties or complex formulas/rollups
+- You can fetch additional properties later using Retrieve page property item API
+
+NOTE: This tool does NOT return the database schema. Use notion_get_schema if you need schema information.`,
     inputSchema: notionQueryDatabaseInputSchema,
     outputSchema: z.discriminatedUnion("success", [notionQueryDatabaseSuccessSchema, notionQueryDatabaseFailureSchema])
 })
 
 export const notionGetSchemaTool = defineTool({
     name: "notion_get_schema",
+    description: `Gets the schema/structure of the Notion data source. This tool retrieves all property definitions including property names, types, valid options for select/status fields, and exact format examples for how to construct each property when writing to the database.
+
+Use this tool:
+- Before writing any data to determine available properties and their correct formats
+- To understand what property names exist and their data types
+- To get valid option values for select, multi_select, and status properties
+- To see exact format examples for constructing properties in the Notion API format
+- To determine how to write to the Notion database by understanding its structure
+
+The schema information returned by this tool should be used to properly format properties when calling notion_create_or_update_database_row to create or update rows in the database.`,
     inputSchema: notionGetSchemaInputSchema,
     outputSchema: toolOutputSuccessSchema.extend({
         data_source_id: z.string(),
@@ -1412,6 +1604,13 @@ export const notionGetSchemaTool = defineTool({
 
 export const notionListUsersTool = defineTool({
     name: "notion_list_users",
+    description: `List users in the Notion workspace. Use this to resolve user names to Notion user IDs
+for populating People properties (e.g., Assignee, Owner) when creating or updating database pages.
+
+Returns workspace members (not bots). Optionally filter by name with the query parameter.
+
+Use the returned user IDs in people property format:
+{"Assignee": {"people": [{"object": "user", "id": "<user_id>"}]}}`,
     inputSchema: notionListUsersInputSchema,
     outputSchema: toolOutputSuccessSchema.extend({
         users: z.array(notionWorkspaceUserSchema),
@@ -1421,24 +1620,30 @@ export const notionListUsersTool = defineTool({
 
 export const gmailSendEmailTool = defineTool({
     name: "gmail_send_email",
+    description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email. IMPORTANT: Never put image URLs directly in html_body — remote URLs expire and will result in broken images. Always use image_urls to embed images as base64-encoded inline MIME parts (CID attachments), then reference them in html_body with <img src="cid:image-1.png">. image_urls must be signed URLs from our internal GCS image bucket.`,
     inputSchema: gmailSendEmailInputSchema,
     outputSchema: toolOutputSuccessSchema.merge(gmailSendSummarySchema)
 })
 
 export const gmailCreateDraftTool = defineTool({
     name: "gmail_create_draft",
+    description: `Create a draft email in Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to create a draft reply to an existing thread, or omit it to create a new draft email. The draft will appear in the user's Gmail Drafts folder for review before sending. IMPORTANT: Never put image URLs directly in html_body — remote URLs expire and will result in broken images. Always use image_urls to embed images as base64-encoded inline MIME parts (CID attachments), then reference them in html_body with <img src="cid:image-1.png">. image_urls must be signed URLs from our internal GCS image bucket.`,
     inputSchema: gmailCreateDraftInputSchema,
     outputSchema: toolOutputSuccessSchema.merge(gmailDraftSummarySchema)
 })
 
 export const searchPosthogSessionsTool = defineTool({
     name: "searchPosthogSessions",
+    description:
+        "Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application. Returns the most recent session recordings first.",
     inputSchema: searchPosthogSessionsInputSchema,
     outputSchema: z.union([posthogSearchSessionsFoundSchema, posthogSearchSessionsNotFoundSchema])
 })
 
 export const searchPosthogLogsTool = defineTool({
     name: "searchPosthogLogs",
+    description:
+        "Query PostHog logs with flexible filtering. Returns logs data and a link to view logs in PostHog. You can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. At least one filter (user email, severity levels, or message search) should be provided to avoid overly broad queries. Use this when you need to investigate user activity, errors, or events in PostHog logs.",
     inputSchema: searchPosthogLogsInputSchema,
     outputSchema: toolOutputSuccessSchema.extend({
         userEmail: z.string().nullable(),
@@ -1455,6 +1660,8 @@ export const searchPosthogLogsTool = defineTool({
 
 export const getPosthogSessionEventsTool = defineTool({
     name: "getPosthogSessionEvents",
+    description:
+        "Fetch and decode session replay events from PostHog. Returns summarized meaningful events (clicks, inputs, scroll, console logs, network errors, navigation) within a specified time window. Use this to investigate what a user did during a session - what they clicked, what they typed, any errors that occurred, etc. The events are decoded and summarized for easy analysis.",
     inputSchema: getPosthogSessionEventsInputSchema,
     outputSchema: toolOutputSuccessSchema.extend({
         sessionId: z.string(),
@@ -1471,6 +1678,8 @@ export const getPosthogSessionEventsTool = defineTool({
 
 export const listPosthogEventNamesTool = defineTool({
     name: "listPosthogEventNames",
+    description:
+        "List PostHog event names with how often each occurred, most frequent first (US PostHog Cloud only). Scope with distinctId to profile a single user's activity, or with event/person propertyFilters and a date range.",
     inputSchema: listPosthogEventNamesInputSchema,
     outputSchema: toolOutputSuccessSchema.extend({
         eventCounts: z.array(posthogEventCountSchema),
@@ -1481,6 +1690,8 @@ export const listPosthogEventNamesTool = defineTool({
 
 export const searchPosthogEventsTool = defineTool({
     name: "searchPosthogEvents",
+    description:
+        "Fetch PostHog analytics events, newest first (US PostHog Cloud only). Filter by eventName, distinctId, and event/person propertyFilters. Use listPosthogEventNames first to discover which event names exist.",
     inputSchema: searchPosthogEventsInputSchema,
     outputSchema: toolOutputSuccessSchema.extend({
         events: z.array(posthogEventSummarySchema),
@@ -1711,6 +1922,7 @@ export const imageEditInputSchema = z.object({
 
 export const searchDatadogLogsTool = defineTool({
     name: "searchDatadogLogs",
+    description: "Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.",
     inputSchema: searchDatadogLogsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         query: z.string().nullable(),
@@ -1726,6 +1938,7 @@ export const searchDatadogLogsTool = defineTool({
 
 export const searchRumEventsTool = defineTool({
     name: "searchRumEvents",
+    description: "Query Datadog RUM events. Filter by query string, time range. Returns sessions, views, actions, errors, resources, long tasks.",
     inputSchema: searchRumEventsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         query: z.string().nullable(),
@@ -1741,6 +1954,7 @@ export const searchRumEventsTool = defineTool({
 
 export const listRumEventsTool = defineTool({
     name: "listRumEvents",
+    description: "List recent Datadog RUM events. Use for discovery when unsure what to query. Returns sessions, views, actions, errors, resources, long tasks.",
     inputSchema: listRumEventsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         query: z.string().nullable(),
@@ -1756,6 +1970,7 @@ export const listRumEventsTool = defineTool({
 
 export const aggregateRumEventsTool = defineTool({
     name: "aggregateRumEvents",
+    description: "Aggregate Datadog RUM events into metrics. Compute percentiles, averages, sums, etc. Group by facets for breakdowns. Use for performance trends and error rates.",
     inputSchema: aggregateRumEventsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         query: z.string().nullable(),
@@ -1775,18 +1990,23 @@ export const aggregateRumEventsTool = defineTool({
 
 export const webExtractTool = defineTool({
     name: "web_extract",
+    description: "Extract the full text content from one or more web page URLs. Use this when you need to read the complete contents of a specific page.",
     inputSchema: webExtractInputSchema,
     outputSchema: webExtractOutputSchema
 })
 
 export const webResearchTool = defineTool({
     name: "web_research",
+    description:
+        "Conduct deep, multi-source research on a topic. Autonomously searches across many sources and returns a comprehensive report with citations. Best for complex questions requiring synthesis across multiple sources. Takes longer than a regular search (up to 2 minutes).",
     inputSchema: webResearchInputSchema,
     outputSchema: webResearchOutputSchema
 })
 
 export const imageEditTool = defineTool({
     name: "image_edit",
+    description:
+        "Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see.",
     inputSchema: imageEditInputSchema,
     outputSchema: imageEditOutputSchema
 })
@@ -2586,10 +2806,30 @@ const attioTasksOutputSchema = attioToolOutputBaseSchema.extend({
     count: z.number().int().optional()
 })
 
-export const attioReadTasksTool = defineTool({ name: "attio_read_tasks", inputSchema: attioReadTasksInputSchema, outputSchema: attioTasksOutputSchema })
-export const attioCreateTaskTool = defineTool({ name: "attio_create_task", inputSchema: attioCreateTaskInputSchema, outputSchema: attioTasksOutputSchema })
-export const attioUpdateTaskTool = defineTool({ name: "attio_update_task", inputSchema: attioUpdateTaskInputSchema, outputSchema: attioTasksOutputSchema })
-export const attioDeleteTaskTool = defineTool({ name: "attio_delete_task", inputSchema: attioDeleteTaskInputSchema, outputSchema: attioTasksOutputSchema })
+export const attioReadTasksTool = defineTool({
+    name: "attio_read_tasks",
+    description: `Read Attio tasks. Actions: 'list' (filter by linked record or completion state; limit/offset pagination) and 'get' (fetch by task ID). Tasks are follow-ups and reminders tied to CRM records.`,
+    inputSchema: attioReadTasksInputSchema,
+    outputSchema: attioTasksOutputSchema
+})
+export const attioCreateTaskTool = defineTool({
+    name: "attio_create_task",
+    description: `Create an Attio task: content (plaintext) plus optional deadline, assignees (workspace-member emails or IDs) and linked records.`,
+    inputSchema: attioCreateTaskInputSchema,
+    outputSchema: attioTasksOutputSchema
+})
+export const attioUpdateTaskTool = defineTool({
+    name: "attio_update_task",
+    description: `Update an Attio task's deadline, completion state, assignees or linked records. Task content cannot be changed.`,
+    inputSchema: attioUpdateTaskInputSchema,
+    outputSchema: attioTasksOutputSchema
+})
+export const attioDeleteTaskTool = defineTool({
+    name: "attio_delete_task",
+    description: `Permanently delete an Attio task.`,
+    inputSchema: attioDeleteTaskInputSchema,
+    outputSchema: attioTasksOutputSchema
+})
 
 const attioNotesOutputSchema = attioToolOutputBaseSchema.extend({
     notes: z.array(attioNoteSchema).optional(),
@@ -2597,9 +2837,24 @@ const attioNotesOutputSchema = attioToolOutputBaseSchema.extend({
     count: z.number().int().optional()
 })
 
-export const attioReadNotesTool = defineTool({ name: "attio_read_notes", inputSchema: attioReadNotesInputSchema, outputSchema: attioNotesOutputSchema })
-export const attioCreateNoteTool = defineTool({ name: "attio_create_note", inputSchema: attioCreateNoteInputSchema, outputSchema: attioNotesOutputSchema })
-export const attioDeleteNoteTool = defineTool({ name: "attio_delete_note", inputSchema: attioDeleteNoteInputSchema, outputSchema: attioNotesOutputSchema })
+export const attioReadNotesTool = defineTool({
+    name: "attio_read_notes",
+    description: `Read Attio notes on records. Actions: 'list' (optionally scoped to one record; limit/offset pagination) and 'get' (fetch by note ID).`,
+    inputSchema: attioReadNotesInputSchema,
+    outputSchema: attioNotesOutputSchema
+})
+export const attioCreateNoteTool = defineTool({
+    name: "attio_create_note",
+    description: `Create a note on an Attio record: title + markdown or plaintext content. Use for logging research, call summaries or context onto CRM records.`,
+    inputSchema: attioCreateNoteInputSchema,
+    outputSchema: attioNotesOutputSchema
+})
+export const attioDeleteNoteTool = defineTool({
+    name: "attio_delete_note",
+    description: `Permanently delete an Attio note.`,
+    inputSchema: attioDeleteNoteInputSchema,
+    outputSchema: attioNotesOutputSchema
+})
 
 const attioCommentsOutputSchema = attioToolOutputBaseSchema.extend({
     comment: attioCommentSchema.optional(),
@@ -2608,9 +2863,24 @@ const attioCommentsOutputSchema = attioToolOutputBaseSchema.extend({
     count: z.number().int().optional()
 })
 
-export const attioReadCommentsTool = defineTool({ name: "attio_read_comments", inputSchema: attioReadCommentsInputSchema, outputSchema: attioCommentsOutputSchema })
-export const attioCreateCommentTool = defineTool({ name: "attio_create_comment", inputSchema: attioCreateCommentInputSchema, outputSchema: attioCommentsOutputSchema })
-export const attioDeleteCommentTool = defineTool({ name: "attio_delete_comment", inputSchema: attioDeleteCommentInputSchema, outputSchema: attioCommentsOutputSchema })
+export const attioReadCommentsTool = defineTool({
+    name: "attio_read_comments",
+    description: `Read Attio comments and threads on records. Actions: 'get' (a single comment), 'list_threads' (threads on a record), 'get_thread' (a thread with all its comments).`,
+    inputSchema: attioReadCommentsInputSchema,
+    outputSchema: attioCommentsOutputSchema
+})
+export const attioCreateCommentTool = defineTool({
+    name: "attio_create_comment",
+    description: `Create an Attio comment: reply to a thread via threadId, or start a new thread on a record via objectSlug + recordId. Requires an author workspace member ID (use attio_workspace_members to find it).`,
+    inputSchema: attioCreateCommentInputSchema,
+    outputSchema: attioCommentsOutputSchema
+})
+export const attioDeleteCommentTool = defineTool({
+    name: "attio_delete_comment",
+    description: `Permanently delete an Attio comment.`,
+    inputSchema: attioDeleteCommentInputSchema,
+    outputSchema: attioCommentsOutputSchema
+})
 
 const attioListsOutputSchema = attioToolOutputBaseSchema.extend({
     lists: z.array(attioListSchema).optional(),
@@ -2621,17 +2891,53 @@ const attioListsOutputSchema = attioToolOutputBaseSchema.extend({
     offset: z.number().int().optional()
 })
 
-export const attioReadListsTool = defineTool({ name: "attio_read_lists", inputSchema: attioReadListsInputSchema, outputSchema: attioListsOutputSchema })
-export const attioCreateListTool = defineTool({ name: "attio_create_list", inputSchema: attioCreateListInputSchema, outputSchema: attioListsOutputSchema })
-export const attioUpdateListTool = defineTool({ name: "attio_update_list", inputSchema: attioUpdateListInputSchema, outputSchema: attioListsOutputSchema })
-export const attioReadListEntriesTool = defineTool({ name: "attio_read_list_entries", inputSchema: attioReadListEntriesInputSchema, outputSchema: attioListsOutputSchema })
-export const attioAddListEntryTool = defineTool({ name: "attio_add_list_entry", inputSchema: attioAddListEntryInputSchema, outputSchema: attioListsOutputSchema })
-export const attioUpsertListEntryTool = defineTool({ name: "attio_upsert_list_entry", inputSchema: attioUpsertListEntryInputSchema, outputSchema: attioListsOutputSchema })
-export const attioUpdateListEntryTool = defineTool({ name: "attio_update_list_entry", inputSchema: attioUpdateListEntryInputSchema, outputSchema: attioListsOutputSchema })
-export const attioRemoveListEntryTool = defineTool({ name: "attio_remove_list_entry", inputSchema: attioRemoveListEntryInputSchema, outputSchema: attioListsOutputSchema })
+export const attioReadListsTool = defineTool({
+    name: "attio_read_lists",
+    description: `Read Attio lists. Actions: 'list' (all lists in the workspace) and 'get' (a list's configuration by ID or slug). List entries have their own tools (attio_read_list_entries and the entry write tools).`,
+    inputSchema: attioReadListsInputSchema,
+    outputSchema: attioListsOutputSchema
+})
+export const attioCreateListTool = defineTool({
+    name: "attio_create_list",
+    description: `Create a new Attio list over an object. This changes the workspace for every user.`,
+    inputSchema: attioCreateListInputSchema,
+    outputSchema: attioListsOutputSchema
+})
+export const attioUpdateListTool = defineTool({ name: "attio_update_list", description: `Rename an Attio list.`, inputSchema: attioUpdateListInputSchema, outputSchema: attioListsOutputSchema })
+export const attioReadListEntriesTool = defineTool({
+    name: "attio_read_list_entries",
+    description: `Read entries of an Attio list. Actions: 'query_entries' (filter by entry attributes and/or parentRecordId; limit/offset pagination) and 'get_entry' (a single entry by ID).`,
+    inputSchema: attioReadListEntriesInputSchema,
+    outputSchema: attioListsOutputSchema
+})
+export const attioAddListEntryTool = defineTool({
+    name: "attio_add_list_entry",
+    description: `Add a record to an Attio list as a new entry, with optional entry attribute values (entryValues as a JSON object string, e.g. a stage). Throws on unique-attribute conflicts; the same record may appear in multiple entries.`,
+    inputSchema: attioAddListEntryInputSchema,
+    outputSchema: attioListsOutputSchema
+})
+export const attioUpsertListEntryTool = defineTool({
+    name: "attio_upsert_list_entry",
+    description: `Create or update an Attio list entry keyed by its parent record (idempotent membership): updates the existing entry if the record is already in the list, otherwise adds it.`,
+    inputSchema: attioUpsertListEntryInputSchema,
+    outputSchema: attioListsOutputSchema
+})
+export const attioUpdateListEntryTool = defineTool({
+    name: "attio_update_list_entry",
+    description: `Update an Attio list entry's attribute values (e.g. move its stage). Entry writes go through entryValues as a JSON object string; multiselectMode 'append' adds to multi-value attributes instead of overwriting.`,
+    inputSchema: attioUpdateListEntryInputSchema,
+    outputSchema: attioListsOutputSchema
+})
+export const attioRemoveListEntryTool = defineTool({
+    name: "attio_remove_list_entry",
+    description: `Remove an entry from an Attio list. The parent record itself is untouched.`,
+    inputSchema: attioRemoveListEntryInputSchema,
+    outputSchema: attioListsOutputSchema
+})
 
 export const attioMeetingsTool = defineTool({
     name: "attio_meetings",
+    description: `Read Attio meetings, call recordings and transcripts (read-only). Actions: 'list' (filter by linked record, participant emails or time range; cursor pagination via nextCursor), 'get', 'list_recordings' (recordings for a meeting), 'get_transcript' (transcript of a call recording). Use for call-summary and meeting-activity workflows.`,
     inputSchema: attioMeetingsInputSchema,
     outputSchema: attioToolOutputBaseSchema.extend({
         meetings: z.array(attioMeetingSchema).optional(),
@@ -2651,9 +2957,24 @@ const attioFilesOutputSchema = attioToolOutputBaseSchema.extend({
     nextCursor: z.string().nullable().optional()
 })
 
-export const attioReadFilesTool = defineTool({ name: "attio_read_files", inputSchema: attioReadFilesInputSchema, outputSchema: attioFilesOutputSchema })
-export const attioUploadFileTool = defineTool({ name: "attio_upload_file", inputSchema: attioUploadFileInputSchema, outputSchema: attioFilesOutputSchema })
-export const attioDeleteFileTool = defineTool({ name: "attio_delete_file", inputSchema: attioDeleteFileInputSchema, outputSchema: attioFilesOutputSchema })
+export const attioReadFilesTool = defineTool({
+    name: "attio_read_files",
+    description: `Read files attached to Attio records. Actions: 'list' (files on a record; cursor pagination), 'get' (file metadata), 'get_download_url' (signed URL for a file).`,
+    inputSchema: attioReadFilesInputSchema,
+    outputSchema: attioFilesOutputSchema
+})
+export const attioUploadFileTool = defineTool({
+    name: "attio_upload_file",
+    description: `Upload a file to an Attio record from base64 content (native Attio storage, max 50 MB).`,
+    inputSchema: attioUploadFileInputSchema,
+    outputSchema: attioFilesOutputSchema
+})
+export const attioDeleteFileTool = defineTool({
+    name: "attio_delete_file",
+    description: `Permanently delete a file from Attio (deleting a folder deletes its descendants).`,
+    inputSchema: attioDeleteFileInputSchema,
+    outputSchema: attioFilesOutputSchema
+})
 
 const attioSchemaOutputSchema = attioToolOutputBaseSchema.extend({
     objects: z.array(attioObjectWithAttributesSchema).optional(),
@@ -2667,11 +2988,22 @@ const attioSchemaOutputSchema = attioToolOutputBaseSchema.extend({
     count: z.number().int().optional()
 })
 
-export const attioReadSchemaTool = defineTool({ name: "attio_read_schema", inputSchema: attioReadSchemaInputSchema, outputSchema: attioSchemaOutputSchema })
-export const attioModifySchemaTool = defineTool({ name: "attio_modify_schema", inputSchema: attioModifySchemaInputSchema, outputSchema: attioSchemaOutputSchema })
+export const attioReadSchemaTool = defineTool({
+    name: "attio_read_schema",
+    description: `Read the Attio workspace schema. Actions: 'list_objects' (all object types with attributes — call before creating/updating records), 'get_object', 'list_attributes', 'list_statuses' (e.g. deal stages), 'list_select_options'. Attributes on lists use target 'lists'; on objects, target 'objects'.`,
+    inputSchema: attioReadSchemaInputSchema,
+    outputSchema: attioSchemaOutputSchema
+})
+export const attioModifySchemaTool = defineTool({
+    name: "attio_modify_schema",
+    description: `Change the Attio workspace schema — these writes affect every user of the workspace. Actions: 'create_object', 'update_object', 'create_attribute', 'update_attribute', 'create_status', 'update_status', 'create_select_option', 'update_select_option'. Attributes on lists use target 'lists'; on objects, target 'objects'. After schema writes, rerun terse generate to refresh generated types/constants.`,
+    inputSchema: attioModifySchemaInputSchema,
+    outputSchema: attioSchemaOutputSchema
+})
 
 export const attioWorkspaceMembersTool = defineTool({
     name: "attio_workspace_members",
+    description: `Look up Attio workspace members (the people who use the CRM, not CRM records). Actions: 'list' returns every member with name, email address and access level; 'get' fetches one member by ID. Use this to resolve a record's owner (an actor reference holding a workspace member ID) to a person, e.g. to find the email address for a Slack DM, or to find the member ID/email to write into an owner attribute.`,
     inputSchema: attioWorkspaceMembersInputSchema,
     outputSchema: attioToolOutputBaseSchema.extend({
         members: z.array(attioWorkspaceMemberSchema).optional(),
@@ -2689,14 +3021,41 @@ const attioRecordsOutputSchema = attioToolOutputBaseSchema.extend({
     offset: z.number().int().optional()
 })
 
-export const attioReadRecordsTool = defineTool({ name: "attio_read_records", inputSchema: attioReadRecordsInputSchema, outputSchema: attioRecordsOutputSchema })
-export const attioCreateRecordTool = defineTool({ name: "attio_create_record", inputSchema: attioCreateRecordInputSchema, outputSchema: attioRecordsOutputSchema })
-export const attioUpdateRecordTool = defineTool({ name: "attio_update_record", inputSchema: attioUpdateRecordInputSchema, outputSchema: attioRecordsOutputSchema })
-export const attioUpsertRecordsTool = defineTool({ name: "attio_upsert_record", inputSchema: attioUpsertRecordsInputSchema, outputSchema: attioRecordsOutputSchema })
-export const attioDeleteRecordTool = defineTool({ name: "attio_delete_record", inputSchema: attioDeleteRecordInputSchema, outputSchema: attioRecordsOutputSchema })
+export const attioReadRecordsTool = defineTool({
+    name: "attio_read_records",
+    description: `Read records in Attio. Actions: 'query' (filtered listing with limit/offset pagination), 'search' (fuzzy match by name/email/domain; eventually consistent — use 'query' for read-after-write), 'get' (fetch by record ID), and 'get_attribute_history' (historic values of one attribute, e.g. every stage a deal has been in). Use attio_read_schema with the 'list_objects' action first to discover objects and their attributes.`,
+    inputSchema: attioReadRecordsInputSchema,
+    outputSchema: attioRecordsOutputSchema
+})
+export const attioCreateRecordTool = defineTool({
+    name: "attio_create_record",
+    description: `Create a new record in Attio. Unlike attio_upsert_record, no matching attribute is needed, so this works for objects without a unique writable attribute (e.g. deals).`,
+    inputSchema: attioCreateRecordInputSchema,
+    outputSchema: attioRecordsOutputSchema
+})
+export const attioUpdateRecordTool = defineTool({
+    name: "attio_update_record",
+    description: `Update an existing Attio record by its ID. Only the attributes present in 'values' are touched; multiselectMode 'append' adds to multi-value attributes instead of overwriting them.`,
+    inputSchema: attioUpdateRecordInputSchema,
+    outputSchema: attioRecordsOutputSchema
+})
+export const attioUpsertRecordsTool = defineTool({
+    name: "attio_upsert_record",
+    description: `Create or update one or more Attio records, matched on a unique writable attribute (e.g. 'email_addresses' for people, 'domains' for companies). If a match is found the record is updated, otherwise a new one is created. Throws if ANY record in the batch fails, naming each failure; earlier records may already be written (upserts are safe to retry).`,
+    inputSchema: attioUpsertRecordsInputSchema,
+    outputSchema: attioRecordsOutputSchema
+})
+export const attioDeleteRecordTool = defineTool({
+    name: "attio_delete_record",
+    description: `Permanently delete an Attio record by its ID. This cannot be undone.`,
+    inputSchema: attioDeleteRecordInputSchema,
+    outputSchema: attioRecordsOutputSchema
+})
 
 export const listWorkOSUsersTool = defineTool({
     name: "listWorkOSUsers",
+    description:
+        "List users from the customer's WorkOS account. Supports filtering by email and organization ID. Returns user profiles including email, name, and creation date. Use pagination (after cursor) for large user sets.",
     inputSchema: listWorkOSUsersInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         users: z.array(workOSUserSummarySchema),
@@ -2707,6 +3066,7 @@ export const listWorkOSUsersTool = defineTool({
 
 export const listWorkOSOrganizationsTool = defineTool({
     name: "listWorkOSOrganizations",
+    description: "List organizations from the customer's WorkOS account. Returns organization names, domains, external IDs, and timestamps. Use pagination (after cursor) for large organization sets.",
     inputSchema: listWorkOSOrganizationsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         organizations: z.array(workOSOrganizationSummarySchema),
@@ -2717,6 +3077,7 @@ export const listWorkOSOrganizationsTool = defineTool({
 
 export const getWorkOSUserTool = defineTool({
     name: "getWorkOSUser",
+    description: "Get detailed information about a specific WorkOS user by their user ID. Returns profile data including email, name, verification status, and timestamps.",
     inputSchema: getWorkOSUserInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         user: workOSUserSummarySchema,
@@ -2726,6 +3087,7 @@ export const getWorkOSUserTool = defineTool({
 
 export const listLaunchDarklyFlagsTool = defineTool({
     name: "listLaunchDarklyFlags",
+    description: "List all feature flags with enabled/disabled states per environment. Use summary=true for quick overview, summary=false for full details.",
     inputSchema: listLaunchDarklyFlagsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         projectKey: z.string(),
@@ -2738,6 +3100,8 @@ export const listLaunchDarklyFlagsTool = defineTool({
 
 export const getLaunchDarklyFlagDetailsTool = defineTool({
     name: "getLaunchDarklyFlagDetails",
+    description:
+        "Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.",
     inputSchema: getLaunchDarklyFlagDetailsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         projectKey: z.string(),
@@ -2751,6 +3115,8 @@ export const getLaunchDarklyFlagDetailsTool = defineTool({
 
 export const snowflakeExecuteQueryTool = defineTool({
     name: "snowflakeExecuteQuery",
+    description:
+        "Execute a read-only SQL query against a Snowflake data warehouse. Returns rows and column metadata. SQL safety is enforced by the Snowflake role configured for the integration — use a read-only role.",
     inputSchema: snowflakeExecuteQueryInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         rows: z.array(snowflakeQueryRowSchema),
@@ -2761,6 +3127,7 @@ export const snowflakeExecuteQueryTool = defineTool({
 
 export const snowflakeExplainQueryTool = defineTool({
     name: "snowflakeExplainQuery",
+    description: "Get the query execution plan for a Snowflake SQL query using EXPLAIN. Use this to understand how Snowflake will execute a query before running it.",
     inputSchema: snowflakeExplainQueryInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         explainPlan: z.array(snowflakeQueryRowSchema),
@@ -2771,6 +3138,8 @@ export const snowflakeExplainQueryTool = defineTool({
 
 export const webSearchTool = defineTool({
     name: "web_search",
+    description:
+        "Search the web for up-to-date information. Returns ranked results with titles, URLs, and content snippets. Use for questions about current events, facts, or topics requiring web sources.",
     inputSchema: z.object({
         query: z.string().describe("The search query"),
         max_results: z.number().int().min(1).max(10).nullable().describe("Number of results to return (default 5)"),
@@ -2848,6 +3217,8 @@ export const memoryOutputSchema = toolOutputBaseSchema.extend({
 
 export const memoryTool = defineTool({
     name: "memory",
+    description:
+        "Persistent memory stored under /memories that survives across runs. Commands: view (read a file or list a directory), create, str_replace, insert, delete, rename. Always view /memories before starting a task, and record durable progress and learnings as you work.",
     inputSchema: memoryInputSchema,
     outputSchema: memoryOutputSchema
 })

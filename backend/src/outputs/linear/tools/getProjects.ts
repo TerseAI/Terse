@@ -12,7 +12,6 @@ import { validateLinearOptionalTeam } from "./getStates"
 
 export const linearGetProjectsTool = defineSessionTool({
     name: "linear_get_projects",
-    description: `List projects for the Linear workspace or a specific team. Use to pick projectId when creating or updating issues.`,
     execute: async ({ integrationId, teamId }, runContext) => {
         logger.debug("🛠️ Executing linear_get_projects tool", { integrationId, teamId })
 

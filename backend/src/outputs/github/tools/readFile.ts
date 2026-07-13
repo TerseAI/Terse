@@ -15,13 +15,6 @@ import { validateGitHubRepository } from "./searchCode"
  */
 export const readGitHubFileTool = defineSessionTool({
     name: "readGitHubFile",
-    description: `Read the full contents of a file from a GitHub repository. Use this after finding relevant files via search to:
-- Understand the complete implementation of a function or class
-- See imports and dependencies
-- Review the full context around a code snippet
-- Understand file structure and organization
-
-Note: This reads from the default branch (main/master). Large files may be truncated.`,
     strict: true,
     execute: async ({ repository, path, startLine, endLine }, runContext) => {
         if (!runContext?.context) {

@@ -12,7 +12,6 @@ import { verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearUpdateTicketTool = defineSessionTool({
     name: "linear_update_ticket",
-    description: `Update an existing Linear issue/ticket. Use linear_search_ticket to find the issue ID, and linear_get_states, linear_get_users, linear_get_projects, linear_get_teams to find valid IDs for each field.`,
     execute: async ({ integrationId, issueId, updates }, runContext) => {
         logger.debug("🛠️ Executing linear_update_ticket tool", { integrationId, issueId })
 

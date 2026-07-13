@@ -10,8 +10,6 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const imageEditTool = defineSessionTool({
     name: "image_edit",
-    description:
-        "Edit or transform an image from a URL using a natural language prompt. Supports crops, style changes, object removal/addition, color adjustments, and other visual edits. The edited image is automatically sent to the chat UI for the user to see.",
     execute: async ({ image_url, prompt }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

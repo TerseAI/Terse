@@ -8,8 +8,6 @@ import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
 
 export const snowflakeExecuteQueryTool = defineSessionTool({
     name: "snowflakeExecuteQuery",
-    description:
-        "Execute a read-only SQL query against a Snowflake data warehouse. Returns rows and column metadata. SQL safety is enforced by the Snowflake role configured for the integration — use a read-only role.",
     execute: async ({ integrationId, query }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

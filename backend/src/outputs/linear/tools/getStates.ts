@@ -10,7 +10,6 @@ import { defineSessionTool } from "../../../tools/toolUtils"
 
 export const linearGetStatesTool = defineSessionTool({
     name: "linear_get_states",
-    description: `List workflow states for the Linear workspace or a specific team. Use when creating or updating issues to pick a valid stateId (e.g. "Todo", "In Progress", "Done").`,
     execute: async ({ integrationId, teamId }, runContext) => {
         logger.debug("🛠️ Executing linear_get_states tool", { integrationId, teamId })
 

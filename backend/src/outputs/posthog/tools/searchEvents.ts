@@ -11,8 +11,6 @@ import { validatePosthogArgs } from "./searchLogs"
 
 export const searchEventsTool = defineSessionTool({
     name: "searchPosthogEvents",
-    description:
-        "Fetch PostHog analytics events, newest first (US PostHog Cloud only). Filter by eventName, distinctId, and event/person propertyFilters. Use listPosthogEventNames first to discover which event names exist.",
     execute: async ({ integrationId, projectId, eventName, customEventsOnly = true, distinctId, propertyFilters, limit = 50, cursor, dateFrom, dateTo }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

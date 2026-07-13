@@ -17,7 +17,6 @@ import { ToolACLValidator, requireAllValuesInAnyConfig } from "../../abstract/ac
  */
 export const searchDatadogLogsTool = defineSessionTool({
     name: "searchDatadogLogs",
-    description: "Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.",
     //parameters: parameters,
     execute: async ({ integrationId, defaultIndexes, query, indexes, from, to, limit = 50, cursor, sort = "timestamp" }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {

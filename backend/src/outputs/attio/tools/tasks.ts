@@ -9,25 +9,21 @@ import { attioApiRequest, attioRequestData, attioToolExecute, buildQueryString, 
 
 export const attioReadTasksTool = defineSessionTool({
     name: "attio_read_tasks",
-    description: `Read Attio tasks. Actions: 'list' (filter by linked record or completion state; limit/offset pagination) and 'get' (fetch by task ID). Tasks are follow-ups and reminders tied to CRM records.`,
     execute: attioToolExecute("attio_read_tasks", executeReadTasksRequest)
 })
 
 export const attioCreateTaskTool = defineSessionTool({
     name: "attio_create_task",
-    description: `Create an Attio task: content (plaintext) plus optional deadline, assignees (workspace-member emails or IDs) and linked records.`,
     execute: attioToolExecute("attio_create_task", createTask)
 })
 
 export const attioUpdateTaskTool = defineSessionTool({
     name: "attio_update_task",
-    description: `Update an Attio task's deadline, completion state, assignees or linked records. Task content cannot be changed.`,
     execute: attioToolExecute("attio_update_task", updateTask)
 })
 
 export const attioDeleteTaskTool = defineSessionTool({
     name: "attio_delete_task",
-    description: `Permanently delete an Attio task.`,
     execute: attioToolExecute("attio_delete_task", deleteTask)
 })
 

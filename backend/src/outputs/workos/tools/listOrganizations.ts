@@ -8,7 +8,6 @@ import { getWorkOSApiKeyByIntegrationId, listWorkOSOrganizations } from "../work
 
 export const listWorkOSOrganizationsTool = defineSessionTool({
     name: "listWorkOSOrganizations",
-    description: "List organizations from the customer's WorkOS account. Returns organization names, domains, external IDs, and timestamps. Use pagination (after cursor) for large organization sets.",
     execute: async ({ integrationId, limit = 20, after }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

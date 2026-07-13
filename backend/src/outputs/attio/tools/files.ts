@@ -11,19 +11,16 @@ const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 export const attioReadFilesTool = defineSessionTool({
     name: "attio_read_files",
-    description: `Read files attached to Attio records. Actions: 'list' (files on a record; cursor pagination), 'get' (file metadata), 'get_download_url' (signed URL for a file).`,
     execute: attioToolExecute("attio_read_files", executeReadFilesRequest)
 })
 
 export const attioUploadFileTool = defineSessionTool({
     name: "attio_upload_file",
-    description: `Upload a file to an Attio record from base64 content (native Attio storage, max 50 MB).`,
     execute: attioToolExecute("attio_upload_file", uploadFileRequest)
 })
 
 export const attioDeleteFileTool = defineSessionTool({
     name: "attio_delete_file",
-    description: `Permanently delete a file from Attio (deleting a folder deletes its descendants).`,
     execute: attioToolExecute("attio_delete_file", deleteFile)
 })
 

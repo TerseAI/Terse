@@ -27,31 +27,26 @@ const SEARCH_MAX_LIMIT = 25
 
 export const attioReadRecordsTool = defineSessionTool({
     name: "attio_read_records",
-    description: `Read records in Attio. Actions: 'query' (filtered listing with limit/offset pagination), 'search' (fuzzy match by name/email/domain; eventually consistent — use 'query' for read-after-write), 'get' (fetch by record ID), and 'get_attribute_history' (historic values of one attribute, e.g. every stage a deal has been in). Use attio_read_schema with the 'list_objects' action first to discover objects and their attributes.`,
     execute: attioToolExecute("attio_read_records", executeReadRecordsRequest)
 })
 
 export const attioCreateRecordTool = defineSessionTool({
     name: "attio_create_record",
-    description: `Create a new record in Attio. Unlike attio_upsert_record, no matching attribute is needed, so this works for objects without a unique writable attribute (e.g. deals).`,
     execute: attioToolExecute("attio_create_record", createRecord)
 })
 
 export const attioUpdateRecordTool = defineSessionTool({
     name: "attio_update_record",
-    description: `Update an existing Attio record by its ID. Only the attributes present in 'values' are touched; multiselectMode 'append' adds to multi-value attributes instead of overwriting them.`,
     execute: attioToolExecute("attio_update_record", updateRecord)
 })
 
 export const attioUpsertRecordTool = defineSessionTool({
     name: "attio_upsert_record",
-    description: `Create or update one or more Attio records, matched on a unique writable attribute (e.g. 'email_addresses' for people, 'domains' for companies). If a match is found the record is updated, otherwise a new one is created. Throws if ANY record in the batch fails, naming each failure; earlier records may already be written (upserts are safe to retry).`,
     execute: attioToolExecute("attio_upsert_record", upsertRecords)
 })
 
 export const attioDeleteRecordTool = defineSessionTool({
     name: "attio_delete_record",
-    description: `Permanently delete an Attio record by its ID. This cannot be undone.`,
     execute: attioToolExecute("attio_delete_record", deleteRecord)
 })
 

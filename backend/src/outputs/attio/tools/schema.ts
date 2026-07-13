@@ -9,13 +9,11 @@ import { attioRequestData, attioToolExecute, parseOptionalJsonObject } from "./a
 
 export const attioReadSchemaTool = defineSessionTool({
     name: "attio_read_schema",
-    description: `Read the Attio workspace schema. Actions: 'list_objects' (all object types with attributes — call before creating/updating records), 'get_object', 'list_attributes', 'list_statuses' (e.g. deal stages), 'list_select_options'. Attributes on lists use target 'lists'; on objects, target 'objects'.`,
     execute: attioToolExecute("attio_read_schema", executeReadSchemaRequest)
 })
 
 export const attioModifySchemaTool = defineSessionTool({
     name: "attio_modify_schema",
-    description: `Change the Attio workspace schema — these writes affect every user of the workspace. Actions: 'create_object', 'update_object', 'create_attribute', 'update_attribute', 'create_status', 'update_status', 'create_select_option', 'update_select_option'. Attributes on lists use target 'lists'; on objects, target 'objects'. After schema writes, rerun terse generate to refresh generated types/constants.`,
     execute: attioToolExecute("attio_modify_schema", executeModifySchemaRequest)
 })
 

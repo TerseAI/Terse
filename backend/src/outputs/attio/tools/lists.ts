@@ -23,49 +23,41 @@ const ENTRIES_MAX_LIMIT = 500
 
 export const attioReadListsTool = defineSessionTool({
     name: "attio_read_lists",
-    description: `Read Attio lists. Actions: 'list' (all lists in the workspace) and 'get' (a list's configuration by ID or slug). List entries have their own tools (attio_read_list_entries and the entry write tools).`,
     execute: attioToolExecute("attio_read_lists", executeReadListsRequest)
 })
 
 export const attioCreateListTool = defineSessionTool({
     name: "attio_create_list",
-    description: `Create a new Attio list over an object. This changes the workspace for every user.`,
     execute: attioToolExecute("attio_create_list", createList)
 })
 
 export const attioUpdateListTool = defineSessionTool({
     name: "attio_update_list",
-    description: `Rename an Attio list.`,
     execute: attioToolExecute("attio_update_list", updateList)
 })
 
 export const attioReadListEntriesTool = defineSessionTool({
     name: "attio_read_list_entries",
-    description: `Read entries of an Attio list. Actions: 'query_entries' (filter by entry attributes and/or parentRecordId; limit/offset pagination) and 'get_entry' (a single entry by ID).`,
     execute: attioToolExecute("attio_read_list_entries", executeReadListEntriesRequest)
 })
 
 export const attioAddListEntryTool = defineSessionTool({
     name: "attio_add_list_entry",
-    description: `Add a record to an Attio list as a new entry, with optional entry attribute values (entryValues as a JSON object string, e.g. a stage). Throws on unique-attribute conflicts; the same record may appear in multiple entries.`,
     execute: attioToolExecute("attio_add_list_entry", addListEntry)
 })
 
 export const attioUpsertListEntryTool = defineSessionTool({
     name: "attio_upsert_list_entry",
-    description: `Create or update an Attio list entry keyed by its parent record (idempotent membership): updates the existing entry if the record is already in the list, otherwise adds it.`,
     execute: attioToolExecute("attio_upsert_list_entry", upsertListEntry)
 })
 
 export const attioUpdateListEntryTool = defineSessionTool({
     name: "attio_update_list_entry",
-    description: `Update an Attio list entry's attribute values (e.g. move its stage). Entry writes go through entryValues as a JSON object string; multiselectMode 'append' adds to multi-value attributes instead of overwriting.`,
     execute: attioToolExecute("attio_update_list_entry", updateListEntry)
 })
 
 export const attioRemoveListEntryTool = defineSessionTool({
     name: "attio_remove_list_entry",
-    description: `Remove an entry from an Attio list. The parent record itself is untouched.`,
     execute: attioToolExecute("attio_remove_list_entry", removeListEntry)
 })
 

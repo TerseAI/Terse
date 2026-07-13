@@ -18,7 +18,6 @@ import { defineSessionTool } from "../../../tools/toolUtils"
  */
 export const listRumEventsTool = defineSessionTool({
     name: "listRumEvents",
-    description: "List recent Datadog RUM events. Use for discovery when unsure what to query. Returns sessions, views, actions, errors, resources, long tasks.",
     execute: async ({ integrationId, query, from, to, limit = 25, pageCursor, sort = "timestamp" }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

@@ -17,7 +17,6 @@ import { ToolACLValidationResult, ToolACLValidator, denyToolACL, findConfigsByIn
  */
 export const slackSendMessageTool = defineSessionTool({
     name: "slack_send_message",
-    description: `Send message to a Slack channel or DM. Provide channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM. Supports plain text (mrkdwn) or Block Kit (JSON blocks). If both are set, channelId is used.`,
     execute: async ({ integrationId, channelId, slackUserId, message, thread_ts, blocks: blocksJson }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

@@ -15,10 +15,6 @@ function isValidPageId(pageId: string | null | undefined): pageId is string {
 
 export const notionCreateOrUpdatePageTool = defineSessionTool({
     name: "notion_create_or_update_page",
-    description: `Create or update a **standalone page**. Not for database entries — use notion_create_or_update_database_row for those.
-
-**Create**: Omit page_id (or pass null). Supply parentPageId (allowed page ID from config), title. Creates a new empty subpage under the parent. Use notion_modify_blocks on the returned page_id to add content.
-**Update**: Pass page_id of an existing page to update its title. parentPageId is ignored when updating. Use notion_modify_blocks to change page content.`,
     execute: async ({ integrationId, page_id, parentPageId, title }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

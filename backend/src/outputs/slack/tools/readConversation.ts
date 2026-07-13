@@ -12,9 +12,6 @@ import { validateSlackChannelOrUser } from "./sendMessage"
 
 export const slackReadConversationTool = defineSessionTool({
     name: "slack_read_conversation",
-    description: `Read message history from a Slack channel or DM.
-Use the channel ID from slack_list_channels. Supports public channels, private channels, and DMs.
-Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more messages.`,
     execute: async ({ integrationId, channelId, limit = 50, cursor }, runContext) => {
         logger.debug("🛠️ Executing slack_read_conversation tool", { integrationId, channelId, limit })
 

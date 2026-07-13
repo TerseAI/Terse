@@ -14,8 +14,6 @@ import { validatePosthogArgs } from "./searchLogs"
  */
 export const searchSessionsTool = defineSessionTool({
     name: "searchPosthogSessions",
-    description:
-        "Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application. Returns the most recent session recordings first.",
     execute: async ({ integrationId, projectId, userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

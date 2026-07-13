@@ -12,32 +12,6 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionModifyBlocksTool = defineSessionTool({
     name: "notion_modify_blocks",
-    description: `Add, update, or delete blocks in page content. Use this to modify page content (paragraphs, headings, lists, etc.).
-
-Accepts a single operation object (backwards compatible) OR an array of operation objects executed sequentially. One approval covers the whole batch.
-
-Operations:
-- append: Add new blocks to the page (or to a parent block if parent_block_id is provided). Use optional after_block_id to insert after a specific block instead of at the end. Get block IDs from notion_query_page.
-- update: Update an existing block by block_id
-- delete: Delete (archive) a block by block_id
-
-Positional insertion: Use after_block_id with append to insert blocks after a specific block instead of at the end.
-
-Moving blocks within a page:
-1. Retrieve the block content with notion_query_page.
-2. Append the block at the desired position (use after_block_id for position, or parent_block_id for container).
-3. Delete the original block with the "delete" operation.
-
-Examples — single operation:
-- Append: {"operation": "append", "blocks": [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Hello world"}}]}}]}
-- Append after a block: {"operation": "append", "after_block_id": "xyz789", "blocks": [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Inserted here"}}]}}]}
-- Update: {"operation": "update", "block_id": "abc123", "block": {"paragraph": {"rich_text": [{"type": "text", "text": {"content": "Updated text"}}]}}}
-- Delete: {"operation": "delete", "block_id": "abc123"}
-
-Examples — batch (array):
-[{"operation": "append", "blocks": [...]}, {"operation": "update", "block_id": "abc", "block": {...}}, {"operation": "delete", "block_id": "def"}]
-
-Error recovery: If Notion returns an error that suggests JSON/body/validation incompatibility, retry. First fix the specific issue mentioned in the error; if that is unclear or still failing, retry with a simpler payload (fewer blocks, simpler block types like plain paragraphs).`,
     execute: async ({ integrationId, pageId, operation_json }, runContext) => {
         type Op = {
             operation: "append" | "update" | "delete"
