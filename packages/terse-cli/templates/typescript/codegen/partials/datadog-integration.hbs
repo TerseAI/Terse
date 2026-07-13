@@ -1,0 +1,14 @@
+{{> datadog-section datadog}}
+
+{{#if toolFiles.datadog}}
+{{sectionHeader "Datadog tools"}}
+
+{{> tools-slice toolFiles.datadog}}
+
+{{/if}}
+{{sectionHeader "Datadog skill"}}
+
+/** Datadog — search and analyze logs, optionally scoped to specific indexes */
+export function datadogSkill(opts?: { indexes?: DatadogIndex[] }): TypedSkill<{{{datadog.skillToolType}}}> {
+    return new DatadogConfig("{{escape datadog.id}}", opts?.indexes?.map(i => i.name))
+}

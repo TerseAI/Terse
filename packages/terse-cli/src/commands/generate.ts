@@ -24,7 +24,7 @@ import { CliError, ErrorCode } from "../cliError.js"
 import { createSpinner, formatSummaryList } from "../cliUi.js"
 import { fetchIntegrations } from "../integrationApi.js"
 import { readProjectConfig } from "../projectConfig.js"
-import type { LanguageProvider } from "../providers/LanguageProvider.js"
+import type { GeneratedFile, LanguageProvider } from "../providers/LanguageProvider.js"
 import {
     type AttioAttributeData,
     type AttioInstanceData,
@@ -388,11 +388,11 @@ export async function generate(provider: LanguageProvider = resolveProvider(), o
     s.message("Generating code")
 
     const codegenStart = performance.now()
-    const code = provider.renderGeneratedCode(input)
+    const files = await provider.renderGeneratedFiles(input)
     const codegenMs = performance.now() - codegenStart
 
     s.message("Writing generated file")
-    writeOutput(code, provider)
+    writeOutput(files, provider)
     s.stop(`Fetched ${integrationCount} integration(s)`)
 
     const totalMs = performance.now() - totalStart
@@ -452,13 +452,14 @@ async function fetchPosthogProjectEventNames(integrationId: string, projectId: s
     }
 }
 
-function writeOutput(code: string, provider: LanguageProvider): void {
-    const outputPath = provider.resolveGeneratedCodePath(process.cwd())
-    const outputDir = path.dirname(outputPath)
-    if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true })
+function writeOutput(files: GeneratedFile[], provider: LanguageProvider): void {
+    const outputDir = path.dirname(provider.resolveGeneratedCodePath(process.cwd()))
+    fs.rmSync(path.join(outputDir, "terse.generated"), { recursive: true, force: true })
+    for (const file of files) {
+        const target = path.join(outputDir, file.fileName)
+        fs.mkdirSync(path.dirname(target), { recursive: true })
+        fs.writeFileSync(target, file.code)
     }
-    fs.writeFileSync(outputPath, code)
 }
 
 function summarizeIntegrations(input: CodegenInput): string {
@@ -482,10 +483,4 @@ function summarizeIntegrations(input: CodegenInput): string {
 
 function labelWithCount(label: string, count: number): string {
     return count === 1 ? label : `${label} (${count})`
-}
-
-// Types
-
-type GenerateOptions = {
-    showLifecycle?: boolean
 }

@@ -1,0 +1,16 @@
+{{> notion-section notion}}
+
+{{#if toolFiles.notion}}
+{{sectionHeader "Notion tools"}}
+
+{{> tools-slice toolFiles.notion}}
+
+{{/if}}
+{{sectionHeader "Notion skill"}}
+
+/** Notion — read and write to the given databases or pages */
+export function notionSkill(opts?: { databases?: NotionDatabase[]; pages?: NotionPage[] }): TypedSkill<{{{notion.skillToolType}}}> {
+    return new NotionConfig("{{escape notion.id}}",
+        opts?.databases?.map(d => d.databaseId), opts?.databases?.map(d => d.title),
+        opts?.pages?.map(p => p.pageId), opts?.pages?.map(p => p.title))
+}

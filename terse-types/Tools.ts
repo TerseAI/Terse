@@ -322,7 +322,7 @@ export const notionPageBlockSchema: z.ZodType<{
         database_id: z.string().optional(),
         children: z.array(notionPageBlockSchema).optional()
     })
-)
+).meta({ id: "NotionBlock" })
 
 export const notionPageQueryMetadataSchema = z.object({
     page_id: z.string(),

@@ -1,0 +1,77 @@
+{{sectionHeader "WorkOS triggers"}}
+
+{{#each triggerFiles.workos}}
+{{{this}}}
+
+{{/each}}
+export const workOSTriggers = {
+    /** Trigger on user creation */
+    onUserCreated(): TypedTrigger<WorkOSUserCreatedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.USER_CREATED])
+    },
+    /** Trigger on user update */
+    onUserUpdated(): TypedTrigger<WorkOSUserUpdatedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.USER_UPDATED])
+    },
+    /** Trigger on user deletion */
+    onUserDeleted(): TypedTrigger<WorkOSUserDeletedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.USER_DELETED])
+    },
+    /** Trigger on organization membership creation */
+    onMembershipCreated(): TypedTrigger<WorkOSOrganizationMembershipCreatedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED])
+    },
+    /** Trigger on organization membership update */
+    onMembershipUpdated(): TypedTrigger<WorkOSOrganizationMembershipUpdatedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED])
+    },
+    /** Trigger on organization membership deletion */
+    onMembershipDeleted(): TypedTrigger<WorkOSOrganizationMembershipDeletedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED])
+    },
+    /** Trigger on any organization membership change */
+    onMembershipChanged(): TypedTrigger<WorkOSMembershipTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED, WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED, WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED])
+    },
+    /** Trigger when an invitation is sent (created or resent) */
+    onInvitationSent(): TypedTrigger<WorkOSInvitationTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_CREATED, WorkOSEventType.INVITATION_RESENT])
+    },
+    /** Trigger when an invitation is first created */
+    onInvitationCreated(): TypedTrigger<WorkOSInvitationCreatedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_CREATED])
+    },
+    /** Trigger when an invitation is resent */
+    onInvitationResent(): TypedTrigger<WorkOSInvitationResentTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_RESENT])
+    },
+    /** Trigger on invitation accepted */
+    onInvitationAccepted(): TypedTrigger<WorkOSInvitationAcceptedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_ACCEPTED])
+    },
+    /** Trigger when an invitation is revoked */
+    onInvitationRevoked(): TypedTrigger<WorkOSInvitationRevokedTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.INVITATION_REVOKED])
+    },
+    /** Trigger on organization creation */
+    onOrganizationCreated(): TypedTrigger<WorkOSOrganizationTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", [WorkOSEventType.ORGANIZATION_CREATED])
+    },
+    /** Trigger on specific WorkOS event types */
+    trigger(opts?: { eventTypes?: WorkOSEventType[] }): TypedTrigger<WorkOSTrigger | WorkOSUserTrigger | WorkOSMembershipTrigger | WorkOSInvitationTrigger | WorkOSOrganizationTrigger> {
+        return new WorkOSInputConfig("{{escape workos.id}}", opts?.eventTypes)
+    },
+}
+
+{{sectionHeader "WorkOS skill"}}
+
+/** WorkOS — manage users, organizations and invitations */
+export function workOSSkill(): TypedSkill<{{{workos.skillToolType}}}> {
+    return new WorkOSOutputConfig("{{escape workos.id}}")
+}
+
+{{#if toolFiles.workos}}
+{{sectionHeader "WorkOS tools"}}
+
+{{> tools-slice toolFiles.workos}}
+{{/if}}

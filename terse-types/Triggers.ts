@@ -216,10 +216,7 @@ export type GithubPRTrigger = z.infer<typeof GithubPRTriggerSchema>
 
 export const GithubTriggerSchema = z.discriminatedUnion("eventType", [
     GithubPushTriggerSchema,
-    GithubPROpenedTriggerSchema,
-    GithubPRSynchronizedTriggerSchema,
-    GithubPRClosedTriggerSchema,
-    GithubPRMergedTriggerSchema,
+    GithubPRTriggerSchema,
     GithubIssueCommentCreatedTriggerSchema
 ])
 export type GithubTrigger = z.infer<typeof GithubTriggerSchema>
@@ -560,16 +557,9 @@ export const workOSOrganizationTriggerSchema = workOSTriggerBaseSchema.extend({
 export type WorkOSOrganizationTrigger = z.infer<typeof workOSOrganizationTriggerSchema>
 
 export const workOSTriggerSchema = z.discriminatedUnion("eventType", [
-    workOSUserCreatedTriggerSchema,
-    workOSUserUpdatedTriggerSchema,
-    workOSUserDeletedTriggerSchema,
-    workOSOrganizationMembershipCreatedTriggerSchema,
-    workOSOrganizationMembershipUpdatedTriggerSchema,
-    workOSOrganizationMembershipDeletedTriggerSchema,
-    workOSInvitationCreatedTriggerSchema,
-    workOSInvitationAcceptedTriggerSchema,
-    workOSInvitationResentTriggerSchema,
-    workOSInvitationRevokedTriggerSchema,
+    workOSUserTriggerSchema,
+    workOSMembershipTriggerSchema,
+    workOSInvitationTriggerSchema,
     workOSOrganizationTriggerSchema
 ])
 export type WorkOSTrigger = z.infer<typeof workOSTriggerSchema>
@@ -1042,3 +1032,89 @@ export function toEventFixture(event: SerializedEvent): EventFixture {
         debugLog: event.debugLog
     }
 }
+
+// The public trigger type surface: map key is the exported type name, value is the schema it prints from.
+// Union schemas whose members are all registered here print as unions of those names.
+export const TriggerDefinitions = {
+    SlackMessageTrigger: slackMessageTriggerSchema,
+    SlackAppMentionTrigger: slackAppMentionTriggerSchema,
+    SlackReactionAddedTrigger: slackReactionAddedTriggerSchema,
+    SlackTrigger: slackTriggerSchema,
+    GithubPushTrigger: GithubPushTriggerSchema,
+    GithubPROpenedTrigger: GithubPROpenedTriggerSchema,
+    GithubPRSynchronizedTrigger: GithubPRSynchronizedTriggerSchema,
+    GithubPRClosedTrigger: GithubPRClosedTriggerSchema,
+    GithubPRMergedTrigger: GithubPRMergedTriggerSchema,
+    GithubIssueCommentCreatedTrigger: GithubIssueCommentCreatedTriggerSchema,
+    GithubPRTrigger: GithubPRTriggerSchema,
+    GithubTrigger: GithubTriggerSchema,
+    GmailTrigger: gmailTriggerSchema,
+    LinearIssueCreatedTrigger: linearIssueCreatedTriggerSchema,
+    LinearIssueUpdatedTrigger: linearIssueUpdatedTriggerSchema,
+    LinearCommentCreatedTrigger: linearCommentCreatedTriggerSchema,
+    LinearTrigger: linearTriggerSchema,
+    WorkOSUserCreatedTrigger: workOSUserCreatedTriggerSchema,
+    WorkOSUserUpdatedTrigger: workOSUserUpdatedTriggerSchema,
+    WorkOSUserDeletedTrigger: workOSUserDeletedTriggerSchema,
+    WorkOSUserTrigger: workOSUserTriggerSchema,
+    WorkOSOrganizationMembershipCreatedTrigger: workOSOrganizationMembershipCreatedTriggerSchema,
+    WorkOSOrganizationMembershipUpdatedTrigger: workOSOrganizationMembershipUpdatedTriggerSchema,
+    WorkOSOrganizationMembershipDeletedTrigger: workOSOrganizationMembershipDeletedTriggerSchema,
+    WorkOSMembershipTrigger: workOSMembershipTriggerSchema,
+    WorkOSInvitationCreatedTrigger: workOSInvitationCreatedTriggerSchema,
+    WorkOSInvitationAcceptedTrigger: workOSInvitationAcceptedTriggerSchema,
+    WorkOSInvitationResentTrigger: workOSInvitationResentTriggerSchema,
+    WorkOSInvitationRevokedTrigger: workOSInvitationRevokedTriggerSchema,
+    WorkOSInvitationTrigger: workOSInvitationTriggerSchema,
+    WorkOSOrganizationTrigger: workOSOrganizationTriggerSchema,
+    WorkOSTrigger: workOSTriggerSchema,
+    HeyReachConnectionRequestSentTrigger: heyReachConnectionRequestSentTriggerSchema,
+    HeyReachConnectionRequestAcceptedTrigger: heyReachConnectionRequestAcceptedTriggerSchema,
+    HeyReachMessageSentTrigger: heyReachMessageSentTriggerSchema,
+    HeyReachMessageReplyReceivedTrigger: heyReachMessageReplyReceivedTriggerSchema,
+    HeyReachInmailSentTrigger: heyReachInmailSentTriggerSchema,
+    HeyReachInmailReplyReceivedTrigger: heyReachInmailReplyReceivedTriggerSchema,
+    HeyReachFollowSentTrigger: heyReachFollowSentTriggerSchema,
+    HeyReachLikedPostTrigger: heyReachLikedPostTriggerSchema,
+    HeyReachViewedProfileTrigger: heyReachViewedProfileTriggerSchema,
+    HeyReachCampaignCompletedTrigger: heyReachCampaignCompletedTriggerSchema,
+    HeyReachLeadTagUpdatedTrigger: heyReachLeadTagUpdatedTriggerSchema,
+    HeyReachTrigger: heyReachTriggerSchema,
+    AttioCallRecordingCreatedTrigger: attioCallRecordingCreatedTriggerSchema,
+    AttioCommentCreatedTrigger: attioCommentCreatedTriggerSchema,
+    AttioCommentResolvedTrigger: attioCommentResolvedTriggerSchema,
+    AttioCommentUnresolvedTrigger: attioCommentUnresolvedTriggerSchema,
+    AttioCommentDeletedTrigger: attioCommentDeletedTriggerSchema,
+    AttioListCreatedTrigger: attioListCreatedTriggerSchema,
+    AttioListUpdatedTrigger: attioListUpdatedTriggerSchema,
+    AttioListDeletedTrigger: attioListDeletedTriggerSchema,
+    AttioListAttributeCreatedTrigger: attioListAttributeCreatedTriggerSchema,
+    AttioListAttributeUpdatedTrigger: attioListAttributeUpdatedTriggerSchema,
+    AttioListEntryCreatedTrigger: attioListEntryCreatedTriggerSchema,
+    AttioListEntryUpdatedTrigger: attioListEntryUpdatedTriggerSchema,
+    AttioListEntryDeletedTrigger: attioListEntryDeletedTriggerSchema,
+    AttioObjectAttributeCreatedTrigger: attioObjectAttributeCreatedTriggerSchema,
+    AttioObjectAttributeUpdatedTrigger: attioObjectAttributeUpdatedTriggerSchema,
+    AttioNoteCreatedTrigger: attioNoteCreatedTriggerSchema,
+    AttioNoteContentUpdatedTrigger: attioNoteContentUpdatedTriggerSchema,
+    AttioNoteUpdatedTrigger: attioNoteUpdatedTriggerSchema,
+    AttioNoteDeletedTrigger: attioNoteDeletedTriggerSchema,
+    AttioRecordCreatedTrigger: attioRecordCreatedTriggerSchema,
+    AttioRecordMergedTrigger: attioRecordMergedTriggerSchema,
+    AttioRecordUpdatedTrigger: attioRecordUpdatedTriggerSchema,
+    AttioRecordDeletedTrigger: attioRecordDeletedTriggerSchema,
+    AttioTaskCreatedTrigger: attioTaskCreatedTriggerSchema,
+    AttioTaskUpdatedTrigger: attioTaskUpdatedTriggerSchema,
+    AttioTaskDeletedTrigger: attioTaskDeletedTriggerSchema,
+    AttioWorkspaceMemberCreatedTrigger: attioWorkspaceMemberCreatedTriggerSchema,
+    AttioTrigger: attioTriggerSchema,
+    CronTrigger: cronTriggerSchema,
+    WebhookTrigger: webhookTriggerSchema,
+    WebMonitorTrigger: webMonitorTriggerSchema
+} satisfies Record<string, z.ZodType>
+
+export function isTriggerDefinitionName(name: string): name is TriggerDefinitionName {
+    return name in TriggerDefinitions
+}
+
+export type TriggerDefinitionName = keyof typeof TriggerDefinitions

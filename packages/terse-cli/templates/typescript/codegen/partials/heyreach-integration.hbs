@@ -1,0 +1,64 @@
+{{> hey-reach-section heyreach}}
+
+{{#if toolFiles.hey_reach}}
+{{sectionHeader "HeyReach tools"}}
+
+{{> tools-slice toolFiles.hey_reach}}
+
+{{/if}}
+{{sectionHeader "HeyReach triggers"}}
+
+{{#each triggerFiles.heyreach}}
+{{{this}}}
+
+{{/each}}
+export const heyReachTriggers = {
+    /** Trigger when a connection request is sent */
+    onConnectionRequestSent(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachConnectionRequestSentTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.CONNECTION_REQUEST_SENT, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger when a connection request is accepted */
+    onConnectionRequestAccepted(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachConnectionRequestAcceptedTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.CONNECTION_REQUEST_ACCEPTED, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger when a LinkedIn message is sent */
+    onMessageSent(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachMessageSentTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.MESSAGE_SENT, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger on the first reply to a LinkedIn message */
+    onMessageReplyReceived(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachMessageReplyReceivedTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.MESSAGE_REPLY_RECEIVED, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger when an InMail is sent */
+    onInmailSent(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachInmailSentTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.INMAIL_SENT, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger on the first reply to an InMail */
+    onInmailReplyReceived(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachInmailReplyReceivedTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.INMAIL_REPLY_RECEIVED, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger when a follow is sent */
+    onFollowSent(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachFollowSentTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.FOLLOW_SENT, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger when a post is liked */
+    onLikedPost(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachLikedPostTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.LIKED_POST, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger when a profile is viewed */
+    onViewedProfile(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachViewedProfileTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.VIEWED_PROFILE, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger when a campaign completes */
+    onCampaignCompleted(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachCampaignCompletedTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.CAMPAIGN_COMPLETED, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger when lead tags are updated */
+    onLeadTagUpdated(opts?: { campaigns?: HeyReachCampaign[] }): TypedTrigger<HeyReachLeadTagUpdatedTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", HeyReachEventType.LEAD_TAG_UPDATED, (opts?.campaigns ?? []).map(c => c.campaignId))
+    },
+    /** Trigger on specific HeyReach event types */
+    trigger(opts: { campaigns?: HeyReachCampaign[]; eventType: HeyReachEventType }): TypedTrigger<HeyReachTrigger> {
+        return new HeyReachInputConfig("{{escape heyreach.id}}", opts.eventType, (opts.campaigns ?? []).map(c => c.campaignId))
+    },
+}

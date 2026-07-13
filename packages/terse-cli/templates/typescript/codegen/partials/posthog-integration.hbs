@@ -1,0 +1,14 @@
+{{> posthog-section posthog}}
+
+{{#if toolFiles.posthog}}
+{{sectionHeader "PostHog tools"}}
+
+{{> tools-slice toolFiles.posthog}}
+
+{{/if}}
+{{sectionHeader "PostHog skill"}}
+
+/** PostHog — query analytics for a specific project */
+export function posthogSkill(opts: { project: PosthogProject }): TypedSkill<{{{posthog.skillToolType}}}> {
+    return new PosthogConfig("{{escape posthog.id}}", opts.project.projectId, opts.project.name)
+}

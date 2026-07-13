@@ -1,0 +1,14 @@
+{{> launchdarkly-section launchdarkly}}
+
+{{#if toolFiles.launchdarkly}}
+{{sectionHeader "LaunchDarkly tools"}}
+
+{{> tools-slice toolFiles.launchdarkly}}
+
+{{/if}}
+{{sectionHeader "LaunchDarkly skill"}}
+
+/** LaunchDarkly — read and toggle feature flags in a project + environments */
+export function launchDarklySkill(opts: { project: LaunchDarklyProject; environmentKeys: string[] }): TypedSkill<{{{launchdarkly.skillToolType}}}> {
+    return new LaunchDarklyConfig("{{escape launchdarkly.id}}", opts.project.projectKey, opts.environmentKeys)
+}
