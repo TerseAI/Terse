@@ -93,7 +93,7 @@ const scored = await generateText({
         Skills.web(),
         Skills.slack({ channel: SlackChannel.DealDesk }) // DealDesk only
     ],
-    toolApprovals: ["attio_records"] // human-in-the-loop on record writes
+    toolApprovals: ["attio_upsert_record", "attio_delete_record"] // human-in-the-loop on record writes
 })
 ```
 

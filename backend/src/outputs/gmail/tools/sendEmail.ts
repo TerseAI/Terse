@@ -17,7 +17,6 @@ import { buildEmailContentWithAttachments, downloadImageAttachments, encodeSubje
  */
 export const gmailSendEmailTool = defineSessionTool({
     name: "gmail_send_email",
-    description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email. IMPORTANT: Never put image URLs directly in html_body — remote URLs expire and will result in broken images. Always use image_urls to embed images as base64-encoded inline MIME parts (CID attachments), then reference them in html_body with <img src="cid:image-1.png">. image_urls must be signed URLs from our internal GCS image bucket.`,
     execute: async ({ integrationId, to, subject, body, html_body, thread_id, cc, bcc, image_urls, custom_headers }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

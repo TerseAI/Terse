@@ -33,14 +33,6 @@ const calculateSummary = (prs: Array<{ merged: boolean; state: string }>) => {
 
 export const listGitHubPullRequestsTool = defineSessionTool({
     name: "listGitHubPullRequests",
-    description: `List pull requests in GitHub repositories within a time window. Use this to:
-- Find recently merged PRs to understand recent changes
-- Review what work has been completed in a given period
-- Track PR activity for specific repositories
-- Understand the development history and velocity
-
-The tool returns PR details including title, description, author, merge status, and dates.
-Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is interpreted as the start of that day (00:00:00), and the until date is interpreted as the end of that day (23:59:59).`,
     strict: true,
     execute: async ({ repository, state, since, until, perPage = 20, page }, runContext) => {
         if (!runContext?.context) {

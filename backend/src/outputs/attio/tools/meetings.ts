@@ -10,7 +10,6 @@ import { attioRequestData, attioRequestPage, buildQueryString, resolveAttioAcces
 
 export const attioMeetingsTool = defineSessionTool({
     name: "attio_meetings",
-    description: `Read Attio meetings, call recordings and transcripts (read-only). Actions: 'list' (filter by linked record, participant emails or time range; cursor pagination via nextCursor), 'get', 'list_recordings' (recordings for a meeting), 'get_transcript' (transcript of a call recording). Use for call-summary and meeting-activity workflows.`,
     execute: async ({ integrationId, request }, runContext) => {
         logger.debug("Executing attio_meetings tool", { integrationId, action: request.action })
         if (!runContext?.context) {

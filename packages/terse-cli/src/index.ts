@@ -346,7 +346,7 @@ Examples:
 
 integrateToolCommand
     .command("run")
-    .description("Invoke a toolbox tool ad hoc and print its JSON result — no job or deploy required")
+    .description("Invoke a read-only toolbox tool ad hoc and print its JSON result — no job or deploy required")
     .argument("<tool>", "Tool to run, as attio_records or attio.records")
     .option("--params <json>", "Tool params as a JSON object; pass '-' (or pipe) to read from stdin")
     .option("--integration <id>", "Integration connection ID (only needed when several connections exist)")
@@ -359,6 +359,7 @@ Examples:
   $ echo '{"request":{"action":"search","objectSlug":"companies","query":"acme"}}' | terse integrate tool run attio_records
   $ terse integrate tool run linear.searchTicket --integration cm123 --params '{"query":"TER-658"}'
 
+Only read-only tools can be run ad hoc; write tools (and approval-gated tools) run inside jobs.
 The result is printed to stdout as raw JSON; errors go to stderr with a nonzero exit code.
 Params are the tool's wire shape — see \`terse integrate tool <integration> <tool-name> --json\` for the input schema.
 `

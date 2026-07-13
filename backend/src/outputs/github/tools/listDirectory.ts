@@ -15,13 +15,6 @@ import { validateGitHubRepository } from "./searchCode"
  */
 export const listGitHubDirectoryTool = defineSessionTool({
     name: "listGitHubDirectory",
-    description: `List files and directories in a GitHub repository. Use this to:
-- Explore the repository structure
-- Find where specific types of files are located
-- Understand the project organization
-- Navigate to specific directories before reading files
-
-Start with the root directory (empty path) to see the top-level structure, then drill down into interesting directories.`,
     strict: true,
     execute: async ({ repository, path = "", recursive = false }, runContext) => {
         if (!runContext?.context) {

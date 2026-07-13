@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowRight, Trash2 } from "lucide-react"
+import type { AttioDeleteRecordRequest } from "terse-types"
 
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -6,41 +7,48 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAttioObjects } from "@/modules/integrations/api/useAttioObjects"
 
 import { buildEditorColumns, buildValidationNotices, extractRecords, safeParseParams, valueToEditString, writeActionLabel } from "./attioRecordsPreviewUtils"
+import type { AttioRecordsWriteAction, AttioRecordsWriteRequest } from "./attioRecordsPreviewUtils"
 import type { ToolPreviewProps } from "./index"
 
-export default function AttioRecordsPreview({ parameters }: ToolPreviewProps) {
-    const parsedParameters = safeParseParams(parameters)
+export function AttioCreateRecordPreview({ parameters }: ToolPreviewProps) {
+    return <AttioRecordsWritePreview parameters={parameters} action="create" />
+}
+
+export function AttioUpdateRecordPreview({ parameters }: ToolPreviewProps) {
+    return <AttioRecordsWritePreview parameters={parameters} action="update" />
+}
+
+export function AttioUpsertRecordPreview({ parameters }: ToolPreviewProps) {
+    return <AttioRecordsWritePreview parameters={parameters} action="upsert" />
+}
+
+export function AttioDeleteRecordPreview({ parameters }: ToolPreviewProps) {
+    const parsedParameters = safeParseParams<AttioDeleteRecordRequest>(parameters)
+    const request = parsedParameters?.request
+    if (!request) return null
+
+    return (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/8 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Trash2 className="h-4 w-4 text-destructive" />
+                Permanently delete this {request.objectSlug} record
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+                Record <span className="font-mono text-foreground">{request.recordId}</span> will be deleted from Attio. This cannot be undone.
+            </div>
+        </div>
+    )
+}
+
+function AttioRecordsWritePreview({ parameters, action }: { parameters: string; action: AttioRecordsWriteAction }) {
+    const parsedParameters = safeParseParams<AttioRecordsWriteRequest>(parameters)
     const request = parsedParameters?.request
     const { objects } = useAttioObjects(parsedParameters?.integrationId)
 
     if (!parsedParameters || !request) return null
 
-    if (request.action === "delete") {
-        return (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/8 px-4 py-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                    Permanently delete this {request.objectSlug} record
-                </div>
-                <div className="mt-2 text-xs text-muted-foreground">
-                    Record <span className="font-mono text-foreground">{request.recordId}</span> will be deleted from Attio. This cannot be undone.
-                </div>
-            </div>
-        )
-    }
-
-    if (request.action !== "create" && request.action !== "update" && request.action !== "upsert") {
-        return (
-            <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-foreground capitalize">{request.objectSlug}</span>
-                <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Read-only: {request.action.replace(/_/g, " ")}</span>
-            </div>
-        )
-    }
-
-    const matchingAttribute = request.action === "upsert" ? request.matchingAttribute : undefined
-    const records = extractRecords(request)
+    const matchingAttribute = action === "upsert" && "matchingAttribute" in request ? request.matchingAttribute : undefined
+    const records = extractRecords(action, request)
     const objectDefinition = objects.find(object => object.api_slug === request.objectSlug)
     const columns = buildEditorColumns(records, objectDefinition?.attributes, matchingAttribute)
     const validationNotices = buildValidationNotices(records, objectDefinition?.attributes, matchingAttribute)
@@ -52,14 +60,14 @@ export default function AttioRecordsPreview({ parameters }: ToolPreviewProps) {
                 <div className="flex items-center gap-2 text-sm">
                     <span className="font-medium text-foreground capitalize">{request.objectSlug || "Record"}</span>
                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">{writeActionLabel(request.action)}</span>
+                    <span className="text-muted-foreground">{writeActionLabel(action)}</span>
                 </div>
                 {matchingAttribute && (
                     <div className="mt-1 text-xs text-muted-foreground">
                         Match on <span className="font-mono text-foreground">{matchingAttribute}</span>
                     </div>
                 )}
-                {request.action === "update" && (
+                {action === "update" && "recordId" in request && (
                     <div className="mt-1 text-xs text-muted-foreground">
                         Record <span className="font-mono text-foreground">{request.recordId}</span>
                         {request.multiselectMode === "append" ? " (appending to multi-value attributes)" : ""}

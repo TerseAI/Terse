@@ -8,7 +8,6 @@ import { getSnowflakeCredentials, runSnowflakeQuery } from "../snowflakeClient"
 
 export const snowflakeExplainQueryTool = defineSessionTool({
     name: "snowflakeExplainQuery",
-    description: "Get the query execution plan for a Snowflake SQL query using EXPLAIN. Use this to understand how Snowflake will execute a query before running it.",
     execute: async ({ integrationId, query }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

@@ -1,4 +1,4 @@
-import type { AttioRecordsRequest, MemoryCommand } from "./Tools"
+import type { AttioReadRecordsRequest, MemoryCommand } from "./Tools"
 
 /**
  * The phases a tool call can be in for display purposes.
@@ -90,13 +90,13 @@ function attioActionLabel(params: Record<string, unknown> | undefined, noun: str
     return `${verb} ${noun}${plural ? "s" : ""}`
 }
 
-function attioRecordsRequest(params?: Record<string, unknown>): AttioRecordsRequest | undefined {
+function attioReadRecordsRequest(params?: Record<string, unknown>): AttioReadRecordsRequest | undefined {
     const request = params?.request
-    return request && typeof request === "object" && "action" in request ? (request as AttioRecordsRequest) : undefined
+    return request && typeof request === "object" && "action" in request ? (request as AttioReadRecordsRequest) : undefined
 }
 
-function attioRecordsLabel(request: AttioRecordsRequest | undefined, done: boolean, count?: number): string {
-    if (!request) return done ? "Updated records" : "Working with records"
+function attioReadRecordsLabel(request: AttioReadRecordsRequest | undefined, done: boolean, count?: number): string {
+    if (!request) return done ? "Loaded records" : "Loading records"
     const target = `${request.objectSlug} record`
     switch (request.action) {
         case "query":
@@ -107,16 +107,16 @@ function attioRecordsLabel(request: AttioRecordsRequest | undefined, done: boole
             return (done ? "Loaded" : "Loading") + ` ${target}`
         case "get_attribute_history":
             return (done ? "Loaded" : "Loading") + ` ${target} history`
-        case "create":
-            return (done ? "Created" : "Creating") + ` ${target}`
-        case "update":
-            return (done ? "Updated" : "Updating") + ` ${target}`
-        case "upsert":
-            if (done && count !== undefined && count !== 1) return `Saved ${count} ${target}s`
-            return (done ? "Saved" : "Saving") + ` ${target}`
-        case "delete":
-            return (done ? "Deleted" : "Deleting") + ` ${target}`
     }
+}
+
+function attioRecordTarget(params?: Record<string, unknown>): string {
+    const request = params?.request as { objectSlug?: string } | undefined
+    return request?.objectSlug ? `${request.objectSlug} record` : "record"
+}
+
+function attioWriteDisplay(gerund: string, past: string, approvalPrompt: string): ToolDisplayConfig {
+    return { preparing: gerund, executing: () => gerund, complete: () => past, approval: () => approvalPrompt }
 }
 
 /**
@@ -703,19 +703,42 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ===================
     // Attio Tools
     // ===================
-    attio_records: {
-        preparing: "Getting records ready",
-        executing: params => attioRecordsLabel(attioRecordsRequest(params), false),
+    attio_read_records: {
+        preparing: "Loading records",
+        executing: params => attioReadRecordsLabel(attioReadRecordsRequest(params), false),
         complete: (params, result) => {
             const parsed = safeParseResult(result)
             const count = parsed?.count as number | undefined
-            return attioRecordsLabel(attioRecordsRequest(params), true, count)
-        },
-        approval: params => {
-            const request = attioRecordsRequest(params)
-            const target = request ? `${request.objectSlug} record` : "record"
-            return request?.action === "delete" ? `Delete this ${target}? This cannot be undone.` : `Save ${target}?`
+            return attioReadRecordsLabel(attioReadRecordsRequest(params), true, count)
         }
+    },
+    attio_create_record: {
+        preparing: "Getting record ready",
+        executing: params => `Creating ${attioRecordTarget(params)}`,
+        complete: params => `Created ${attioRecordTarget(params)}`,
+        approval: params => `Create ${attioRecordTarget(params)}?`
+    },
+    attio_update_record: {
+        preparing: "Getting record updates ready",
+        executing: params => `Updating ${attioRecordTarget(params)}`,
+        complete: params => `Updated ${attioRecordTarget(params)}`,
+        approval: params => `Update ${attioRecordTarget(params)}?`
+    },
+    attio_upsert_record: {
+        preparing: "Getting records ready",
+        executing: params => `Saving ${attioRecordTarget(params)}`,
+        complete: (params, result) => {
+            const count = safeParseCount(result)
+            if (count !== undefined && count !== 1) return `Saved ${count} ${attioRecordTarget(params)}s`
+            return `Saved ${attioRecordTarget(params)}`
+        },
+        approval: params => `Save ${attioRecordTarget(params)}?`
+    },
+    attio_delete_record: {
+        preparing: "Getting record ready",
+        executing: params => `Deleting ${attioRecordTarget(params)}`,
+        complete: params => `Deleted ${attioRecordTarget(params)}`,
+        approval: params => `Delete this ${attioRecordTarget(params)}? This cannot be undone.`
     },
     attio_workspace_members: {
         preparing: "Looking up workspace members",
@@ -731,40 +754,66 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return count !== undefined ? `Found ${count} workspace member${count !== 1 ? "s" : ""}` : "Workspace members loaded"
         }
     },
-    attio_tasks: {
-        preparing: "Working with tasks",
+    attio_read_tasks: {
+        preparing: "Loading tasks",
         executing: params => attioActionLabel(params, "task", false),
         complete: (params, result) => attioActionLabel(params, "task", true, safeParseCount(result))
     },
-    attio_notes: {
-        preparing: "Working with notes",
+    attio_create_task: attioWriteDisplay("Creating task", "Created task", "Create this task?"),
+    attio_update_task: attioWriteDisplay("Updating task", "Updated task", "Update this task?"),
+    attio_delete_task: attioWriteDisplay("Deleting task", "Deleted task", "Delete this task? This cannot be undone."),
+    attio_read_notes: {
+        preparing: "Loading notes",
         executing: params => attioActionLabel(params, "note", false),
         complete: (params, result) => attioActionLabel(params, "note", true, safeParseCount(result))
     },
-    attio_comments: {
-        preparing: "Working with comments",
+    attio_create_note: attioWriteDisplay("Creating note", "Created note", "Create this note?"),
+    attio_delete_note: attioWriteDisplay("Deleting note", "Deleted note", "Delete this note? This cannot be undone."),
+    attio_read_comments: {
+        preparing: "Loading comments",
         executing: params => attioActionLabel(params, "comment", false),
         complete: (params, result) => attioActionLabel(params, "comment", true, safeParseCount(result))
     },
-    attio_lists: {
-        preparing: "Working with lists",
+    attio_create_comment: attioWriteDisplay("Creating comment", "Created comment", "Create this comment?"),
+    attio_delete_comment: attioWriteDisplay("Deleting comment", "Deleted comment", "Delete this comment? This cannot be undone."),
+    attio_read_lists: {
+        preparing: "Loading lists",
+        executing: params => attioActionLabel(params, "list", false),
+        complete: (params, result) => attioActionLabel(params, "list", true, safeParseCount(result))
+    },
+    attio_create_list: attioWriteDisplay("Creating list", "Created list", "Create this list?"),
+    attio_update_list: attioWriteDisplay("Updating list", "Updated list", "Update this list?"),
+    attio_read_list_entries: {
+        preparing: "Loading list entries",
         executing: params => attioActionLabel(params, "list entry", false),
         complete: (params, result) => attioActionLabel(params, "list entry", true, safeParseCount(result))
     },
+    attio_add_list_entry: attioWriteDisplay("Adding list entry", "Added list entry", "Add this list entry?"),
+    attio_upsert_list_entry: attioWriteDisplay("Saving list entry", "Saved list entry", "Save this list entry?"),
+    attio_update_list_entry: attioWriteDisplay("Updating list entry", "Updated list entry", "Update this list entry?"),
+    attio_remove_list_entry: attioWriteDisplay("Removing list entry", "Removed list entry", "Remove this list entry?"),
     attio_meetings: {
         preparing: "Loading meetings",
         executing: params => attioActionLabel(params, "meeting", false),
         complete: (params, result) => attioActionLabel(params, "meeting", true, safeParseCount(result))
     },
-    attio_files: {
-        preparing: "Working with files",
+    attio_read_files: {
+        preparing: "Loading files",
         executing: params => attioActionLabel(params, "file", false),
         complete: (params, result) => attioActionLabel(params, "file", true, safeParseCount(result))
     },
-    attio_schema: {
+    attio_upload_file: attioWriteDisplay("Uploading file", "Uploaded file", "Upload this file?"),
+    attio_delete_file: attioWriteDisplay("Deleting file", "Deleted file", "Delete this file? This cannot be undone."),
+    attio_read_schema: {
         preparing: "Loading workspace schema",
         executing: params => attioActionLabel(params, "schema item", false),
         complete: (params, result) => attioActionLabel(params, "schema item", true, safeParseCount(result))
+    },
+    attio_modify_schema: {
+        preparing: "Updating workspace schema",
+        executing: params => attioActionLabel(params, "schema item", false),
+        complete: (params, result) => attioActionLabel(params, "schema item", true, safeParseCount(result)),
+        approval: () => "Change the workspace schema? This affects every user."
     },
 
     // ===================

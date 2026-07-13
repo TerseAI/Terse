@@ -631,14 +631,14 @@ function printToolList(type: IntegrationType, tools: ToolDetails[], json: boolea
 
     process.stdout.write("Tools:\n")
     for (const tool of tools) {
-        const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : ""
+        const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : chalk.dim(" (write)")
         process.stdout.write(`  ${chalk.cyan(tool.name)}${readOnly} — ${tool.description}\n`)
     }
     process.stdout.write(chalk.dim(`\nRun \`terse integrate tool ${type} <tool-name> --json\` for a tool's input/output schemas.\n`))
 }
 
 function printToolDetails(tool: ToolDetails): void {
-    const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : ""
+    const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : chalk.dim(" (write)")
     process.stdout.write(`${chalk.bold(tool.displayName)} ${chalk.dim(`[${tool.name}]`)}${readOnly}\n`)
     process.stdout.write(`Integration: ${tool.integration}\n`)
     process.stdout.write(`Supports approval: ${tool.supportsApproval ? "yes" : "no"}\n\n`)

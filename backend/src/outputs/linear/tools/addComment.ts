@@ -11,7 +11,6 @@ import { verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearAddCommentTool = defineSessionTool({
     name: "linear_add_comment",
-    description: `Add a comment to an existing Linear issue. Use linear_search_ticket to find the issue ID.`,
     execute: async ({ integrationId, issueId, body }, runContext) => {
         logger.debug("🛠️ Executing linear_add_comment tool", { integrationId, issueId })
 

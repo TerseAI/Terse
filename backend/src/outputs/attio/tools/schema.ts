@@ -1,35 +1,23 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, attioAttributeSchema, attioObjectSchema, attioSelectOptionEntitySchema, attioStatusSchema } from "terse-types"
-import type { AttioAttribute, AttioSchemaRequest, ToolOutputByName } from "terse-types"
+import type { AttioAttribute, AttioModifySchemaRequest, AttioReadSchemaRequest, ToolOutputByName } from "terse-types"
 import { z } from "zod"
 
-import logger from "../../../common/logger"
-import { defineSessionTool, formatError } from "../../../tools/toolUtils"
+import { defineSessionTool } from "../../../tools/toolUtils"
 
-import { attioRequestData, parseOptionalJsonObject, resolveAttioAccessToken } from "./attioApi"
+import { attioRequestData, attioToolExecute, parseOptionalJsonObject } from "./attioApi"
 
-export const attioSchemaTool = defineSessionTool({
-    name: "attio_schema",
-    description: `Read and change the Attio workspace schema. Read actions: 'list_objects' (all object types with attributes — call before creating/updating records), 'get_object', 'list_attributes', 'list_statuses' (e.g. deal stages), 'list_select_options'. Write actions (these change the workspace for every user): 'create_object', 'update_object', 'create_attribute', 'update_attribute', 'create_status', 'update_status', 'create_select_option', 'update_select_option'. Attributes on lists use target 'lists'; on objects, target 'objects'. After schema writes, rerun terse generate to refresh generated types/constants.`,
-    execute: async ({ integrationId, request }, runContext) => {
-        logger.debug("Executing attio_schema tool", { integrationId, action: request.action })
-        if (!runContext?.context) {
-            throw new Error("No context provided")
-        }
-
-        const accessToken = await resolveAttioAccessToken(integrationId, runContext)
-
-        try {
-            return await executeSchemaRequest(request, accessToken)
-        } catch (error: unknown) {
-            const errorMessage = await formatError(runContext, error)
-            logger.error("Error executing attio_schema", { error: errorMessage, integrationId, action: request.action })
-            throw new Error(errorMessage)
-        }
-    }
+export const attioReadSchemaTool = defineSessionTool({
+    name: "attio_read_schema",
+    execute: attioToolExecute("attio_read_schema", executeReadSchemaRequest)
 })
 
-async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: string): Promise<AttioSchemaOutput> {
+export const attioModifySchemaTool = defineSessionTool({
+    name: "attio_modify_schema",
+    execute: attioToolExecute("attio_modify_schema", executeModifySchemaRequest)
+})
+
+async function executeReadSchemaRequest(request: AttioReadSchemaRequest, accessToken: string): Promise<AttioSchemaOutput> {
     switch (request.action) {
         case "list_objects":
             return listObjects(accessToken)
@@ -40,6 +28,37 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
                 actions: [schemaAction("Fetched object", request.objectSlug, "Fetched object configuration", RunHistoryActionType.read)]
             }
         }
+        case "list_attributes": {
+            const attributes = await attioRequestData(accessToken, `${targetPath(request)}/attributes`, z.array(attioAttributeSchema), "attributes")
+            return {
+                attributes,
+                count: attributes.length,
+                actions: [schemaAction("Listed attributes", request.identifier, `Found ${attributes.length} attribute(s)`, RunHistoryActionType.read)]
+            }
+        }
+        case "list_statuses": {
+            const statuses = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, z.array(attioStatusSchema), "statuses")
+            return {
+                statuses,
+                count: statuses.length,
+                actions: [schemaAction("Listed statuses", `${request.identifier}/${request.attributeSlug}`, `Found ${statuses.length} status(es)`, RunHistoryActionType.read)]
+            }
+        }
+        case "list_select_options": {
+            const selectOptions = await attioRequestData(accessToken, `${attributePath(request)}/options`, z.array(attioSelectOptionEntitySchema), "select options")
+            return {
+                selectOptions,
+                count: selectOptions.length,
+                actions: [schemaAction("Listed select options", `${request.identifier}/${request.attributeSlug}`, `Found ${selectOptions.length} option(s)`, RunHistoryActionType.read)]
+            }
+        }
+        default:
+            throw request satisfies never
+    }
+}
+
+async function executeModifySchemaRequest(request: AttioModifySchemaRequest, accessToken: string): Promise<AttioSchemaOutput> {
+    switch (request.action) {
         case "create_object": {
             const body = { data: { api_slug: request.apiSlug, singular_noun: request.singularNoun, plural_noun: request.pluralNoun } }
             const object = await attioRequestData(accessToken, "/objects", attioObjectSchema, "object", { method: "POST", body })
@@ -57,14 +76,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 object,
                 actions: [schemaAction("Updated object", request.objectSlug, "Updated object configuration", RunHistoryActionType.update)]
-            }
-        }
-        case "list_attributes": {
-            const attributes = await attioRequestData(accessToken, `${targetPath(request)}/attributes`, z.array(attioAttributeSchema), "attributes")
-            return {
-                attributes,
-                count: attributes.length,
-                actions: [schemaAction("Listed attributes", request.identifier, `Found ${attributes.length} attribute(s)`, RunHistoryActionType.read)]
             }
         }
         case "create_attribute": {
@@ -96,14 +107,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
                 actions: [schemaAction("Updated attribute", `${request.identifier}/${request.attributeSlug}`, "Updated attribute configuration", RunHistoryActionType.update)]
             }
         }
-        case "list_statuses": {
-            const statuses = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, z.array(attioStatusSchema), "statuses")
-            return {
-                statuses,
-                count: statuses.length,
-                actions: [schemaAction("Listed statuses", `${request.identifier}/${request.attributeSlug}`, `Found ${statuses.length} status(es)`, RunHistoryActionType.read)]
-            }
-        }
         case "create_status": {
             const status = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, attioStatusSchema, "status", { method: "POST", body: { data: { title: request.title } } })
             return {
@@ -122,14 +125,6 @@ async function executeSchemaRequest(request: AttioSchemaRequest, accessToken: st
             return {
                 status,
                 actions: [schemaAction("Updated status", request.statusId, "Updated status", RunHistoryActionType.update)]
-            }
-        }
-        case "list_select_options": {
-            const selectOptions = await attioRequestData(accessToken, `${attributePath(request)}/options`, z.array(attioSelectOptionEntitySchema), "select options")
-            return {
-                selectOptions,
-                count: selectOptions.length,
-                actions: [schemaAction("Listed select options", `${request.identifier}/${request.attributeSlug}`, `Found ${selectOptions.length} option(s)`, RunHistoryActionType.read)]
             }
         }
         case "create_select_option": {
@@ -191,4 +186,4 @@ function schemaAction(action: string, target: string, details: string, type: Run
     return { action, integration: IntegrationType.ATTIO, target, details, type }
 }
 
-type AttioSchemaOutput = ToolOutputByName["attio_schema"]
+type AttioSchemaOutput = ToolOutputByName["attio_read_schema"]

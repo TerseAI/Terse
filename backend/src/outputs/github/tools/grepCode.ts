@@ -16,24 +16,6 @@ import { assertNoSearchQualifiers, assertSimpleQualifierValue, quoteGrepPattern 
  */
 export const grepGitHubCodeTool = defineSessionTool({
     name: "grepGitHubCode",
-    description: `Search GitHub repositories for EXACT TEXT MATCHES (like grep). Use this when you KNOW the exact string you're looking for.
-
-Use grepGitHubCode for:
-- Exact function calls: "getUserById(", "processPayment()"
-- Exact imports: "from '@prisma/client'", "import React from"
-- Exact strings: "API_KEY", "TODO:", "FIXME:"
-- Known identifiers: class names, constants, variable names you know exist
-
-Use searchGitHubCode instead when you DON'T know the exact text (looking for concepts/patterns).
-
-Examples:
-- ✅ "getUserById(" (exact function call)
-- ✅ "from '@prisma/client'" (exact import statement)
-- ✅ "TODO: refactor" (exact comment)
-- ✅ "useState" (exact React hook name)
-- ❌ "state management" → Use searchGitHubCode for concepts
-
-This is more precise than semantic search - use it when you know exactly what text to find.`,
     execute: async ({ repositoryNames, pattern, fileExtension, path, perPage = 20, page }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

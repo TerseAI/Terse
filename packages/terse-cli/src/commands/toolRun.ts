@@ -14,6 +14,7 @@ export async function integrateToolRun(opts: IntegrateToolRunOpts): Promise<void
     const params = await readToolParams(opts.params)
     const catalog = await fetchToolDetails(apiKey)
     const tool = resolveTool(opts.toolName, catalog)
+    assertAdHocRunnable(tool)
     const finalParams = await withIntegrationId(params, tool, opts.integrationId, apiKey)
     const result = await executeTool(tool.name, finalParams, apiKey)
     process.stdout.write(JSON.stringify(result ?? null, null, 2) + "\n")
@@ -66,13 +67,21 @@ function resolveTool(input: string, catalog: ToolDetails[]): ToolDetails {
         const available = catalog.filter(tool => tool.integration === integration)
         if (available.length > 0) {
             throw new CliError("unknown_tool", `Unknown tool '${method}' for integration '${integration}'.`, {
-                detail: `Available: ${available.map(tool => `${integration}.${toCamelCase(tool.displayName)} [${tool.name}]`).join(", ")}`
+                detail: `Available: ${available.map(tool => `${integration}.${toCamelCase(tool.displayName)} [${tool.name}]${tool.isReadOnly ? "" : " (write)"}`).join(", ")}`
             })
         }
     }
 
     throw new CliError("unknown_tool", `Unknown tool '${input}'.`, {
         detail: "Pass a wire name (attio_records) or dotted form (attio.records). Use `terse integrate tool <integration>` to list tools."
+    })
+}
+
+function assertAdHocRunnable(tool: ToolDetails): void {
+    if (tool.isReadOnly && !tool.supportsApproval) return
+    const reason = tool.isReadOnly ? "requires approval" : "is a write tool"
+    throw new CliError("tool_not_runnable", `Tool '${tool.name}' ${reason} and cannot be run ad hoc.`, {
+        detail: "Only read-only tools can be invoked with `terse integrate tool run`. Call this tool from a job instead."
     })
 }
 

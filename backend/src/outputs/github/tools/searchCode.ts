@@ -18,26 +18,6 @@ import { assertNoSearchQualifiers, assertSimpleQualifierValue } from "./searchSa
  */
 export const searchGitHubCodeTool = defineSessionTool({
     name: "searchGitHubCode",
-    description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
-
-Use searchGitHubCode for:
-- Concepts and patterns: "authentication", "error handling", "database connections"
-- Unknown implementations: "how is validation done?", "where are API routes?"
-- Exploring codebases: "logging implementations", "payment processing"
-- Finding code by what it DOES, not what it's CALLED
-
-Use grepGitHubCode instead when you KNOW the exact text string (function name, import, etc.)
-
-Examples:
-- ✅ "authentication middleware" (finds login, auth, verifyToken, etc.)
-- ✅ "error handling patterns" (finds try/catch, error handlers, etc.)
-- ✅ "database queries" (finds prisma, mysql, query builders)
-- ❌ "getUserById(" → Use grepGitHubCode for exact matches
-
-Tips:
-- Start with broad searches, then narrow down
-- Use natural language or domain terms
-- Combine multiple terms for more specific results`,
     strict: true,
     execute: async ({ repositoryNames, query, language, filename, path, perPage = 10, page }, runContext) => {
         if (!runContext?.context) {

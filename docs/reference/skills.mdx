@@ -16,15 +16,15 @@ Read-only access to repositories.
 skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })]
 ```
 
-| Tool                              | Description                                  | Access |
-| --------------------------------- | -------------------------------------------- | ------ |
-| `searchGitHubCode`                | Semantic code search across repositories     | Read   |
-| `grepGitHubCode`                  | Exact-match code search (grep-like)          | Read   |
-| `readGitHubFile`                  | Read file contents                           | Read   |
-| `listGitHubDirectory`             | List directory contents                      | Read   |
-| `listGitHubPullRequests`          | List pull requests                           | Read   |
-| `listGitHubCommits`               | List commits                                 | Read   |
-| `summarizeGitHubPullRequestDiff`  | Summarize PR changes                         | Read   |
+| Tool                             | Description                              | Access |
+| -------------------------------- | ---------------------------------------- | ------ |
+| `searchGitHubCode`               | Semantic code search across repositories | Read   |
+| `grepGitHubCode`                 | Exact-match code search (grep-like)      | Read   |
+| `readGitHubFile`                 | Read file contents                       | Read   |
+| `listGitHubDirectory`            | List directory contents                  | Read   |
+| `listGitHubPullRequests`         | List pull requests                       | Read   |
+| `listGitHubCommits`              | List commits                             | Read   |
+| `summarizeGitHubPullRequestDiff` | Summarize PR changes                     | Read   |
 
 ## Slack
 
@@ -34,12 +34,12 @@ Send messages and read conversations.
 skills: [Skills.slack({ channel: SlackChannel.Engineering })]
 ```
 
-| Tool                      | Description                      | Access |
-| ------------------------- | -------------------------------- | ------ |
+| Tool                      | Description                                                                      | Access |
+| ------------------------- | -------------------------------------------------------------------------------- | ------ |
 | `slack_send_message`      | Send to a channel, an existing DM (`channelId`), or a member 1:1 (`slackUserId`) | Write  |
-| `slack_list_users`        | List workspace users             | Read   |
-| `slack_list_channels`     | List channels                    | Read   |
-| `slack_read_conversation` | Read conversation history        | Read   |
+| `slack_list_users`        | List workspace users                                                             | Read   |
+| `slack_list_channels`     | List channels                                                                    | Read   |
+| `slack_read_conversation` | Read conversation history                                                        | Read   |
 
 For `slack_send_message`, pass either `channelId` (a public or private channel id, or an existing DM channel id) or `slackUserId` (a member id, `U…`). Terse opens the DM if needed. If you pass both, `channelId` wins and the message goes there. After `terse generate`, use `SlackChannel.*.channelId` and `SlackUser.*.userId` from `src/terse.generated.ts` instead of hand-copying ids.
 
@@ -51,18 +51,18 @@ Create, update, and search issues.
 skills: [Skills.linear()]
 ```
 
-| Tool                    | Description               | Access |
-| ----------------------- | ------------------------- | ------ |
-| `linear_search_ticket`  | Search tickets            | Read   |
-| `linear_get_teams`      | List teams                | Read   |
-| `linear_get_states`     | Get issue states          | Read   |
-| `linear_get_labels`     | Get available labels      | Read   |
-| `linear_get_projects`   | List projects             | Read   |
-| `linear_get_users`      | List team members         | Read   |
-| `linear_read_ticket`    | Read ticket details       | Read   |
-| `linear_create_ticket`  | Create a new ticket       | Write  |
-| `linear_update_ticket`  | Update a ticket           | Write  |
-| `linear_add_comment`    | Add a comment to a ticket | Write  |
+| Tool                   | Description               | Access |
+| ---------------------- | ------------------------- | ------ |
+| `linear_search_ticket` | Search tickets            | Read   |
+| `linear_get_teams`     | List teams                | Read   |
+| `linear_get_states`    | Get issue states          | Read   |
+| `linear_get_labels`    | Get available labels      | Read   |
+| `linear_get_projects`  | List projects             | Read   |
+| `linear_get_users`     | List team members         | Read   |
+| `linear_read_ticket`   | Read ticket details       | Read   |
+| `linear_create_ticket` | Create a new ticket       | Write  |
+| `linear_update_ticket` | Update a ticket           | Write  |
+| `linear_add_comment`   | Add a comment to a ticket | Write  |
 
 ## Attio
 
@@ -72,17 +72,38 @@ Query and manage CRM records.
 skills: [Skills.attio({ object: AttioObject.People })]
 ```
 
-| Tool                 | Description                                                                                                             | Access     |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `attio_records`           | Record operations: `query`, `search`, `get`, `create`, `update`, `upsert`, `delete`, `get_attribute_history` | Read/Write |
-| `attio_workspace_members` | Look up workspace members (`list`, `get`) to resolve record owners                                           | Read       |
-| `attio_tasks`             | Tasks: `list`, `get`, `create`, `update`, `delete`                                                           | Read/Write |
-| `attio_notes`             | Notes on records: `list`, `get`, `create`, `delete`                                                          | Read/Write |
-| `attio_comments`          | Comments and threads: `create`, `get`, `delete`, `list_threads`, `get_thread`                                | Read/Write |
-| `attio_lists`             | Lists and entries: CRUD plus `query_entries`, `add_entry`, `upsert_entry`, `update_entry`, `remove_entry`    | Read/Write |
-| `attio_meetings`          | Meetings, call recordings and transcripts                                                                    | Read       |
-| `attio_files`             | Files on records: `list`, `get`, `upload`, `get_download_url`, `delete`                                      | Read/Write |
-| `attio_schema`            | Workspace schema: `list_objects`, objects/attributes/statuses/select-options read and write                  | Read/Write |
+| Tool                      | Description                                                                              | Access |
+| ------------------------- | ---------------------------------------------------------------------------------------- | ------ |
+| `attio_read_records`      | Read records: `query`, `search`, `get`, `get_attribute_history`                          | Read   |
+| `attio_create_record`     | Create a record (no matching attribute needed)                                           | Write  |
+| `attio_update_record`     | Update a record by ID                                                                    | Write  |
+| `attio_upsert_record`     | Create-or-update one or more records matched on a unique attribute                       | Write  |
+| `attio_delete_record`     | Permanently delete a record                                                              | Write  |
+| `attio_workspace_members` | Look up workspace members (`list`, `get`) to resolve record owners                       | Read   |
+| `attio_read_tasks`        | Read tasks: `list`, `get`                                                                | Read   |
+| `attio_create_task`       | Create a task                                                                            | Write  |
+| `attio_update_task`       | Update a task's deadline, completion, assignees or linked records                        | Write  |
+| `attio_delete_task`       | Permanently delete a task                                                                | Write  |
+| `attio_read_notes`        | Read notes: `list`, `get`                                                                | Read   |
+| `attio_create_note`       | Create a note on a record                                                                | Write  |
+| `attio_delete_note`       | Permanently delete a note                                                                | Write  |
+| `attio_read_comments`     | Read comments and threads: `get`, `list_threads`, `get_thread`                           | Read   |
+| `attio_create_comment`    | Create a comment (reply to a thread or start one on a record)                            | Write  |
+| `attio_delete_comment`    | Permanently delete a comment                                                             | Write  |
+| `attio_read_lists`        | Read lists: `list`, `get`                                                                | Read   |
+| `attio_create_list`       | Create a list over an object                                                             | Write  |
+| `attio_update_list`       | Rename a list                                                                            | Write  |
+| `attio_read_list_entries` | Read list entries: `query_entries`, `get_entry`                                          | Read   |
+| `attio_add_list_entry`    | Add a record to a list                                                                   | Write  |
+| `attio_upsert_list_entry` | Add-or-update a list entry keyed by its parent record                                    | Write  |
+| `attio_update_list_entry` | Update a list entry's attribute values (e.g. move stage)                                 | Write  |
+| `attio_remove_list_entry` | Remove an entry from a list (record untouched)                                           | Write  |
+| `attio_meetings`          | Meetings, call recordings and transcripts                                                | Read   |
+| `attio_read_files`        | Read files on records: `list`, `get`, `get_download_url`                                 | Read   |
+| `attio_upload_file`       | Upload a file to a record                                                                | Write  |
+| `attio_delete_file`       | Permanently delete a file                                                                | Write  |
+| `attio_read_schema`       | Read workspace schema: `list_objects`, `get_object`, attributes/statuses/select options  | Read   |
+| `attio_modify_schema`     | Change the workspace schema: create/update objects, attributes, statuses, select options | Write  |
 
 ## Notion
 
@@ -174,13 +195,13 @@ skills: [Skills.posthog({ project: PosthogProject.MyTeam })]
 
 `terse generate` also emits a `PosthogEventName` union of the custom event names observed in your project over the last 180 days, so `eventName` filters are checked at compile time. Built-in `$`-prefixed events like `$pageview` are always accepted.
 
-| Tool                       | Description                              | Access |
-| -------------------------- | ---------------------------------------- | ------ |
-| `searchPosthogLogs`        | Search logs                              | Read   |
-| `searchPosthogSessions`    | Search sessions                          | Read   |
-| `getPosthogSessionEvents`  | Get events for a session                 | Read   |
-| `listPosthogEventNames`    | List event names with occurrence counts  | Read   |
-| `searchPosthogEvents`      | Search events                            | Read   |
+| Tool                      | Description                             | Access |
+| ------------------------- | --------------------------------------- | ------ |
+| `searchPosthogLogs`       | Search logs                             | Read   |
+| `searchPosthogSessions`   | Search sessions                         | Read   |
+| `getPosthogSessionEvents` | Get events for a session                | Read   |
+| `listPosthogEventNames`   | List event names with occurrence counts | Read   |
+| `searchPosthogEvents`     | Search events                           | Read   |
 
 ## LaunchDarkly
 
@@ -251,8 +272,8 @@ Gives a job a persistent `/memories` directory it can read and write across runs
 skills: [Skills.memory()]
 ```
 
-| Tool     | Description                                                                                     | Access |
-| -------- | ----------------------------------------------------------------------------------------------- | ------ |
+| Tool     | Description                                                                                                             | Access |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- | ------ |
 | `memory` | Read, write, edit, and organize files under `/memories` (`view`, `create`, `str_replace`, `insert`, `delete`, `rename`) | Write  |
 
 ### What persists between runs
