@@ -1,0 +1,21 @@
+{{sectionHeader "State"}}
+
+// Persistent, per-job state. Nothing here is workspace-specific — the keys are
+// yours to define — so this section is a pointer, not generated code.
+//
+// Declare state with `states` on `createJob`, then read and write it through
+// the `state` argument passed to `filter` and `onTrigger`:
+//
+//   createJob({
+//     // ...
+//     states: [{ key: "seenCount", value: z.number().default(0) }],
+//     onTrigger: async (event, state) => {
+//       const count = await state.get("seenCount") // typed to the schema above
+//       await state.set("seenCount", count + 1)    // returns the written value
+//     },
+//   })
+//
+// `value` is a Zod schema; give it `.default(...)` and that key never reads
+// back `undefined`. Deployed and `terse test` runs keep separate copies of
+// state — inspect and reset them with the `terse state` CLI commands.
+// Docs: https://docs.useterse.ai/reference/typescript-sdk#job-state

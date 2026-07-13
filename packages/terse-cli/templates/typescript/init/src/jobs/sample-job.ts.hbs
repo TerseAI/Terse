@@ -14,9 +14,17 @@ createJob({
     // This is where you configure what events will fire this job.
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
 
+    // `states` declares typed, persistent key/value storage for this job. Each
+    // entry is `{ key, value }` where `value` is a Zod schema. A schema with a
+    // `.default(...)` never reads back `undefined`. Deployed and `terse test`
+    // runs keep separate copies; inspect them with the `terse state` commands.
+    // Docs: https://docs.useterse.ai/reference/typescript-sdk#job-state
+    states: [{ key: "jokesTold", value: z.number().default(0) }],
+
     // The handler runs every time a trigger fires. `event` is typed to match
-    // the trigger(s) above.
-    onTrigger: async (event) => {
+    // the trigger(s) above; `state` reads and writes the keys declared in
+    // `states`, each typed and validated against its schema.
+    onTrigger: async (event, state) => {
         // `generateText` runs the model and returns its output. `skills`
         // declares which integrations the model can call — keep the list
         // narrow so it only touches what you intend. The optional `outputSchema`
@@ -28,7 +36,11 @@ createJob({
             outputSchema: z.object({ joke: z.string() })
         })
 
-        console.log(response.joke)
+        // Persist a count across runs. `set` returns the value it wrote, so
+        // there's no need to read the key back.
+        const jokesTold = await state.set("jokesTold", (await state.get("jokesTold")) + 1)
+
+        console.log(`Joke #${jokesTold}: ${response.joke}`)
     }
 })
 
