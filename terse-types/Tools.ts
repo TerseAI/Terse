@@ -711,6 +711,15 @@ export const slackReadConversationInputSchema = z.object({
     cursor: z.string().nullable().optional().describe("Pagination cursor from a previous response (nextCursor). Omit on first call.")
 })
 
+export const slackCreateChannelInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Slack workspace (user_slack_integrations id)."),
+    name: z
+        .string()
+        .describe("Name for the new channel. Must be lowercase with no spaces or periods (hyphens and underscores are allowed), max 80 characters. Invalid characters are normalized by Slack."),
+    isPrivate: z.boolean().nullable().optional().default(false).describe("Whether to create a private channel. Defaults to false (public channel)."),
+    userIds: z.array(z.string()).nullable().optional().describe("Slack member IDs (U…) to invite to the channel after it is created. Use slack_list_users to resolve names to IDs.")
+})
+
 export const searchGitHubCodeInputSchema = z.object({
     repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
     query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
@@ -1276,6 +1285,22 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
         count: z.number().int(),
         hasMore: z.boolean(),
         nextCursor: z.string().nullable()
+    })
+})
+
+export const slackCreateChannelTool = defineTool({
+    name: "slack_create_channel",
+    description: `Create a new Slack channel and optionally invite a group of workspace members to it.
+Provide a channel name (lowercase, no spaces or periods) and set isPrivate to create a private channel.
+Pass userIds (Slack member IDs, U…) to invite people right after the channel is created — resolve names to IDs with slack_list_users first.
+Returns the new channel's ID and name so you can send messages to it with slack_send_message.`,
+    inputSchema: slackCreateChannelInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        channelId: z.string(),
+        channelName: z.string(),
+        isPrivate: z.boolean(),
+        invitedUserIds: z.array(z.string()),
+        failedInvites: z.array(z.object({ userId: z.string(), error: z.string() })).optional()
     })
 })
 
@@ -3238,6 +3263,7 @@ export const ToolDefinitions = {
     [slackListChannelsTool.name]: slackListChannelsTool,
     [slackListUsersTool.name]: slackListUsersTool,
     [slackReadConversationTool.name]: slackReadConversationTool,
+    [slackCreateChannelTool.name]: slackCreateChannelTool,
     [searchGitHubCodeTool.name]: searchGitHubCodeTool,
     [grepGitHubCodeTool.name]: grepGitHubCodeTool,
     [readGitHubFileTool.name]: readGitHubFileTool,

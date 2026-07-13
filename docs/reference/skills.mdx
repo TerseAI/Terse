@@ -40,6 +40,7 @@ skills: [Skills.slack({ channel: SlackChannel.Engineering })]
 | `slack_list_users`        | List workspace users                                                             | Read   |
 | `slack_list_channels`     | List channels                                                                    | Read   |
 | `slack_read_conversation` | Read conversation history                                                        | Read   |
+| `slack_create_channel`    | Create a public or private channel and invite members (`userIds`)                | Write  |
 
 For `slack_send_message`, pass either `channelId` (a public or private channel id, or an existing DM channel id) or `slackUserId` (a member id, `U…`). Terse opens the DM if needed. If you pass both, `channelId` wins and the message goes there. After `terse generate`, use `SlackChannel.*.channelId` and `SlackUser.*.userId` from `src/terse.generated.ts` instead of hand-copying ids.
 

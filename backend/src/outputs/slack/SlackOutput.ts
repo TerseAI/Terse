@@ -7,6 +7,7 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output } from "../abstract/Output"
 import { unrestricted } from "../abstract/acl"
 
+import { slackCreateChannelTool, validateSlackCreateChannel } from "./tools/createChannel"
 import { slackListChannelsTool } from "./tools/listChannels"
 import { slackListUsersTool } from "./tools/listUsers"
 import { slackReadConversationTool, validateSlackReadConversation } from "./tools/readConversation"
@@ -18,7 +19,8 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             { tool: slackSendMessageTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Send message", validateACL: validateSlackSendMessage },
             { tool: slackListUsersTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List users", validateACL: unrestricted },
             { tool: slackListChannelsTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "List channels", validateACL: unrestricted },
-            { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation }
+            { tool: slackReadConversationTool, isReadOnly: true, integration: IntegrationType.SLACK, displayName: "Read conversation", validateACL: validateSlackReadConversation },
+            { tool: slackCreateChannelTool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: "Create channel", validateACL: validateSlackCreateChannel }
         ])
     }
 
@@ -91,6 +93,7 @@ const SLACK_OUTPUT_INSTRUCTIONS = `
 TOOLS:
 - slack_send_message: Send messages to Slack channels or DMs. Use channelId (C…/G…/D…) or slackUserId (U…) to open or reuse a 1:1 DM via conversations.open; you can still discover IDs with slack_list_channels. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
 - slack_list_users: List workspace users (id, name, email). Use to resolve user IDs to names when needed.
+- slack_create_channel: Create a new public or private channel and optionally invite a group of members. Resolve names to Slack user IDs (U…) with slack_list_users first, then pass them as userIds. Use the returned channelId with slack_send_message to post to the new channel.
 
 MESSAGE TYPES:
 - Plain text: Simple notifications, short updates. Use \`message\` parameter only.

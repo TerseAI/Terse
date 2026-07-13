@@ -429,6 +429,26 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return "Conversation loaded"
         }
     },
+    slack_create_channel: {
+        preparing: "Getting ready to create a channel",
+        executing: params => {
+            const name = params?.name as string | undefined
+            return name ? `Creating #${name}` : "Creating channel"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const channelName = parsed?.channelName as string | undefined
+            const invited = parsed?.invitedUserIds as string[] | undefined
+            const invitedCount = invited?.length ?? 0
+            if (channelName && invitedCount > 0) return `Created ${channelName} and invited ${invitedCount} member${invitedCount !== 1 ? "s" : ""}`
+            if (channelName) return `Created ${channelName}`
+            return "Channel created"
+        },
+        approval: params => {
+            const name = params?.name as string | undefined
+            return name ? `Create the Slack channel #${name}?` : "Create this Slack channel?"
+        }
+    },
 
     // ===================
     // GitHub Tools
