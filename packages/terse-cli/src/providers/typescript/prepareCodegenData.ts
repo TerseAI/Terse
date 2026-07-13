@@ -1741,22 +1741,6 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const allImports = new Set<string>()
     const active = resolveActiveInstances(input)
 
-<<<<<<< HEAD
-    const github = prepareGitHubSection(input.github, input.tools)
-    const gmail = prepareGmailSection(input.gmail, input.tools)
-    const slack = prepareSlackSection(input.slack, input.tools)
-    const linear = prepareLinearSection(input.linear, input.tools)
-    const notion = prepareNotionSection(input.notion, input.tools)
-    const posthog = preparePosthogSection(input.posthog, input.tools)
-    const datadog = prepareDatadogSection(input.datadog, input.tools)
-    const launchdarkly = prepareLaunchDarklySection(input.launchdarkly, input.tools)
-    const workos = prepareWorkOSSection(input.workos, input.tools)
-    const attio = prepareAttioSection(input.attio, input.tools)
-    const snowflake = prepareSnowflakeSection(input.snowflake, input.tools)
-    const heyreach = prepareHeyReachSection(input.heyreach)
-    const resend = prepareResendSection(input.resend, input.tools)
-    const tools = prepareToolsSection(input.tools, input)
-=======
     const github = prepareGitHubSection(active.github, input.tools)
     const gmail = prepareGmailSection(active.gmail, input.tools)
     const slack = prepareSlackSection(active.slack, input.tools)
@@ -1769,8 +1753,8 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const attio = prepareAttioSection(active.attio, input.tools)
     const snowflake = prepareSnowflakeSection(active.snowflake, input.tools)
     const heyreach = prepareHeyReachSection(active.heyreach)
+    const resend = prepareResendSection(input.resend, input.tools)
     const tools = prepareToolsSection(input.tools, input, active)
->>>>>>> d44efb1f1fe2e2ed1a868a1626854ee296923275
     const system = prepareSystemSection()
 
     const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, resend, tools, system]
