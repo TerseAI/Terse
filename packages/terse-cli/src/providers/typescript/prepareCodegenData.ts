@@ -1,4 +1,4 @@
-import { IntegrationType, type ToolDefinition, ToolDefinitions, type ToolName, toolsWithIntegrationId } from "terse-types"
+import { IntegrationType, type ToolDefinition, ToolDefinitions, type ToolName, runHistoryActionBaseSchema, toolsWithIntegrationId } from "terse-types"
 import { z } from "zod"
 
 import type {
@@ -16,6 +16,9 @@ import type {
     SlackInstanceData,
     SnowflakeInstanceData
 } from "../codegenTypes.js"
+
+import { buildTriggerTypeDeclarations } from "./triggerTypeDeclarations.js"
+import { type HoistedShape, printHoistedShape, printType } from "./typePrinter.js"
 
 interface ResourceFieldMapping {
     classField: string
@@ -142,29 +145,30 @@ interface HeyReachSectionContext {
     campaignClass: ResourceClassContext
 }
 
-interface ToolParamTypeContext {
-    description?: string
-    typeName: string
-    tsType: string
-}
-
 interface ToolMethodContext {
     description?: string
     generatedSignature: string
     runtimeLines: string[]
 }
 
-interface ToolGroupContext {
+interface ToolboxEntryContext {
     key: string
     integrationType: string
+    typeName: string
+    constName: string
+}
+
+interface ToolFileContext extends ToolboxEntryContext {
+    declarations: string[]
     methods: ToolMethodContext[]
 }
 
 interface ToolsSectionContext {
+    toolFiles: Record<string, ToolFileContext>
+    toolboxEntries: ToolboxEntryContext[]
+    commonToolDeclarations: string[]
     attioPreludeLines: string[]
-    paramTypes: ToolParamTypeContext[]
     githubRepoMappings: Array<{ name: string; fullName: string }>
-    groups: ToolGroupContext[]
 }
 
 interface SystemSectionContext {}
@@ -173,6 +177,13 @@ export interface TemplateContext {
     imports: string[]
     useMultilineImports: boolean
     availableIntegrations?: string
+    toolboxEntries: ToolboxEntryContext[]
+    toolFiles: Record<string, ToolFileContext>
+    triggerFiles: Record<string, string[]>
+    commonTriggerDeclarations: string[]
+    commonToolDeclarations: string[]
+    attioPreludeLines: string[]
+    githubRepoMappings: Array<{ name: string; fullName: string }>
     github?: GitHubSectionContext
     gmail?: GmailSectionContext
     slack?: SlackSectionContext
@@ -185,7 +196,6 @@ export interface TemplateContext {
     attio?: AttioSectionContext
     snowflake?: SnowflakeSectionContext
     heyreach?: HeyReachSectionContext
-    tools?: ToolsSectionContext
     system: SystemSectionContext
 }
 
@@ -215,12 +225,12 @@ export function toCamelCase(value: string): string {
     return pascal.charAt(0).toLowerCase() + pascal.slice(1)
 }
 
-function toolNameToInterfaceName(name: string): string {
+function toolNameToTypeName(name: string, suffix: "Params" | "Result"): string {
     return (
         name
             .split("_")
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join("") + "Params"
+            .join("") + suffix
     )
 }
 
@@ -970,11 +980,12 @@ function prepareHeyReachSection(inst: HeyReachInstanceData | undefined): Section
     )
 }
 
-function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, active: ActiveInstances): SectionContext<ToolsSectionContext> {
+async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, active: ActiveInstances): Promise<SectionContext<ToolsSectionContext>> {
     if (tools.length === 0) return sectionData([])
 
-    const imports = new Set(["TerseAgent", "ToolInputByName", "ToolOutputByName"])
+    const imports = new Set(["TerseAgent"])
     const attioPreludeLines: string[] = []
+    const hoistedShapes: HoistedShape[] = [{ name: "RunHistoryAction", schema: runHistoryActionBaseSchema }]
 
     const activeIdByIntegration = new Map<string, string | undefined>([
         ["slack", active.slack?.id],
@@ -1019,6 +1030,8 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, activ
     const attioGeneratedObjects = buildGeneratedAttioObjects(active.attio)
 
     if (tools.some(isAttioTool)) {
+        imports.add("ToolInputByName")
+        imports.add("ToolOutputByName")
         if (!active.attio) {
             attioPreludeLines.push(...attioValueTypeLines())
             attioPreludeLines.push("")
@@ -1186,21 +1199,39 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, activ
 
     const hasPosthogEventNames = (input.posthog[0]?.projects ?? []).some(project => project.events.length > 0)
 
-    const paramTypes: ToolParamTypeContext[] = []
-    for (const tool of tools) {
-        if (isAttioTool(tool)) continue
-        const key = `"${escapeString(tool.name)}"`
-        let tsType = hasAutoFillId(tool) ? `Omit<ToolInputByName[${key}], "integrationId">` : `ToolInputByName[${key}]`
-        if (tool.name === "searchPosthogEvents" && hasPosthogEventNames) {
-            // Custom events type-check against the generated union; $-prefixed builtins are always allowed
-            tsType = `Omit<ToolInputByName[${key}], "integrationId" | "eventName"> & { eventName?: PosthogEventName | \`$\${string}\` | null }`
-        }
-        paramTypes.push({
-            description: tool.description || undefined,
-            typeName: toolNameToInterfaceName(tool.name),
-            tsType
-        })
+    // Custom events type-check against the generated union; $-prefixed builtins are always allowed
+    const posthogEventNameOverride = "PosthogEventName | `$${string}` | null"
+
+    const printedToolTypes = await Promise.all(
+        tools
+            .filter(tool => !isAttioTool(tool))
+            .map(async tool => {
+                const name = tool.name
+                if (!isKnownToolName(name)) return undefined
+                const definition = ToolDefinitions[name]
+                const paramsDeclaration = await printType({
+                    typeName: toolNameToTypeName(name, "Params"),
+                    schema: definition.inputSchema,
+                    io: "input",
+                    description: tool.description || undefined,
+                    omitFields: hasAutoFillId(tool) ? ["integrationId"] : undefined,
+                    fieldOverrides: name === "searchPosthogEvents" && hasPosthogEventNames ? { eventName: posthogEventNameOverride } : undefined
+                })
+                const resultDeclaration = await printType({
+                    typeName: toolNameToTypeName(name, "Result"),
+                    schema: definition.outputSchema,
+                    io: "output",
+                    hoisted: hoistedShapes
+                })
+                return { key: tool.integration.toLowerCase(), declarations: [paramsDeclaration, resultDeclaration] }
+            })
+    )
+    const declarationsByKey = new Map<string, string[]>()
+    for (const printed of printedToolTypes) {
+        if (!printed) continue
+        declarationsByKey.set(printed.key, [...(declarationsByKey.get(printed.key) ?? []), ...printed.declarations])
     }
+    const commonToolDeclarations = [await printHoistedShape(hoistedShapes[0], "output")]
 
     const rawGroups: Array<{ key: string; integration: string; tools: ToolDefinition[]; integrationId?: string }> = []
     for (const [integration, integrationTools] of byIntegration.entries()) {
@@ -1238,51 +1269,61 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, activ
         }
     }
 
-    const groups: ToolGroupContext[] = rawGroups.map(group => ({
-        key: group.key,
-        integrationType: toolIntegrationToIntegrationType(group.integration),
-        methods: group.tools.flatMap(tool => {
-            const methodName = toCamelCase(tool.displayName)
-            const paramsType = toolNameToInterfaceName(tool.name)
-            const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
+    const toolFiles: Record<string, ToolFileContext> = {}
+    const toolboxEntries: ToolboxEntryContext[] = []
+    rawGroups.forEach(group => {
+        const entry: ToolboxEntryContext = {
+            key: group.key,
+            integrationType: toolIntegrationToIntegrationType(group.integration),
+            typeName: `${toPascalCase(group.key)}GeneratedTools`,
+            constName: `${toCamelCase(group.key)}Tools`
+        }
+        toolboxEntries.push(entry)
+        toolFiles[group.key] = {
+            ...entry,
+            declarations: declarationsByKey.get(group.key) ?? [],
+            methods: group.tools.flatMap(tool => {
+                const methodName = toCamelCase(tool.displayName)
+                const paramsType = toolNameToTypeName(tool.name, "Params")
+                const resultType = toolNameToTypeName(tool.name, "Result")
+                const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
 
-            if (group.integration === "attio" && group.integrationId) {
-                const attioMethods = buildAttioToolMethods(group.integrationId, tool)
-                if (attioMethods) return attioMethods
-            }
-
-            const generatedSignature = `${methodName}(params: ${paramsType}): Promise<ToolOutputByName["${escapeString(tool.name)}"]>`
-
-            let runtimeLines: string[]
-            if (group.integrationId && hasAutoFillId(tool)) {
-                runtimeLines = [
-                    `${methodName}: (params: ${paramsType}) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
-                ]
-            } else {
-                runtimeLines = [
-                    `${methodName}: (params: ${paramsType}) =>`,
-                    `    TerseAgent.executeTool<ToolOutputByName["${escapeString(tool.name)}"]>("${escapeString(tool.name)}", ${normalizedParamsExpr}),`
-                ]
-            }
-
-            return [
-                {
-                    description: tool.description || undefined,
-                    generatedSignature,
-                    runtimeLines
+                if (group.integration === "attio" && group.integrationId) {
+                    const attioMethods = buildAttioToolMethods(group.integrationId, tool)
+                    if (attioMethods) return attioMethods
                 }
-            ]
-        })
-    }))
+
+                const generatedSignature = `${methodName}(params: ${paramsType}): Promise<${resultType}>`
+
+                let runtimeLines: string[]
+                if (group.integrationId && hasAutoFillId(tool)) {
+                    runtimeLines = [
+                        `${methodName}: (params: ${paramsType}) =>`,
+                        `    TerseAgent.executeTool<${resultType}>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}), integrationId: "${escapeString(group.integrationId)}" }),`
+                    ]
+                } else {
+                    runtimeLines = [`${methodName}: (params: ${paramsType}) =>`, `    TerseAgent.executeTool<${resultType}>("${escapeString(tool.name)}", { ...(${normalizedParamsExpr}) }),`]
+                }
+
+                return [
+                    {
+                        description: tool.description || undefined,
+                        generatedSignature,
+                        runtimeLines
+                    }
+                ]
+            })
+        }
+    })
 
     return {
         imports,
         data: {
+            toolFiles,
+            toolboxEntries,
+            commonToolDeclarations,
             attioPreludeLines,
-            paramTypes,
-            githubRepoMappings,
-            groups
+            githubRepoMappings
         }
     }
 }
@@ -1687,7 +1728,7 @@ function prepareSystemSection(): SectionContext<SystemSectionContext> {
     )
 }
 
-export function prepareTemplateContext(input: CodegenInput): TemplateContext {
+export async function prepareTemplateContext(input: CodegenInput): Promise<TemplateContext> {
     const allImports = new Set<string>()
     const active = resolveActiveInstances(input)
 
@@ -1703,7 +1744,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const attio = prepareAttioSection(active.attio, input.tools)
     const snowflake = prepareSnowflakeSection(active.snowflake, input.tools)
     const heyreach = prepareHeyReachSection(active.heyreach)
-    const tools = prepareToolsSection(input.tools, input, active)
+    const tools = await prepareToolsSection(input.tools, input, active)
     const system = prepareSystemSection()
 
     const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
@@ -1712,12 +1753,26 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         section.imports.forEach(value => allImports.add(value))
     }
 
+    const triggerTypes = await buildTriggerTypeDeclarations(allImports)
+    triggerTypes.declaredNames.forEach(name => allImports.delete(name))
+    if (triggerTypes.declaredNames.size > 0) allImports.add("SDKTrigger")
+    triggerTypes.extraImports.forEach(name => allImports.add(name))
+
     const imports = [...allImports].sort()
+
+    const { common: commonTriggerDeclarations = [], ...triggerFiles } = triggerTypes.declarationsByIntegration
 
     return {
         imports,
         useMultilineImports: imports.length > 3,
         availableIntegrations: input.availableIntegrations.length > 0 ? input.availableIntegrations.join(", ") : undefined,
+        toolboxEntries: tools.data?.toolboxEntries ?? [],
+        toolFiles: tools.data?.toolFiles ?? {},
+        triggerFiles,
+        commonTriggerDeclarations,
+        commonToolDeclarations: tools.data?.commonToolDeclarations ?? [],
+        attioPreludeLines: tools.data?.attioPreludeLines ?? [],
+        githubRepoMappings: tools.data?.githubRepoMappings ?? [],
         github: github.data,
         gmail: gmail.data,
         slack: slack.data,
@@ -1730,7 +1785,6 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         attio: attio.data,
         snowflake: snowflake.data,
         heyreach: heyreach.data,
-        tools: tools.data,
         system: system.data!
     }
 }
