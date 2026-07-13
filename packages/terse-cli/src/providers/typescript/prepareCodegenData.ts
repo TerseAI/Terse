@@ -985,9 +985,8 @@ function prepareHeyReachSection(inst: HeyReachInstanceData | undefined): Section
     )
 }
 
-function prepareResendSection(instances: ResendInstanceData[], tools: ToolDefinition[]): SectionContext<ResendSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const instance = instances[0]
+function prepareResendSection(instance: ResendInstanceData | undefined, tools: ToolDefinition[]): SectionContext<ResendSectionContext> {
+    if (!instance) return sectionData([])
     const usedNames = new Set<string>()
     const templates = instance.templates.map(template => {
         let staticName = toGeneratedIdentifier(template.alias || template.name || "Template", "Template")
@@ -1753,7 +1752,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const attio = prepareAttioSection(active.attio, input.tools)
     const snowflake = prepareSnowflakeSection(active.snowflake, input.tools)
     const heyreach = prepareHeyReachSection(active.heyreach)
-    const resend = prepareResendSection(input.resend, input.tools)
+    const resend = prepareResendSection(active.resend, input.tools)
     const tools = prepareToolsSection(input.tools, input, active)
     const system = prepareSystemSection()
 
@@ -1801,7 +1800,8 @@ function resolveActiveInstances(input: CodegenInput): ActiveInstances {
         workos: selectActiveInstance(input.workos, pins[IntegrationType.WORKOS], data => data.id),
         attio: selectActiveInstance(input.attio, pins[IntegrationType.ATTIO], data => data.id),
         snowflake: selectActiveInstance(input.snowflake, pins[IntegrationType.SNOWFLAKE], data => data.id),
-        heyreach: selectActiveInstance(input.heyreach, pins[IntegrationType.HEY_REACH], data => data.id)
+        heyreach: selectActiveInstance(input.heyreach, pins[IntegrationType.HEY_REACH], data => data.id),
+        resend: selectActiveInstance(input.resend, pins[IntegrationType.RESEND], data => data.id)
     }
 }
 
@@ -1826,4 +1826,5 @@ type ActiveInstances = {
     attio: AttioInstanceData | undefined
     snowflake: SnowflakeInstanceData | undefined
     heyreach: HeyReachInstanceData | undefined
+    resend: ResendInstanceData | undefined
 }
