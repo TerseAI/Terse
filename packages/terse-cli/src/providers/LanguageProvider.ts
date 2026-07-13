@@ -1,4 +1,4 @@
-import type { CreateJobParameters } from "terse-sdk"
+import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
 import type { SerializedEvent, Trigger } from "terse-types"
 
 import type { CodegenInput } from "./codegenTypes"
@@ -41,6 +41,7 @@ export interface LanguageProvider {
             verbose?: boolean
             entryFile?: string
             projectId?: string
+            onSessionEvent?: (event: SessionStreamEvent) => void
             /**
              * Wraps interactive prompts (e.g. tool-approval confirms) so the
              * caller can pause any outer UI it owns (clack spinners, etc.)

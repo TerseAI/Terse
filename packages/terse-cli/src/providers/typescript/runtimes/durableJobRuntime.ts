@@ -18,15 +18,21 @@ export const durableJobRuntime: JobRuntime = {
         const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
 
         try {
-            await withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
-                if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
-                const rt = await getDurableRuntime(process.cwd())
-                await rt.start()
-                const dispatched = await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
+            await withSession(
+                apiKey,
+                isVerbose,
+                pauseUiAround,
+                async sessionId => {
+                    if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
+                    const rt = await getDurableRuntime(process.cwd())
+                    await rt.start()
+                    const dispatched = await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
 
-                // We can't await in the Modal Sandbox. This polls, and a blocked run will never exit.
-                if (!isCliRunCommandEnabled()) await dispatched.awaitResult()
-            })
+                    // We can't await in the Modal Sandbox. This polls, and a blocked run will never exit.
+                    if (!isCliRunCommandEnabled()) await dispatched.awaitResult()
+                },
+                opts?.onSessionEvent
+            )
         } catch (error) {
             if (error instanceof CliError) throw error
             throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, { detail: formatErrorDetail(error) })

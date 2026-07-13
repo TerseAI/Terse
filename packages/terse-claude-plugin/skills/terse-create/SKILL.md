@@ -41,6 +41,8 @@ One marker per command: the command verbatim in backticks, then the why in a few
 
 **Explain every test before it runs.** A marker line is not enough for `terse test run` or `terse replay`: immediately before one, say in one to three casual sentences what the run exercises, why now, and what a good result looks like — "Now I want to prove the trigger wiring fires before writing any real logic: I'll run the pinned sample PR through the stub handler and expect it to log the event with no errors." When it finishes, give the verdict against that stated expectation in the same voice. Cheap reads (`terse test list`, `terse test show`) keep just the marker.
 
+If `terse test run` prints a `TERSE TEST REPORT`, surface it immediately in your own message. Your first sentence must be either "The test ran as expected" or "The test did not run as expected." Then list the reported side effects exactly and explain any mismatch with your stated expectation.
+
 Narration is non-blocking: never wait for a reply to an announcement; the run only pauses at the questions the steps themselves define.
 
 **Headless runs.** With no one to answer, skip every question the steps define, take your recommended answer, and state each choice with its reason in the final summary. Narrate inline the same way.
@@ -84,7 +86,7 @@ If `src/terse.generated.ts` is missing in an existing project, run `terse genera
 
 Interview the user before doing any research: their answers set the direction the workspace scan and the researchers take in step 2.
 
-Ask about decisions and intent only — what should happen, on which events, for whom, and what a good outcome looks like. Do not ask about facts: what is connected, which triggers exist, what the docs support, and what an external API offers are exactly what step 2's scan and researchers retrieve. If the request already pins down the intent unambiguously, skip straight to step 2.
+Ask about decisions and intent only — what should happen, on which events, for whom, and what a good outcome looks like. Do not ask about how to implement it: what is connected, which triggers exist, what the docs support, and what an external API offers are exactly what step 2's scan and researchers retrieve. If the request already pins down the intent unambiguously, skip straight to step 2.
 
 Batch related questions, at most four per interruption. For every question, provide a recommended answer.
 

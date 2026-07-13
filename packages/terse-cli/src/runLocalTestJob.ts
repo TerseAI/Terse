@@ -1,4 +1,4 @@
-import type { CreateJobParameters } from "terse-sdk"
+import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 
 import { finalizeTestRun, startTestRun } from "./api.js"
@@ -18,6 +18,7 @@ export async function runLocalTestJob(
         verbose?: boolean
         entryFile?: string
         pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+        onSessionEvent?: (event: SessionStreamEvent) => void
     }
 ): Promise<{ runId: string; local: boolean }> {
     const { runId, local } = await startTestRun(
@@ -33,6 +34,7 @@ export async function runLocalTestJob(
             verbose: opts.verbose,
             entryFile: opts.entryFile,
             projectId: opts.projectId,
+            onSessionEvent: opts.onSessionEvent,
             pauseUiAround: opts.pauseUiAround
         })
     } catch (error) {

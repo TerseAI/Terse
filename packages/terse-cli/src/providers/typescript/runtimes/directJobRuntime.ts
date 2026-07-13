@@ -17,17 +17,23 @@ export const directJobRuntime: JobRuntime = {
         const inputEvent = createSDKTrigger(event)
 
         try {
-            await withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
-                await runWithJobContext({ sessionId, runId, apiBaseUrl: BACKEND_URL, projectId: opts?.projectId, jobName: job.name }, async () => {
-                    const state = __buildJobStateAccessor(job.states ?? [])
-                    if (job.filter && !(await job.filter(inputEvent, state))) {
-                        if (isVerbose) console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
-                        return
-                    }
-                    if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
-                    await job.onTrigger(inputEvent, state)
-                })
-            })
+            await withSession(
+                apiKey,
+                isVerbose,
+                pauseUiAround,
+                async sessionId => {
+                    await runWithJobContext({ sessionId, runId, apiBaseUrl: BACKEND_URL, projectId: opts?.projectId, jobName: job.name }, async () => {
+                        const state = __buildJobStateAccessor(job.states ?? [])
+                        if (job.filter && !(await job.filter(inputEvent, state))) {
+                            if (isVerbose) console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
+                            return
+                        }
+                        if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
+                        await job.onTrigger(inputEvent, state)
+                    })
+                },
+                opts?.onSessionEvent
+            )
         } catch (error) {
             if (error instanceof CliError) throw error
             if (error instanceof Error && error.name === "DurableOnlyError") {
