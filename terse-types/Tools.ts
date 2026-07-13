@@ -295,34 +295,36 @@ export const notionPageBlockSchema: z.ZodType<{
     page_id?: string
     database_id?: string
     children?: any[]
-}> = z.lazy(() =>
-    z.object({
-        id: z.string(),
-        type: z.string(),
-        object: z.string(),
-        created_time: z.string().optional(),
-        last_edited_time: z.string().optional(),
-        created_by: notionUserReferenceSchema.optional(),
-        last_edited_by: notionUserReferenceSchema.optional(),
-        has_children: z.boolean().optional(),
-        archived: z.boolean().optional(),
-        content: z.string().optional(),
-        rich_text: z.array(notionLooseObjectSchema).optional(),
-        checked: z.boolean().optional(),
-        language: z.string().optional(),
-        icon: notionLooseObjectSchema.optional(),
-        table_width: z.number().int().optional(),
-        has_column_header: z.boolean().optional(),
-        has_row_header: z.boolean().optional(),
-        caption: z.string().optional(),
-        file: z.string().optional(),
-        external: z.string().optional(),
-        url: z.string().optional(),
-        page_id: z.string().optional(),
-        database_id: z.string().optional(),
-        children: z.array(notionPageBlockSchema).optional()
-    })
-).meta({ id: "NotionBlock" })
+}> = z
+    .lazy(() =>
+        z.object({
+            id: z.string(),
+            type: z.string(),
+            object: z.string(),
+            created_time: z.string().optional(),
+            last_edited_time: z.string().optional(),
+            created_by: notionUserReferenceSchema.optional(),
+            last_edited_by: notionUserReferenceSchema.optional(),
+            has_children: z.boolean().optional(),
+            archived: z.boolean().optional(),
+            content: z.string().optional(),
+            rich_text: z.array(notionLooseObjectSchema).optional(),
+            checked: z.boolean().optional(),
+            language: z.string().optional(),
+            icon: notionLooseObjectSchema.optional(),
+            table_width: z.number().int().optional(),
+            has_column_header: z.boolean().optional(),
+            has_row_header: z.boolean().optional(),
+            caption: z.string().optional(),
+            file: z.string().optional(),
+            external: z.string().optional(),
+            url: z.string().optional(),
+            page_id: z.string().optional(),
+            database_id: z.string().optional(),
+            children: z.array(notionPageBlockSchema).optional()
+        })
+    )
+    .meta({ id: "NotionBlock" })
 
 export const notionPageQueryMetadataSchema = z.object({
     page_id: z.string(),

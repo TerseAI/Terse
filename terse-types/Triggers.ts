@@ -214,11 +214,7 @@ export type GithubIssueCommentCreatedTrigger = z.infer<typeof GithubIssueComment
 export const GithubPRTriggerSchema = z.discriminatedUnion("eventType", [GithubPROpenedTriggerSchema, GithubPRSynchronizedTriggerSchema, GithubPRClosedTriggerSchema, GithubPRMergedTriggerSchema])
 export type GithubPRTrigger = z.infer<typeof GithubPRTriggerSchema>
 
-export const GithubTriggerSchema = z.discriminatedUnion("eventType", [
-    GithubPushTriggerSchema,
-    GithubPRTriggerSchema,
-    GithubIssueCommentCreatedTriggerSchema
-])
+export const GithubTriggerSchema = z.discriminatedUnion("eventType", [GithubPushTriggerSchema, GithubPRTriggerSchema, GithubIssueCommentCreatedTriggerSchema])
 export type GithubTrigger = z.infer<typeof GithubTriggerSchema>
 
 export const GmailParsedAttachmentSchema = z.object({
@@ -556,12 +552,7 @@ export const workOSOrganizationTriggerSchema = workOSTriggerBaseSchema.extend({
 })
 export type WorkOSOrganizationTrigger = z.infer<typeof workOSOrganizationTriggerSchema>
 
-export const workOSTriggerSchema = z.discriminatedUnion("eventType", [
-    workOSUserTriggerSchema,
-    workOSMembershipTriggerSchema,
-    workOSInvitationTriggerSchema,
-    workOSOrganizationTriggerSchema
-])
+export const workOSTriggerSchema = z.discriminatedUnion("eventType", [workOSUserTriggerSchema, workOSMembershipTriggerSchema, workOSInvitationTriggerSchema, workOSOrganizationTriggerSchema])
 export type WorkOSTrigger = z.infer<typeof workOSTriggerSchema>
 
 // MARK: HeyReach Triggers
