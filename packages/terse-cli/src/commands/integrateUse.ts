@@ -1,11 +1,12 @@
 import { select } from "@clack/prompts"
+import chalk from "chalk"
 import type { IntegrationConnection, IntegrationType, TerseProjectConfig } from "terse-types"
 
 import { readApiKeyOrBail } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { isNonInteractive } from "../cliHelpers.js"
 import { fetchIntegrationConnections } from "../integrationApi.js"
-import { readProjectConfigOrBail, writeProjectConfig } from "../projectConfig.js"
+import { readProjectConfig, readProjectConfigOrBail, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 
 import { generate } from "./generate.js"
@@ -37,6 +38,36 @@ export async function integrateUse(opts: IntegrateUseOpts, provider: LanguagePro
     await generate(provider)
 }
 
+export async function integrateConnections(opts: IntegrateConnectionsOpts): Promise<void> {
+    const type = parseIntegrationTypeOrThrow(opts.integrationType)
+    const apiKey = readApiKeyOrBail()
+    const connections = await fetchIntegrationConnections(apiKey, type)
+    const pinnedId = readProjectConfig()?.connections?.[type]
+
+    if (opts.json) {
+        const payload = {
+            type,
+            connections: connections.map(connection => ({
+                id: connection.id,
+                name: connection.name,
+                pinned: connection.id === pinnedId
+            }))
+        }
+        process.stdout.write(JSON.stringify(payload, null, 2) + "\n")
+        return
+    }
+
+    if (connections.length === 0) {
+        process.stdout.write(`Integration '${type}' has no connections. Run \`terse integrate connect ${type}\` first.\n`)
+        return
+    }
+
+    for (const connection of connections) {
+        const pin = connection.id === pinnedId ? chalk.dim(" (pinned)") : ""
+        process.stdout.write(`  ${chalk.cyan(connection.id)}  ${connection.name}${pin}\n`)
+    }
+}
+
 function clearPin(cwd: string, config: TerseProjectConfig, type: IntegrationType): void {
     if (!config.connections?.[type]) {
         throw new CliError("no_pinned_connection", `No pinned connection for '${type}' in this project.`)
@@ -65,7 +96,7 @@ async function resolveConnection(type: IntegrationType, connections: Integration
 
     if (isNonInteractive()) {
         throw new CliError("connection_id_required", `Integration '${type}' has ${connections.length} connections; pass a connection ID when running non-interactively.`, {
-            detail: `Connections: ${connections.map(describeConnection).join(", ")}`,
+            detail: `List them with \`terse integrate connections ${type} --json\`, then run \`terse integrate use ${type} <connection-id>\`. Connections: ${connections.map(describeConnection).join(", ")}`,
             exitCode: ErrorCode.BAD_ARGUMENTS
         })
     }
@@ -91,4 +122,9 @@ export type IntegrateUseOpts = {
     integrationType: string
     connectionId?: string
     clear?: boolean
+}
+
+export type IntegrateConnectionsOpts = {
+    integrationType: string
+    json?: boolean
 }

@@ -20,7 +20,7 @@ import { applyImprovement, listImprovements } from "./commands/improvements.js"
 import { init } from "./commands/init.js"
 import { install, update } from "./commands/install.js"
 import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateTool, integrateWait } from "./commands/integrate.js"
-import { integrateUse } from "./commands/integrateUse.js"
+import { integrateConnections, integrateUse } from "./commands/integrateUse.js"
 import { listen } from "./commands/listen.js"
 import { memoryGet, memoryList, memoryPut, memoryRemove } from "./commands/memory.js"
 import { replay } from "./commands/replay.js"
@@ -255,6 +255,7 @@ Examples:
   $ terse integrate tool slack --json                 # list an integration's tools
   $ terse integrate tool slack slack_send_message --json  # one tool's input/output schemas
   $ terse integrate tool run slack.listChannels           # invoke a tool ad hoc, no job required
+  $ terse integrate connections slack --json              # enumerate a workspace's connections + IDs
   $ terse integrate use slack                              # pin which connection this project uses
   $ terse integrate connect snowflake --field account=x --field username=y --fields-stdin <<< '{"password":"'"$PW"'"}'
   $ terse integrate connect slack                     # OAuth → opens browser, exit 2 (follow up with 'wait')
@@ -369,6 +370,25 @@ Params are the tool's wire shape — see \`terse integrate tool <integration> <t
     })
 
 integrateCommand
+    .command("connections")
+    .description("List an integration's connections with their IDs and which one this project pins")
+    .argument("<type>", "Integration type (e.g. slack)")
+    .option("--json", "Emit JSON")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  $ terse integrate connections slack
+  $ terse integrate connections slack --json           # {id, name, pinned} per connection
+
+Non-interactive counterpart to the \`terse integrate use\` picker: list here, then pin with \`terse integrate use <type> <connection-id>\`.
+`
+    )
+    .action(async (type: string, opts: JsonOpts) => {
+        await integrateConnections({ integrationType: type, json: opts.json })
+    })
+
+integrateCommand
     .command("use")
     .description("Pin which connection this project generates against, then regenerate terse.generated.ts")
     .argument("<type>", "Integration type (e.g. slack)")
@@ -382,6 +402,7 @@ Examples:
   $ terse integrate use slack cmr3l8b3d0003bpq4rpifevze
   $ terse integrate use slack --clear                  # back to the default (oldest) connection
 
+Non-interactive (agents/CI): the picker is disabled without a TTY — list IDs with \`terse integrate connections <type> --json\` and pass one explicitly.
 The pin is stored in terse.config.json and also drives \`terse integrate tool run\` resolution in this project.
 `
     )

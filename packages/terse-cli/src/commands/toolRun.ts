@@ -117,7 +117,7 @@ async function resolveSingleIntegrationId(integration: string, apiKey: string): 
     if (connections.length > 1) {
         const listing = connections.map(connection => (connection.name === connection.id ? connection.id : `${connection.id} (${connection.name})`)).join(", ")
         throw new CliError("integration_ambiguous", `Integration '${integration}' has ${connections.length} connections.`, {
-            detail: `Pass --integration <id>, or pin one for this project with \`terse integrate use ${integration}\`. Connections: ${listing}`
+            detail: `List them with \`terse integrate connections ${integration} --json\`, then pass --integration <id> or pin one for this project with \`terse integrate use ${integration} <id>\`. Connections: ${listing}`
         })
     }
     return connections[0].id
