@@ -951,11 +951,15 @@ export const projectSecretsImportResponseSchema = z.object({
 })
 export type ProjectSecretsImportResponse = z.infer<typeof projectSecretsImportResponseSchema>
 
+export const projectConnectionsSchema = z.partialRecord(integrationTypeEnum, z.string().min(1).describe("Connection ID (integrationId) this project generates against"))
+export type ProjectConnections = z.infer<typeof projectConnectionsSchema>
+
 export const terseProjectConfigSchema = z.object({
     projectId: z.string().min(1),
     name: z.string().min(1),
     selfHosted: z.boolean().optional(),
-    remoteServerUrl: z.string().optional()
+    remoteServerUrl: z.string().optional(),
+    connections: projectConnectionsSchema.optional()
 })
 export type TerseProjectConfig = z.infer<typeof terseProjectConfigSchema>
 

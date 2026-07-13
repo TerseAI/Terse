@@ -35,7 +35,8 @@ export class LaunchDarklyIntegrationManager
                 id: true,
                 user_email: true,
                 token_name: true
-            }
+            },
+            orderBy: { created_at: "asc" }
         })
         return launchdarklyIntegrations.map(li => ({
             id: li.id,
@@ -45,16 +46,17 @@ export class LaunchDarklyIntegrationManager
     }
 
     async getCliDisplayStateForOrganization(organizationId: string) {
-        const integration = await db().launchdarkly_integrations.findFirst({
-            where: { organization_id: organizationId },
-            orderBy: { created_at: "asc" }
-        })
+        const [instance] = await this.getInstancesForOrganization(organizationId)
 
-        if (!integration) {
+        if (!instance) {
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Account", integration.token_name || integration.user_email || "LaunchDarkly", integration.id)
+        return createConnectedCliDisplayState("Account", this.getConnectionName(instance), instance.id)
+    }
+
+    getConnectionName(instance: LaunchDarklyIntegration): string {
+        return instance.tokenName || instance.email || instance.id
     }
 
     async fetchResourcesForOrganization(

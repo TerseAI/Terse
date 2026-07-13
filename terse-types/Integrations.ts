@@ -328,8 +328,8 @@ export const CliIntegrationDisplayStateSchema = z.discriminatedUnion("status", [
     }),
     z.object({
         status: z.literal("connected"),
-        summaryLabel: z.string(),
-        summaryValue: z.string(),
+        connectionLabel: z.string(),
+        connectionName: z.string(),
         integrationId: z.string()
     })
 ])
@@ -341,3 +341,14 @@ export const IntegrationWithStatusSchema = z.object({
     cliDisplayState: CliIntegrationDisplayStateSchema
 })
 export type IntegrationWithStatus = z.infer<typeof IntegrationWithStatusSchema>
+
+export const IntegrationConnectionSchema = z.object({
+    id: z.string(),
+    name: z.string()
+})
+export type IntegrationConnection = z.infer<typeof IntegrationConnectionSchema>
+
+export const IntegrationConnectionsResponseSchema = z.object({
+    connections: z.array(IntegrationConnectionSchema)
+})
+export type IntegrationConnectionsResponse = z.infer<typeof IntegrationConnectionsResponseSchema>

@@ -1,4 +1,4 @@
-import { cancel, intro, isCancel, log, multiselect, outro, spinner } from "@clack/prompts"
+import { cancel, intro, isCancel, log, multiselect, outro } from "@clack/prompts"
 import { confirm } from "@inquirer/prompts"
 import chalk from "chalk"
 import dotenv from "dotenv"
@@ -12,6 +12,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { ApiError, fetchWithAuth, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
 import { isNonInteractive } from "../cliHelpers.js"
+import { createSpinner } from "../cliUi.js"
 import { getCliVersion } from "../cliVersion.js"
 import { FRONTEND_URL } from "../config.js"
 import { loadJobRegistry } from "../loadJob.js"
@@ -45,7 +46,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
     intro(`terse deploy`)
 
-    const typecheckSpinner = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
+    const typecheckSpinner = createSpinner()
     typecheckSpinner.start("Type-checking")
     try {
         await provider.typecheck()
@@ -70,7 +71,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         zipSizeBytes = zipPayload.zipSizeBytes
     }
 
-    const s = spinner({ styleFrame: frame => chalk.hex("#04AB62")(frame) })
+    const s = createSpinner()
 
     // Open the SSE session BEFORE starting the spinner so a clean error
     // (e.g. 401) surfaces without leaving the spinner mid-frame.

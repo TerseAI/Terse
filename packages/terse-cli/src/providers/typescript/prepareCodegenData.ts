@@ -1,4 +1,4 @@
-import { type ToolDefinition, ToolDefinitions, type ToolName, toolsWithIntegrationId } from "terse-types"
+import { IntegrationType, type ToolDefinition, ToolDefinitions, type ToolName, toolsWithIntegrationId } from "terse-types"
 import { z } from "zod"
 
 import type {
@@ -225,7 +225,7 @@ function toGeneratedIdentifier(raw: string, fallback: string): string {
     return name
 }
 
-function toCamelCase(value: string): string {
+export function toCamelCase(value: string): string {
     const pascal = toPascalCase(value)
     return pascal.charAt(0).toLowerCase() + pascal.slice(1)
 }
@@ -439,10 +439,9 @@ function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationTy
     return renderStringLiteralUnion(toolNames)
 }
 
-function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefinition[]): SectionContext<GitHubSectionContext> {
-    if (instances.length === 0) return sectionData([])
+function prepareGitHubSection(inst: GitHubInstanceData | undefined, tools: ToolDefinition[]): SectionContext<GitHubSectionContext> {
+    if (!inst) return sectionData([])
 
-    const inst = instances[0]
     const imports = [
         "GitHubConfig",
         "GitHubEventType",
@@ -508,17 +507,16 @@ function prepareGitHubSection(instances: GitHubInstanceData[], tools: ToolDefini
     })
 }
 
-function prepareGmailSection(instances: IntegrationInstanceData[], tools: ToolDefinition[]): SectionContext<GmailSectionContext> {
-    if (instances.length === 0) return sectionData([])
+function prepareGmailSection(inst: IntegrationInstanceData | undefined, tools: ToolDefinition[]): SectionContext<GmailSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType", "GmailTrigger"], {
-        id: instances[0].id,
+        id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "gmail")
     })
 }
 
-function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefinition[]): SectionContext<SlackSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
+function prepareSlackSection(inst: SlackInstanceData | undefined, tools: ToolDefinition[]): SectionContext<SlackSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(
         ["SlackAppMentionTrigger", "SlackConfig", "SlackMessageTrigger", "SlackOutputConfig", "SlackReactionAddedTrigger", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTrigger"],
         {
@@ -546,9 +544,8 @@ function prepareSlackSection(instances: SlackInstanceData[], tools: ToolDefiniti
     )
 }
 
-function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefinition[]): SectionContext<LinearSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
+function prepareLinearSection(inst: LinearInstanceData | undefined, tools: ToolDefinition[]): SectionContext<LinearSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(
         [
             "LinearInputConfig",
@@ -587,9 +584,8 @@ function prepareLinearSection(instances: LinearInstanceData[], tools: ToolDefini
     )
 }
 
-function prepareNotionSection(instances: NotionInstanceData[], tools: ToolDefinition[]): SectionContext<NotionSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
+function prepareNotionSection(inst: NotionInstanceData | undefined, tools: ToolDefinition[]): SectionContext<NotionSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(["NotionConfig", "TypedSkill"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "notion"),
@@ -614,9 +610,8 @@ function prepareNotionSection(instances: NotionInstanceData[], tools: ToolDefini
     })
 }
 
-function preparePosthogSection(instances: PosthogInstanceData[], tools: ToolDefinition[]): SectionContext<PosthogSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
+function preparePosthogSection(inst: PosthogInstanceData | undefined, tools: ToolDefinition[]): SectionContext<PosthogSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(["PosthogConfig", "TypedSkill"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "posthog"),
@@ -633,9 +628,8 @@ function preparePosthogSection(instances: PosthogInstanceData[], tools: ToolDefi
     })
 }
 
-function prepareDatadogSection(instances: DatadogInstanceData[], tools: ToolDefinition[]): SectionContext<DatadogSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
+function prepareDatadogSection(inst: DatadogInstanceData | undefined, tools: ToolDefinition[]): SectionContext<DatadogSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(["DatadogConfig", "TypedSkill"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "datadog"),
@@ -643,9 +637,8 @@ function prepareDatadogSection(instances: DatadogInstanceData[], tools: ToolDefi
     })
 }
 
-function prepareLaunchDarklySection(instances: LaunchDarklyInstanceData[], tools: ToolDefinition[]): SectionContext<LaunchDarklySectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
+function prepareLaunchDarklySection(inst: LaunchDarklyInstanceData | undefined, tools: ToolDefinition[]): SectionContext<LaunchDarklySectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(["LaunchDarklyConfig", "TypedSkill"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "launchdarkly"),
@@ -661,8 +654,8 @@ function prepareLaunchDarklySection(instances: LaunchDarklyInstanceData[], tools
     })
 }
 
-function prepareWorkOSSection(instances: IntegrationInstanceData[], tools: ToolDefinition[]): SectionContext<WorkOSSectionContext> {
-    if (instances.length === 0) return sectionData([])
+function prepareWorkOSSection(inst: IntegrationInstanceData | undefined, tools: ToolDefinition[]): SectionContext<WorkOSSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(
         [
             "WorkOSInputConfig",
@@ -687,14 +680,14 @@ function prepareWorkOSSection(instances: IntegrationInstanceData[], tools: ToolD
             "WorkOSOrganizationTrigger"
         ],
         {
-            id: instances[0].id,
+            id: inst.id,
             skillToolType: buildSkillToolTypeForIntegration(tools, "workos")
         }
     )
 }
 
-function buildGeneratedAttioObjects(instances: AttioInstanceData[]): Array<AttioObjectContext & { attributes: Array<AttioAttributeData & { api_slug: string }> }> {
-    const objects = instances[0]?.objects ?? []
+function buildGeneratedAttioObjects(inst: AttioInstanceData | undefined): Array<AttioObjectContext & { attributes: Array<AttioAttributeData & { api_slug: string }> }> {
+    const objects = inst?.objects ?? []
     const usedNames = new Set<string>()
 
     return objects.map(object => {
@@ -717,8 +710,8 @@ function buildGeneratedAttioObjects(instances: AttioInstanceData[]): Array<Attio
     })
 }
 
-function buildGeneratedAttioLists(instances: AttioInstanceData[]): Array<AttioListContext & { attributes: Array<AttioAttributeData & { api_slug: string }> }> {
-    const lists = instances[0]?.lists ?? []
+function buildGeneratedAttioLists(inst: AttioInstanceData | undefined): Array<AttioListContext & { attributes: Array<AttioAttributeData & { api_slug: string }> }> {
+    const lists = inst?.lists ?? []
     const usedNames = new Set<string>()
 
     return lists.map(list => {
@@ -897,10 +890,10 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     return lines
 }
 
-function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefinition[]): SectionContext<AttioSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const objects = buildGeneratedAttioObjects(instances)
-    const lists = buildGeneratedAttioLists(instances)
+function prepareAttioSection(inst: AttioInstanceData | undefined, tools: ToolDefinition[]): SectionContext<AttioSectionContext> {
+    if (!inst) return sectionData([])
+    const objects = buildGeneratedAttioObjects(inst)
+    const lists = buildGeneratedAttioLists(inst)
     return sectionData(
         [
             "registerEventTransform",
@@ -939,7 +932,7 @@ function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefiniti
             "AttioWorkspaceMemberCreatedTrigger"
         ],
         {
-            id: instances[0].id,
+            id: inst.id,
             skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
             objects,
             lists,
@@ -949,17 +942,16 @@ function prepareAttioSection(instances: AttioInstanceData[], tools: ToolDefiniti
     )
 }
 
-function prepareSnowflakeSection(instances: SnowflakeInstanceData[], tools: ToolDefinition[]): SectionContext<SnowflakeSectionContext> {
-    if (instances.length === 0) return sectionData([])
+function prepareSnowflakeSection(inst: SnowflakeInstanceData | undefined, tools: ToolDefinition[]): SectionContext<SnowflakeSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(["SnowflakeOutputConfig", "TypedSkill"], {
-        id: instances[0].id,
+        id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "snowflake")
     })
 }
 
-function prepareHeyReachSection(instances: HeyReachInstanceData[]): SectionContext<HeyReachSectionContext> {
-    if (instances.length === 0) return sectionData([])
-    const inst = instances[0]
+function prepareHeyReachSection(inst: HeyReachInstanceData | undefined): SectionContext<HeyReachSectionContext> {
+    if (!inst) return sectionData([])
     return sectionData(
         [
             "HeyReachInputConfig",
@@ -1028,61 +1020,25 @@ function prepareResendSection(instances: ResendInstanceData[], tools: ToolDefini
     })
 }
 
-function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): SectionContext<ToolsSectionContext> {
+function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, active: ActiveInstances): SectionContext<ToolsSectionContext> {
     if (tools.length === 0) return sectionData([])
 
     const imports = new Set(["TerseAgent", "ToolInputByName", "ToolOutputByName"])
     const attioPreludeLines: string[] = []
 
-    const instanceMap = new Map<string, { id: string; displayName: string }[]>()
-    instanceMap.set(
-        "slack",
-        input.slack.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "github",
-        input.github.map(inst => ({ id: inst.integration.id, displayName: inst.integration.account_name || "" }))
-    )
-    instanceMap.set(
-        "gmail",
-        input.gmail.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "linear",
-        input.linear.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "notion",
-        input.notion.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "posthog",
-        input.posthog.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "datadog",
-        input.datadog.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "launchdarkly",
-        input.launchdarkly.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "workos",
-        input.workos.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "attio",
-        input.attio.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
-    instanceMap.set(
-        "snowflake",
-        input.snowflake.map(inst => ({ id: inst.id, displayName: inst.name }))
-    )
-    instanceMap.set(
-        "resend",
-        input.resend.map(inst => ({ id: inst.id, displayName: inst.displayName }))
-    )
+    const activeIdByIntegration = new Map<string, string | undefined>([
+        ["slack", active.slack?.id],
+        ["github", active.github?.integration.id],
+        ["gmail", active.gmail?.id],
+        ["linear", active.linear?.id],
+        ["notion", active.notion?.id],
+        ["posthog", active.posthog?.id],
+        ["datadog", active.datadog?.id],
+        ["launchdarkly", active.launchdarkly?.id],
+        ["workos", active.workos?.id],
+        ["attio", active.attio?.id],
+        ["snowflake", active.snowflake?.id]
+    ])
 
     const byIntegration = new Map<string, ToolDefinition[]>()
     for (const tool of tools) {
@@ -1110,10 +1066,10 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     }
 
     const isAttioTool = (tool: ToolDefinition): boolean => tool.integration.toLowerCase() === "attio"
-    const attioGeneratedObjects = buildGeneratedAttioObjects(input.attio)
+    const attioGeneratedObjects = buildGeneratedAttioObjects(active.attio)
 
     if (tools.some(isAttioTool)) {
-        if (input.attio.length === 0) {
+        if (!active.attio) {
             attioPreludeLines.push(...attioValueTypeLines())
             attioPreludeLines.push("")
         }
@@ -1300,9 +1256,9 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     for (const [integration, integrationTools] of byIntegration.entries()) {
         const needsAutoFill = integrationTools.some(hasAutoFillId)
         if (needsAutoFill) {
-            const instances = instanceMap.get(integration) || []
-            if (instances.length === 0) continue
-            rawGroups.push({ key: integration, integration, tools: integrationTools, integrationId: instances[0].id })
+            const integrationId = activeIdByIntegration.get(integration)
+            if (!integrationId) continue
+            rawGroups.push({ key: integration, integration, tools: integrationTools, integrationId })
         } else {
             rawGroups.push({ key: integration, integration, tools: integrationTools })
         }
@@ -1783,7 +1739,9 @@ function prepareSystemSection(): SectionContext<SystemSectionContext> {
 
 export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const allImports = new Set<string>()
+    const active = resolveActiveInstances(input)
 
+<<<<<<< HEAD
     const github = prepareGitHubSection(input.github, input.tools)
     const gmail = prepareGmailSection(input.gmail, input.tools)
     const slack = prepareSlackSection(input.slack, input.tools)
@@ -1798,6 +1756,21 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const heyreach = prepareHeyReachSection(input.heyreach)
     const resend = prepareResendSection(input.resend, input.tools)
     const tools = prepareToolsSection(input.tools, input)
+=======
+    const github = prepareGitHubSection(active.github, input.tools)
+    const gmail = prepareGmailSection(active.gmail, input.tools)
+    const slack = prepareSlackSection(active.slack, input.tools)
+    const linear = prepareLinearSection(active.linear, input.tools)
+    const notion = prepareNotionSection(active.notion, input.tools)
+    const posthog = preparePosthogSection(active.posthog, input.tools)
+    const datadog = prepareDatadogSection(active.datadog, input.tools)
+    const launchdarkly = prepareLaunchDarklySection(active.launchdarkly, input.tools)
+    const workos = prepareWorkOSSection(active.workos, input.tools)
+    const attio = prepareAttioSection(active.attio, input.tools)
+    const snowflake = prepareSnowflakeSection(active.snowflake, input.tools)
+    const heyreach = prepareHeyReachSection(active.heyreach)
+    const tools = prepareToolsSection(input.tools, input, active)
+>>>>>>> d44efb1f1fe2e2ed1a868a1626854ee296923275
     const system = prepareSystemSection()
 
     const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, resend, tools, system]
@@ -1828,4 +1801,45 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         tools: tools.data,
         system: system.data!
     }
+}
+
+function resolveActiveInstances(input: CodegenInput): ActiveInstances {
+    const pins = input.activeConnections
+    return {
+        github: selectActiveInstance(input.github, pins[IntegrationType.GITHUB], data => data.integration.id),
+        gmail: selectActiveInstance(input.gmail, pins[IntegrationType.GMAIL], data => data.id),
+        slack: selectActiveInstance(input.slack, pins[IntegrationType.SLACK], data => data.id),
+        linear: selectActiveInstance(input.linear, pins[IntegrationType.LINEAR], data => data.id),
+        notion: selectActiveInstance(input.notion, pins[IntegrationType.NOTION], data => data.id),
+        posthog: selectActiveInstance(input.posthog, pins[IntegrationType.POSTHOG], data => data.id),
+        datadog: selectActiveInstance(input.datadog, pins[IntegrationType.DATADOG], data => data.id),
+        launchdarkly: selectActiveInstance(input.launchdarkly, pins[IntegrationType.LAUNCHDARKLY], data => data.id),
+        workos: selectActiveInstance(input.workos, pins[IntegrationType.WORKOS], data => data.id),
+        attio: selectActiveInstance(input.attio, pins[IntegrationType.ATTIO], data => data.id),
+        snowflake: selectActiveInstance(input.snowflake, pins[IntegrationType.SNOWFLAKE], data => data.id),
+        heyreach: selectActiveInstance(input.heyreach, pins[IntegrationType.HEY_REACH], data => data.id)
+    }
+}
+
+function selectActiveInstance<T>(instances: T[], activeConnectionId: string | undefined, idOf: (instance: T) => string): T | undefined {
+    if (activeConnectionId) {
+        const match = instances.find(instance => idOf(instance) === activeConnectionId)
+        if (match) return match
+    }
+    return instances[0]
+}
+
+type ActiveInstances = {
+    github: GitHubInstanceData | undefined
+    gmail: IntegrationInstanceData | undefined
+    slack: SlackInstanceData | undefined
+    linear: LinearInstanceData | undefined
+    notion: NotionInstanceData | undefined
+    posthog: PosthogInstanceData | undefined
+    datadog: DatadogInstanceData | undefined
+    launchdarkly: LaunchDarklyInstanceData | undefined
+    workos: IntegrationInstanceData | undefined
+    attio: AttioInstanceData | undefined
+    snowflake: SnowflakeInstanceData | undefined
+    heyreach: HeyReachInstanceData | undefined
 }

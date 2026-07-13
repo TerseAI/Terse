@@ -63,7 +63,8 @@ export class DatadogIntegrationManager extends Integration<DatadogIntegration, n
             select: {
                 id: true,
                 region: true
-            }
+            },
+            orderBy: { created_at: "asc" }
         })
         return datadogIntegrations.map(di => ({
             id: di.id,
@@ -72,16 +73,17 @@ export class DatadogIntegrationManager extends Integration<DatadogIntegration, n
     }
 
     async getCliDisplayStateForOrganization(organizationId: string) {
-        const integration = await db().datadog_integrations.findFirst({
-            where: { organization_id: organizationId },
-            orderBy: { created_at: "asc" }
-        })
+        const [instance] = await this.getInstancesForOrganization(organizationId)
 
-        if (!integration) {
+        if (!instance) {
             return createNotConnectedCliDisplayState()
         }
 
-        return createConnectedCliDisplayState("Region", integration.region, integration.id)
+        return createConnectedCliDisplayState("Region", this.getConnectionName(instance), instance.id)
+    }
+
+    getConnectionName(instance: DatadogIntegration): string {
+        return instance.region || instance.id
     }
 
     formatIntegrationInstanceForAgent(instance: DatadogIntegration): string {

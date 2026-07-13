@@ -14,12 +14,14 @@ import {
     FormFieldDefinition,
     disconnectIntegration,
     fetchInstallationUrl,
+    fetchIntegrationConnections,
     fetchIntegrationFields,
     fetchIntegrations,
     pollForConnection,
     submitIntegrationForm
 } from "../integrationApi.js"
 import { openUrlInBrowser } from "../openBrowser.js"
+import { readProjectConfig } from "../projectConfig.js"
 import { type ToolDetails, fetchToolDetails } from "../toolCatalog.js"
 
 import { generate } from "./generate.js"
@@ -168,11 +170,39 @@ async function fetchUserFacingIntegrations(apiKey: string): Promise<UserFacingIn
     try {
         const integrations = await fetchIntegrations(apiKey)
         s.stop("Fetched integrations")
-        return integrations.filter(i => !INTERNAL_INTEGRATION_TYPES.has(i.integrationType))
+        return applyProjectPins(
+            integrations.filter(i => !INTERNAL_INTEGRATION_TYPES.has(i.integrationType)),
+            apiKey
+        )
     } catch (err: any) {
         s.stop("Failed to fetch integrations")
         throw new CliError("fetch_integrations_failed", err?.message ?? "Failed to fetch integrations.")
     }
+}
+
+async function applyProjectPins(integrations: IntegrationWithStatus[], apiKey: string): Promise<PinAwareIntegration[]> {
+    const pins = readProjectConfig()?.connections
+    if (!pins) return integrations
+
+    return Promise.all(
+        integrations.map(async integration => {
+            const pinnedId = pins[integration.integrationType]
+            if (!pinnedId || integration.cliDisplayState.status !== "connected") return integration
+            if (integration.cliDisplayState.integrationId === pinnedId) return { ...integration, pin: "ok" as const }
+
+            const connections = await fetchIntegrationConnections(apiKey, integration.integrationType).catch(() => [])
+            const pinned = connections.find(connection => connection.id === pinnedId)
+            return {
+                ...integration,
+                pin: pinned ? ("ok" as const) : ("missing" as const),
+                cliDisplayState: {
+                    ...integration.cliDisplayState,
+                    connectionName: pinned?.name ?? pinnedId,
+                    integrationId: pinnedId
+                }
+            }
+        })
+    )
 }
 
 async function promptForIntegrationSelection(integrations: UserFacingIntegration[]): Promise<GroupedIntegrationSelection> {
@@ -247,16 +277,23 @@ function formatIntegrationActionLabel(action: IntegrationAction): string {
 
 function formatIntegrationPickerLabel(integration: UserFacingIntegration, longestName: number): string {
     const name = getIntegrationDisplayName(integration).padEnd(longestName)
-    const summary = formatIntegrationDisplaySummary(integration.cliDisplayState)
+    const summary = formatIntegrationDisplaySummary(integration)
     return `${name}  ${chalk.dim(summary)}`
 }
 
-function formatIntegrationDisplaySummary(displayState: CliIntegrationDisplayState): string {
+function formatIntegrationDisplaySummary(integration: PinAwareIntegration): string {
+    const displayState = integration.cliDisplayState
     if (displayState.status === "connected") {
-        return `${displayState.summaryLabel}: ${displayState.summaryValue}`
+        return `${displayState.connectionLabel}: ${displayState.connectionName}${pinSuffix(integration.pin)}`
     }
 
     return "Not connected"
+}
+
+function pinSuffix(pin: PinState | undefined): string {
+    if (pin === "missing") return " (pinned, missing)"
+    if (pin === "ok") return " (pinned)"
+    return ""
 }
 
 function getIntegrationDisplayName(integration: UserFacingIntegration): string {
@@ -433,7 +470,7 @@ async function handleDisconnect(apiKey: string, integrationType: IntegrationType
     }
 }
 
-function abortIfCancelled<T>(value: T | symbol): T {
+export function abortIfCancelled<T>(value: T | symbol): T {
     if (isCancel(value)) {
         cancel("Operation cancelled.")
         process.exit(0)
@@ -446,7 +483,7 @@ function abortIfCancelled<T>(value: T | symbol): T {
 // Non-interactive subcommands
 // -------------------------------------------------------------------------
 
-function parseIntegrationTypeOrThrow(value: string): IntegrationType {
+export function parseIntegrationTypeOrThrow(value: string): IntegrationType {
     const normalized = value.toLowerCase()
     const match = Object.values(IntegrationType).find(v => v === normalized)
     if (!match) {
@@ -459,16 +496,19 @@ function parseIntegrationTypeOrThrow(value: string): IntegrationType {
     return match as IntegrationType
 }
 
-function summaryFor(displayState: CliIntegrationDisplayState): { summaryLabel: string | null; summaryValue: string | null } {
+function summaryFor(displayState: CliIntegrationDisplayState): { connectionLabel: string | null; connectionName: string | null } {
     if (displayState.status === "connected") {
-        return { summaryLabel: displayState.summaryLabel, summaryValue: displayState.summaryValue }
+        return { connectionLabel: displayState.connectionLabel, connectionName: displayState.connectionName }
     }
-    return { summaryLabel: null, summaryValue: null }
+    return { connectionLabel: null, connectionName: null }
 }
 
 export async function integrateList(opts: IntegrateListOpts = {}): Promise<void> {
     const apiKey = readApiKeyOrBail()
-    const integrations = (await fetchIntegrations(apiKey)).filter(i => !INTERNAL_INTEGRATION_TYPES.has(i.integrationType))
+    const integrations = await applyProjectPins(
+        (await fetchIntegrations(apiKey)).filter(i => !INTERNAL_INTEGRATION_TYPES.has(i.integrationType)),
+        apiKey
+    )
 
     const filtered = integrations.filter(i => {
         if (opts.status === "connected") return i.isActive
@@ -480,13 +520,14 @@ export async function integrateList(opts: IntegrateListOpts = {}): Promise<void>
         const payload = {
             integrations: await Promise.all(
                 filtered.map(async integration => {
-                    const { summaryLabel, summaryValue } = summaryFor(integration.cliDisplayState)
+                    const { connectionLabel, connectionName } = summaryFor(integration.cliDisplayState)
                     return {
                         type: integration.integrationType,
                         status: integration.isActive ? "connected" : "disconnected",
                         name: INTEGRATION_METADATA[integration.integrationType]?.name ?? integration.integrationType,
-                        summaryLabel,
-                        summaryValue
+                        connectionLabel,
+                        connectionName,
+                        ...(integration.pin ? { pin: integration.pin } : {})
                     }
                 })
             )
@@ -504,8 +545,8 @@ export async function integrateList(opts: IntegrateListOpts = {}): Promise<void>
     for (const integration of filtered) {
         const name = (INTEGRATION_METADATA[integration.integrationType]?.name ?? integration.integrationType).padEnd(longest)
         const status = integration.isActive ? chalk.green("connected") : chalk.dim("not connected")
-        const { summaryLabel, summaryValue } = summaryFor(integration.cliDisplayState)
-        const summary = summaryLabel && summaryValue ? `  ${chalk.dim(`${summaryLabel}: ${summaryValue}`)}` : ""
+        const { connectionLabel, connectionName } = summaryFor(integration.cliDisplayState)
+        const summary = connectionLabel && connectionName ? `  ${chalk.dim(`${connectionLabel}: ${connectionName}${pinSuffix(integration.pin)}`)}` : ""
         process.stdout.write(`  ${name}  ${status}${summary}\n`)
     }
 }
@@ -590,14 +631,14 @@ function printToolList(type: IntegrationType, tools: ToolDetails[], json: boolea
 
     process.stdout.write("Tools:\n")
     for (const tool of tools) {
-        const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : ""
+        const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : chalk.dim(" (write)")
         process.stdout.write(`  ${chalk.cyan(tool.name)}${readOnly} — ${tool.description}\n`)
     }
     process.stdout.write(chalk.dim(`\nRun \`terse integrate tool ${type} <tool-name> --json\` for a tool's input/output schemas.\n`))
 }
 
 function printToolDetails(tool: ToolDetails): void {
-    const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : ""
+    const readOnly = tool.isReadOnly ? chalk.dim(" (read-only)") : chalk.dim(" (write)")
     process.stdout.write(`${chalk.bold(tool.displayName)} ${chalk.dim(`[${tool.name}]`)}${readOnly}\n`)
     process.stdout.write(`Integration: ${tool.integration}\n`)
     process.stdout.write(`Supports approval: ${tool.supportsApproval ? "yes" : "no"}\n\n`)
@@ -800,7 +841,11 @@ type IntegrationAction = "back" | "connect" | "disconnect" | "keep" | "refresh_p
 
 type GroupedIntegrationSelection = { action: IntegrationAction; integrationType: IntegrationType } | { action: typeof SKIP_VALUE; integrationType: typeof SKIP_VALUE }
 
-type UserFacingIntegration = IntegrationWithStatus
+type PinState = "ok" | "missing"
+
+type PinAwareIntegration = IntegrationWithStatus & { pin?: PinState }
+
+type UserFacingIntegration = PinAwareIntegration
 
 export type IntegrateListOpts = {
     json?: boolean

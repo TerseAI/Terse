@@ -122,7 +122,8 @@
         "INSTALLATION_DETAILS_BY_TYPE": "/integrations/:integrationType/installation-details",
         "LIST": "/integrations",
         "DISCONNECT_BY_TYPE": "/integrations/:integrationType/disconnect",
-        "ACTIVE": "/integrations/active"
+        "ACTIVE": "/integrations/active",
+        "CONNECTIONS_BY_TYPE": "/integrations/:integrationType/connections"
     },
     "NOTIFICATION_DESTINATIONS": {
         "LIST": "/notification-destinations",

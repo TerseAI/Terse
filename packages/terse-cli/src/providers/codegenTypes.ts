@@ -1,4 +1,4 @@
-import type { GithubIntegration, ResendTemplate, ToolDefinition } from "terse-types"
+import type { GithubIntegration, ProjectConnections, ResendTemplate, ToolDefinition } from "terse-types"
 
 interface GitHubRepo {
     id: number
@@ -153,4 +153,5 @@ export interface CodegenInput {
     heyreach: HeyReachInstanceData[]
     resend: ResendInstanceData[]
     tools: ToolDefinition[]
+    activeConnections: ProjectConnections
 }
