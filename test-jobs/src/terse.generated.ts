@@ -3737,14 +3737,13 @@ export interface AttioRecordBase {
         workspace_id?: string
         object_id?: string
         record_id?: string
-        [k: string]: unknown
     }
+    record_id?: string
     values?: {
         [k: string]: unknown
     }
     web_url?: string
     created_at?: string
-    [k: string]: unknown
 }
 
 export interface AttioSearchMatch {

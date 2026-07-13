@@ -84,7 +84,8 @@ export async function buildAttioToolTypeDeclarations(attioToolNames: readonly st
 
     for (const entity of ATTIO_ENTITY_HOISTS) {
         const otherEntities = ATTIO_ENTITY_HOISTS.filter(other => other.name !== entity.name)
-        declarations.push(await printType({ typeName: entity.name, schema: entity.schema, io: "output", hoisted: otherEntities }), "")
+        const printSchema = ATTIO_ENTITY_PRINT_OVERRIDES[entity.name] ?? entity.schema
+        declarations.push(await printType({ typeName: entity.name, schema: printSchema, io: "output", hoisted: otherEntities }), "")
     }
 
     const printedOutputNames = new Set<string>()
@@ -294,6 +295,18 @@ const ATTIO_ENTITY_HOISTS: HoistedShape[] = [
 ]
 
 const ATTIO_OUTPUT_HOISTS: HoistedShape[] = [...ATTIO_ENTITY_HOISTS, { name: "RunHistoryAction", schema: runHistoryActionBaseSchema }]
+
+// AttioRecordBase feeds `Omit<AttioRecordBase, "values">` in the generic record machinery, and Omit over
+// a type with an index signature collapses every named property; print it without the schema's catchall.
+const ATTIO_ENTITY_PRINT_OVERRIDES: Record<string, z.ZodType> = {
+    AttioRecordBase: z.object({
+        id: z.object({ workspace_id: z.string().optional(), object_id: z.string().optional(), record_id: z.string().optional() }).optional(),
+        record_id: z.string().optional(),
+        values: z.record(z.string(), z.unknown()).optional(),
+        web_url: z.string().optional(),
+        created_at: z.string().optional()
+    })
+}
 
 const ATTIO_OUTPUT_TYPE_NAMES: Record<string, string> = {
     attio_read_records: "AttioRecordsResult",
