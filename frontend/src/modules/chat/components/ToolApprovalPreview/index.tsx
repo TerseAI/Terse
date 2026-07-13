@@ -1,4 +1,4 @@
-import AttioRecordsPreview from "./AttioRecordsPreview"
+import { AttioCreateRecordPreview, AttioDeleteRecordPreview, AttioUpdateRecordPreview, AttioUpsertRecordPreview } from "./AttioRecordsPreview"
 
 export interface ToolPreviewProps {
     parameters: string
@@ -6,7 +6,10 @@ export interface ToolPreviewProps {
 }
 
 const TOOL_PREVIEW_REGISTRY: Record<string, React.ComponentType<ToolPreviewProps>> = {
-    attio_records: AttioRecordsPreview
+    attio_create_record: AttioCreateRecordPreview,
+    attio_update_record: AttioUpdateRecordPreview,
+    attio_upsert_record: AttioUpsertRecordPreview,
+    attio_delete_record: AttioDeleteRecordPreview
 }
 
 interface ToolApprovalPreviewProps {

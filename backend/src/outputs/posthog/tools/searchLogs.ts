@@ -12,8 +12,6 @@ import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient"
  */
 export const searchLogsTool = defineSessionTool({
     name: "searchPosthogLogs",
-    description:
-        "Query PostHog logs with flexible filtering. Returns logs data and a link to view logs in PostHog. You can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. At least one filter (user email, severity levels, or message search) should be provided to avoid overly broad queries. Use this when you need to investigate user activity, errors, or events in PostHog logs.",
     execute: async ({ integrationId, projectId, userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

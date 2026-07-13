@@ -10,13 +10,6 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionListUsersTool = defineSessionTool({
     name: "notion_list_users",
-    description: `List users in the Notion workspace. Use this to resolve user names to Notion user IDs
-for populating People properties (e.g., Assignee, Owner) when creating or updating database pages.
-
-Returns workspace members (not bots). Optionally filter by name with the query parameter.
-
-Use the returned user IDs in people property format:
-{"Assignee": {"people": [{"object": "user", "id": "<user_id>"}]}}`,
     execute: async ({ integrationId, query }, runContext) => {
         logger.debug("Executing notion_list_users tool", { integrationId, query })
 

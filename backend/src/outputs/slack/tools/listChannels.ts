@@ -33,9 +33,6 @@ function formatChannel(ch: { id?: string; name?: string; user?: string; is_chann
 
 export const slackListChannelsTool = defineSessionTool({
     name: "slack_list_channels",
-    description: `List available Slack channels and conversations (public, private, DMs, multi-person DMs) that the integration can access.
-Use this to discover channel IDs before reading conversation history.
-Supports pagination: if the response includes nextCursor and hasMore, pass nextCursor as the cursor parameter on the next call to fetch more.`,
     execute: async ({ integrationId, types = "all", limit = 100, cursor }, runContext) => {
         logger.debug("🛠️ Executing slack_list_channels tool", { integrationId, types, limit })
 

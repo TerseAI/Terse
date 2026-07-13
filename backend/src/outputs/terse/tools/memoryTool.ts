@@ -10,8 +10,6 @@ import { defineSessionTool } from "../../../tools/toolUtils"
 
 export const memoryTool = defineSessionTool({
     name: "memory",
-    description:
-        "Persistent memory stored under /memories that survives across runs. Commands: view (read a file or list a directory), create, str_replace, insert, delete, rename. Always view /memories before starting a task, and record durable progress and learnings as you work.",
     execute: async (input, context) => {
         const runId = context?.context?.runId
         if (!runId) {

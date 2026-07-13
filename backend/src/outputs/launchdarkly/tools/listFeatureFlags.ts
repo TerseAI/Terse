@@ -7,7 +7,6 @@ import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient"
 
 export const listLaunchDarklyFlagsTool = defineSessionTool({
     name: "listLaunchDarklyFlags",
-    description: "List all feature flags with enabled/disabled states per environment. Use summary=true for quick overview, summary=false for full details.",
     execute: async ({ integrationId, projectKey, environmentKeys, summary = true, filter, tags }, runContext) => {
         logger.info("[LaunchDarkly] listFeatureFlags - Tool called", {
             integrationId,

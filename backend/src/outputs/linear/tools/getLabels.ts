@@ -12,7 +12,6 @@ import { validateLinearOptionalTeam } from "./getStates"
 
 export const linearGetLabelsTool = defineSessionTool({
     name: "linear_get_labels",
-    description: `List issue labels for the Linear workspace or a specific team. Use to pick labelIds for linear_create_ticket or linear_update_ticket.`,
     execute: async ({ integrationId, teamId }, runContext) => {
         logger.debug("🛠️ Executing linear_get_labels tool", { integrationId, teamId })
 

@@ -9,8 +9,6 @@ import { validateLaunchDarklyArgs } from "./listFeatureFlags"
 
 export const getLaunchDarklyFlagDetailsTool = defineSessionTool({
     name: "getLaunchDarklyFlagDetails",
-    description:
-        "Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.",
     execute: async ({ integrationId, projectKey, environmentKeys, flagKey, environmentKey, includeHistory = false, before, after, historyLimit = 20 }, runContext) => {
         logger.info("[LaunchDarkly] getFeatureFlagDetails - Tool called", {
             integrationId,

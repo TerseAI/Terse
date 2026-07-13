@@ -54,48 +54,6 @@ type QueryDatabasePageResult = {
 
 export const notionQueryDatabaseTool = defineSessionTool({
     name: "notion_query_database",
-    description: `Query a Notion data source (database) to retrieve pages that match specific criteria.
-
-WHEN TO USE THIS TOOL:
-- Verify if the database contains any existing records and avoid creating duplicates.
-- When you need to find specific pages matching certain criteria (e.g., status, date ranges, property values)
-- When you need to retrieve a subset of pages rather than all pages in the database
-- When working with large databases and need pagination to retrieve results in batches
-- When you only need specific properties from pages (use filter_properties for efficiency)
-
-WHAT THIS TOOL DOES:
-1. Filters pages at the Notion API level (not client-side) for maximum efficiency
-2. Supports complex filtering with AND/OR logic, property filters, and timestamp filters
-3. Supports pagination - use start_cursor from previous responses to get next page
-4. Supports filter_properties to only fetch needed fields, reducing response size and improving speed
-
-FILTERING:
-- Property filters: Filter by any database property (title, number, date, select, status, checkbox, etc.)
-- Timestamp filters: Filter by created_time or last_edited_time (these are SYSTEM FIELDS, not database properties)
-- Compound filters: Combine filters with AND/OR logic
-- All filtering happens server-side at Notion for efficiency
-
-SYSTEM FIELDS (available on ALL pages, not shown in schema):
-- created_time: When the page was created. Use timestamp filter format (NO "property" field).
-- last_edited_time: When the page was last edited. Use timestamp filter format (NO "property" field).
-- created_by: User who created the page. Use people filter WITH "property" field.
-- last_edited_by: User who last edited the page. Use people filter WITH "property" field.
-
-IMPORTANT: Timestamp filters (created_time, last_edited_time) use a DIFFERENT format than property filters:
-- CORRECT: {"timestamp": "created_time", "created_time": {"on_or_after": "2024-01-01"}}
-- WRONG: {"property": "created_time", "date": {"on_or_after": "2024-01-01"}}
-
-PAGINATION:
-- Use page_size to control how many results per page (default: all results)
-- Use start_cursor from the response to fetch the next page
-- The response includes has_more and next_cursor when more pages are available
-
-FILTER_PROPERTIES:
-- Specify only the properties you need to reduce response size and improve performance
-- Especially important for databases with many properties or complex formulas/rollups
-- You can fetch additional properties later using Retrieve page property item API
-
-NOTE: This tool does NOT return the database schema. Use notion_get_schema if you need schema information.`,
     execute: async ({ integrationId, databaseId, filter_properties, filter, page_size, start_cursor, result_type }, runContext) => {
         logger.debug("Executing notion_query_database tool with filters", { integrationId, databaseId, filter_properties, filter, page_size, start_cursor })
         if (!runContext?.context) {

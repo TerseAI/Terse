@@ -10,9 +10,6 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const notionCreateOrUpdateDatabaseRowTool = defineSessionTool({
     name: "notion_create_or_update_database_row",
-    description: `Create or update a **row** (entry) in a Notion database. Use with databaseId and properties_json. Not for standalone pages — use notion_create_or_update_page for those.
-
-Use notion_get_schema first to understand property names and types. Use notion_query_database to find page_id for updates. Provide page_id null to create a new row, or a valid page_id to update. Property format: Title, Rich Text, Select, Status, etc. per notion_get_schema.`,
     execute: async ({ integrationId, databaseId, page_id, properties_json }, runContext) => {
         logger.debug("Executing notion_create_or_update_database_row", { pageId: page_id ?? "(new row)", databaseId })
 

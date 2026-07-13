@@ -1,37 +1,30 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { IntegrationType, attioFileSchema } from "terse-types"
-import type { AttioFile, AttioFilesRequest, ToolOutputByName } from "terse-types"
+import type { AttioDeleteFileRequest, AttioFile, AttioReadFilesRequest, AttioUploadFileRequest, ToolOutputByName } from "terse-types"
 import { z } from "zod"
 
-import logger from "../../../common/logger"
-import { defineSessionTool, formatError } from "../../../tools/toolUtils"
+import { defineSessionTool } from "../../../tools/toolUtils"
 
-import { AttioApiError, attioApiRequest, attioRequestData, attioRequestPage, buildQueryString, parseAttioData, resolveAttioAccessToken } from "./attioApi"
+import { AttioApiError, attioApiRequest, attioRequestData, attioRequestPage, attioToolExecute, buildQueryString, parseAttioData } from "./attioApi"
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
-export const attioFilesTool = defineSessionTool({
-    name: "attio_files",
-    description: `Manage files attached to Attio records. Actions: 'list' (files on a record; cursor pagination), 'get' (file metadata), 'upload' (base64 content to native Attio storage, max 50 MB), 'get_download_url' (signed URL for a file), 'delete'.`,
-    execute: async ({ integrationId, request }, runContext) => {
-        logger.debug("Executing attio_files tool", { integrationId, action: request.action })
-        if (!runContext?.context) {
-            throw new Error("No context provided")
-        }
-
-        const accessToken = await resolveAttioAccessToken(integrationId, runContext)
-
-        try {
-            return await executeFilesRequest(request, accessToken)
-        } catch (error: unknown) {
-            const errorMessage = await formatError(runContext, error)
-            logger.error("Error executing attio_files", { error: errorMessage, integrationId, action: request.action })
-            throw new Error(errorMessage)
-        }
-    }
+export const attioReadFilesTool = defineSessionTool({
+    name: "attio_read_files",
+    execute: attioToolExecute("attio_read_files", executeReadFilesRequest)
 })
 
-async function executeFilesRequest(request: AttioFilesRequest, accessToken: string): Promise<AttioFilesOutput> {
+export const attioUploadFileTool = defineSessionTool({
+    name: "attio_upload_file",
+    execute: attioToolExecute("attio_upload_file", uploadFileRequest)
+})
+
+export const attioDeleteFileTool = defineSessionTool({
+    name: "attio_delete_file",
+    execute: attioToolExecute("attio_delete_file", deleteFile)
+})
+
+async function executeReadFilesRequest(request: AttioReadFilesRequest, accessToken: string): Promise<AttioFilesOutput> {
     switch (request.action) {
         case "list": {
             const query = buildQueryString({ object: request.objectSlug, record_id: request.recordId, limit: request.limit, cursor: request.cursor })
@@ -50,27 +43,29 @@ async function executeFilesRequest(request: AttioFilesRequest, accessToken: stri
                 actions: [fileAction("Fetched file", request.fileId, "Fetched file metadata", RunHistoryActionType.read)]
             }
         }
-        case "upload": {
-            const file = await uploadFile(request, accessToken)
-            return {
-                file,
-                actions: [fileAction("Uploaded file", `${request.objectSlug}/${request.recordId}`, `Uploaded "${request.fileName}"`, RunHistoryActionType.create)]
-            }
-        }
         case "get_download_url": {
             const downloadUrl = await fetchDownloadUrl(request.fileId, accessToken)
             return { downloadUrl, actions: [fileAction("Fetched download URL", request.fileId, "Fetched signed download URL", RunHistoryActionType.read)] }
-        }
-        case "delete": {
-            await attioApiRequest(accessToken, `/files/${encodeURIComponent(request.fileId)}`, { method: "DELETE" })
-            return { actions: [fileAction("Deleted file", request.fileId, "Permanently deleted file", RunHistoryActionType.delete)] }
         }
         default:
             throw request satisfies never
     }
 }
 
-async function uploadFile(request: Extract<AttioFilesRequest, { action: "upload" }>, accessToken: string): Promise<AttioFile> {
+async function uploadFileRequest(request: AttioUploadFileRequest, accessToken: string): Promise<AttioFilesOutput> {
+    const file = await uploadFile(request, accessToken)
+    return {
+        file,
+        actions: [fileAction("Uploaded file", `${request.objectSlug}/${request.recordId}`, `Uploaded "${request.fileName}"`, RunHistoryActionType.create)]
+    }
+}
+
+async function deleteFile(request: AttioDeleteFileRequest, accessToken: string): Promise<AttioFilesOutput> {
+    await attioApiRequest(accessToken, `/files/${encodeURIComponent(request.fileId)}`, { method: "DELETE" })
+    return { actions: [fileAction("Deleted file", request.fileId, "Permanently deleted file", RunHistoryActionType.delete)] }
+}
+
+async function uploadFile(request: AttioUploadFileRequest, accessToken: string): Promise<AttioFile> {
     const content = Buffer.from(request.contentBase64, "base64")
     if (content.byteLength > MAX_UPLOAD_BYTES) {
         throw new Error(`File is ${content.byteLength} bytes; Attio's upload limit is 50 MB.`)
@@ -108,4 +103,4 @@ function fileAction(action: string, target: string, details: string, type: RunHi
     return { action, integration: IntegrationType.ATTIO, target, details, type }
 }
 
-type AttioFilesOutput = ToolOutputByName["attio_files"]
+type AttioFilesOutput = ToolOutputByName["attio_read_files"]

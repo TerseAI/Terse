@@ -18,7 +18,6 @@ import { defineSessionTool } from "../../../tools/toolUtils"
  */
 export const aggregateRumEventsTool = defineSessionTool({
     name: "aggregateRumEvents",
-    description: "Aggregate Datadog RUM events into metrics. Compute percentiles, averages, sums, etc. Group by facets for breakdowns. Use for performance trends and error rates.",
     execute: async ({ integrationId, query, from, to, compute, groupBy, timezone, pageLimit }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

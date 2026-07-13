@@ -10,7 +10,6 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const linearGetUsersTool = defineSessionTool({
     name: "linear_get_users",
-    description: `List users in the Linear workspace. Use to pick assigneeId or subscriberIds when creating or updating issues.`,
     execute: async ({ integrationId }, runContext) => {
         logger.debug("🛠️ Executing linear_get_users tool", { integrationId })
 

@@ -1,4 +1,5 @@
-import { type ToolDefinition, toolsWithIntegrationId } from "terse-types"
+import { type ToolDefinition, ToolDefinitions, type ToolName, toolsWithIntegrationId } from "terse-types"
+import { z } from "zod"
 
 import type {
     AttioAttributeData,
@@ -855,17 +856,17 @@ function buildAttioRuntimeLines(objects: ReturnType<typeof buildGeneratedAttioOb
     lines.push("    return { ...(raw as object), entry_values: __getAttioEntryValues(__normalizeAttioObjectSlug(list), raw.entry_values) } as AttioListEntryFor<TList>")
     lines.push("}")
     lines.push("")
-    lines.push('function __enhanceAttioListEntriesResult<TList>(list: TList, result: ToolOutputByName["attio_lists"]): AttioListEntriesResult<TList> {')
+    lines.push('function __enhanceAttioListEntriesResult<TList>(list: TList, result: ToolOutputByName["attio_read_list_entries"]): AttioListEntriesResult<TList> {')
     lines.push("    const entries = (result.entries || []).map(entry => __enhanceAttioListEntry(list, entry))")
     lines.push("    return { entries, count: entries.length, offset: result.offset ?? 0 }")
     lines.push("}")
     lines.push("")
-    lines.push('function __enhanceAttioListEntryResult<TList>(list: TList, result: ToolOutputByName["attio_lists"]): AttioListEntryResult<TList> {')
+    lines.push('function __enhanceAttioListEntryResult<TList>(list: TList, result: ToolOutputByName["attio_read_list_entries"]): AttioListEntryResult<TList> {')
     lines.push('    if (!result.entry) throw new Error("Attio returned a response without the expected list entry payload.")')
     lines.push("    return __enhanceAttioListEntry(list, result.entry)")
     lines.push("}")
     lines.push("")
-    lines.push('function __enhanceAttioHistoryResult<TValue>(result: ToolOutputByName["attio_records"]): AttioAttributeHistoryResult<TValue> {')
+    lines.push('function __enhanceAttioHistoryResult<TValue>(result: ToolOutputByName["attio_read_records"]): AttioAttributeHistoryResult<TValue> {')
     lines.push("    const history = (result.history || []).map(entry => ({ active_from: entry.active_from, active_until: entry.active_until, value: __flattenAttioLeafValue(entry) as TValue }))")
     lines.push("    return { history, count: history.length }")
     lines.push("}")
@@ -1138,17 +1139,15 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push(
             "export type AttioGetAttributeHistoryParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; attribute: AttioAttributeSlug<TObject>; limit?: number | null; offset?: number | null }"
         )
-        attioPreludeLines.push("export type AttioListWorkspaceMembersParams = Record<string, never>")
-        attioPreludeLines.push("export type AttioGetWorkspaceMemberParams = { workspaceMemberId: string }")
         attioPreludeLines.push('export type AttioWorkspaceMembersResult = ToolOutputByName["attio_workspace_members"]')
-        attioPreludeLines.push('export type AttioRecordsResult = ToolOutputByName["attio_records"]')
+        attioPreludeLines.push('export type AttioRecordsResult = ToolOutputByName["attio_read_records"]')
         attioPreludeLines.push(
             "export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number; offset: number }"
         )
         attioPreludeLines.push('export type AttioSearchRecordsResult = { matches: NonNullable<AttioRecordsResult["matches"]>; count: number }')
         attioPreludeLines.push("export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number }")
         attioPreludeLines.push("export type AttioSingleRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioRecordFor<TObject>")
-        attioPreludeLines.push('export type AttioListsResult = ToolOutputByName["attio_lists"]')
+        attioPreludeLines.push('export type AttioListsResult = ToolOutputByName["attio_read_lists"]')
         attioPreludeLines.push("export type AttioEntryValuesFor<TList> = TList extends { __entryValues: infer TValues } ? TValues : Record<string, unknown>")
         attioPreludeLines.push(
             "export type AttioEntryRecordValuesFor<TList> = TList extends { __entryRecordValues: infer TValues extends Record<string, unknown> } ? TValues : Record<string, unknown>"
@@ -1199,26 +1198,26 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
         attioPreludeLines.push(
-            'function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_records"]): AttioQueryRecordsResult<TObject> {'
+            'function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_read_records"]): AttioQueryRecordsResult<TObject> {'
         )
         attioPreludeLines.push("    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>")
         attioPreludeLines.push("    return { records, count: records.length, offset: result.offset ?? 0 }")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
-        attioPreludeLines.push('function __enhanceAttioSearchResult(result: ToolOutputByName["attio_records"]): AttioSearchRecordsResult {')
+        attioPreludeLines.push('function __enhanceAttioSearchResult(result: ToolOutputByName["attio_read_records"]): AttioSearchRecordsResult {')
         attioPreludeLines.push("    const matches = result.matches ?? []")
         attioPreludeLines.push("    return { matches, count: matches.length }")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
         attioPreludeLines.push(
-            'function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_records"]): AttioUpsertRecordResult<TObject> {'
+            'function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_upsert_record"]): AttioUpsertRecordResult<TObject> {'
         )
         attioPreludeLines.push("    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>")
         attioPreludeLines.push("    return { records, count: records.length }")
         attioPreludeLines.push("}")
         attioPreludeLines.push("")
         attioPreludeLines.push(
-            'function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_records"]): AttioSingleRecordResult<TObject> {'
+            'function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: ToolOutputByName["attio_read_records"]): AttioSingleRecordResult<TObject> {'
         )
         attioPreludeLines.push('    return __requireAttioPayload(__enhanceAttioRecord(object, result.record), "record")')
         attioPreludeLines.push("}")
@@ -1288,7 +1287,7 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
             const normalizedParamsExpr = group.integration === "github" ? normalizeGitHubReposParams(tool.name) : "params"
 
             if (group.integration === "attio" && group.integrationId) {
-                const attioMethods = buildAttioToolMethods(group.integrationId, tool.name)
+                const attioMethods = buildAttioToolMethods(group.integrationId, tool)
                 if (attioMethods) return attioMethods
             }
 
@@ -1328,220 +1327,204 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput): Sect
     }
 }
 
-function buildAttioRecordsMethods(integrationId: string): ToolMethodContext[] {
+function buildAttioRecordsMethods(integrationId: string, tool: ToolDefinition): ToolMethodContext[] {
     const id = escapeString(integrationId)
-    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["attio_records"]>("attio_records", { integrationId: "${id}", request: ${requestExpr} })`
+    const toolName = tool.name
+    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })`
     const objectSlug = "objectSlug: __normalizeAttioObjectSlug(params.object)"
 
-    return [
-        {
-            description: "Query records of an Attio object, with optional filtering and limit/offset pagination (limit defaults to 20, max 500).",
-            generatedSignature: "queryRecords<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>",
-            runtimeLines: [
-                "queryRecords: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>",
-                `    ${call(`{ action: "query", ${objectSlug}, filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, offset: params.offset ?? null }`)}.then(result => __enhanceAttioQueryResult(params.object, result)),`
-            ]
-        },
-        {
-            description:
-                "Fuzzy-search records (max 25 matches) following Attio's in-product matching: names/domains/emails/phones on people and companies, the record label on other objects. Query with a distinctive substring of the target name; extra tokens absent from it can prevent matches. Results are eventually consistent (a just-created record may not be indexed) — use queryRecords for read-after-write.",
-            generatedSignature: "searchRecords<TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>): Promise<AttioSearchRecordsResult>",
-            runtimeLines: [
-                "searchRecords: <TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>) =>",
-                `    ${call(`{ action: "search", ${objectSlug}, query: params.query, limit: params.limit ?? null }`)}.then(result => __enhanceAttioSearchResult(result)),`
-            ]
-        },
-        {
-            description: "Fetch a single record by its ID.",
-            generatedSignature: "getRecord<TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
-            runtimeLines: [
-                "getRecord: <TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>) =>",
-                `    ${call(`{ action: "get", ${objectSlug}, recordId: params.recordId }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
-            ]
-        },
-        {
-            description: "Create a new record. Unlike upsertRecord, no matching attribute is needed, so this works for objects without a unique writable attribute (e.g. deals).",
-            generatedSignature: "createRecord<TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
-            runtimeLines: [
-                "createRecord: <TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>) =>",
-                `    ${call(`{ action: "create", ${objectSlug}, values: JSON.stringify(params.values) }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
-            ]
-        },
-        {
-            description: "Update an existing record by its ID. Only the attributes present in values are touched; multiselectMode 'append' adds to multi-value attributes instead of overwriting them.",
-            generatedSignature: "updateRecord<TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
-            runtimeLines: [
-                "updateRecord: <TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>) =>",
-                `    ${call(`{ action: "update", ${objectSlug}, recordId: params.recordId, values: JSON.stringify(params.values), multiselectMode: params.multiselectMode ?? null }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
-            ]
-        },
-        {
-            description:
-                "Create or update one or more records, matched on a unique writable attribute (e.g. email_addresses for people, domains for companies). Throws if ANY record fails, naming each failure; records earlier in the batch may already be written (upserts are safe to retry).",
-            generatedSignature: "upsertRecord<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>",
-            runtimeLines: [
-                "upsertRecord: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>",
-                `    ${call(`{ action: "upsert", ${objectSlug}, matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records) }`)}.then(result => __enhanceAttioUpsertResult(params.object, result)),`
-            ]
-        },
-        {
-            description: "Permanently delete a record by its ID. This cannot be undone.",
-            generatedSignature: "deleteRecord<TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>): Promise<void>",
-            runtimeLines: [
-                "deleteRecord: <TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>) =>",
-                `    ${call(`{ action: "delete", ${objectSlug}, recordId: params.recordId }`)}.then(() => undefined),`
-            ]
-        },
-        {
-            description:
-                "Fetch the historic values of one attribute on a record (e.g. every stage a deal has been in), with limit/offset pagination. Entries come back as { active_from, active_until, value } with the value flattened and typed by the attribute.",
-            generatedSignature:
-                "getAttributeHistory<TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }): Promise<AttioAttributeHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>>",
-            runtimeLines: [
-                "getAttributeHistory: <TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }) =>",
-                `    ${call(`{ action: "get_attribute_history", ${objectSlug}, recordId: params.recordId, attributeSlug: params.attribute, limit: params.limit ?? null, offset: params.offset ?? null }`)}.then(result => __enhanceAttioHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>(result)),`
-            ]
-        }
-    ]
-}
-
-function buildAttioToolMethods(integrationId: string, toolName: string): ToolMethodContext[] | null {
     switch (toolName) {
-        case "attio_records":
-            return buildAttioRecordsMethods(integrationId)
-        case "attio_workspace_members":
-            return buildAttioWorkspaceMembersMethods(integrationId)
-        case "attio_lists":
-            return buildAttioListsMethods(integrationId)
-        case "attio_tasks":
-        case "attio_notes":
-        case "attio_comments":
-        case "attio_meetings":
-        case "attio_files":
-        case "attio_schema":
-            return buildAttioResourceMethods(integrationId, toolName, ATTIO_RESOURCE_METHOD_SPECS[toolName])
+        case "attio_read_records":
+            return [
+                {
+                    description: attioActionDescription(toolName, "query"),
+                    generatedSignature: "queryRecords<TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>): Promise<AttioQueryRecordsResult<TObject>>",
+                    runtimeLines: [
+                        "queryRecords: <TObject extends GeneratedAttioObject>(params: AttioQueryRecordsParams<TObject>) =>",
+                        `    ${call(`{ action: "query", ${objectSlug}, filter: __serializeAttioFilter(params.filter), limit: params.limit ?? null, offset: params.offset ?? null }`)}.then(result => __enhanceAttioQueryResult(params.object, result)),`
+                    ]
+                },
+                {
+                    description: attioActionDescription(toolName, "search"),
+                    generatedSignature: "searchRecords<TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>): Promise<AttioSearchRecordsResult>",
+                    runtimeLines: [
+                        "searchRecords: <TObject extends GeneratedAttioObject>(params: AttioSearchRecordsParams<TObject>) =>",
+                        `    ${call(`{ action: "search", ${objectSlug}, query: params.query, limit: params.limit ?? null }`)}.then(result => __enhanceAttioSearchResult(result)),`
+                    ]
+                },
+                {
+                    description: attioActionDescription(toolName, "get"),
+                    generatedSignature: "getRecord<TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
+                    runtimeLines: [
+                        "getRecord: <TObject extends GeneratedAttioObject>(params: AttioGetRecordParams<TObject>) =>",
+                        `    ${call(`{ action: "get", ${objectSlug}, recordId: params.recordId }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
+                    ]
+                },
+                {
+                    description: attioActionDescription(toolName, "get_attribute_history"),
+                    generatedSignature:
+                        "getAttributeHistory<TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }): Promise<AttioAttributeHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>>",
+                    runtimeLines: [
+                        "getAttributeHistory: <TObject extends GeneratedAttioObject, TAttr extends AttioAttributeSlug<TObject>>(params: AttioGetAttributeHistoryParams<TObject> & { attribute: TAttr }) =>",
+                        `    ${call(`{ action: "get_attribute_history", ${objectSlug}, recordId: params.recordId, attributeSlug: params.attribute, limit: params.limit ?? null, offset: params.offset ?? null }`)}.then(result => __enhanceAttioHistoryResult<__AttioSingleValue<NonNullable<AttioRecordValuesFor<TObject>[TAttr & keyof AttioRecordValuesFor<TObject>]>>>(result)),`
+                    ]
+                }
+            ]
+        case "attio_create_record":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature: "createRecord<TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
+                    runtimeLines: [
+                        "createRecord: <TObject extends GeneratedAttioObject>(params: AttioCreateRecordParams<TObject>) =>",
+                        `    ${call(`{ ${objectSlug}, values: JSON.stringify(params.values) }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
+                    ]
+                }
+            ]
+        case "attio_update_record":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature: "updateRecord<TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>): Promise<AttioSingleRecordResult<TObject>>",
+                    runtimeLines: [
+                        "updateRecord: <TObject extends GeneratedAttioObject>(params: AttioUpdateRecordParams<TObject>) =>",
+                        `    ${call(`{ ${objectSlug}, recordId: params.recordId, values: JSON.stringify(params.values), multiselectMode: params.multiselectMode ?? null }`)}.then(result => __enhanceAttioSingleRecordResult(params.object, result)),`
+                    ]
+                }
+            ]
+        case "attio_upsert_record":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature: "upsertRecord<TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>): Promise<AttioUpsertRecordResult<TObject>>",
+                    runtimeLines: [
+                        "upsertRecord: <TObject extends GeneratedAttioObject>(params: AttioUpsertRecordParams<TObject>) =>",
+                        `    ${call(`{ ${objectSlug}, matchingAttribute: params.matchingAttribute, records: __serializeAttioRecords(params.records) }`)}.then(result => __enhanceAttioUpsertResult(params.object, result)),`
+                    ]
+                }
+            ]
+        case "attio_delete_record":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature: "deleteRecord<TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>): Promise<void>",
+                    runtimeLines: [
+                        "deleteRecord: <TObject extends GeneratedAttioObject>(params: AttioDeleteRecordParams<TObject>) =>",
+                        `    ${call(`{ ${objectSlug}, recordId: params.recordId }`)}.then(() => undefined),`
+                    ]
+                }
+            ]
         default:
-            return null
+            return []
     }
 }
 
-const ATTIO_RESOURCE_METHOD_SPECS: Record<string, AttioResourceMethodSpec[]> = {
-    attio_tasks: [
-        {
-            action: "list",
-            methodName: "listTasks",
-            description: "List Attio tasks, optionally filtered by linked record or completion state (limit/offset pagination).",
-            emptyParams: true,
-            result: { kind: "list", key: "tasks" }
-        },
-        { action: "get", methodName: "getTask", description: "Fetch a single Attio task by ID.", result: { kind: "single", key: "task" } },
-        {
-            action: "create",
-            methodName: "createTask",
-            description: "Create an Attio task with optional deadline, assignees (workspace-member emails or IDs) and linked records.",
-            result: { kind: "single", key: "task" }
-        },
-        {
-            action: "update",
-            methodName: "updateTask",
-            description: "Update an Attio task's deadline, completion state, assignees or linked records (content is immutable).",
-            result: { kind: "single", key: "task" }
-        },
-        { action: "delete", methodName: "deleteTask", description: "Permanently delete an Attio task.", result: { kind: "void" } }
-    ],
-    attio_notes: [
-        {
-            action: "list",
-            methodName: "listNotes",
-            description: "List Attio notes, optionally scoped to one record (limit/offset pagination).",
-            emptyParams: true,
-            result: { kind: "list", key: "notes" }
-        },
-        { action: "get", methodName: "getNote", description: "Fetch a single Attio note by ID.", result: { kind: "single", key: "note" } },
-        { action: "create", methodName: "createNote", description: "Create a note on a record (markdown by default).", result: { kind: "single", key: "note" } },
-        { action: "delete", methodName: "deleteNote", description: "Permanently delete a note.", result: { kind: "void" } }
-    ],
-    attio_comments: [
-        {
-            action: "create",
-            methodName: "createComment",
-            description: "Create a comment: reply to a thread via threadId, or start a thread on a record via objectSlug + recordId. Requires authorWorkspaceMemberId.",
-            result: { kind: "single", key: "comment" }
-        },
-        { action: "get", methodName: "getComment", description: "Fetch a single comment by ID.", result: { kind: "single", key: "comment" } },
-        { action: "delete", methodName: "deleteComment", description: "Permanently delete a comment.", result: { kind: "void" } },
-        { action: "list_threads", methodName: "listThreads", description: "List comment threads on a record.", emptyParams: true, result: { kind: "list", key: "threads" } },
-        { action: "get_thread", methodName: "getThread", description: "Fetch a thread with all of its comments.", result: { kind: "single", key: "thread" } }
-    ],
-    attio_meetings: [
-        {
-            action: "list",
-            methodName: "listMeetings",
-            description: "List meetings, filterable by linked record, participants or time range (cursor pagination via nextCursor).",
-            emptyParams: true,
-            result: { kind: "list", key: "meetings", cursor: true }
-        },
-        { action: "get", methodName: "getMeeting", description: "Fetch a single meeting by ID.", result: { kind: "single", key: "meeting" } },
-        {
-            action: "list_recordings",
-            methodName: "listCallRecordings",
-            description: "List call recordings for a meeting.",
-            result: { kind: "list", key: "recordings", cursor: true }
-        },
-        {
-            action: "get_transcript",
-            methodName: "getCallTranscript",
-            description: "Fetch the transcript of a call recording.",
-            result: { kind: "singleWithCursor", key: "transcript" }
+function buildAttioToolMethods(integrationId: string, tool: ToolDefinition): ToolMethodContext[] | null {
+    switch (tool.name) {
+        case "attio_read_records":
+        case "attio_create_record":
+        case "attio_update_record":
+        case "attio_upsert_record":
+        case "attio_delete_record":
+            return buildAttioRecordsMethods(integrationId, tool)
+        case "attio_read_lists":
+        case "attio_create_list":
+        case "attio_update_list":
+        case "attio_read_list_entries":
+        case "attio_add_list_entry":
+        case "attio_upsert_list_entry":
+        case "attio_update_list_entry":
+        case "attio_remove_list_entry":
+            return buildAttioListsMethods(integrationId, tool)
+        default: {
+            const specs = ATTIO_RESOURCE_METHOD_SPECS[tool.name]
+            return specs ? buildAttioResourceMethods(integrationId, tool, specs) : null
         }
+    }
+}
+
+// Method TSDoc is single-sourced: single-op tools inherit the tool description, action-mapped
+// methods inherit the zod action literal's description.
+function attioActionDescription(toolName: string, action: string): string | undefined {
+    if (!isKnownToolName(toolName)) return undefined
+    const parsed = attioRequestUnionJsonSchema.safeParse(z.toJSONSchema(ToolDefinitions[toolName].inputSchema))
+    if (!parsed.success) return undefined
+    const request = parsed.data.properties.request
+    for (const branch of request.oneOf ?? request.anyOf ?? []) {
+        const actionBranch = attioActionBranchJsonSchema.safeParse(branch)
+        if (actionBranch.success && actionBranch.data.properties.action.const === action) {
+            return actionBranch.data.properties.action.description
+        }
+    }
+    return undefined
+}
+
+function isKnownToolName(name: string): name is ToolName {
+    return name in ToolDefinitions
+}
+
+const attioRequestUnionJsonSchema = z.object({
+    properties: z.object({ request: z.object({ oneOf: z.array(z.unknown()).optional(), anyOf: z.array(z.unknown()).optional() }) })
+})
+
+const attioActionBranchJsonSchema = z.object({
+    properties: z.object({ action: z.object({ const: z.string(), description: z.string().optional() }) })
+})
+
+const ATTIO_RESOURCE_METHOD_SPECS: Record<string, AttioResourceMethodSpec[]> = {
+    attio_workspace_members: [
+        { action: "list", methodName: "listWorkspaceMembers", emptyParams: true, result: { kind: "list", key: "members" } },
+        { action: "get", methodName: "getWorkspaceMember", result: { kind: "single", key: "member", what: "workspace member" } }
     ],
-    attio_files: [
-        { action: "list", methodName: "listFiles", description: "List files attached to a record (cursor pagination).", result: { kind: "list", key: "files", cursor: true } },
-        { action: "get", methodName: "getFile", description: "Fetch a file's metadata by ID.", result: { kind: "single", key: "file" } },
-        { action: "upload", methodName: "uploadFile", description: "Upload a file to a record from base64 content (max 50 MB).", result: { kind: "single", key: "file" } },
-        {
-            action: "get_download_url",
-            methodName: "getFileDownloadUrl",
-            description: "Get a signed download URL for a file.",
-            result: { kind: "single", key: "downloadUrl", what: "download URL" }
-        },
-        { action: "delete", methodName: "deleteFile", description: "Permanently delete a file.", result: { kind: "void" } }
+    attio_read_tasks: [
+        { action: "list", methodName: "listTasks", emptyParams: true, result: { kind: "list", key: "tasks" } },
+        { action: "get", methodName: "getTask", result: { kind: "single", key: "task" } }
     ],
-    attio_schema: [
-        {
-            action: "list_objects",
-            methodName: "listObjects",
-            description: "List all object types in the workspace with their attributes. Call before creating or updating records.",
-            emptyParams: true,
-            result: { kind: "list", key: "objects" }
-        },
-        { action: "get_object", methodName: "getObject", description: "Fetch one object's configuration.", result: { kind: "single", key: "object" } },
-        { action: "create_object", methodName: "createObject", description: "Create a custom object type (changes the workspace schema).", result: { kind: "single", key: "object" } },
-        { action: "update_object", methodName: "updateObject", description: "Update an object's slug or display names.", result: { kind: "single", key: "object" } },
-        { action: "list_attributes", methodName: "listAttributes", description: "List the attributes on an object or list.", result: { kind: "list", key: "attributes" } },
-        {
-            action: "create_attribute",
-            methodName: "createAttribute",
-            description: "Create an attribute on an object or list (changes the workspace schema).",
-            result: { kind: "single", key: "attribute" }
-        },
-        { action: "update_attribute", methodName: "updateAttribute", description: "Update an attribute's title or constraints.", result: { kind: "single", key: "attribute" } },
-        { action: "list_statuses", methodName: "listStatuses", description: "List the statuses of a status attribute (e.g. deal stages).", result: { kind: "list", key: "statuses" } },
-        {
-            action: "create_status",
-            methodName: "createStatus",
-            description: "Add a status to a status attribute. Rerun terse generate to refresh constants.",
-            result: { kind: "single", key: "status" }
-        },
-        { action: "update_status", methodName: "updateStatus", description: "Rename or archive a status.", result: { kind: "single", key: "status" } },
-        { action: "list_select_options", methodName: "listSelectOptions", description: "List the options of a select attribute.", result: { kind: "list", key: "selectOptions" } },
-        {
-            action: "create_select_option",
-            methodName: "createSelectOption",
-            description: "Add an option to a select attribute. Rerun terse generate to refresh constants.",
-            result: { kind: "single", key: "selectOption" }
-        },
-        { action: "update_select_option", methodName: "updateSelectOption", description: "Rename or archive a select option.", result: { kind: "single", key: "selectOption" } }
+    attio_create_task: [{ methodName: "createTask", result: { kind: "single", key: "task" } }],
+    attio_update_task: [{ methodName: "updateTask", result: { kind: "single", key: "task" } }],
+    attio_delete_task: [{ methodName: "deleteTask", result: { kind: "void" } }],
+    attio_read_notes: [
+        { action: "list", methodName: "listNotes", emptyParams: true, result: { kind: "list", key: "notes" } },
+        { action: "get", methodName: "getNote", result: { kind: "single", key: "note" } }
+    ],
+    attio_create_note: [{ methodName: "createNote", result: { kind: "single", key: "note" } }],
+    attio_delete_note: [{ methodName: "deleteNote", result: { kind: "void" } }],
+    attio_read_comments: [
+        { action: "get", methodName: "getComment", result: { kind: "single", key: "comment" } },
+        { action: "list_threads", methodName: "listThreads", emptyParams: true, result: { kind: "list", key: "threads" } },
+        { action: "get_thread", methodName: "getThread", result: { kind: "single", key: "thread" } }
+    ],
+    attio_create_comment: [{ methodName: "createComment", result: { kind: "single", key: "comment" } }],
+    attio_delete_comment: [{ methodName: "deleteComment", result: { kind: "void" } }],
+    attio_meetings: [
+        { action: "list", methodName: "listMeetings", emptyParams: true, result: { kind: "list", key: "meetings", cursor: true } },
+        { action: "get", methodName: "getMeeting", result: { kind: "single", key: "meeting" } },
+        { action: "list_recordings", methodName: "listCallRecordings", result: { kind: "list", key: "recordings", cursor: true } },
+        { action: "get_transcript", methodName: "getCallTranscript", result: { kind: "singleWithCursor", key: "transcript" } }
+    ],
+    attio_read_files: [
+        { action: "list", methodName: "listFiles", result: { kind: "list", key: "files", cursor: true } },
+        { action: "get", methodName: "getFile", result: { kind: "single", key: "file" } },
+        { action: "get_download_url", methodName: "getFileDownloadUrl", result: { kind: "single", key: "downloadUrl", what: "download URL" } }
+    ],
+    attio_upload_file: [{ methodName: "uploadFile", result: { kind: "single", key: "file" } }],
+    attio_delete_file: [{ methodName: "deleteFile", result: { kind: "void" } }],
+    attio_read_schema: [
+        { action: "list_objects", methodName: "listObjects", emptyParams: true, result: { kind: "list", key: "objects" } },
+        { action: "get_object", methodName: "getObject", result: { kind: "single", key: "object" } },
+        { action: "list_attributes", methodName: "listAttributes", result: { kind: "list", key: "attributes" } },
+        { action: "list_statuses", methodName: "listStatuses", result: { kind: "list", key: "statuses" } },
+        { action: "list_select_options", methodName: "listSelectOptions", result: { kind: "list", key: "selectOptions" } }
+    ],
+    attio_modify_schema: [
+        { action: "create_object", methodName: "createObject", result: { kind: "single", key: "object" } },
+        { action: "update_object", methodName: "updateObject", result: { kind: "single", key: "object" } },
+        { action: "create_attribute", methodName: "createAttribute", result: { kind: "single", key: "attribute" } },
+        { action: "update_attribute", methodName: "updateAttribute", result: { kind: "single", key: "attribute" } },
+        { action: "create_status", methodName: "createStatus", result: { kind: "single", key: "status" } },
+        { action: "update_status", methodName: "updateStatus", result: { kind: "single", key: "status" } },
+        { action: "create_select_option", methodName: "createSelectOption", result: { kind: "single", key: "selectOption" } },
+        { action: "update_select_option", methodName: "updateSelectOption", result: { kind: "single", key: "selectOption" } }
     ]
 }
 
@@ -1575,151 +1558,152 @@ function attioResultParts(toolName: string, result: AttioResultSpec): { resultTy
     }
 }
 
-function buildAttioResourceMethods(integrationId: string, toolName: string, specs: AttioResourceMethodSpec[]): ToolMethodContext[] {
+function buildAttioResourceMethods(integrationId: string, tool: ToolDefinition, specs: AttioResourceMethodSpec[]): ToolMethodContext[] {
     const id = escapeString(integrationId)
+    const toolName = tool.name
     return specs.map(spec => {
-        const paramsType = `Omit<Extract<ToolInputByName["${toolName}"]["request"], { action: "${spec.action}" }>, "action">`
+        const paramsType = spec.action ? `Omit<Extract<ToolInputByName["${toolName}"]["request"], { action: "${spec.action}" }>, "action">` : `ToolInputByName["${toolName}"]["request"]`
+        const requestExpr = spec.action ? `{ action: "${spec.action}", ...params }` : "params"
         const { resultType, thenExpr } = attioResultParts(toolName, spec.result)
         return {
-            description: spec.description,
+            description: spec.action ? attioActionDescription(toolName, spec.action) : tool.description || undefined,
             generatedSignature: `${spec.methodName}(${spec.emptyParams ? `params?: ${paramsType}` : `params: ${paramsType}`}): Promise<${resultType}>`,
             runtimeLines: [
                 `${spec.methodName}: (params: ${paramsType}${spec.emptyParams ? " = {}" : ""}) =>`,
-                `    TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: { action: "${spec.action}", ...params } })${thenExpr},`
+                `    TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })${thenExpr},`
             ]
         }
     })
 }
 
-function buildAttioListsMethods(integrationId: string): ToolMethodContext[] {
+function buildAttioListsMethods(integrationId: string, tool: ToolDefinition): ToolMethodContext[] {
     const id = escapeString(integrationId)
-    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["attio_lists"]>("attio_lists", { integrationId: "${id}", request: ${requestExpr} })`
+    const toolName = tool.name
+    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["${toolName}"]>("${toolName}", { integrationId: "${id}", request: ${requestExpr} })`
     const listKey = "listIdOrSlug: __normalizeAttioObjectSlug(params.list)"
     const listParam = "list: GeneratedAttioList | string"
 
-    return [
-        {
-            description: "List all Attio lists in the workspace.",
-            generatedSignature: 'listLists(): Promise<{ lists: NonNullable<AttioListsResult["lists"]>; count: number }>',
-            runtimeLines: ["listLists: () =>", `    ${call('{ action: "list" }')}.then(result => ({ lists: result.lists ?? [], count: (result.lists ?? []).length })),`]
-        },
-        {
-            description: "Fetch a list's configuration. Accepts a generated AttioList constant or a plain list ID/slug.",
-            generatedSignature: `getList(params: { ${listParam} }): Promise<NonNullable<AttioListsResult["list"]>>`,
-            runtimeLines: [`getList: (params: { ${listParam} }) =>`, `    ${call(`{ action: "get", ${listKey} }`)}.then(result => __requireAttioPayload(result.list, "list")),`]
-        },
-        {
-            description: "Create a new list over an object. This changes the workspace for every user.",
-            generatedSignature: 'createList(params: Omit<Extract<ToolInputByName["attio_lists"]["request"], { action: "create" }>, "action">): Promise<NonNullable<AttioListsResult["list"]>>',
-            runtimeLines: [
-                'createList: (params: Omit<Extract<ToolInputByName["attio_lists"]["request"], { action: "create" }>, "action">) =>',
-                `    ${call('{ action: "create", ...params }')}.then(result => __requireAttioPayload(result.list, "list")),`
+    switch (toolName) {
+        case "attio_read_lists":
+            return [
+                {
+                    description: attioActionDescription(toolName, "list"),
+                    generatedSignature: 'listLists(): Promise<{ lists: NonNullable<AttioListsResult["lists"]>; count: number }>',
+                    runtimeLines: ["listLists: () =>", `    ${call('{ action: "list" }')}.then(result => ({ lists: result.lists ?? [], count: (result.lists ?? []).length })),`]
+                },
+                {
+                    description: attioActionDescription(toolName, "get"),
+                    generatedSignature: `getList(params: { ${listParam} }): Promise<NonNullable<AttioListsResult["list"]>>`,
+                    runtimeLines: [`getList: (params: { ${listParam} }) =>`, `    ${call(`{ action: "get", ${listKey} }`)}.then(result => __requireAttioPayload(result.list, "list")),`]
+                }
             ]
-        },
-        {
-            description: "Rename a list.",
-            generatedSignature: `updateList(params: { ${listParam}; name: string }): Promise<NonNullable<AttioListsResult["list"]>>`,
-            runtimeLines: [
-                `updateList: (params: { ${listParam}; name: string }) =>`,
-                `    ${call(`{ action: "update", ${listKey}, name: params.name }`)}.then(result => __requireAttioPayload(result.list, "list")),`
+        case "attio_create_list":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature: 'createList(params: ToolInputByName["attio_create_list"]["request"]): Promise<NonNullable<AttioListsResult["list"]>>',
+                    runtimeLines: ['createList: (params: ToolInputByName["attio_create_list"]["request"]) =>', `    ${call("params")}.then(result => __requireAttioPayload(result.list, "list")),`]
+                }
             ]
-        },
-        {
-            description:
-                "List entries in a list with a typed filter, an optional parent-record lookup, and limit/offset pagination. Entry values come back flattened (statuses/selects as AttioSelectOption).",
-            generatedSignature:
-                "queryListEntries<TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; parentRecordId?: string | null; parentObjectSlug?: string; limit?: number | null; offset?: number | null }): Promise<AttioListEntriesResult<TList>>",
-            runtimeLines: [
-                "queryListEntries: <TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; parentRecordId?: string | null; parentObjectSlug?: string; limit?: number | null; offset?: number | null }) =>",
-                `    ${call(
-                    '{ action: "query_entries", listIdOrSlug: __normalizeAttioObjectSlug(params.list), filter: __serializeAttioFilter(params.filter), parentRecordId: params.parentRecordId ?? null, parentObjectSlug: params.parentRecordId ? __requireAttioListParentObject(params.list, params.parentObjectSlug) : null, limit: params.limit ?? null, offset: params.offset ?? null }'
-                )}.then(result => __enhanceAttioListEntriesResult(params.list, result)),`
+        case "attio_update_list":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature: `updateList(params: { ${listParam}; name: string }): Promise<NonNullable<AttioListsResult["list"]>>`,
+                    runtimeLines: [
+                        `updateList: (params: { ${listParam}; name: string }) =>`,
+                        `    ${call(`{ ${listKey}, name: params.name }`)}.then(result => __requireAttioPayload(result.list, "list")),`
+                    ]
+                }
             ]
-        },
-        {
-            description: "Add a record to a list as a new entry, with typed entry values. parentObjectSlug is inferred from a generated AttioList constant.",
-            generatedSignature:
-                "addListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }): Promise<AttioListEntryResult<TList>>",
-            runtimeLines: [
-                "addListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }) =>",
-                `    ${call(
-                    '{ action: "add_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) }'
-                )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
+        case "attio_read_list_entries":
+            return [
+                {
+                    description: attioActionDescription(toolName, "query_entries"),
+                    generatedSignature:
+                        "queryListEntries<TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; parentRecordId?: string | null; parentObjectSlug?: string; limit?: number | null; offset?: number | null }): Promise<AttioListEntriesResult<TList>>",
+                    runtimeLines: [
+                        "queryListEntries: <TList extends GeneratedAttioList | string>(params: { list: TList; filter?: AttioEntryFilterFor<TList> | null; parentRecordId?: string | null; parentObjectSlug?: string; limit?: number | null; offset?: number | null }) =>",
+                        `    ${call(
+                            '{ action: "query_entries", listIdOrSlug: __normalizeAttioObjectSlug(params.list), filter: __serializeAttioFilter(params.filter), parentRecordId: params.parentRecordId ?? null, parentObjectSlug: params.parentRecordId ? __requireAttioListParentObject(params.list, params.parentObjectSlug) : null, limit: params.limit ?? null, offset: params.offset ?? null }'
+                        )}.then(result => __enhanceAttioListEntriesResult(params.list, result)),`
+                    ]
+                },
+                {
+                    description: attioActionDescription(toolName, "get_entry"),
+                    generatedSignature: "getListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string }): Promise<AttioListEntryResult<TList>>",
+                    runtimeLines: [
+                        "getListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string }) =>",
+                        `    ${call('{ action: "get_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId }')}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
+                    ]
+                }
             ]
-        },
-        {
-            description: "Create or update a list entry keyed by its parent record (idempotent list membership), with typed entry values.",
-            generatedSignature:
-                "upsertListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }): Promise<AttioListEntryResult<TList>>",
-            runtimeLines: [
-                "upsertListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }) =>",
-                `    ${call(
-                    '{ action: "upsert_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) }'
-                )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
+        case "attio_add_list_entry":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature:
+                        "addListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }): Promise<AttioListEntryResult<TList>>",
+                    runtimeLines: [
+                        "addListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }) =>",
+                        `    ${call(
+                            "{ listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) }"
+                        )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
+                    ]
+                }
             ]
-        },
-        {
-            description: "Fetch a single list entry with flattened, typed entry values.",
-            generatedSignature: "getListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string }): Promise<AttioListEntryResult<TList>>",
-            runtimeLines: [
-                "getListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string }) =>",
-                `    ${call('{ action: "get_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId }')}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
+        case "attio_upsert_list_entry":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature:
+                        "upsertListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }): Promise<AttioListEntryResult<TList>>",
+                    runtimeLines: [
+                        "upsertListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; parentRecordId: string; parentObjectSlug?: string; entryValues?: AttioEntryValuesFor<TList> | null }) =>",
+                        `    ${call(
+                            "{ listIdOrSlug: __normalizeAttioObjectSlug(params.list), parentObjectSlug: __requireAttioListParentObject(params.list, params.parentObjectSlug), parentRecordId: params.parentRecordId, entryValues: __serializeAttioValues(params.entryValues) }"
+                        )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
+                    ]
+                }
             ]
-        },
-        {
-            description: "Update a list entry's attribute values (e.g. move its stage), typed against the list's entry attributes.",
-            generatedSignature:
-                'updateListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string; entryValues: Partial<AttioEntryValuesFor<TList>>; multiselectMode?: "overwrite" | "append" | null }): Promise<AttioListEntryResult<TList>>',
-            runtimeLines: [
-                'updateListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string; entryValues: Partial<AttioEntryValuesFor<TList>>; multiselectMode?: "overwrite" | "append" | null }) =>',
-                `    ${call(
-                    '{ action: "update_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId, entryValues: __serializeAttioValues(params.entryValues), multiselectMode: params.multiselectMode ?? null }'
-                )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
+        case "attio_update_list_entry":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature:
+                        'updateListEntry<TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string; entryValues: Partial<AttioEntryValuesFor<TList>>; multiselectMode?: "overwrite" | "append" | null }): Promise<AttioListEntryResult<TList>>',
+                    runtimeLines: [
+                        'updateListEntry: <TList extends GeneratedAttioList | string>(params: { list: TList; entryId: string; entryValues: Partial<AttioEntryValuesFor<TList>>; multiselectMode?: "overwrite" | "append" | null }) =>',
+                        `    ${call(
+                            "{ listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId, entryValues: __serializeAttioValues(params.entryValues), multiselectMode: params.multiselectMode ?? null }"
+                        )}.then(result => __enhanceAttioListEntryResult(params.list, result)),`
+                    ]
+                }
             ]
-        },
-        {
-            description: "Remove an entry from a list; the parent record is untouched.",
-            generatedSignature: `removeListEntry(params: { ${listParam}; entryId: string }): Promise<void>`,
-            runtimeLines: [
-                `removeListEntry: (params: { ${listParam}; entryId: string }) =>`,
-                `    ${call('{ action: "remove_entry", listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId }')}.then(() => undefined),`
+        case "attio_remove_list_entry":
+            return [
+                {
+                    description: tool.description || undefined,
+                    generatedSignature: `removeListEntry(params: { ${listParam}; entryId: string }): Promise<void>`,
+                    runtimeLines: [
+                        `removeListEntry: (params: { ${listParam}; entryId: string }) =>`,
+                        `    ${call("{ listIdOrSlug: __normalizeAttioObjectSlug(params.list), entryId: params.entryId }")}.then(() => undefined),`
+                    ]
+                }
             ]
-        }
-    ]
+        default:
+            return []
+    }
 }
 
 type AttioResultSpec = { kind: "single"; key: string; what?: string } | { kind: "singleWithCursor"; key: string; what?: string } | { kind: "list"; key: string; cursor?: boolean } | { kind: "void" }
 
 interface AttioResourceMethodSpec {
-    action: string
+    /** Discriminant to inject into the request; omitted for single-op tools with flat request schemas. */
+    action?: string
     methodName: string
-    description: string
     emptyParams?: boolean
     result: AttioResultSpec
-}
-
-function buildAttioWorkspaceMembersMethods(integrationId: string): ToolMethodContext[] {
-    const id = escapeString(integrationId)
-    const call = (requestExpr: string) => `TerseAgent.executeTool<ToolOutputByName["attio_workspace_members"]>("attio_workspace_members", { integrationId: "${id}", request: ${requestExpr} })`
-
-    return [
-        {
-            description: "List every Attio workspace member (name, email address, access level). Use to resolve a record's owner to a person, e.g. for a Slack DM by email.",
-            generatedSignature: 'listWorkspaceMembers(params?: AttioListWorkspaceMembersParams): Promise<{ members: NonNullable<AttioWorkspaceMembersResult["members"]>; count: number }>',
-            runtimeLines: [
-                "listWorkspaceMembers: (_params: AttioListWorkspaceMembersParams = {}) =>",
-                `    ${call('{ action: "list" }')}.then(result => ({ members: result.members ?? [], count: (result.members ?? []).length })),`
-            ]
-        },
-        {
-            description: "Fetch a single workspace member by ID (e.g. the referenced_actor_id of a record's owner value).",
-            generatedSignature: 'getWorkspaceMember(params: AttioGetWorkspaceMemberParams): Promise<NonNullable<AttioWorkspaceMembersResult["member"]>>',
-            runtimeLines: [
-                "getWorkspaceMember: (params: AttioGetWorkspaceMemberParams) =>",
-                `    ${call('{ action: "get", workspaceMemberId: params.workspaceMemberId }')}.then(result => __requireAttioPayload(result.member, "workspace member")),`
-            ]
-        }
-    ]
 }
 
 function prepareSystemSection(): SectionContext<SystemSectionContext> {

@@ -11,7 +11,6 @@ import { ToolACLValidator } from "../../abstract/acl"
 
 export const linearSearchTicketTool = defineSessionTool({
     name: "linear_search_ticket",
-    description: `Searches Linear issues by keyword, state filter, and/or date range filters. Use this before reading individual tickets. Results are ordered by most recently updated first. Use 'after' cursor to paginate.`,
     execute: async ({ integrationId, searchTerm, stateNames, dateFilterField, dateAfter, dateBefore, limit = 10, after }, runContext) => {
         logger.debug("🛠️ Executing linear_search_ticket tool", {
             integrationId,

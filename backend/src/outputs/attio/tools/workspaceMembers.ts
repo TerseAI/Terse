@@ -10,7 +10,6 @@ import { attioRequestData, resolveAttioAccessToken } from "./attioApi"
 
 export const attioWorkspaceMembersTool = defineSessionTool({
     name: "attio_workspace_members",
-    description: `Look up Attio workspace members (the people who use the CRM, not CRM records). Actions: 'list' returns every member with name, email address and access level; 'get' fetches one member by ID. Use this to resolve a record's owner (an actor reference holding a workspace member ID) to a person, e.g. to find the email address for a Slack DM, or to find the member ID/email to write into an owner attribute.`,
     execute: async ({ integrationId, request }, runContext) => {
         logger.debug("Executing attio_workspace_members tool", { integrationId, action: request.action })
 

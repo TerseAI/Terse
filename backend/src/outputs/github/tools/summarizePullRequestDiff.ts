@@ -21,22 +21,6 @@ import { validateGitHubRepository } from "./searchCode"
  */
 export const summarizeGitHubPullRequestDiffTool = defineSessionTool({
     name: "summarizeGitHubPullRequestDiff",
-    description: `Summarize the diff of a pull request from a GitHub repository using an intelligent sub-agent. Use this to:
-- Understand what changes were made in a specific PR without loading the full diff into context
-- Get a concise summary of code changes before merging
-- Analyze the impact of a PR on the codebase efficiently
-- See file-by-file changes with key insights
-
-The tool launches a sub-agent that:
-- Reads the full PR diff from GitHub
-- Analyzes the changes using a compact model
-- Provides a structured summary including:
-  - Overview of changes
-  - Key files modified
-  - Notable additions/removals
-  - Impact assessment
-
-You can optionally provide high-level context about what you're looking for in the PR, which will help the sub-agent focus its analysis.`,
     strict: true,
     execute: async ({ repository, pullNumber, page, context }, runContext) => {
         const pageNumber = Math.max(1, page ?? 1)

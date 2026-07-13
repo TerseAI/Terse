@@ -12,8 +12,6 @@ import { verifyLinearIssueInScope } from "../linearAcl"
 
 export const linearReadTicketTool = defineSessionTool({
     name: "linear_read_ticket",
-    description: `Read detailed information about a Linear issue/ticket including title, description, state, assignee, and optionally all comments.
-Use the issue ID (UUID) or the issue identifier (e.g. "TEAM-123"). Use this after searching for tickets to get full details.`,
     execute: async ({ integrationId, issueId, includeComments = true }, runContext) => {
         logger.debug("🛠️ Executing linear_read_ticket tool", { integrationId, issueId, includeComments })
 

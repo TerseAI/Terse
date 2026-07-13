@@ -11,8 +11,6 @@ import { validatePosthogArgs } from "./searchLogs"
 
 export const listEventNamesTool = defineSessionTool({
     name: "listPosthogEventNames",
-    description:
-        "List PostHog event names with how often each occurred, most frequent first (US PostHog Cloud only). Scope with distinctId to profile a single user's activity, or with event/person propertyFilters and a date range.",
     execute: async ({ integrationId, projectId, customEventsOnly = true, distinctId, propertyFilters, dateFrom, dateTo }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

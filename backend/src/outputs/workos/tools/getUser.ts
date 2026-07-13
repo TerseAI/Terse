@@ -8,7 +8,6 @@ import { getWorkOSApiKeyByIntegrationId, getWorkOSUser } from "../workosApiClien
 
 export const getWorkOSUserTool = defineSessionTool({
     name: "getWorkOSUser",
-    description: "Get detailed information about a specific WorkOS user by their user ID. Returns profile data including email, name, verification status, and timestamps.",
     execute: async ({ integrationId, userId }, runContext) => {
         if (!runContext?.context) {
             throw new Error("No context provided")

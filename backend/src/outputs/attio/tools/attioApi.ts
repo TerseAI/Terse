@@ -1,13 +1,34 @@
 import { RunContext } from "@openai/agents"
 import { attioAttributeSchema } from "terse-types"
-import type { AttioAttribute } from "terse-types"
+import type { AttioAttribute, ToolInputByName, ToolName, ToolOutputByName } from "terse-types"
 import { z } from "zod"
 
+import logger from "../../../common/logger"
 import { Session } from "../../../express"
 import { AttioIntegrationManager } from "../../../integrations/attio/integration"
 import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
+import { formatError } from "../../../tools/toolUtils"
 
 const ATTIO_API_BASE = "https://api.attio.com/v2"
+
+export function attioToolExecute<TName extends AttioToolName>(toolName: TName, handler: (request: ToolInputByName[TName]["request"], accessToken: string) => Promise<ToolOutputByName[TName]>) {
+    return async (input: ToolInputByName[TName], runContext?: RunContext<SessionWithTracking<Session>>): Promise<ToolOutputByName[TName]> => {
+        logger.debug(`Executing ${toolName} tool`, { integrationId: input.integrationId })
+        if (!runContext?.context) {
+            throw new Error("No context provided")
+        }
+
+        const accessToken = await resolveAttioAccessToken(input.integrationId, runContext)
+
+        try {
+            return await handler(input.request, accessToken)
+        } catch (error: unknown) {
+            const errorMessage = await formatError(runContext, error)
+            logger.error(`Error executing ${toolName}`, { error: errorMessage, integrationId: input.integrationId })
+            throw new Error(errorMessage)
+        }
+    }
+}
 
 export async function resolveAttioAccessToken(integrationId: string, runContext: RunContext<SessionWithTracking<Session>> | undefined): Promise<string> {
     if (!runContext?.context) {
@@ -220,6 +241,8 @@ export class AttioPayloadError extends Error {
         this.name = "AttioPayloadError"
     }
 }
+
+type AttioToolName = Extract<ToolName, `attio_${string}`>
 
 type AttioApiErrorBody = {
     code?: string
