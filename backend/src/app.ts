@@ -34,6 +34,7 @@ import { handleLinearWebhook } from "./modules/integrations/linear/controller"
 import linearRouter from "./modules/integrations/linear/routes"
 import notionRouter from "./modules/integrations/notion/routes"
 import posthogRouter from "./modules/integrations/posthog/routes"
+import resendRouter from "./modules/integrations/resend/routes"
 import integrationsRouter from "./modules/integrations/routes"
 import slackVendorRouter from "./modules/integrations/slack/routes"
 import snowflakeRouter from "./modules/integrations/snowflake/routes"
@@ -235,6 +236,7 @@ export function createApp(options: CreateAppOptions) {
     if (isIntegrationAvailable(IntegrationType.LINEAR)) app.use("/linear", linearRouter)
     if (isIntegrationAvailable(IntegrationType.NOTION)) app.use("/notion", notionRouter)
     if (isIntegrationAvailable(IntegrationType.POSTHOG)) app.use("/posthog", posthogRouter)
+    if (isIntegrationAvailable(IntegrationType.RESEND)) app.use("/resend", resendRouter)
     if (isIntegrationAvailable(IntegrationType.SLACK)) app.use("/slack", slackVendorRouter)
     if (isIntegrationAvailable(IntegrationType.SNOWFLAKE)) app.use("/snowflake", snowflakeRouter)
     if (isIntegrationAvailable(IntegrationType.WORKOS)) app.use("/workos-integration", workosIntegrationRouter)

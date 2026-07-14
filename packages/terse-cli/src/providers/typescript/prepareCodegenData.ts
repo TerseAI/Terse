@@ -13,6 +13,7 @@ import type {
     LinearInstanceData,
     NotionInstanceData,
     PosthogInstanceData,
+    ResendInstanceData,
     SlackInstanceData,
     SnowflakeInstanceData
 } from "../codegenTypes.js"
@@ -160,6 +161,20 @@ interface HeyReachSectionContext {
     campaignClass: ResourceClassContext
 }
 
+interface ResendSectionContext {
+    id: string
+    skillToolType: string
+    baseParamsDeclaration?: string
+    templates: Array<{
+        staticName: string
+        id: string
+        alias: string | null
+        name: string
+        variablesType: string
+        variablesMetadata: string
+    }>
+}
+
 interface ToolMethodContext {
     description?: string
     generatedSignature: string
@@ -212,7 +227,8 @@ export interface TemplateContext {
     workos?: WorkOSSectionContext
     attio?: AttioSectionContext
     snowflake?: SnowflakeSectionContext
-    heyreach?: HeyReachSectionContext
+    hey_reach?: HeyReachSectionContext
+    resend?: ResendSectionContext
     system: SystemSectionContext
 }
 
@@ -778,6 +794,51 @@ function prepareHeyReachSection(inst: HeyReachInstanceData | undefined): Section
     })
 }
 
+async function prepareResendSection(instance: ResendInstanceData | undefined, tools: ToolDefinition[]): Promise<SectionContext<ResendSectionContext>> {
+    if (!instance) return sectionData([])
+    const usedNames = new Set<string>()
+    const templates = instance.templates.map(template => {
+        let staticName = toGeneratedIdentifier(template.alias || template.name || "Template", "Template")
+        while (usedNames.has(staticName)) staticName += "_"
+        usedNames.add(staticName)
+
+        const fields = template.variables.map(variable => {
+            const optional = variable.fallbackValue !== null ? "?" : ""
+            return `"${escapeString(variable.key)}"${optional}: ${variable.type}`
+        })
+        const variablesType = fields.length > 0 ? `{ ${fields.join("; ")} }` : "Record<string, never>"
+        const variablesMetadata = template.variables
+            .map(variable =>
+                JSON.stringify({
+                    key: variable.key,
+                    type: variable.type,
+                    required: variable.fallbackValue === null,
+                    fallbackValue: variable.fallbackValue
+                })
+            )
+            .join(", ")
+
+        return { staticName, id: template.id, alias: template.alias, name: template.name, variablesType, variablesMetadata }
+    })
+
+    const baseParamsDeclaration =
+        templates.length > 0
+            ? await printType({
+                  typeName: "ResendSendTemplateBaseParams",
+                  schema: ToolDefinitions.resend_send_template.inputSchema,
+                  io: "input",
+                  omitFields: ["integrationId", "templateId", "variables"]
+              })
+            : undefined
+
+    return sectionData(["ResendOutputConfig", "TypedSkill"], {
+        id: instance.id,
+        skillToolType: buildSkillToolTypeForIntegration(tools, "resend"),
+        baseParamsDeclaration,
+        templates
+    })
+}
+
 async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, active: ActiveInstances): Promise<SectionContext<ToolsSectionContext>> {
     if (tools.length === 0) return sectionData([])
 
@@ -797,7 +858,8 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
         ["launchdarkly", active[IntegrationType.LAUNCHDARKLY]?.id],
         ["workos", active[IntegrationType.WORKOS]?.id],
         ["attio", active[IntegrationType.ATTIO]?.id],
-        ["snowflake", active[IntegrationType.SNOWFLAKE]?.id]
+        ["snowflake", active[IntegrationType.SNOWFLAKE]?.id],
+        ["resend", active[IntegrationType.RESEND]?.id]
     ])
 
     const byIntegration = new Map<string, ToolDefinition[]>()
@@ -983,6 +1045,7 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
     }
 
     const hasPosthogEventNames = (input.posthog[0]?.projects ?? []).some(project => project.events.length > 0)
+    const hasResendTemplates = (active[IntegrationType.RESEND]?.templates.length ?? 0) > 0
 
     // Custom events type-check against the generated union; $-prefixed builtins are always allowed
     const posthogEventNameOverride = "PosthogEventName | `$${string}` | null"
@@ -994,21 +1057,25 @@ async function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput,
                 const name = tool.name
                 if (!isKnownToolName(name)) return undefined
                 const definition = ToolDefinitions[name]
-                const paramsDeclaration = await printType({
-                    typeName: toolNameToTypeName(name, "Params"),
-                    schema: definition.inputSchema,
-                    io: "input",
-                    description: tool.description || undefined,
-                    omitFields: hasAutoFillId(tool) ? ["integrationId"] : undefined,
-                    fieldOverrides: name === "searchPosthogEvents" && hasPosthogEventNames ? { eventName: posthogEventNameOverride } : undefined
-                })
+                // The Resend section emits ResendSendTemplateParams as a per-template discriminated union
+                const suppressParams = name === "resend_send_template" && hasResendTemplates
+                const paramsDeclaration = suppressParams
+                    ? undefined
+                    : await printType({
+                          typeName: toolNameToTypeName(name, "Params"),
+                          schema: definition.inputSchema,
+                          io: "input",
+                          description: tool.description || undefined,
+                          omitFields: hasAutoFillId(tool) ? ["integrationId"] : undefined,
+                          fieldOverrides: name === "searchPosthogEvents" && hasPosthogEventNames ? { eventName: posthogEventNameOverride } : undefined
+                      })
                 const resultDeclaration = await printType({
                     typeName: toolNameToTypeName(name, "Result"),
                     schema: definition.outputSchema,
                     io: "output",
                     hoisted: hoistedShapes
                 })
-                return { key: tool.integration.toLowerCase(), declarations: [paramsDeclaration, resultDeclaration] }
+                return { key: tool.integration.toLowerCase(), declarations: [...(paramsDeclaration ? [paramsDeclaration] : []), resultDeclaration] }
             })
     )
     const declarationsByKey = new Map<string, string[]>()
@@ -1449,10 +1516,11 @@ export async function prepareTemplateContext(input: CodegenInput): Promise<Templ
     const attio = await prepareAttioSection(active[IntegrationType.ATTIO], input.tools)
     const snowflake = prepareSnowflakeSection(active[IntegrationType.SNOWFLAKE], input.tools)
     const heyreach = prepareHeyReachSection(active[IntegrationType.HEY_REACH])
+    const resend = await prepareResendSection(active[IntegrationType.RESEND], input.tools)
     const tools = await prepareToolsSection(input.tools, input, active)
     const system = prepareSystemSection()
 
-    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
+    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, resend, tools, system]
 
     for (const section of sections) {
         section.imports.forEach(value => allImports.add(value))
@@ -1491,7 +1559,8 @@ export async function prepareTemplateContext(input: CodegenInput): Promise<Templ
         workos: workos.data,
         attio: attio.data,
         snowflake: snowflake.data,
-        heyreach: heyreach.data,
+        hey_reach: heyreach.data,
+        resend: resend.data,
         system: system.data!
     }
 }
@@ -1510,7 +1579,8 @@ function resolveActiveInstances(input: CodegenInput): ActiveInstances {
         [IntegrationType.WORKOS]: selectActiveInstance(input.workos, pins[IntegrationType.WORKOS], data => data.id),
         [IntegrationType.ATTIO]: selectActiveInstance(input.attio, pins[IntegrationType.ATTIO], data => data.id),
         [IntegrationType.SNOWFLAKE]: selectActiveInstance(input.snowflake, pins[IntegrationType.SNOWFLAKE], data => data.id),
-        [IntegrationType.HEY_REACH]: selectActiveInstance(input.heyreach, pins[IntegrationType.HEY_REACH], data => data.id)
+        [IntegrationType.HEY_REACH]: selectActiveInstance(input.heyreach, pins[IntegrationType.HEY_REACH], data => data.id),
+        [IntegrationType.RESEND]: selectActiveInstance(input.resend, pins[IntegrationType.RESEND], data => data.id)
     }
 }
 
@@ -1535,4 +1605,5 @@ type ActiveInstances = {
     [IntegrationType.ATTIO]?: AttioInstanceData
     [IntegrationType.SNOWFLAKE]?: SnowflakeInstanceData
     [IntegrationType.HEY_REACH]?: HeyReachInstanceData
+    [IntegrationType.RESEND]?: ResendInstanceData
 }

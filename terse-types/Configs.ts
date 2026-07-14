@@ -26,7 +26,8 @@ export enum ConfigType {
     SNOWFLAKE_OUTPUT = "snowflake_output",
     WEBHOOK_INPUT = "webhook_input",
     WEBMONITOR = "webmonitor",
-    HEY_REACH_INPUT = "hey_reach_input"
+    HEY_REACH_INPUT = "hey_reach_input",
+    RESEND_OUTPUT = "resend_output"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -260,6 +261,15 @@ export const HeyReachInputConfigMetadata = {
     isOutput: false
 } as const satisfies ConfigDetails
 
+export const ResendOutputConfigMetadata = {
+    configType: ConfigType.RESEND_OUTPUT,
+    name: "Resend",
+    description: "Send transactional email using published Resend templates",
+    integrationType: IntegrationType.RESEND,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -286,7 +296,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
     [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata,
-    [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata
+    [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata,
+    [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -1117,6 +1128,27 @@ export class SnowflakeOutputConfig extends BaseConfigInstance<IntegrationType.SN
     }
 }
 
+export const ResendOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.RESEND),
+    configType: z.literal(ConfigType.RESEND_OUTPUT)
+})
+export type ResendOutputConfigData = z.infer<typeof ResendOutputConfigSchema>
+export type ResendOutputConfigInstance = ResendOutputConfigData & ConfigBehavior
+
+export class ResendOutputConfig extends BaseConfigInstance<IntegrationType.RESEND, ConfigType.RESEND_OUTPUT> implements ResendOutputConfigInstance {
+    constructor(integrationId: string) {
+        super(integrationId, IntegrationType.RESEND, ConfigType.RESEND_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        return `Type: Resend Output\nIntegration ID: ${this.integrationId}`
+    }
+}
+
 export const WebhookInputConfigSchema = ConfigInstanceSchema.extend({
     integrationId: z.literal("system"),
     integrationType: z.literal(IntegrationType.WEBHOOK),
@@ -1255,7 +1287,8 @@ export const configDataSchema = z.union([
     SnowflakeOutputConfigSchema,
     WebhookInputConfigSchema,
     WebMonitorConfigSchema,
-    HeyReachInputConfigSchema
+    HeyReachInputConfigSchema,
+    ResendOutputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1290,7 +1323,8 @@ export const skillConfigDataSchema = z.union([
     MemoryConfigSchema,
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
-    SnowflakeOutputConfigSchema
+    SnowflakeOutputConfigSchema,
+    ResendOutputConfigSchema
 ])
 export type SkillConfigData = z.infer<typeof skillConfigDataSchema>
 
@@ -1320,6 +1354,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.DATADOG:
         case ConfigType.WORKOS_OUTPUT:
         case ConfigType.SNOWFLAKE_OUTPUT:
+        case ConfigType.RESEND_OUTPUT:
             return !!config.integrationId
         case ConfigType.GITHUB:
             return (config.repositoryIds?.length ?? 0) > 0
@@ -1464,6 +1499,8 @@ export function formatConfigForAgent(config: ConfigData): string {
         }
         case ConfigType.SNOWFLAKE_OUTPUT:
             return `Type: Snowflake Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.RESEND_OUTPUT:
+            return `Type: Resend Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
         case ConfigType.WEBMONITOR: {
@@ -1507,6 +1544,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.WEBHOOK_INPUT]: typeof WebhookInputConfig
     [ConfigType.WEBMONITOR]: typeof WebMonitorConfig
     [ConfigType.HEY_REACH_INPUT]: typeof HeyReachInputConfig
+    [ConfigType.RESEND_OUTPUT]: typeof ResendOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1533,5 +1571,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
     [ConfigType.WEBMONITOR]: WebMonitorConfig,
-    [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig
+    [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig,
+    [ConfigType.RESEND_OUTPUT]: ResendOutputConfig
 } as const satisfies ConfigMetadataMap

@@ -103,6 +103,7 @@ export {
     MemoryConfig,
     NotionConfig,
     PosthogConfig,
+    ResendOutputConfig,
     SlackConfig,
     SlackEventType,
     SlackOutputConfig,

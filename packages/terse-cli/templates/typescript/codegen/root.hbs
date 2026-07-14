@@ -19,7 +19,7 @@ export const Triggers = {
 {{#if gmail}}
     gmail: gmailTriggers,
 {{/if}}
-{{#if heyreach}}
+{{#if hey_reach}}
     heyReach: heyReachTriggers,
 {{/if}}
 {{#if attio}}
@@ -90,6 +90,10 @@ export const Skills = {
 {{#if snowflake}}
     /** Snowflake — run SQL queries against your warehouse */
     snowflake: snowflakeSkill,
+{{/if}}
+{{#if resend}}
+    /** Resend — send transactional email using generated published templates */
+    resend: resendSkill,
 {{/if}}
     /** Web — built-in web search, page extraction, and multi-source research */
     web: webSkill,

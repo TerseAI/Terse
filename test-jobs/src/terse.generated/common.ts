@@ -8,6 +8,7 @@ export interface RunHistoryAction {
     integration:
         | "github"
         | "hey_reach"
+        | "resend"
         | "gmail"
         | "linear"
         | "slack"
@@ -55,5 +56,6 @@ export interface RunHistoryAction {
             | "webhook_input"
             | "webmonitor"
             | "hey_reach_input"
+            | "resend_output"
     }[]
 }
