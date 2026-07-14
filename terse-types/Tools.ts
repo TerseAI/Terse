@@ -3223,6 +3223,33 @@ export const memoryTool = defineTool({
     outputSchema: memoryOutputSchema
 })
 
+export const resendSendTemplateInputSchema = z.object({
+    integrationId: z.string().describe("Connected Resend integration ID"),
+    templateId: z.string().describe("Published template ID or alias"),
+    to: z.array(z.email()).min(1).max(50).describe("Recipient email addresses"),
+    variables: z.record(z.string(), z.union([z.string(), z.number()])).describe("Template variables keyed exactly as defined by the template"),
+    from: z.string().nullable().optional().describe("Optional sender override; omit when the template defines one"),
+    subject: z.string().nullable().optional().describe("Optional subject override; omit when the template defines one"),
+    replyTo: z.email().nullable().optional().describe("Optional reply-to override"),
+    cc: z.array(z.email()).nullable().optional().describe("Optional CC recipients"),
+    bcc: z.array(z.email()).nullable().optional().describe("Optional BCC recipients"),
+    idempotencyKey: z.string().max(256).nullable().optional().describe("Optional idempotency key, retained by Resend for 24 hours")
+})
+
+export const resendSendTemplateOutputSchema = toolOutputBaseSchema.extend({
+    emailId: z.string(),
+    templateId: z.string(),
+    to: z.array(z.string()),
+    summary: z.string()
+})
+
+export const resendSendTemplateTool = defineTool({
+    name: "resend_send_template",
+    description: "Send a published Resend email template. Supply every required template variable without a fallback value.",
+    inputSchema: resendSendTemplateInputSchema,
+    outputSchema: resendSendTemplateOutputSchema
+})
+
 export const ToolDefinitions = {
     [linearCreateTicketTool.name]: linearCreateTicketTool,
     [linearUpdateTicketTool.name]: linearUpdateTicketTool,
@@ -3304,7 +3331,8 @@ export const ToolDefinitions = {
     [webExtractTool.name]: webExtractTool,
     [webResearchTool.name]: webResearchTool,
     [imageEditTool.name]: imageEditTool,
-    [memoryTool.name]: memoryTool
+    [memoryTool.name]: memoryTool,
+    [resendSendTemplateTool.name]: resendSendTemplateTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

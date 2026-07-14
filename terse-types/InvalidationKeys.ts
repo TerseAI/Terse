@@ -108,6 +108,8 @@ export const heyReachIntegrationsKey = (): readonly [string] => {
     return ["heyReachIntegrations"] as const
 }
 
+export const resendIntegrationsKey = (): readonly [string] => ["resendIntegrations"] as const
+
 export const attioObjectsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null

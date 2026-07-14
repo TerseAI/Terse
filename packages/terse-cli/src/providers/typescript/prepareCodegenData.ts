@@ -13,6 +13,7 @@ import type {
     LinearInstanceData,
     NotionInstanceData,
     PosthogInstanceData,
+    ResendInstanceData,
     SlackInstanceData,
     SnowflakeInstanceData
 } from "../codegenTypes.js"
@@ -142,6 +143,19 @@ interface HeyReachSectionContext {
     campaignClass: ResourceClassContext
 }
 
+interface ResendSectionContext {
+    id: string
+    skillToolType: string
+    templates: Array<{
+        staticName: string
+        id: string
+        alias: string | null
+        name: string
+        variablesType: string
+        variablesMetadata: string
+    }>
+}
+
 interface ToolParamTypeContext {
     description?: string
     typeName: string
@@ -185,6 +199,7 @@ export interface TemplateContext {
     attio?: AttioSectionContext
     snowflake?: SnowflakeSectionContext
     heyreach?: HeyReachSectionContext
+    resend?: ResendSectionContext
     tools?: ToolsSectionContext
     system: SystemSectionContext
 }
@@ -970,6 +985,41 @@ function prepareHeyReachSection(inst: HeyReachInstanceData | undefined): Section
     )
 }
 
+function prepareResendSection(instance: ResendInstanceData | undefined, tools: ToolDefinition[]): SectionContext<ResendSectionContext> {
+    if (!instance) return sectionData([])
+    const usedNames = new Set<string>()
+    const templates = instance.templates.map(template => {
+        let staticName = toGeneratedIdentifier(template.alias || template.name || "Template", "Template")
+        while (usedNames.has(staticName)) staticName += "_"
+        usedNames.add(staticName)
+
+        const fields = template.variables.map(variable => {
+            const optional = variable.fallbackValue !== null ? "?" : ""
+            return `"${escapeString(variable.key)}"${optional}: ${variable.type}`
+        })
+        const variablesType = fields.length > 0 ? `{ ${fields.join("; ")} }` : "Record<string, never>"
+        const variablesMetadata = template.variables
+            .map(variable =>
+                JSON.stringify({
+                    key: variable.key,
+                    type: variable.type,
+                    required: variable.fallbackValue === null,
+                    fallbackValue: variable.fallbackValue
+                })
+            )
+            .join(", ")
+
+        return { staticName, id: template.id, alias: template.alias, name: template.name, variablesType, variablesMetadata }
+    })
+
+    const sectionImports = templates.length > 0 ? ["ResendOutputConfig", "TypedSkill", "ToolInputByName"] : ["ResendOutputConfig", "TypedSkill"]
+    return sectionData(sectionImports, {
+        id: instance.id,
+        skillToolType: buildSkillToolTypeForIntegration(tools, "resend"),
+        templates
+    })
+}
+
 function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, active: ActiveInstances): SectionContext<ToolsSectionContext> {
     if (tools.length === 0) return sectionData([])
 
@@ -987,7 +1037,8 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, activ
         ["launchdarkly", active.launchdarkly?.id],
         ["workos", active.workos?.id],
         ["attio", active.attio?.id],
-        ["snowflake", active.snowflake?.id]
+        ["snowflake", active.snowflake?.id],
+        ["resend", active.resend?.id]
     ])
 
     const byIntegration = new Map<string, ToolDefinition[]>()
@@ -1185,10 +1236,13 @@ function prepareToolsSection(tools: ToolDefinition[], input: CodegenInput, activ
     }
 
     const hasPosthogEventNames = (input.posthog[0]?.projects ?? []).some(project => project.events.length > 0)
+    const hasResendTemplates = (active.resend?.templates.length ?? 0) > 0
 
     const paramTypes: ToolParamTypeContext[] = []
     for (const tool of tools) {
         if (isAttioTool(tool)) continue
+        // Emitted by the Resend section as a per-template discriminated union
+        if (tool.name === "resend_send_template" && hasResendTemplates) continue
         const key = `"${escapeString(tool.name)}"`
         let tsType = hasAutoFillId(tool) ? `Omit<ToolInputByName[${key}], "integrationId">` : `ToolInputByName[${key}]`
         if (tool.name === "searchPosthogEvents" && hasPosthogEventNames) {
@@ -1703,10 +1757,11 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
     const attio = prepareAttioSection(active.attio, input.tools)
     const snowflake = prepareSnowflakeSection(active.snowflake, input.tools)
     const heyreach = prepareHeyReachSection(active.heyreach)
+    const resend = prepareResendSection(active.resend, input.tools)
     const tools = prepareToolsSection(input.tools, input, active)
     const system = prepareSystemSection()
 
-    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, tools, system]
+    const sections = [github, gmail, slack, linear, notion, posthog, datadog, launchdarkly, workos, attio, snowflake, heyreach, resend, tools, system]
 
     for (const section of sections) {
         section.imports.forEach(value => allImports.add(value))
@@ -1730,6 +1785,7 @@ export function prepareTemplateContext(input: CodegenInput): TemplateContext {
         attio: attio.data,
         snowflake: snowflake.data,
         heyreach: heyreach.data,
+        resend: resend.data,
         tools: tools.data,
         system: system.data!
     }
@@ -1749,7 +1805,8 @@ function resolveActiveInstances(input: CodegenInput): ActiveInstances {
         workos: selectActiveInstance(input.workos, pins[IntegrationType.WORKOS], data => data.id),
         attio: selectActiveInstance(input.attio, pins[IntegrationType.ATTIO], data => data.id),
         snowflake: selectActiveInstance(input.snowflake, pins[IntegrationType.SNOWFLAKE], data => data.id),
-        heyreach: selectActiveInstance(input.heyreach, pins[IntegrationType.HEY_REACH], data => data.id)
+        heyreach: selectActiveInstance(input.heyreach, pins[IntegrationType.HEY_REACH], data => data.id),
+        resend: selectActiveInstance(input.resend, pins[IntegrationType.RESEND], data => data.id)
     }
 }
 
@@ -1774,4 +1831,5 @@ type ActiveInstances = {
     attio: AttioInstanceData | undefined
     snowflake: SnowflakeInstanceData | undefined
     heyreach: HeyReachInstanceData | undefined
+    resend: ResendInstanceData | undefined
 }

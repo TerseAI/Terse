@@ -84,6 +84,12 @@ export const Skills = {
         return new SnowflakeOutputConfig("{{escape snowflake.id}}")
     },
 {{/if}}
+{{#if resend}}
+    /** Resend — send transactional email using generated published templates */
+    resend(): TypedSkill<{{{resend.skillToolType}}}> {
+        return new ResendOutputConfig("{{escape resend.id}}")
+    },
+{{/if}}
     /** Web — built-in web search, page extraction, and multi-source research. Pass `allowedDomains` to restrict search and page extraction to specific sites (and their subdomains). */
     web(opts: { allowedDomains?: string[] } = {}): TypedSkill<"web_search" | "web_extract" | "web_research"> {
         return new WebConfig(opts)
