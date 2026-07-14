@@ -1,4 +1,4 @@
-import { IntegrationType, type TriggerDefinition, type TriggerDefinitionName, TriggerDefinitions, isTriggerDefinitionName } from "terse-types"
+import { type IntegrationType, type TriggerDefinition, TriggerDefinitions, isBuiltInIntegrationType, isTriggerDefinitionName } from "terse-types"
 
 import { printType } from "./typePrinter.js"
 
@@ -8,7 +8,6 @@ export async function buildTriggerTypeDeclarations(presentBuckets: ReadonlySet<s
         .flatMap(name => {
             const definition: TriggerDefinition = TriggerDefinitions[name]
             const bucket = bucketForIntegration(definition.integration)
-            if (bucket === undefined) return []
             if (bucket !== "common" && !presentBuckets.has(bucket)) return []
             return [{ name, definition, bucket }]
         })
@@ -27,32 +26,11 @@ export async function buildTriggerTypeDeclarations(presentBuckets: ReadonlySet<s
     }
 }
 
-function bucketForIntegration(integration: TriggerDefinition["integration"]): string | undefined {
-    switch (integration) {
-        case IntegrationType.SLACK:
-            return "slack"
-        case IntegrationType.GITHUB:
-            return "github"
-        case IntegrationType.GMAIL:
-            return "gmail"
-        case IntegrationType.LINEAR:
-            return "linear"
-        case IntegrationType.WORKOS:
-            return "workos"
-        case IntegrationType.HEY_REACH:
-            return "heyreach"
-        case IntegrationType.ATTIO:
-            return "attio"
-        case IntegrationType.CRON_JOB:
-        case IntegrationType.WEBHOOK:
-        case IntegrationType.WEBMONITOR:
-            return "common"
-        default:
-            return undefined
-    }
+function bucketForIntegration(integration: IntegrationType): string {
+    return isBuiltInIntegrationType(integration) ? "common" : integration
 }
 
-async function renderDeclaration(name: TriggerDefinitionName, definition: TriggerDefinition): Promise<string> {
+async function renderDeclaration(name: string, definition: TriggerDefinition): Promise<string> {
     if (definition.kind === "union") {
         return `export type ${name} = ${definition.members.join(" | ")}`
     }
