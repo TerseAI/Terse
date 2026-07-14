@@ -1,0 +1,22 @@
+{{#if toolFiles.terse}}
+{{sectionHeader "Terse built-in tools"}}
+
+{{> tools-slice toolFiles.terse}}
+
+{{/if}}
+{{sectionHeader "Built-in skills"}}
+
+/** Web — built-in web search, page extraction, and multi-source research. Pass `allowedDomains` to restrict search and page extraction to specific sites (and their subdomains). */
+export function webSkill(opts: { allowedDomains?: string[] } = {}): TypedSkill<"web_search" | "web_extract" | "web_research"> {
+    return new WebConfig(opts)
+}
+
+/** ImageEdit — edit and generate images */
+export function imageEditSkill(): TypedSkill<"image_edit"> {
+    return new ImageEditConfig()
+}
+
+/** Memory — built-in persistent memory the agent reads and writes under /memories, scoped to this job and surviving across runs. */
+export function memorySkill(): TypedSkill<"memory"> {
+    return new MemoryConfig()
+}

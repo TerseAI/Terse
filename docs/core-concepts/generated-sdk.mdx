@@ -16,8 +16,10 @@ Running `terse generate` writes a typed bundle to your project: `src/terse.gener
 
 ```text
 src/
-  terse.generated.ts        # entry point: header, index, Triggers/Skills/toolbox aggregates
+  terse.generated.ts        # entry point: header, index, thin Triggers/Skills/toolbox composition
   terse.generated/
+    terse.triggers.ts       # built-in schedule/webhook/webMonitor triggers
+    terse.tools.ts          # built-in tools + web/imageEdit/memory skills
     slack.triggers.ts       # trigger factories + their payload types
     slack.tools.ts          # typed tool methods, Params/Result types, pinned resources, skill
     github.triggers.ts

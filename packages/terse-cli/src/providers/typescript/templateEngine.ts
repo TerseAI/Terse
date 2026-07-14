@@ -29,6 +29,9 @@ function buildLeafSpecs(context: TemplateContext): LeafSpec[] {
         specs.push({ fileName: "common.ts", templateFile: "common", kind: "common" })
     }
 
+    specs.push({ fileName: "terse.tools.ts", templateFile: "terse.tools", kind: "tools", integration: "terse" })
+    specs.push({ fileName: "terse.triggers.ts", templateFile: "terse.triggers", kind: "triggers", integration: "terse" })
+
     const integrations: Array<{ contextKey: keyof TemplateContext; name: string; hasTriggers: boolean; hasSchemas?: boolean }> = [
         { contextKey: "github", name: "github", hasTriggers: true },
         { contextKey: "gmail", name: "gmail", hasTriggers: true },
@@ -95,7 +98,8 @@ function buildRootHeader(context: TemplateContext, leaves: AssembledLeaf[]): str
     if (leaves.some(leaf => leaf.kind === "schemas")) {
         lines.push("//   <integration>.schemas.ts  — workspace-specific value/record types (Attio objects and lists)")
     }
-    lines.push("// Built-in triggers (schedule, webhook, webMonitor), Skills and the toolbox aggregate live in this file, below.")
+    lines.push("//   terse.triggers.ts / terse.tools.ts — built-in triggers (schedule, webhook, webMonitor), built-in tools, and the web/imageEdit/memory skills")
+    lines.push("// Below the index, this file only composes: the Triggers/Skills/toolbox aggregates re-export what the folder defines.")
     lines.push("")
     lines.push(readTemplateFile("typescript/codegen/sdk-primitives.hbs").trimEnd())
 

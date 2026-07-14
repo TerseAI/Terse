@@ -1,9 +1,3 @@
-{{sectionHeader "Built-in triggers"}}
-
-{{#each commonTriggerDeclarations}}
-{{{this}}}
-
-{{/each}}
 {{sectionHeader "Triggers"}}
 
 /**
@@ -34,28 +28,12 @@ export const Triggers = {
 {{#if workos}}
     workOS: workOSTriggers,
 {{/if}}
-    schedule: {
-        /** Run on a cron schedule (5-field cron expression, evaluated in UTC) */
-        cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
-            return new TimeTriggerConfig(opts.expression)
-        },
-    },
-    webhook: {
-        /** Trigger via an external HTTP request to a generated URL */
-        onRequest<TBody = unknown>(): TypedTrigger<WebhookTrigger<TBody>> {
-            return new WebhookInputConfig()
-        },
-    },
-    webMonitor: {
-        /** Trigger when a query against the live web matches the given schema */
-        onEvent<const TSchema>(opts: {
-            query: string
-            frequency: { number: number; unit: FrequencyUnit }
-            outputSchema?: TSchema
-        }): TypedTrigger<WebMonitorTrigger<InferStructuredOutput<TSchema>>> {
-            return new WebMonitorConfig(opts.query, opts.frequency, opts.outputSchema)
-        },
-    },
+    /** Built-in: run on a cron schedule */
+    schedule: scheduleTriggers,
+    /** Built-in: trigger via an external HTTP request to a generated URL */
+    webhook: webhookTriggers,
+    /** Built-in: trigger when a query against the live web matches a schema */
+    webMonitor: webMonitorTriggers,
 }
 
 {{sectionHeader "Skills"}}
@@ -113,26 +91,16 @@ export const Skills = {
     /** Snowflake — run SQL queries against your warehouse */
     snowflake: snowflakeSkill,
 {{/if}}
-    /** Web — built-in web search, page extraction, and multi-source research. Pass `allowedDomains` to restrict search and page extraction to specific sites (and their subdomains). */
-    web(opts: { allowedDomains?: string[] } = {}): TypedSkill<"web_search" | "web_extract" | "web_research"> {
-        return new WebConfig(opts)
-    },
+    /** Web — built-in web search, page extraction, and multi-source research */
+    web: webSkill,
     /** ImageEdit — edit and generate images */
-    imageEdit(): TypedSkill<"image_edit"> {
-        return new ImageEditConfig()
-    },
-    /** Memory — built-in persistent memory the agent reads and writes under /memories, scoped to this job and surviving across runs. */
-    memory(): TypedSkill<"memory"> {
-        return new MemoryConfig()
-    },
+    imageEdit: imageEditSkill,
+    /** Memory — built-in persistent memory scoped to this job, surviving across runs */
+    memory: memorySkill,
 }
 
 {{sectionHeader "Typed Tools"}}
 
-{{#if toolFiles.terse}}
-{{> tools-slice toolFiles.terse}}
-
-{{/if}}
 export type GeneratedTools = {
 {{#each toolboxEntries}}
     {{key}}: {{typeName}}
