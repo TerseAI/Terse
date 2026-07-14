@@ -30,11 +30,10 @@ Import these from `terse-sdk`:
 | Group                                | Types                                                                                                                                               |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Base event interface                 | `Trigger`                                                                                                                                           |
-| System trigger event types           | `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger<BodyType>`, `WebMonitorTrigger<TStructured>`, `WebMonitorTriggerFor<TSchema>`                 |
 | Integration event-type enums         | `SlackEventType`, `GitHubEventType`, `LinearEventType`, `GmailEventType`, `WorkOSEventType`, `HeyReachEventType`, `AttioEventType`, `FrequencyUnit` |
 | Run history (Activity, API payloads) | `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`                                               |
 
-Integration trigger types (`GithubPROpenedTrigger`, `SlackMessageTrigger`, `AttioRecordCreatedTrigger`, ...) and tool `Params`/`Result` types are generated into your workspace by `terse generate`; import them from `"./terse.generated"`.
+All concrete trigger types, built-in (`CronTrigger`, `WebhookTrigger<TBody>`, `WebMonitorTrigger<TStructured>`, `WebMonitorTriggerFor<TSchema>`) and integration (`GithubPROpenedTrigger`, `SlackMessageTrigger`, `AttioRecordCreatedTrigger`, ...), along with tool `Params`/`Result` types, are generated into your workspace by `terse generate`; import them from `"./terse.generated"`.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -387,7 +386,7 @@ Event typing depends on the trigger.
 | HeyReach outreach events | The matching `HeyReach*Trigger` for your helper, or `HeyReachTrigger` (union)                            |
 | WorkOS events            | The matching `WorkOS*Trigger` for your helper, or `WorkOSTrigger` (union)                                |
 | Scheduled cron triggers  | `CronTrigger`                                                                                            |
-| Manual trigger           | `ManualSampleTrigger`                                                                                    |
+| Manual trigger           | `Trigger` (the base event type from `terse-sdk`)                                                         |
 | Webhook HTTP requests    | `WebhookTrigger<TBody>`                                                                                  |
 | Web monitor              | `WebMonitorTrigger<TStructured>` (use `WebMonitorTriggerFor<typeof schema>` when annotating manually)    |
 

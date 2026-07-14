@@ -53,10 +53,10 @@ Keeping the fetch deterministic means the batch is reproducible. Letting the age
 ### Core workflow
 
 ```ts
-import { CronTrigger, TerseAgent, createJob } from "terse-sdk"
+import { TerseAgent, createJob } from "terse-sdk"
 import { z } from "zod"
 
-import { Attio, AttioList, Email, Parallel, Schedule, WorkOs } from "./terse.generated"
+import { Attio, AttioList, Email, Parallel, Schedule, WorkOs, type CronTrigger } from "./terse.generated"
 
 const DraftRow = z.object({
     action: z.enum(["create", "update", "skip"]),
@@ -204,10 +204,10 @@ Web Monitor watches the open web for signals you care about. Point it at fundrai
 ### Core workflow
 
 ```ts
-import { TerseAgent, type WebMonitorTriggerFor, createJob } from "terse-sdk"
+import { TerseAgent, createJob } from "terse-sdk"
 import * as z from "zod"
 
-import { Attio, AttioList, WebMonitor } from "./terse.generated"
+import { Attio, AttioList, WebMonitor, type WebMonitorTriggerFor } from "./terse.generated"
 
 const FundraisingEvent = z.object({
     companyName: z.string(),

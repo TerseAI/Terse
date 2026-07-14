@@ -19,9 +19,9 @@ import {
     webhookJobChallengeRequestSchema,
     webhookJobTriggerRequestSchema
 } from "terse-types"
-// Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
-// so users get the correct type when annotating onTrigger/filter callback parameters.
-import type { CronTrigger as _RawCronTrigger, Trigger as _RawTrigger, WebMonitorTrigger as _RawWebMonitorTrigger, WebhookTrigger as _RawWebhookTrigger } from "terse-types"
+// The type-erased base event type, enriched with the SDK methods (formatForAgentRunner/debugLog).
+// Concrete trigger types are generated into the user's workspace by `terse generate`.
+import type { Trigger as _RawTrigger } from "terse-types"
 import { sleep as workflowSleep } from "workflow"
 import { z } from "zod"
 
@@ -33,7 +33,6 @@ import { resolveRunIdentity } from "./runIdentity/index.js"
 import { openSessionStream } from "./sessionStream.js"
 import {
     type InferEvents,
-    InferStructuredOutput,
     type InferToolApprovals,
     type SDKTrigger,
     type StateAccessor,
@@ -120,10 +119,6 @@ export {
 } from "terse-types"
 
 export type Trigger = SDKTrigger<_RawTrigger>
-export type CronTrigger = SDKTrigger<_RawCronTrigger>
-export type WebhookTrigger<TBody = unknown> = SDKTrigger<_RawWebhookTrigger<TBody>>
-export type WebMonitorTrigger<TStructured = unknown> = SDKTrigger<_RawWebMonitorTrigger<TStructured>>
-export type WebMonitorTriggerFor<TSchema> = WebMonitorTrigger<InferStructuredOutput<TSchema>>
 
 export { FrequencyUnit, IntegrationType } from "terse-types"
 export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"

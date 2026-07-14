@@ -317,10 +317,10 @@ createJob({
 ```
 </CodeGroup>
 
-If you need to annotate monitor events manually, import `WebMonitorTriggerFor` from `terse-sdk` and bind it to your Zod schema:
+If you need to annotate monitor events manually, import `WebMonitorTriggerFor` from `./terse.generated` and bind it to your Zod schema:
 
 ```ts
-import type { WebMonitorTriggerFor } from "terse-sdk";
+import type { WebMonitorTriggerFor } from "./terse.generated";
 import * as z from "zod";
 
 const outputSchema = z.object({

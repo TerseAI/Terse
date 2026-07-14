@@ -72,6 +72,9 @@ export const webhookTriggers = {
     },
 }
 
+/** Bind a web-monitor event to a Zod schema: the `payload` field types as the schema's output */
+export type WebMonitorTriggerFor<TSchema> = WebMonitorTrigger<InferStructuredOutput<TSchema>>
+
 export const webMonitorTriggers = {
     /** Trigger when a query against the live web matches the given schema */
     onEvent<const TSchema>(opts: {

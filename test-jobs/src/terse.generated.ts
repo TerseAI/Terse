@@ -72,7 +72,7 @@
 // terse.generated/terse.triggers.ts
 //   L63  Triggers.schedule.cron()
 //   L70  Triggers.webhook.onRequest()
-//   L77  Triggers.webMonitor.onEvent()
+//   L80  Triggers.webMonitor.onEvent()
 // terse.generated/slack.tools.ts
 //   L9    class SlackChannel
 //   L21   class SlackUser
