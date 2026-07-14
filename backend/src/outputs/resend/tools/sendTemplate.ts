@@ -4,7 +4,7 @@ import { IntegrationType } from "terse-types"
 import logger from "../../../common/logger"
 import { sendResendTemplate } from "../../../integrations/resend/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { getResendApiKeyByIntegrationId } from "../resendApiClient"
+import { getResendApiKeyByIntegrationId } from "../resendCredentials"
 
 export const resendSendTemplateTool = defineSessionTool({
     name: "resend_send_template",

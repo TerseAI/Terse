@@ -56,12 +56,12 @@ export async function sendResendTemplate(
 ): Promise<{ id: string }> {
     const payload: CreateEmailOptions = {
         to: input.to,
-        template: { id: input.templateId, variables: input.variables },
-        ...(input.from ? { from: input.from } : {}),
-        ...(input.subject ? { subject: input.subject } : {}),
-        ...(input.replyTo ? { replyTo: input.replyTo } : {}),
-        ...(input.cc?.length ? { cc: input.cc } : {}),
-        ...(input.bcc?.length ? { bcc: input.bcc } : {})
+        template: { id: input.templateId, variables: input.variables }
     }
+    if (input.from) payload.from = input.from
+    if (input.subject) payload.subject = input.subject
+    if (input.replyTo) payload.replyTo = input.replyTo
+    if (input.cc?.length) payload.cc = input.cc
+    if (input.bcc?.length) payload.bcc = input.bcc
     return unwrap(await resendClient(apiKey).emails.send(payload, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined))
 }
