@@ -1,0 +1,17 @@
+{{#if toolFile}}
+{{sectionHeader "Gmail tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Gmail skills"}}
+
+/** Gmail — send emails */
+export function gmailSkill(): TypedSkill<{{{section.skillToolType}}}> {
+    return new GmailOutputConfig("{{escape section.id}}")
+}
+
+/** Gmail — create draft emails (no auto-send) */
+export function gmailDraftSkill(): TypedSkill<{{{section.skillToolType}}}> {
+    return new GmailDraftOutputConfig("{{escape section.id}}")
+}

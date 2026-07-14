@@ -2,26 +2,24 @@ import { type IntegrationType, type TriggerDefinition, TriggerDefinitions, isBui
 
 import { printType } from "./typePrinter.js"
 
-export async function buildTriggerTypeDeclarations(presentBuckets: ReadonlySet<string>): Promise<TriggerTypeDeclarations> {
+export async function buildTriggerDeclarationsForBucket(bucket: string): Promise<BucketTriggerDeclarations> {
     const entries = Object.keys(TriggerDefinitions)
         .filter(isTriggerDefinitionName)
         .flatMap(name => {
             const definition: TriggerDefinition = TriggerDefinitions[name]
-            const bucket = bucketForIntegration(definition.integration)
-            if (bucket !== "common" && !presentBuckets.has(bucket)) return []
-            return [{ name, definition, bucket }]
+            if (bucketForIntegration(definition.integration) !== bucket) return []
+            return [{ name, definition }]
         })
 
-    const declarationsByIntegration: Record<string, string[]> = {}
+    const declarations: string[] = []
     for (const entry of entries) {
-        const declaration = await renderDeclaration(entry.name, entry.definition)
-        declarationsByIntegration[entry.bucket] = [...(declarationsByIntegration[entry.bucket] ?? []), declaration]
+        declarations.push(await renderDeclaration(entry.name, entry.definition))
     }
 
     const extraImports = entries.flatMap(entry => [...(entry.definition.kind === "concrete" ? (entry.definition.printHints?.imports ?? []) : [])])
     return {
-        declaredNames: new Set(entries.map(entry => entry.name)),
-        declarationsByIntegration,
+        declarations,
+        declaredNames: entries.map(entry => entry.name),
         extraImports: [...new Set(extraImports)]
     }
 }
@@ -47,8 +45,8 @@ async function renderDeclaration(name: string, definition: TriggerDefinition): P
     return `${payloadInterface}\n\n${alias}`
 }
 
-export type TriggerTypeDeclarations = {
-    readonly declaredNames: ReadonlySet<string>
-    readonly declarationsByIntegration: Readonly<Record<string, string[]>>
+export type BucketTriggerDeclarations = {
+    readonly declarations: readonly string[]
+    readonly declaredNames: readonly string[]
     readonly extraImports: readonly string[]
 }

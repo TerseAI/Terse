@@ -1,0 +1,12 @@
+{{#if toolFile}}
+{{sectionHeader "Snowflake tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Snowflake skill"}}
+
+/** Snowflake — run SQL queries against your warehouse */
+export function snowflakeSkill(): TypedSkill<{{{section.skillToolType}}}> {
+    return new SnowflakeOutputConfig("{{escape section.id}}")
+}

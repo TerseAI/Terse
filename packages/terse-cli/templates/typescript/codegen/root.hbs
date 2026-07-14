@@ -7,33 +7,9 @@
  * Use these in `createJob({ triggers: [...] })`.
  */
 export const Triggers = {
-{{#if slack}}
-    slack: slackTriggers,
-{{/if}}
-{{#if github}}
-    github: githubTriggers,
-{{/if}}
-{{#if linear}}
-    linear: linearTriggers,
-{{/if}}
-{{#if gmail}}
-    gmail: gmailTriggers,
-{{/if}}
-{{#if hey_reach}}
-    heyReach: heyReachTriggers,
-{{/if}}
-{{#if attio}}
-    attio: attioTriggers,
-{{/if}}
-{{#if workos}}
-    workOS: workOSTriggers,
-{{/if}}
-    /** Built-in: run on a cron schedule */
-    schedule: scheduleTriggers,
-    /** Built-in: trigger via an external HTTP request to a generated URL */
-    webhook: webhookTriggers,
-    /** Built-in: trigger when a query against the live web matches a schema */
-    webMonitor: webMonitorTriggers,
+{{#each triggersAggregateLines}}
+{{{this}}}
+{{/each}}
 }
 
 {{sectionHeader "Skills"}}
@@ -45,62 +21,9 @@ export const Triggers = {
  * Use these in `generateText({ skills: [...] })` (or `TerseAgent.create({ skills: [...] })`).
  */
 export const Skills = {
-{{#if slack}}
-    /** Slack — send messages and manage threads in a specific channel */
-    slack: slackSkill,
-{{/if}}
-{{#if github}}
-    /** GitHub — read code and pull requests from the given repositories */
-    github: githubSkill,
-{{/if}}
-{{#if linear}}
-    /** Linear — read and write issues, optionally scoped to a team or project */
-    linear: linearSkill,
-{{/if}}
-{{#if gmail}}
-    /** Gmail — send emails */
-    gmail: gmailSkill,
-    /** Gmail — create draft emails (no auto-send) */
-    gmailDraft: gmailDraftSkill,
-{{/if}}
-{{#if notion}}
-    /** Notion — read and write to the given databases or pages */
-    notion: notionSkill,
-{{/if}}
-{{#if posthog}}
-    /** PostHog — query analytics for a specific project */
-    posthog: posthogSkill,
-{{/if}}
-{{#if datadog}}
-    /** Datadog — search and analyze logs, optionally scoped to specific indexes */
-    datadog: datadogSkill,
-{{/if}}
-{{#if launchdarkly}}
-    /** LaunchDarkly — read and toggle feature flags in a project + environments */
-    launchDarkly: launchDarklySkill,
-{{/if}}
-{{#if workos}}
-    /** WorkOS — manage users, organizations and invitations */
-    workOS: workOSSkill,
-{{/if}}
-{{#if attio}}
-    /** Attio — query and upsert records on a CRM object */
-    attio: attioSkill,
-{{/if}}
-{{#if snowflake}}
-    /** Snowflake — run SQL queries against your warehouse */
-    snowflake: snowflakeSkill,
-{{/if}}
-{{#if resend}}
-    /** Resend — send transactional email using generated published templates */
-    resend: resendSkill,
-{{/if}}
-    /** Web — built-in web search, page extraction, and multi-source research */
-    web: webSkill,
-    /** ImageEdit — edit and generate images */
-    imageEdit: imageEditSkill,
-    /** Memory — built-in persistent memory scoped to this job, surviving across runs */
-    memory: memorySkill,
+{{#each skillsAggregateLines}}
+{{{this}}}
+{{/each}}
 }
 
 {{sectionHeader "Typed Tools"}}

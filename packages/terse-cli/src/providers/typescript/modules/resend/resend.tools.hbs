@@ -1,0 +1,46 @@
+{{sectionHeader "Resend templates"}}
+
+export type ResendTemplateVariableValue = string | number
+
+export interface GeneratedResendTemplate {
+    readonly templateId: string
+    readonly alias: string | null
+    readonly name: string
+    readonly variables: readonly { key: string; type: "string" | "number"; required: boolean; fallbackValue: ResendTemplateVariableValue | null }[]
+}
+
+export const ResendTemplates = {
+{{#each section.templates}}
+    {{staticName}}: {
+        templateId: "{{escape id}}",
+        alias: {{#if alias}}"{{escape alias}}"{{else}}null{{/if}},
+        name: "{{escape name}}",
+        variables: [{{{variablesMetadata}}}],
+    },
+{{/each}}
+} as const satisfies Record<string, GeneratedResendTemplate>
+
+export type ResendTemplate = (typeof ResendTemplates)[keyof typeof ResendTemplates]
+{{#if section.templates.length}}
+
+{{{section.baseParamsDeclaration}}}
+
+/** Send a published Resend email template. `variables` is typed per template, keyed by `templateId`. */
+export type ResendSendTemplateParams =
+{{#each section.templates}}
+    | (ResendSendTemplateBaseParams & { templateId: typeof ResendTemplates.{{staticName}}.templateId; variables: {{{variablesType}}} })
+{{/each}}
+
+{{/if}}
+{{#if toolFile}}
+{{sectionHeader "Resend tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Resend skill"}}
+
+/** Resend — send transactional email using generated published templates */
+export function resendSkill(): TypedSkill<{{{section.skillToolType}}}> {
+    return new ResendOutputConfig("{{escape section.id}}")
+}

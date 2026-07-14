@@ -1,0 +1,24 @@
+{{sectionHeader "Linear triggers"}}
+
+{{#each triggerDeclarations}}
+{{{this}}}
+
+{{/each}}
+export const linearTriggers = {
+    /** Trigger when a new issue is created. Optionally scope with `LinearTeam.*` / `LinearProject.*`. */
+    onIssueCreated(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearIssueCreatedTrigger> {
+        return new LinearInputConfig("{{escape section.id}}", opts?.project?.projectId ?? null, [LinearEventType.ISSUE_CREATED], opts?.team?.teamId ?? null)
+    },
+    /** Trigger when an issue is updated */
+    onIssueUpdated(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearIssueUpdatedTrigger> {
+        return new LinearInputConfig("{{escape section.id}}", opts?.project?.projectId ?? null, [LinearEventType.ISSUE_UPDATED], opts?.team?.teamId ?? null)
+    },
+    /** Trigger when a comment is added to an issue */
+    onComment(opts?: { team?: LinearTeam; project?: LinearProject }): TypedTrigger<LinearCommentCreatedTrigger> {
+        return new LinearInputConfig("{{escape section.id}}", opts?.project?.projectId ?? null, [LinearEventType.COMMENT_CREATED], opts?.team?.teamId ?? null)
+    },
+    /** Trigger on all Linear events */
+    trigger(opts?: { team?: LinearTeam; project?: LinearProject; eventTypes?: LinearEventType[] }): TypedTrigger<LinearTrigger> {
+        return new LinearInputConfig("{{escape section.id}}", opts?.project?.projectId ?? null, opts?.eventTypes, opts?.team?.teamId ?? null)
+    },
+}

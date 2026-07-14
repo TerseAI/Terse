@@ -1,0 +1,192 @@
+{{#if toolFile}}
+{{sectionHeader "Attio tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Attio skill"}}
+
+/** Attio — query and upsert records on a CRM object */
+export function attioSkill(opts: { object: AttioObject<any> }): TypedSkill<{{{section.skillToolType}}}> {
+    return new AttioOutputConfig("{{escape section.id}}", opts.object.apiSlug)
+}
+
+{{sectionHeader "Attio internals (generated plumbing — no need to read)"}}
+
+{{#if toolFile}}
+function __normalizeAttioObjectSlug(object: unknown): string {
+    if (object && typeof object === "object" && "apiSlug" in (object as Record<string, unknown>)) {
+        const apiSlug = (object as { apiSlug?: unknown }).apiSlug
+        if (typeof apiSlug === "string" && apiSlug.length > 0) return apiSlug
+    }
+    return typeof object === "string" ? object : ""
+}
+
+function __serializeAttioFilter(filter: unknown): string | null {
+    if (filter === undefined || filter === null) return null
+    return JSON.stringify(filter)
+}
+
+function __serializeAttioValues(values: unknown): string {
+    return JSON.stringify(values ?? {})
+}
+
+function __serializeAttioRecords(records: unknown): string {
+    if (!Array.isArray(records)) return JSON.stringify([])
+    return JSON.stringify(records.filter((record): record is Record<string, unknown> => typeof record === "object" && record !== null && !Array.isArray(record)))
+}
+
+function __enhanceAttioRecord<TObject extends GeneratedAttioObject>(object: TObject, record: unknown): __AttioRecordWithValues<AttioRecordValuesFor<TObject>> | undefined {
+    if (!record || typeof record !== "object") return undefined
+    const values = __getAttioRecordValues<AttioRecordValuesFor<TObject>>(__normalizeAttioObjectSlug(object), record)
+    return { ...values, ...(record as AttioRecordBase), values, attributes: values } as __AttioRecordWithValues<AttioRecordValuesFor<TObject>>
+}
+
+function __requireAttioPayload<T>(value: T | null | undefined, what: string): T {
+    if (value === null || value === undefined) throw new Error("Attio returned a response without the expected " + what + " payload.")
+    return value
+}
+
+function __enhanceAttioQueryResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioQueryRecordsResult<TObject> {
+    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>
+    return { records, count: records.length, offset: result.offset ?? 0 }
+}
+
+function __enhanceAttioSearchResult(result: AttioRecordsResult): AttioSearchRecordsResult {
+    const matches = result.matches ?? []
+    return { matches, count: matches.length }
+}
+
+function __enhanceAttioUpsertResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioUpsertRecordResult<TObject> {
+    const records = (result.records || []).map(record => __enhanceAttioRecord(object, record)).filter(Boolean) as Array<AttioRecordFor<TObject>>
+    return { records, count: records.length }
+}
+
+function __enhanceAttioSingleRecordResult<TObject extends GeneratedAttioObject>(object: TObject, result: AttioRecordsResult): AttioSingleRecordResult<TObject> {
+    return __requireAttioPayload(__enhanceAttioRecord(object, result.record), "record")
+}
+
+{{/if}}
+const __attioMetadataKeys = new Set([
+    "active_from",
+    "active_until",
+    "attribute_type",
+    "created_by_actor",
+])
+
+const __attioMultiValueAttributeSlugsByObject: Record<string, readonly string[]> = {
+{{#each section.objects}}
+    "{{escape apiSlug}}": [{{{multiValueSlugsText}}}],
+{{/each}}
+}
+
+const __attioObjectSlugByObjectId: Record<string, string> = {
+{{#each section.objects}}
+    "{{escape objectId}}": "{{escape apiSlug}}",
+{{/each}}
+}
+
+function __flattenAttioLeafValue(value: unknown): unknown {
+    if (value === null || value === undefined) return value
+    if (Array.isArray(value)) return value.map(entry => __flattenAttioLeafValue(entry))
+    if (typeof value !== "object") return value
+    const rawObject = value as Record<string, unknown>
+    if (rawObject.attribute_type === "status") return __toAttioSelectOption(rawObject.status)
+    if (rawObject.attribute_type === "select") return __toAttioSelectOption(rawObject.option)
+    if (typeof rawObject.full_name === "string") return rawObject.full_name
+    if (typeof rawObject.email_address === "string") return rawObject.email_address
+    if (typeof rawObject.domain === "string") return rawObject.domain
+    if (typeof rawObject.phone_number === "string") return rawObject.phone_number
+    if ("value" in rawObject) return __flattenAttioLeafValue(rawObject.value)
+    const dataEntries = Object.entries(rawObject).filter(([key]) => !__attioMetadataKeys.has(key))
+    if (dataEntries.length === 0) return rawObject
+    if (dataEntries.length === 1) return __flattenAttioLeafValue(dataEntries[0][1])
+    return Object.fromEntries(dataEntries.map(([key, entryValue]) => [key, __flattenAttioLeafValue(entryValue)]))
+}
+
+function __toAttioSelectOption(option: unknown): unknown {
+    if (!option || typeof option !== "object") return option
+    const rawOption = option as Record<string, unknown>
+    const rawId = rawOption.id && typeof rawOption.id === "object" ? (rawOption.id as Record<string, unknown>) : undefined
+    const id = rawId?.status_id ?? rawId?.option_id ?? rawOption.id
+    return {
+        id: typeof id === "string" ? id : "",
+        title: typeof rawOption.title === "string" ? rawOption.title : "",
+        is_archived: rawOption.is_archived === true,
+    } satisfies AttioSelectOption
+}
+
+function __flattenAttioAttributeValue(rawValue: unknown, preferArray: boolean): unknown {
+    if (!Array.isArray(rawValue)) return __flattenAttioLeafValue(rawValue)
+    const flattened = rawValue.map(entry => __flattenAttioLeafValue(entry)).filter(entry => entry !== undefined)
+    return preferArray ? flattened : flattened[0]
+}
+
+function __isAttioMultiValueAttribute(objectSlug: string, attributeSlug: string): boolean {
+    return (__attioMultiValueAttributeSlugsByObject[objectSlug] || []).includes(attributeSlug)
+}
+
+function __getAttioRecordValues<TValues extends Record<string, unknown>>(objectSlug: string, record: unknown): TValues {
+    const rawValues = record && typeof record === "object" ? (record as { values?: unknown }).values : undefined
+    if (!rawValues || typeof rawValues !== "object" || Array.isArray(rawValues)) return {} as TValues
+    const flattenedValues: Record<string, unknown> = {}
+    for (const [attributeSlug, rawValue] of Object.entries(rawValues)) {
+        flattenedValues[attributeSlug] = __flattenAttioAttributeValue(rawValue, __isAttioMultiValueAttribute(objectSlug, attributeSlug))
+    }
+    return flattenedValues as TValues
+}
+
+const __attioMultiValueEntrySlugsByList: Record<string, readonly string[]> = {
+{{#each section.lists}}
+    "{{escape apiSlug}}": [{{{multiValueSlugsText}}}],
+    "{{escape listId}}": [{{{multiValueSlugsText}}}],
+{{/each}}
+}
+
+function __getAttioEntryValues<TValues extends Record<string, unknown>>(listKey: string, rawEntryValues: unknown): TValues {
+    if (!rawEntryValues || typeof rawEntryValues !== "object" || Array.isArray(rawEntryValues)) return {} as TValues
+    const flattenedValues: Record<string, unknown> = {}
+    const multiValueSlugs = __attioMultiValueEntrySlugsByList[listKey] || []
+    for (const [attributeSlug, rawValue] of Object.entries(rawEntryValues)) {
+        flattenedValues[attributeSlug] = __flattenAttioAttributeValue(rawValue, multiValueSlugs.includes(attributeSlug))
+    }
+    return flattenedValues as TValues
+}
+
+function __requireAttioListParentObject(list: unknown, parentObjectSlug: string | null | undefined): string {
+    if (parentObjectSlug) return parentObjectSlug
+    if (list && typeof list === "object" && "parentObject" in (list as Record<string, unknown>)) {
+        const parentObject = (list as { parentObject?: unknown }).parentObject
+        if (typeof parentObject === "string" && parentObject.length > 0) return parentObject
+    }
+    throw new Error("parentObjectSlug is required when the list is passed as a plain ID/slug rather than a generated AttioList constant.")
+}
+
+function __enhanceAttioListEntry<TList>(list: TList, entry: unknown): AttioListEntryFor<TList> {
+    const raw = (entry && typeof entry === "object" ? entry : {}) as { entry_values?: unknown }
+    return { ...(raw as object), entry_values: __getAttioEntryValues(__normalizeAttioObjectSlug(list), raw.entry_values) } as AttioListEntryFor<TList>
+}
+
+function __enhanceAttioListEntriesResult<TList>(list: TList, result: AttioListsResult): AttioListEntriesResult<TList> {
+    const entries = (result.entries || []).map(entry => __enhanceAttioListEntry(list, entry))
+    return { entries, count: entries.length, offset: result.offset ?? 0 }
+}
+
+function __enhanceAttioListEntryResult<TList>(list: TList, result: AttioListsResult): AttioListEntryResult<TList> {
+    if (!result.entry) throw new Error("Attio returned a response without the expected list entry payload.")
+    return __enhanceAttioListEntry(list, result.entry)
+}
+
+function __enhanceAttioHistoryResult<TValue>(result: AttioRecordsResult): AttioAttributeHistoryResult<TValue> {
+    const history = (result.history || []).map(entry => ({ active_from: entry.active_from, active_until: entry.active_until, value: __flattenAttioLeafValue(entry) as TValue }))
+    return { history, count: history.length }
+}
+
+registerEventTransform("attio", (event) => {
+    const e = event as { record?: { values?: unknown }; resourceIds?: { object_id?: string } }
+    if (!e?.record?.values) return event
+    const objectId = e.resourceIds?.object_id
+    const slug = objectId ? __attioObjectSlugByObjectId[objectId] : undefined
+    if (!slug) return event
+    return { ...e, record: { ...e.record, values: __getAttioRecordValues(slug, e.record) } }
+})

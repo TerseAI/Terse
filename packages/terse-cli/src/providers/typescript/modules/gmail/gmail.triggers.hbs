@@ -1,0 +1,16 @@
+{{sectionHeader "Gmail triggers"}}
+
+{{#each triggerDeclarations}}
+{{{this}}}
+
+{{/each}}
+export const gmailTriggers = {
+    /** Trigger when a new email is received */
+    onEmail(): TypedTrigger<GmailTrigger> {
+        return new GmailConfig("{{escape section.id}}", [GmailEventType.EMAIL_RECEIVED])
+    },
+    /** Trigger on all Gmail events */
+    trigger(opts?: { eventTypes?: GmailEventType[] }): TypedTrigger<GmailTrigger> {
+        return new GmailConfig("{{escape section.id}}", opts?.eventTypes)
+    },
+}

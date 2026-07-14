@@ -17,7 +17,8 @@
     },
     "files": [
         "dist",
-        "templates"
+        "templates",
+        "src/providers/typescript/modules/**/*.hbs"
     ],
     "scripts": {
         "build": "tsc",
