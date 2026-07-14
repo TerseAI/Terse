@@ -584,9 +584,8 @@ It was built milestone by milestone, each proven green (`tsc --noEmit` passes, `
 
 ```typescript
 import { createJob, generateText, slack, sleep, waitForInput } from "terse-sdk"
-import type { LinearIssueCreatedTrigger } from "terse-sdk"
 import { z } from "zod"
-import { Triggers, LinearTeam, SlackChannel, toolbox } from "./terse.generated"
+import { Triggers, LinearTeam, SlackChannel, toolbox, type LinearIssueCreatedTrigger } from "./terse.generated"
 
 createJob({
     name: "Triage inbound bug reports",
@@ -654,8 +653,8 @@ type Classification = z.infer<typeof Classification>
 A complete non-durable job: deterministic post, agentic summary, deterministic threaded reply.
 
 ```typescript
-import { createJob, generateText, type GithubPROpenedTrigger } from "terse-sdk"
-import { Triggers, Skills, Repos, SlackChannel, toolbox } from "./terse.generated"
+import { createJob, generateText } from "terse-sdk"
+import { Triggers, Skills, Repos, SlackChannel, toolbox, type GithubPROpenedTrigger } from "./terse.generated"
 
 createJob({
     name: "Summarize PR and notify Slack",

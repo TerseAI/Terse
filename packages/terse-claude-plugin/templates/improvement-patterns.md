@@ -74,7 +74,8 @@ onTrigger: async (event) => {
 // AFTER: annotate with the precise trigger type that matches your trigger factory.
 // `Triggers.github.onPROpened(...)` returns a typed trigger, so `event` infers
 // as `GithubPROpenedTrigger` — annotating just makes it explicit.
-import { GithubPROpenedTrigger, generateText } from "terse-sdk"
+import { generateText } from "terse-sdk"
+import type { GithubPROpenedTrigger } from "./terse.generated"
 
 onTrigger: async (event: GithubPROpenedTrigger) => {
     const { title, url } = event.pullRequest

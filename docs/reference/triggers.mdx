@@ -6,7 +6,7 @@ icon: "zap"
 
 Triggers define the event that starts your workflow. Each trigger is tied to an integration and fires when a specific event occurs. Your `onTrigger` handler receives a typed event object with the payload.
 
-In TypeScript, `terse generate` writes a single `Triggers` object in `src/terse.generated.ts`. Import it and call the nested helper for your event (for example `Triggers.github.onPROpened(...)`). Each integration and system trigger has its own section below.
+In TypeScript, `terse generate` exports a `Triggers` object from `src/terse.generated.ts`, with each integration's trigger factories and payload types declared in `src/terse.generated/<integration>.triggers.ts`. Import everything from `"./terse.generated"` and call the nested helper for your event (for example `Triggers.github.onPROpened(...)`); the event types in the tables below are importable from the same place. Each integration and system trigger has its own section below.
 
 ## Integration triggers
 

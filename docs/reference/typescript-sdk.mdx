@@ -31,9 +31,10 @@ Import these from `terse-sdk`:
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Base event interface                 | `Trigger`                                                                                                                                           |
 | System trigger event types           | `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger<BodyType>`, `WebMonitorTrigger<TStructured>`, `WebMonitorTriggerFor<TSchema>`                 |
-| Platform trigger event types         | `Trigger`, `CronTrigger`, `WebhookTrigger`, `WebMonitorTrigger`. Integration trigger types (`GithubPRTrigger`, `AttioRecordCreatedTrigger`, ...)    |
 | Integration event-type enums         | `SlackEventType`, `GitHubEventType`, `LinearEventType`, `GmailEventType`, `WorkOSEventType`, `HeyReachEventType`, `AttioEventType`, `FrequencyUnit` |
 | Run history (Activity, API payloads) | `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`                                               |
+
+Integration trigger types (`GithubPROpenedTrigger`, `SlackMessageTrigger`, `AttioRecordCreatedTrigger`, ...) and tool `Params`/`Result` types are generated into your workspace by `terse generate`; import them from `"./terse.generated"`.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -55,7 +56,7 @@ The API token list in the app shows **user** tokens only. Short-lived project to
 
 ## Trigger payloads
 
-Exported trigger types extend the canonical trigger object with two methods used everywhere Terse turns an event into prompts or logging:
+Trigger types exported from `./terse.generated` extend the canonical trigger object with two methods used everywhere Terse turns an event into prompts or logging:
 
 - `formatForAgentRunner()` returns a string to include in agent prompts (matches how the platform formats the event for the model)
 - `debugLog()` returns a one-line description for logs and CLI sample lists
