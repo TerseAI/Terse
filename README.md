@@ -99,8 +99,8 @@ Terse has two planes you can place independently. Most users pick one of the nam
 A Terse workflow is a single TypeScript file. The job below watches a repo for new pull requests, posts a deterministic Slack message announcing the PR, then threads a Block Kit summary under it:
 
 ```ts
-import { GithubPRTrigger, generateText, createJob } from "terse-sdk"
-import { Repos, Skills, SlackChannel, Triggers, toolbox } from "../terse.generated"
+import { generateText, createJob } from "terse-sdk"
+import { GithubPRTrigger, Repos, Skills, SlackChannel, Triggers, toolbox } from "../terse.generated"
 // ^^ Generated based on your workspace
 
 createJob({

@@ -19,9 +19,9 @@ icon: "scale"
 A multi-step Zapier flow becomes a single TypeScript file:
 
 ```ts
-import { AttioRecordCreatedTrigger, createJob, generateText } from "terse-sdk"
+import { createJob, generateText } from "terse-sdk"
 
-import { AttioObject, Skills, Triggers, toolbox } from "./terse.generated"
+import { AttioObject, AttioRecordCreatedTrigger, Skills, Triggers, toolbox } from "./terse.generated"
 
 createJob({
     name: "new-deal-enrichment",

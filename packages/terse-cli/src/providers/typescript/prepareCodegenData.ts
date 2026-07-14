@@ -343,20 +343,7 @@ function buildSkillToolTypeForIntegration(tools: ToolDefinition[], integrationTy
 function prepareGitHubSection(inst: GitHubInstanceData | undefined, tools: ToolDefinition[]): SectionContext<GitHubSectionContext> {
     if (!inst) return sectionData([])
 
-    const imports = [
-        "GitHubConfig",
-        "GitHubEventType",
-        "TypedTrigger",
-        "TypedSkill",
-        "GithubPROpenedTrigger",
-        "GithubPRMergedTrigger",
-        "GithubPRClosedTrigger",
-        "GithubPRSynchronizedTrigger",
-        "GithubPRTrigger",
-        "GithubPushTrigger",
-        "GithubIssueCommentCreatedTrigger",
-        "GithubTrigger"
-    ]
+    const imports = ["GitHubConfig", "GitHubEventType", "TypedTrigger", "TypedSkill"]
     const skillToolType = buildSkillToolTypeForIntegration(tools, "github")
 
     const repositoriesWithFullName = inst.repositories.map(repo => {
@@ -410,7 +397,7 @@ function prepareGitHubSection(inst: GitHubInstanceData | undefined, tools: ToolD
 
 function prepareGmailSection(inst: IntegrationInstanceData | undefined, tools: ToolDefinition[]): SectionContext<GmailSectionContext> {
     if (!inst) return sectionData([])
-    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType", "GmailTrigger"], {
+    return sectionData(["GmailConfig", "GmailOutputConfig", "GmailDraftOutputConfig", "TypedSkill", "TypedTrigger", "GmailEventType"], {
         id: inst.id,
         skillToolType: buildSkillToolTypeForIntegration(tools, "gmail")
     })
@@ -419,7 +406,7 @@ function prepareGmailSection(inst: IntegrationInstanceData | undefined, tools: T
 function prepareSlackSection(inst: SlackInstanceData | undefined, tools: ToolDefinition[]): SectionContext<SlackSectionContext> {
     if (!inst) return sectionData([])
     return sectionData(
-        ["SlackAppMentionTrigger", "SlackConfig", "SlackMessageTrigger", "SlackOutputConfig", "SlackReactionAddedTrigger", "TypedSkill", "SlackEventType", "TypedTrigger", "SlackTrigger"],
+        ["SlackConfig", "SlackOutputConfig", "TypedSkill", "SlackEventType", "TypedTrigger"],
         {
             id: inst.id,
             skillToolType: buildSkillToolTypeForIntegration(tools, "slack"),
@@ -448,17 +435,7 @@ function prepareSlackSection(inst: SlackInstanceData | undefined, tools: ToolDef
 function prepareLinearSection(inst: LinearInstanceData | undefined, tools: ToolDefinition[]): SectionContext<LinearSectionContext> {
     if (!inst) return sectionData([])
     return sectionData(
-        [
-            "LinearInputConfig",
-            "LinearOutputConfig",
-            "TypedSkill",
-            "TypedTrigger",
-            "LinearEventType",
-            "LinearIssueCreatedTrigger",
-            "LinearIssueUpdatedTrigger",
-            "LinearCommentCreatedTrigger",
-            "LinearTrigger"
-        ],
+        ["LinearInputConfig", "LinearOutputConfig", "TypedSkill", "TypedTrigger", "LinearEventType"],
         {
             id: inst.id,
             skillToolType: buildSkillToolTypeForIntegration(tools, "linear"),
@@ -557,34 +534,10 @@ function prepareLaunchDarklySection(inst: LaunchDarklyInstanceData | undefined, 
 
 function prepareWorkOSSection(inst: IntegrationInstanceData | undefined, tools: ToolDefinition[]): SectionContext<WorkOSSectionContext> {
     if (!inst) return sectionData([])
-    return sectionData(
-        [
-            "WorkOSInputConfig",
-            "WorkOSOutputConfig",
-            "WorkOSEventType",
-            "TypedSkill",
-            "TypedTrigger",
-            "WorkOSTrigger",
-            "WorkOSUserCreatedTrigger",
-            "WorkOSUserUpdatedTrigger",
-            "WorkOSUserDeletedTrigger",
-            "WorkOSUserTrigger",
-            "WorkOSOrganizationMembershipCreatedTrigger",
-            "WorkOSOrganizationMembershipUpdatedTrigger",
-            "WorkOSOrganizationMembershipDeletedTrigger",
-            "WorkOSMembershipTrigger",
-            "WorkOSInvitationCreatedTrigger",
-            "WorkOSInvitationAcceptedTrigger",
-            "WorkOSInvitationResentTrigger",
-            "WorkOSInvitationRevokedTrigger",
-            "WorkOSInvitationTrigger",
-            "WorkOSOrganizationTrigger"
-        ],
-        {
-            id: inst.id,
-            skillToolType: buildSkillToolTypeForIntegration(tools, "workos")
-        }
-    )
+    return sectionData(["WorkOSInputConfig", "WorkOSOutputConfig", "WorkOSEventType", "TypedSkill", "TypedTrigger"], {
+        id: inst.id,
+        skillToolType: buildSkillToolTypeForIntegration(tools, "workos")
+    })
 }
 
 function buildGeneratedAttioObjects(inst: AttioInstanceData | undefined): Array<AttioObjectContext & { attributes: Array<AttioAttributeData & { api_slug: string }> }> {
@@ -797,42 +750,7 @@ async function prepareAttioSection(inst: AttioInstanceData | undefined, tools: T
     const lists = buildGeneratedAttioLists(inst)
     const valueTypeLines = [...(await buildAttioValueTypeDeclarations()), ...(await buildAttioObjectTypeDeclarations(objects, lists)), ...attioOptionConstLines(objects, lists)]
     return sectionData(
-        [
-            "registerEventTransform",
-            "AttioOutputConfig",
-            "TypedSkill",
-            "AttioInputConfig",
-            "AttioEventType",
-            "TypedTrigger",
-            "AttioTrigger",
-            "AttioCallRecordingCreatedTrigger",
-            "AttioCommentCreatedTrigger",
-            "AttioCommentResolvedTrigger",
-            "AttioCommentUnresolvedTrigger",
-            "AttioCommentDeletedTrigger",
-            "AttioListCreatedTrigger",
-            "AttioListUpdatedTrigger",
-            "AttioListDeletedTrigger",
-            "AttioListAttributeCreatedTrigger",
-            "AttioListAttributeUpdatedTrigger",
-            "AttioListEntryCreatedTrigger",
-            "AttioListEntryUpdatedTrigger",
-            "AttioListEntryDeletedTrigger",
-            "AttioObjectAttributeCreatedTrigger",
-            "AttioObjectAttributeUpdatedTrigger",
-            "AttioNoteCreatedTrigger",
-            "AttioNoteContentUpdatedTrigger",
-            "AttioNoteUpdatedTrigger",
-            "AttioNoteDeletedTrigger",
-            "AttioRecordCreatedTrigger",
-            "AttioRecordMergedTrigger",
-            "AttioRecordUpdatedTrigger",
-            "AttioRecordDeletedTrigger",
-            "AttioTaskCreatedTrigger",
-            "AttioTaskUpdatedTrigger",
-            "AttioTaskDeletedTrigger",
-            "AttioWorkspaceMemberCreatedTrigger"
-        ],
+        ["registerEventTransform", "AttioOutputConfig", "TypedSkill", "AttioInputConfig", "AttioEventType", "TypedTrigger"],
         {
             id: inst.id,
             skillToolType: buildSkillToolTypeForIntegration(tools, "attio"),
@@ -856,23 +774,7 @@ function prepareSnowflakeSection(inst: SnowflakeInstanceData | undefined, tools:
 function prepareHeyReachSection(inst: HeyReachInstanceData | undefined): SectionContext<HeyReachSectionContext> {
     if (!inst) return sectionData([])
     return sectionData(
-        [
-            "HeyReachInputConfig",
-            "HeyReachEventType",
-            "TypedTrigger",
-            "HeyReachTrigger",
-            "HeyReachConnectionRequestSentTrigger",
-            "HeyReachConnectionRequestAcceptedTrigger",
-            "HeyReachMessageSentTrigger",
-            "HeyReachMessageReplyReceivedTrigger",
-            "HeyReachInmailSentTrigger",
-            "HeyReachInmailReplyReceivedTrigger",
-            "HeyReachFollowSentTrigger",
-            "HeyReachLikedPostTrigger",
-            "HeyReachViewedProfileTrigger",
-            "HeyReachCampaignCompletedTrigger",
-            "HeyReachLeadTagUpdatedTrigger"
-        ],
+        ["HeyReachInputConfig", "HeyReachEventType", "TypedTrigger"],
         {
             id: inst.id,
             campaignClass: buildResourceClassContext(
@@ -1538,21 +1440,7 @@ function buildAttioListsMethods(integrationId: string, tool: ToolDefinition): To
 
 function prepareSystemSection(): SectionContext<SystemSectionContext> {
     return sectionData(
-        [
-            "TimeTriggerConfig",
-            "WebConfig",
-            "ImageEditConfig",
-            "MemoryConfig",
-            "TypedSkill",
-            "WebhookInputConfig",
-            "WebhookTrigger",
-            "CronTrigger",
-            "TypedTrigger",
-            "WebMonitorConfig",
-            "WebMonitorTrigger",
-            "FrequencyUnit",
-            "InferStructuredOutput"
-        ],
+        ["TimeTriggerConfig", "WebConfig", "ImageEditConfig", "MemoryConfig", "TypedSkill", "WebhookInputConfig", "TypedTrigger", "WebMonitorConfig", "FrequencyUnit", "InferStructuredOutput"],
         {}
     )
 }
@@ -1582,7 +1470,18 @@ export async function prepareTemplateContext(input: CodegenInput): Promise<Templ
         section.imports.forEach(value => allImports.add(value))
     }
 
-    const triggerTypes = await buildTriggerTypeDeclarations(allImports)
+    const presentBuckets = new Set(
+        [
+            github.data && "github",
+            gmail.data && "gmail",
+            slack.data && "slack",
+            linear.data && "linear",
+            workos.data && "workos",
+            attio.data && "attio",
+            heyreach.data && "heyreach"
+        ].filter((bucket): bucket is string => typeof bucket === "string")
+    )
+    const triggerTypes = await buildTriggerTypeDeclarations(presentBuckets)
     triggerTypes.declaredNames.forEach(name => allImports.delete(name))
     if (triggerTypes.declaredNames.size > 0) allImports.add("SDKTrigger")
     triggerTypes.extraImports.forEach(name => allImports.add(name))

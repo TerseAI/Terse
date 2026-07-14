@@ -16,7 +16,43 @@ import {
 } from "./Configs"
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
 import { SlackAttachments, SlackBlocks, SlackChannelType, SlackFiles } from "./SlackTypes"
-import { debugTrigger as debugTriggerWithPresenter, displayTrigger as displayTriggerWithPresenter, formatTriggerForAgent as formatTriggerForAgentWithPresenter } from "./TriggerPresenters"
+import { defineTrigger, defineTriggerUnion } from "./TriggerDefinition"
+import type { ConcreteTriggerDefinition, TriggerDefinition, TriggerPresenter, TriggerPrintHints } from "./TriggerDefinition"
+import {
+    debugAttioTrigger,
+    debugCronTrigger,
+    debugGithubTrigger,
+    debugGmailTrigger,
+    debugHeyReachTrigger,
+    debugLinearTrigger,
+    debugManualSampleTrigger,
+    debugSlackTrigger,
+    debugWebMonitorTrigger,
+    debugWebhookTrigger,
+    debugWorkOSTrigger,
+    displayManualSampleTrigger,
+    formatAttioDisplay,
+    formatAttioTrigger,
+    formatCronDisplay,
+    formatCronTrigger,
+    formatGithubDisplay,
+    formatGithubTrigger,
+    formatGmailDisplay,
+    formatGmailTrigger,
+    formatHeyReachDisplay,
+    formatHeyReachTrigger,
+    formatLinearDisplay,
+    formatLinearTrigger,
+    formatManualSampleTrigger,
+    formatSlackDisplay,
+    formatSlackTrigger,
+    formatWebMonitorDisplay,
+    formatWebMonitorTrigger,
+    formatWebhookDisplay,
+    formatWebhookTrigger,
+    formatWorkOSDisplay,
+    formatWorkOSTrigger
+} from "./TriggerPresenters"
 
 const providerTriggerTypeSchema = z.union([
     slackEventTypeSchema,
@@ -967,15 +1003,24 @@ export function createManualTrigger(
 }
 
 export function formatTriggerForAgent(event: Trigger): string {
-    return formatTriggerForAgentWithPresenter(event)
+    if (event.eventType === "manual_sample") {
+        return formatManualSampleTrigger(event)
+    }
+    return resolveTriggerPresenter(event).formatForAgent(event)
 }
 
 export function debugTrigger(event: Trigger): string {
-    return debugTriggerWithPresenter(event)
+    if (event.eventType === "manual_sample") {
+        return debugManualSampleTrigger(event)
+    }
+    return resolveTriggerPresenter(event).debug(event)
 }
 
 export function displayTrigger(event: Trigger): SerializedEventDisplay {
-    return displayTriggerWithPresenter(event)
+    if (event.eventType === "manual_sample") {
+        return displayManualSampleTrigger(event)
+    }
+    return resolveTriggerPresenter(event).display(event)
 }
 
 export const TriggerArraySchema = z.array(TriggerSchema)
@@ -1024,88 +1069,640 @@ export function toEventFixture(event: SerializedEvent): EventFixture {
     }
 }
 
-// The public trigger type surface: map key is the exported type name, value is the schema it prints from.
-// Union schemas whose members are all registered here print as unions of those names.
+const slackPresenter = {
+    formatForAgent: formatSlackTrigger,
+    debug: debugSlackTrigger,
+    display: formatSlackDisplay
+}
+
+const githubPresenter = {
+    formatForAgent: formatGithubTrigger,
+    debug: debugGithubTrigger,
+    display: formatGithubDisplay
+}
+
+const gmailPresenter = {
+    formatForAgent: formatGmailTrigger,
+    debug: debugGmailTrigger,
+    display: formatGmailDisplay
+}
+
+const linearPresenter = {
+    formatForAgent: formatLinearTrigger,
+    debug: debugLinearTrigger,
+    display: formatLinearDisplay
+}
+
+const workOSPresenter = {
+    formatForAgent: formatWorkOSTrigger,
+    debug: debugWorkOSTrigger,
+    display: formatWorkOSDisplay
+}
+
+const heyReachPresenter = {
+    formatForAgent: formatHeyReachTrigger,
+    debug: debugHeyReachTrigger,
+    display: formatHeyReachDisplay
+}
+
+const attioPresenter = {
+    formatForAgent: formatAttioTrigger,
+    debug: debugAttioTrigger,
+    display: formatAttioDisplay
+}
+
+const webhookPresenter = {
+    formatForAgent: formatWebhookTrigger,
+    debug: debugWebhookTrigger,
+    display: formatWebhookDisplay
+}
+
+const cronPresenter = {
+    formatForAgent: formatCronTrigger,
+    debug: debugCronTrigger,
+    display: formatCronDisplay
+}
+
+const webMonitorPresenter = {
+    formatForAgent: formatWebMonitorTrigger,
+    debug: debugWebMonitorTrigger,
+    display: formatWebMonitorDisplay
+}
+
+const slackMessagePrintHints: TriggerPrintHints = {
+    fieldOverrides: {
+        blocks: "SlackBlocks | null",
+        attachments: "SlackAttachments | null",
+        files: "SlackFiles | null"
+    },
+    imports: ["SlackBlocks", "SlackAttachments", "SlackFiles"]
+}
+
+const attioRecordPrintHints: TriggerPrintHints = {
+    typeParams: "<TValues = Record<string, unknown>>",
+    aliasArgs: "<TValues>",
+    fieldOverrides: { "record.values": "TValues" }
+}
+
+// The public trigger type surface: map key is the exported type name.
+// Union definitions whose members are all registered here print as unions of those names.
 export const TriggerDefinitions = {
-    SlackMessageTrigger: slackMessageTriggerSchema,
-    SlackAppMentionTrigger: slackAppMentionTriggerSchema,
-    SlackReactionAddedTrigger: slackReactionAddedTriggerSchema,
-    SlackTrigger: slackTriggerSchema,
-    GithubPushTrigger: GithubPushTriggerSchema,
-    GithubPROpenedTrigger: GithubPROpenedTriggerSchema,
-    GithubPRSynchronizedTrigger: GithubPRSynchronizedTriggerSchema,
-    GithubPRClosedTrigger: GithubPRClosedTriggerSchema,
-    GithubPRMergedTrigger: GithubPRMergedTriggerSchema,
-    GithubIssueCommentCreatedTrigger: GithubIssueCommentCreatedTriggerSchema,
-    GithubPRTrigger: GithubPRTriggerSchema,
-    GithubTrigger: GithubTriggerSchema,
-    GmailTrigger: gmailTriggerSchema,
-    LinearIssueCreatedTrigger: linearIssueCreatedTriggerSchema,
-    LinearIssueUpdatedTrigger: linearIssueUpdatedTriggerSchema,
-    LinearCommentCreatedTrigger: linearCommentCreatedTriggerSchema,
-    LinearTrigger: linearTriggerSchema,
-    WorkOSUserCreatedTrigger: workOSUserCreatedTriggerSchema,
-    WorkOSUserUpdatedTrigger: workOSUserUpdatedTriggerSchema,
-    WorkOSUserDeletedTrigger: workOSUserDeletedTriggerSchema,
-    WorkOSUserTrigger: workOSUserTriggerSchema,
-    WorkOSOrganizationMembershipCreatedTrigger: workOSOrganizationMembershipCreatedTriggerSchema,
-    WorkOSOrganizationMembershipUpdatedTrigger: workOSOrganizationMembershipUpdatedTriggerSchema,
-    WorkOSOrganizationMembershipDeletedTrigger: workOSOrganizationMembershipDeletedTriggerSchema,
-    WorkOSMembershipTrigger: workOSMembershipTriggerSchema,
-    WorkOSInvitationCreatedTrigger: workOSInvitationCreatedTriggerSchema,
-    WorkOSInvitationAcceptedTrigger: workOSInvitationAcceptedTriggerSchema,
-    WorkOSInvitationResentTrigger: workOSInvitationResentTriggerSchema,
-    WorkOSInvitationRevokedTrigger: workOSInvitationRevokedTriggerSchema,
-    WorkOSInvitationTrigger: workOSInvitationTriggerSchema,
-    WorkOSOrganizationTrigger: workOSOrganizationTriggerSchema,
-    WorkOSTrigger: workOSTriggerSchema,
-    HeyReachConnectionRequestSentTrigger: heyReachConnectionRequestSentTriggerSchema,
-    HeyReachConnectionRequestAcceptedTrigger: heyReachConnectionRequestAcceptedTriggerSchema,
-    HeyReachMessageSentTrigger: heyReachMessageSentTriggerSchema,
-    HeyReachMessageReplyReceivedTrigger: heyReachMessageReplyReceivedTriggerSchema,
-    HeyReachInmailSentTrigger: heyReachInmailSentTriggerSchema,
-    HeyReachInmailReplyReceivedTrigger: heyReachInmailReplyReceivedTriggerSchema,
-    HeyReachFollowSentTrigger: heyReachFollowSentTriggerSchema,
-    HeyReachLikedPostTrigger: heyReachLikedPostTriggerSchema,
-    HeyReachViewedProfileTrigger: heyReachViewedProfileTriggerSchema,
-    HeyReachCampaignCompletedTrigger: heyReachCampaignCompletedTriggerSchema,
-    HeyReachLeadTagUpdatedTrigger: heyReachLeadTagUpdatedTriggerSchema,
-    HeyReachTrigger: heyReachTriggerSchema,
-    AttioCallRecordingCreatedTrigger: attioCallRecordingCreatedTriggerSchema,
-    AttioCommentCreatedTrigger: attioCommentCreatedTriggerSchema,
-    AttioCommentResolvedTrigger: attioCommentResolvedTriggerSchema,
-    AttioCommentUnresolvedTrigger: attioCommentUnresolvedTriggerSchema,
-    AttioCommentDeletedTrigger: attioCommentDeletedTriggerSchema,
-    AttioListCreatedTrigger: attioListCreatedTriggerSchema,
-    AttioListUpdatedTrigger: attioListUpdatedTriggerSchema,
-    AttioListDeletedTrigger: attioListDeletedTriggerSchema,
-    AttioListAttributeCreatedTrigger: attioListAttributeCreatedTriggerSchema,
-    AttioListAttributeUpdatedTrigger: attioListAttributeUpdatedTriggerSchema,
-    AttioListEntryCreatedTrigger: attioListEntryCreatedTriggerSchema,
-    AttioListEntryUpdatedTrigger: attioListEntryUpdatedTriggerSchema,
-    AttioListEntryDeletedTrigger: attioListEntryDeletedTriggerSchema,
-    AttioObjectAttributeCreatedTrigger: attioObjectAttributeCreatedTriggerSchema,
-    AttioObjectAttributeUpdatedTrigger: attioObjectAttributeUpdatedTriggerSchema,
-    AttioNoteCreatedTrigger: attioNoteCreatedTriggerSchema,
-    AttioNoteContentUpdatedTrigger: attioNoteContentUpdatedTriggerSchema,
-    AttioNoteUpdatedTrigger: attioNoteUpdatedTriggerSchema,
-    AttioNoteDeletedTrigger: attioNoteDeletedTriggerSchema,
-    AttioRecordCreatedTrigger: attioRecordCreatedTriggerSchema,
-    AttioRecordMergedTrigger: attioRecordMergedTriggerSchema,
-    AttioRecordUpdatedTrigger: attioRecordUpdatedTriggerSchema,
-    AttioRecordDeletedTrigger: attioRecordDeletedTriggerSchema,
-    AttioTaskCreatedTrigger: attioTaskCreatedTriggerSchema,
-    AttioTaskUpdatedTrigger: attioTaskUpdatedTriggerSchema,
-    AttioTaskDeletedTrigger: attioTaskDeletedTriggerSchema,
-    AttioWorkspaceMemberCreatedTrigger: attioWorkspaceMemberCreatedTriggerSchema,
-    AttioTrigger: attioTriggerSchema,
-    CronTrigger: cronTriggerSchema,
-    WebhookTrigger: webhookTriggerSchema,
-    WebMonitorTrigger: webMonitorTriggerSchema
-} satisfies Record<string, z.ZodType>
+    SlackMessageTrigger: defineTrigger({
+        integration: IntegrationType.SLACK,
+        schema: slackMessageTriggerSchema,
+        eventTypes: ["message"],
+        printHints: slackMessagePrintHints,
+        presenter: slackPresenter
+    }),
+    SlackAppMentionTrigger: defineTrigger({
+        integration: IntegrationType.SLACK,
+        schema: slackAppMentionTriggerSchema,
+        eventTypes: ["app_mention"],
+        printHints: slackMessagePrintHints,
+        presenter: slackPresenter
+    }),
+    SlackReactionAddedTrigger: defineTrigger({
+        integration: IntegrationType.SLACK,
+        schema: slackReactionAddedTriggerSchema,
+        eventTypes: ["reaction_added"],
+        printHints: slackMessagePrintHints,
+        presenter: slackPresenter
+    }),
+    SlackTrigger: defineTriggerUnion({
+        integration: IntegrationType.SLACK,
+        members: ["SlackMessageTrigger", "SlackAppMentionTrigger", "SlackReactionAddedTrigger"],
+        presenter: slackPresenter
+    }),
+    GithubPushTrigger: defineTrigger({
+        integration: IntegrationType.GITHUB,
+        schema: GithubPushTriggerSchema,
+        eventTypes: [GitHubEventType.PUSH],
+        presenter: githubPresenter
+    }),
+    GithubPROpenedTrigger: defineTrigger({
+        integration: IntegrationType.GITHUB,
+        schema: GithubPROpenedTriggerSchema,
+        eventTypes: [GitHubEventType.PR_OPENED],
+        presenter: githubPresenter
+    }),
+    GithubPRSynchronizedTrigger: defineTrigger({
+        integration: IntegrationType.GITHUB,
+        schema: GithubPRSynchronizedTriggerSchema,
+        eventTypes: [GitHubEventType.PR_SYNCHRONIZE],
+        presenter: githubPresenter
+    }),
+    GithubPRClosedTrigger: defineTrigger({
+        integration: IntegrationType.GITHUB,
+        schema: GithubPRClosedTriggerSchema,
+        eventTypes: [GitHubEventType.PR_CLOSED],
+        presenter: githubPresenter
+    }),
+    GithubPRMergedTrigger: defineTrigger({
+        integration: IntegrationType.GITHUB,
+        schema: GithubPRMergedTriggerSchema,
+        eventTypes: [GitHubEventType.PR_MERGED],
+        presenter: githubPresenter
+    }),
+    GithubIssueCommentCreatedTrigger: defineTrigger({
+        integration: IntegrationType.GITHUB,
+        schema: GithubIssueCommentCreatedTriggerSchema,
+        eventTypes: [GitHubEventType.ISSUE_COMMENT_CREATED],
+        presenter: githubPresenter
+    }),
+    GithubPRTrigger: defineTriggerUnion({
+        integration: IntegrationType.GITHUB,
+        members: ["GithubPROpenedTrigger", "GithubPRSynchronizedTrigger", "GithubPRClosedTrigger", "GithubPRMergedTrigger"]
+    }),
+    GithubTrigger: defineTriggerUnion({
+        integration: IntegrationType.GITHUB,
+        members: ["GithubPushTrigger", "GithubPRTrigger", "GithubIssueCommentCreatedTrigger"],
+        presenter: githubPresenter
+    }),
+    GmailTrigger: defineTrigger({
+        integration: IntegrationType.GMAIL,
+        schema: gmailTriggerSchema,
+        eventTypes: ["email.received"],
+        presenter: gmailPresenter
+    }),
+    LinearIssueCreatedTrigger: defineTrigger({
+        integration: IntegrationType.LINEAR,
+        schema: linearIssueCreatedTriggerSchema,
+        eventTypes: ["issue.created"],
+        presenter: linearPresenter
+    }),
+    LinearIssueUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.LINEAR,
+        schema: linearIssueUpdatedTriggerSchema,
+        eventTypes: ["issue.updated"],
+        presenter: linearPresenter
+    }),
+    LinearCommentCreatedTrigger: defineTrigger({
+        integration: IntegrationType.LINEAR,
+        schema: linearCommentCreatedTriggerSchema,
+        eventTypes: ["comment.created"],
+        presenter: linearPresenter
+    }),
+    LinearTrigger: defineTriggerUnion({
+        integration: IntegrationType.LINEAR,
+        members: ["LinearIssueCreatedTrigger", "LinearIssueUpdatedTrigger", "LinearCommentCreatedTrigger"],
+        presenter: linearPresenter
+    }),
+    WorkOSUserCreatedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSUserCreatedTriggerSchema,
+        eventTypes: [WorkOSEventType.USER_CREATED],
+        presenter: workOSPresenter
+    }),
+    WorkOSUserUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSUserUpdatedTriggerSchema,
+        eventTypes: [WorkOSEventType.USER_UPDATED],
+        presenter: workOSPresenter
+    }),
+    WorkOSUserDeletedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSUserDeletedTriggerSchema,
+        eventTypes: [WorkOSEventType.USER_DELETED],
+        presenter: workOSPresenter
+    }),
+    WorkOSUserTrigger: defineTriggerUnion({
+        integration: IntegrationType.WORKOS,
+        members: ["WorkOSUserCreatedTrigger", "WorkOSUserUpdatedTrigger", "WorkOSUserDeletedTrigger"]
+    }),
+    WorkOSOrganizationMembershipCreatedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSOrganizationMembershipCreatedTriggerSchema,
+        eventTypes: [WorkOSEventType.ORGANIZATION_MEMBERSHIP_CREATED],
+        presenter: workOSPresenter
+    }),
+    WorkOSOrganizationMembershipUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSOrganizationMembershipUpdatedTriggerSchema,
+        eventTypes: [WorkOSEventType.ORGANIZATION_MEMBERSHIP_UPDATED],
+        presenter: workOSPresenter
+    }),
+    WorkOSOrganizationMembershipDeletedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSOrganizationMembershipDeletedTriggerSchema,
+        eventTypes: [WorkOSEventType.ORGANIZATION_MEMBERSHIP_DELETED],
+        presenter: workOSPresenter
+    }),
+    WorkOSMembershipTrigger: defineTriggerUnion({
+        integration: IntegrationType.WORKOS,
+        members: ["WorkOSOrganizationMembershipCreatedTrigger", "WorkOSOrganizationMembershipUpdatedTrigger", "WorkOSOrganizationMembershipDeletedTrigger"]
+    }),
+    WorkOSInvitationCreatedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSInvitationCreatedTriggerSchema,
+        eventTypes: [WorkOSEventType.INVITATION_CREATED],
+        presenter: workOSPresenter
+    }),
+    WorkOSInvitationAcceptedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSInvitationAcceptedTriggerSchema,
+        eventTypes: [WorkOSEventType.INVITATION_ACCEPTED],
+        presenter: workOSPresenter
+    }),
+    WorkOSInvitationResentTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSInvitationResentTriggerSchema,
+        eventTypes: [WorkOSEventType.INVITATION_RESENT],
+        presenter: workOSPresenter
+    }),
+    WorkOSInvitationRevokedTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSInvitationRevokedTriggerSchema,
+        eventTypes: [WorkOSEventType.INVITATION_REVOKED],
+        presenter: workOSPresenter
+    }),
+    WorkOSInvitationTrigger: defineTriggerUnion({
+        integration: IntegrationType.WORKOS,
+        members: ["WorkOSInvitationCreatedTrigger", "WorkOSInvitationAcceptedTrigger", "WorkOSInvitationResentTrigger", "WorkOSInvitationRevokedTrigger"]
+    }),
+    WorkOSOrganizationTrigger: defineTrigger({
+        integration: IntegrationType.WORKOS,
+        schema: workOSOrganizationTriggerSchema,
+        eventTypes: [WorkOSEventType.ORGANIZATION_CREATED],
+        presenter: workOSPresenter
+    }),
+    WorkOSTrigger: defineTriggerUnion({
+        integration: IntegrationType.WORKOS,
+        members: ["WorkOSUserTrigger", "WorkOSMembershipTrigger", "WorkOSInvitationTrigger", "WorkOSOrganizationTrigger"],
+        presenter: workOSPresenter
+    }),
+    HeyReachConnectionRequestSentTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachConnectionRequestSentTriggerSchema,
+        eventTypes: [HeyReachEventType.CONNECTION_REQUEST_SENT],
+        presenter: heyReachPresenter
+    }),
+    HeyReachConnectionRequestAcceptedTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachConnectionRequestAcceptedTriggerSchema,
+        eventTypes: [HeyReachEventType.CONNECTION_REQUEST_ACCEPTED],
+        presenter: heyReachPresenter
+    }),
+    HeyReachMessageSentTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachMessageSentTriggerSchema,
+        eventTypes: [HeyReachEventType.MESSAGE_SENT],
+        presenter: heyReachPresenter
+    }),
+    HeyReachMessageReplyReceivedTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachMessageReplyReceivedTriggerSchema,
+        eventTypes: [HeyReachEventType.MESSAGE_REPLY_RECEIVED],
+        presenter: heyReachPresenter
+    }),
+    HeyReachInmailSentTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachInmailSentTriggerSchema,
+        eventTypes: [HeyReachEventType.INMAIL_SENT],
+        presenter: heyReachPresenter
+    }),
+    HeyReachInmailReplyReceivedTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachInmailReplyReceivedTriggerSchema,
+        eventTypes: [HeyReachEventType.INMAIL_REPLY_RECEIVED],
+        presenter: heyReachPresenter
+    }),
+    HeyReachFollowSentTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachFollowSentTriggerSchema,
+        eventTypes: [HeyReachEventType.FOLLOW_SENT],
+        presenter: heyReachPresenter
+    }),
+    HeyReachLikedPostTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachLikedPostTriggerSchema,
+        eventTypes: [HeyReachEventType.LIKED_POST],
+        presenter: heyReachPresenter
+    }),
+    HeyReachViewedProfileTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachViewedProfileTriggerSchema,
+        eventTypes: [HeyReachEventType.VIEWED_PROFILE],
+        presenter: heyReachPresenter
+    }),
+    HeyReachCampaignCompletedTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachCampaignCompletedTriggerSchema,
+        eventTypes: [HeyReachEventType.CAMPAIGN_COMPLETED],
+        presenter: heyReachPresenter
+    }),
+    HeyReachLeadTagUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.HEY_REACH,
+        schema: heyReachLeadTagUpdatedTriggerSchema,
+        eventTypes: [HeyReachEventType.LEAD_TAG_UPDATED],
+        presenter: heyReachPresenter
+    }),
+    HeyReachTrigger: defineTriggerUnion({
+        integration: IntegrationType.HEY_REACH,
+        members: [
+            "HeyReachConnectionRequestSentTrigger",
+            "HeyReachConnectionRequestAcceptedTrigger",
+            "HeyReachMessageSentTrigger",
+            "HeyReachMessageReplyReceivedTrigger",
+            "HeyReachInmailSentTrigger",
+            "HeyReachInmailReplyReceivedTrigger",
+            "HeyReachFollowSentTrigger",
+            "HeyReachLikedPostTrigger",
+            "HeyReachViewedProfileTrigger",
+            "HeyReachCampaignCompletedTrigger",
+            "HeyReachLeadTagUpdatedTrigger"
+        ],
+        presenter: heyReachPresenter
+    }),
+    AttioCallRecordingCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioCallRecordingCreatedTriggerSchema,
+        eventTypes: [AttioEventType.CALL_RECORDING_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioCommentCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioCommentCreatedTriggerSchema,
+        eventTypes: [AttioEventType.COMMENT_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioCommentResolvedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioCommentResolvedTriggerSchema,
+        eventTypes: [AttioEventType.COMMENT_RESOLVED],
+        presenter: attioPresenter
+    }),
+    AttioCommentUnresolvedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioCommentUnresolvedTriggerSchema,
+        eventTypes: [AttioEventType.COMMENT_UNRESOLVED],
+        presenter: attioPresenter
+    }),
+    AttioCommentDeletedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioCommentDeletedTriggerSchema,
+        eventTypes: [AttioEventType.COMMENT_DELETED],
+        presenter: attioPresenter
+    }),
+    AttioListCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioListCreatedTriggerSchema,
+        eventTypes: [AttioEventType.LIST_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioListUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioListUpdatedTriggerSchema,
+        eventTypes: [AttioEventType.LIST_UPDATED],
+        presenter: attioPresenter
+    }),
+    AttioListDeletedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioListDeletedTriggerSchema,
+        eventTypes: [AttioEventType.LIST_DELETED],
+        presenter: attioPresenter
+    }),
+    AttioListAttributeCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioListAttributeCreatedTriggerSchema,
+        eventTypes: [AttioEventType.LIST_ATTRIBUTE_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioListAttributeUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioListAttributeUpdatedTriggerSchema,
+        eventTypes: [AttioEventType.LIST_ATTRIBUTE_UPDATED],
+        presenter: attioPresenter
+    }),
+    AttioListEntryCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioListEntryCreatedTriggerSchema,
+        eventTypes: [AttioEventType.LIST_ENTRY_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioListEntryUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioListEntryUpdatedTriggerSchema,
+        eventTypes: [AttioEventType.LIST_ENTRY_UPDATED],
+        presenter: attioPresenter
+    }),
+    AttioListEntryDeletedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioListEntryDeletedTriggerSchema,
+        eventTypes: [AttioEventType.LIST_ENTRY_DELETED],
+        presenter: attioPresenter
+    }),
+    AttioObjectAttributeCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioObjectAttributeCreatedTriggerSchema,
+        eventTypes: [AttioEventType.OBJECT_ATTRIBUTE_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioObjectAttributeUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioObjectAttributeUpdatedTriggerSchema,
+        eventTypes: [AttioEventType.OBJECT_ATTRIBUTE_UPDATED],
+        presenter: attioPresenter
+    }),
+    AttioNoteCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioNoteCreatedTriggerSchema,
+        eventTypes: [AttioEventType.NOTE_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioNoteContentUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioNoteContentUpdatedTriggerSchema,
+        eventTypes: [AttioEventType.NOTE_CONTENT_UPDATED],
+        presenter: attioPresenter
+    }),
+    AttioNoteUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioNoteUpdatedTriggerSchema,
+        eventTypes: [AttioEventType.NOTE_UPDATED],
+        presenter: attioPresenter
+    }),
+    AttioNoteDeletedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioNoteDeletedTriggerSchema,
+        eventTypes: [AttioEventType.NOTE_DELETED],
+        presenter: attioPresenter
+    }),
+    AttioRecordCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioRecordCreatedTriggerSchema,
+        eventTypes: [AttioEventType.RECORD_CREATED],
+        printHints: attioRecordPrintHints,
+        presenter: attioPresenter
+    }),
+    AttioRecordMergedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioRecordMergedTriggerSchema,
+        eventTypes: [AttioEventType.RECORD_MERGED],
+        printHints: attioRecordPrintHints,
+        presenter: attioPresenter
+    }),
+    AttioRecordUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioRecordUpdatedTriggerSchema,
+        eventTypes: [AttioEventType.RECORD_UPDATED],
+        printHints: attioRecordPrintHints,
+        presenter: attioPresenter
+    }),
+    AttioRecordDeletedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioRecordDeletedTriggerSchema,
+        eventTypes: [AttioEventType.RECORD_DELETED],
+        presenter: attioPresenter
+    }),
+    AttioTaskCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioTaskCreatedTriggerSchema,
+        eventTypes: [AttioEventType.TASK_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioTaskUpdatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioTaskUpdatedTriggerSchema,
+        eventTypes: [AttioEventType.TASK_UPDATED],
+        presenter: attioPresenter
+    }),
+    AttioTaskDeletedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioTaskDeletedTriggerSchema,
+        eventTypes: [AttioEventType.TASK_DELETED],
+        presenter: attioPresenter
+    }),
+    AttioWorkspaceMemberCreatedTrigger: defineTrigger({
+        integration: IntegrationType.ATTIO,
+        schema: attioWorkspaceMemberCreatedTriggerSchema,
+        eventTypes: [AttioEventType.WORKSPACE_MEMBER_CREATED],
+        presenter: attioPresenter
+    }),
+    AttioTrigger: defineTriggerUnion({
+        integration: IntegrationType.ATTIO,
+        members: [
+            "AttioCallRecordingCreatedTrigger",
+            "AttioCommentCreatedTrigger",
+            "AttioCommentResolvedTrigger",
+            "AttioCommentUnresolvedTrigger",
+            "AttioCommentDeletedTrigger",
+            "AttioListCreatedTrigger",
+            "AttioListUpdatedTrigger",
+            "AttioListDeletedTrigger",
+            "AttioListAttributeCreatedTrigger",
+            "AttioListAttributeUpdatedTrigger",
+            "AttioListEntryCreatedTrigger",
+            "AttioListEntryUpdatedTrigger",
+            "AttioListEntryDeletedTrigger",
+            "AttioObjectAttributeCreatedTrigger",
+            "AttioObjectAttributeUpdatedTrigger",
+            "AttioNoteCreatedTrigger",
+            "AttioNoteContentUpdatedTrigger",
+            "AttioNoteUpdatedTrigger",
+            "AttioNoteDeletedTrigger",
+            "AttioRecordCreatedTrigger",
+            "AttioRecordMergedTrigger",
+            "AttioRecordUpdatedTrigger",
+            "AttioRecordDeletedTrigger",
+            "AttioTaskCreatedTrigger",
+            "AttioTaskUpdatedTrigger",
+            "AttioTaskDeletedTrigger",
+            "AttioWorkspaceMemberCreatedTrigger"
+        ],
+        presenter: attioPresenter
+    }),
+    CronTrigger: defineTrigger({
+        integration: IntegrationType.CRON_JOB,
+        schema: cronTriggerSchema,
+        eventTypes: ["cron"],
+        presenter: cronPresenter
+    }),
+    WebhookTrigger: defineTrigger({
+        integration: IntegrationType.WEBHOOK,
+        schema: webhookTriggerSchema,
+        eventTypes: ["webhook"],
+        printHints: {
+            typeParams: "<TBody = unknown>",
+            aliasArgs: "<TBody>",
+            fieldOverrides: { body: "TBody" }
+        },
+        presenter: webhookPresenter
+    }),
+    WebMonitorTrigger: defineTrigger({
+        integration: IntegrationType.WEBMONITOR,
+        schema: webMonitorTriggerSchema,
+        eventTypes: ["webmonitor"],
+        printHints: {
+            typeParams: "<TStructured = unknown>",
+            aliasArgs: "<TStructured>",
+            fieldOverrides: { payload: "TStructured" }
+        },
+        presenter: webMonitorPresenter
+    })
+} satisfies Record<string, TriggerDefinition>
 
 export function isTriggerDefinitionName(name: string): name is TriggerDefinitionName {
     return name in TriggerDefinitions
+}
+
+const concreteTriggerDefinitionsByEvent = collectConcreteTriggerDefinitions()
+const fallbackTriggerPresentersByIntegration = collectFallbackTriggerPresenters()
+
+function collectConcreteTriggerDefinitions(): Map<string, ConcreteTriggerDefinition> {
+    const definitionsByEvent = new Map<string, ConcreteTriggerDefinition>()
+    Object.values(TriggerDefinitions).forEach(definition => {
+        if (definition.kind !== "concrete") return
+        definition.eventTypes.forEach(eventType => {
+            const key = triggerEventKey(definition.integration, eventType)
+            if (definitionsByEvent.has(key)) {
+                throw new DuplicateTriggerDefinitionError(key)
+            }
+            definitionsByEvent.set(key, definition)
+        })
+    })
+    return definitionsByEvent
+}
+
+function collectFallbackTriggerPresenters(): Map<IntegrationType, TriggerPresenter<unknown>> {
+    const presentersByIntegration = new Map<IntegrationType, TriggerPresenter<unknown>>()
+    Object.values(TriggerDefinitions).forEach(definition => {
+        if (definition.kind !== "union" || !definition.presenter) return
+        if (presentersByIntegration.has(definition.integration)) {
+            throw new DuplicateTriggerDefinitionError(`fallback presenter for ${definition.integration}`)
+        }
+        presentersByIntegration.set(definition.integration, definition.presenter)
+    })
+    return presentersByIntegration
+}
+
+function resolveTriggerPresenter(event: Trigger): TriggerPresenter<unknown> {
+    const definition = concreteTriggerDefinitionsByEvent.get(triggerEventKey(event.integrationType, event.eventType))
+    if (definition?.presenter) {
+        return definition.presenter
+    }
+    const fallback = fallbackTriggerPresentersByIntegration.get(event.integrationType)
+    if (fallback) {
+        return fallback
+    }
+    throw new TriggerPresenterNotFoundError(event.integrationType, event.eventType)
+}
+
+function triggerEventKey(integration: IntegrationType, eventType: string): string {
+    return `${integration}:${eventType}`
+}
+
+export class DuplicateTriggerDefinitionError extends Error {
+    constructor(key: string) {
+        super(`Duplicate trigger definition: ${key}`)
+        this.name = "DuplicateTriggerDefinitionError"
+    }
+}
+
+export class TriggerPresenterNotFoundError extends Error {
+    constructor(integrationType: string, eventType: string) {
+        super(`No trigger presenter registered for ${integrationType}:${eventType}`)
+        this.name = "TriggerPresenterNotFoundError"
+    }
 }
 
 export type TriggerDefinitionName = keyof typeof TriggerDefinitions
