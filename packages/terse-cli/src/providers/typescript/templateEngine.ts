@@ -1,4 +1,5 @@
 import { IntegrationType } from "terse-types"
+import ts from "typescript"
 
 import type { GeneratedFile } from "../LanguageProvider.js"
 import { readTemplateFile } from "../templateUtils.js"
@@ -51,10 +52,11 @@ function aggregateLines(outputs: readonly ModuleOutput[], linesOf: (output: Modu
 
 function assembleLeaf(leaf: LeafFile, importCandidates: readonly string[], allLeaves: LeafFile[], declarations: Map<string, DeclaredName[]>): AssembledLeaf {
     const ownNames = new Set((declarations.get(leaf.fileName) ?? []).map(declaration => declaration.name))
-    const sdkImportLines = buildSdkImportLines(leaf.body, importCandidates, ownNames)
+    const referencedNames = collectReferencedNames(leaf.body)
+    const sdkImportLines = buildSdkImportLines(referencedNames, importCandidates, ownNames)
     const siblingImportLines = allLeaves
         .filter(sibling => KIND_TIER[sibling.kind] < KIND_TIER[leaf.kind])
-        .flatMap(sibling => buildSiblingImportLines(leaf.body, ownNames, declarations.get(sibling.fileName) ?? [], `./${moduleName(sibling.fileName)}.js`))
+        .flatMap(sibling => buildSiblingImportLines(referencedNames, ownNames, declarations.get(sibling.fileName) ?? [], `./${moduleName(sibling.fileName)}.js`))
     const importBlock = [...sdkImportLines, ...siblingImportLines].join("\n")
     const code = postprocess([LEAF_BANNER, importBlock, leaf.body].filter(Boolean).join("\n\n"))
     return { ...leaf, code, exports: (declarations.get(leaf.fileName) ?? []).filter(declaration => declaration.exported) }
@@ -74,8 +76,9 @@ function assembleRoot(
         skillsAggregateLines: aggregateLines(outputs, output => output.skillsAggregateLines)
     })
     const ownNames = new Set(extractDeclarations(body).map(declaration => declaration.name))
-    const sdkImportLines = buildSdkImportLines(body, [...new Set([...importCandidates, "TerseAgent"])].sort(), ownNames)
-    const siblingImportLines = leaves.flatMap(leaf => buildSiblingImportLines(body, ownNames, leaf.exports, `./${GENERATED_DIR}/${moduleName(leaf.fileName)}.js`))
+    const referencedNames = collectReferencedNames(body)
+    const sdkImportLines = buildSdkImportLines(referencedNames, [...new Set([...importCandidates, "TerseAgent"])].sort(), ownNames)
+    const siblingImportLines = leaves.flatMap(leaf => buildSiblingImportLines(referencedNames, ownNames, leaf.exports, `./${GENERATED_DIR}/${moduleName(leaf.fileName)}.js`))
     const reexportLines = leaves.map(leaf => `export * from "./${GENERATED_DIR}/${moduleName(leaf.fileName)}.js"`)
     const header = buildRootHeader(input.availableIntegrations, toolboxEntries, leaves)
     const code = postprocess([header, [...sdkImportLines, ...siblingImportLines].join("\n"), reexportLines.join("\n"), body].filter(Boolean).join("\n\n"))
@@ -122,57 +125,66 @@ function buildIndexLines(leaf: AssembledLeaf, toolboxEntries: readonly ToolboxEn
 }
 
 function collectIndexRows(leaf: AssembledLeaf, toolboxEntries: readonly ToolboxEntryContext[]): IndexRow[] {
-    const lines = leaf.code.split("\n")
-    const rows: IndexRow[] = []
-    const declarationLineByName = new Map<string, number>()
-    lines.forEach((line, index) => {
-        const declaration = line.match(DECLARATION_PATTERN)
-        if (declaration?.[1]) declarationLineByName.set(declaration[3], index + 1)
-    })
-
+    const source = parseSource(leaf.code)
+    const lineOf = (node: ts.Node): number => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
     const typeNameToToolboxKey = new Map(toolboxEntries.map(entry => [entry.typeName, entry.key]))
-    let openBlock: { type: "tools"; key: string } | { type: "triggers"; key: string } | undefined
+    const declarationLineByName = new Map(
+        topLevelDeclarations(source)
+            .filter(declaration => declaration.exported)
+            .map(declaration => [declaration.name, lineOf(declaration.statement)])
+    )
 
-    lines.forEach((line, index) => {
-        const lineNumber = index + 1
+    const rows: IndexRow[] = []
+    for (const statement of source.statements) {
+        if (!hasExportModifier(statement)) continue
 
-        if (openBlock) {
-            if (line === "}") {
-                openBlock = undefined
-                return
+        if (ts.isTypeAliasDeclaration(statement) && ts.isTypeLiteralNode(statement.type)) {
+            const toolboxKey = typeNameToToolboxKey.get(statement.name.text)
+            if (toolboxKey !== undefined) {
+                rows.push(...toolboxMethodRows(statement.type, toolboxKey, declarationLineByName, lineOf))
+                continue
             }
-            const method = line.match(/^ {4}(\w+)[(<]/)
-            if (!method) return
-            if (openBlock.type === "tools") {
-                const paramsType = line.match(/params: (\w+)/)?.[1]
-                const paramsLine = paramsType ? declarationLineByName.get(paramsType) : undefined
-                const paramsSuffix = paramsLine ? `  (params L${paramsLine})` : ""
-                rows.push({ line: lineNumber, label: `toolbox.${openBlock.key}.${method[1]}()${paramsSuffix}` })
-            } else {
-                rows.push({ line: lineNumber, label: `Triggers.${openBlock.key}.${method[1]}()` })
-            }
-            return
         }
 
-        const toolsBlock = line.match(/^export type (\w+) = \{$/)
-        if (toolsBlock && typeNameToToolboxKey.has(toolsBlock[1])) {
-            openBlock = { type: "tools", key: typeNameToToolboxKey.get(toolsBlock[1])! }
-            return
-        }
-        const triggersBlock = line.match(/^export const (\w+)Triggers = \{$/)
-        if (triggersBlock) {
-            openBlock = { type: "triggers", key: triggersBlock[1] }
-            return
+        const triggersConst = matchTriggersConst(statement)
+        if (triggersConst) {
+            rows.push(...triggerMethodRows(triggersConst.initializer, triggersConst.key, lineOf))
+            continue
         }
 
-        const declaration = line.match(DECLARATION_PATTERN)
-        if (!declaration || !declaration[1]) return
-        const [, , keyword, name] = declaration
-        if (keyword === "class") rows.push({ line: lineNumber, label: `class ${name}` })
-        else if (keyword === "function") rows.push({ line: lineNumber, label: `function ${name}()` })
-        else if ((keyword === "type" || keyword === "interface") && indexableTypeName(leaf.kind, name)) rows.push({ line: lineNumber, label: `type ${name}` })
-    })
+        if (ts.isClassDeclaration(statement) && statement.name) rows.push({ line: lineOf(statement), label: `class ${statement.name.text}` })
+        else if (ts.isFunctionDeclaration(statement) && statement.name) rows.push({ line: lineOf(statement), label: `function ${statement.name.text}()` })
+        else if ((ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) && indexableTypeName(leaf.kind, statement.name.text)) {
+            rows.push({ line: lineOf(statement), label: `type ${statement.name.text}` })
+        }
+    }
     return rows
+}
+
+function toolboxMethodRows(type: ts.TypeLiteralNode, toolboxKey: string, declarationLineByName: ReadonlyMap<string, number>, lineOf: (node: ts.Node) => number): IndexRow[] {
+    return type.members.flatMap(member => {
+        if (!ts.isMethodSignature(member) || !ts.isIdentifier(member.name)) return []
+        const firstParamType = member.parameters[0]?.type
+        const paramsLine = firstParamType && ts.isTypeReferenceNode(firstParamType) && ts.isIdentifier(firstParamType.typeName) ? declarationLineByName.get(firstParamType.typeName.text) : undefined
+        const paramsSuffix = paramsLine ? `  (params L${paramsLine})` : ""
+        return [{ line: lineOf(member), label: `toolbox.${toolboxKey}.${member.name.text}()${paramsSuffix}` }]
+    })
+}
+
+function triggerMethodRows(initializer: ts.ObjectLiteralExpression, triggersKey: string, lineOf: (node: ts.Node) => number): IndexRow[] {
+    return initializer.properties.flatMap(property => {
+        if (!ts.isMethodDeclaration(property) || !ts.isIdentifier(property.name)) return []
+        return [{ line: lineOf(property), label: `Triggers.${triggersKey}.${property.name.text}()` }]
+    })
+}
+
+function matchTriggersConst(statement: ts.Statement): { key: string; initializer: ts.ObjectLiteralExpression } | undefined {
+    if (!ts.isVariableStatement(statement) || statement.declarationList.declarations.length !== 1) return undefined
+    const [declaration] = statement.declarationList.declarations
+    if (!ts.isIdentifier(declaration.name) || !declaration.name.text.endsWith("Triggers")) return undefined
+    const key = declaration.name.text.slice(0, -"Triggers".length)
+    if (key.length === 0 || !declaration.initializer || !ts.isObjectLiteralExpression(declaration.initializer)) return undefined
+    return { key, initializer: declaration.initializer }
 }
 
 function indexableTypeName(kind: LeafKind, name: string): boolean {
@@ -190,8 +202,8 @@ function indexableTypeName(kind: LeafKind, name: string): boolean {
     }
 }
 
-function buildSdkImportLines(body: string, candidates: readonly string[], ownNames: ReadonlySet<string>): string[] {
-    const used = candidates.filter(name => !ownNames.has(name) && referencesName(body, name))
+function buildSdkImportLines(referencedNames: ReadonlySet<string>, candidates: readonly string[], ownNames: ReadonlySet<string>): string[] {
+    const used = candidates.filter(name => !ownNames.has(name) && referencedNames.has(name))
     if (used.length === 0) return []
     if (used.length > 3) {
         return ["import {", ...used.map(name => `    ${name},`), '} from "terse-sdk"']
@@ -199,8 +211,8 @@ function buildSdkImportLines(body: string, candidates: readonly string[], ownNam
     return [`import { ${used.join(", ")} } from "terse-sdk"`]
 }
 
-function buildSiblingImportLines(body: string, ownNames: ReadonlySet<string>, siblingDeclarations: readonly DeclaredName[], specifier: string): string[] {
-    const used = siblingDeclarations.filter(declaration => declaration.exported && !ownNames.has(declaration.name) && referencesName(body, declaration.name))
+function buildSiblingImportLines(referencedNames: ReadonlySet<string>, ownNames: ReadonlySet<string>, siblingDeclarations: readonly DeclaredName[], specifier: string): string[] {
+    const used = siblingDeclarations.filter(declaration => declaration.exported && !ownNames.has(declaration.name) && referencedNames.has(declaration.name))
     const values = used.filter(declaration => declaration.kind === "value").map(declaration => declaration.name)
     const types = used.filter(declaration => declaration.kind === "type").map(declaration => declaration.name)
     const lines: string[] = []
@@ -209,22 +221,49 @@ function buildSiblingImportLines(body: string, ownNames: ReadonlySet<string>, si
     return lines
 }
 
-const DECLARATION_PATTERN = /^(export )?(?:declare )?(?:abstract )?(type|interface|class|function|const|enum)\s+(\w+)/
-
 function extractDeclarations(body: string): DeclaredName[] {
     const declarations: DeclaredName[] = []
     const seen = new Set<string>()
-    for (const line of body.split("\n")) {
-        const match = line.match(DECLARATION_PATTERN)
-        if (!match || seen.has(match[3])) continue
-        seen.add(match[3])
-        declarations.push({ name: match[3], kind: match[2] === "type" || match[2] === "interface" ? "type" : "value", exported: Boolean(match[1]) })
+    for (const { name, kind, exported } of topLevelDeclarations(parseSource(body))) {
+        if (seen.has(name)) continue
+        seen.add(name)
+        declarations.push({ name, kind, exported })
     }
     return declarations
 }
 
-function referencesName(body: string, name: string): boolean {
-    return new RegExp(`\\b${name}\\b`).test(body)
+function topLevelDeclarations(source: ts.SourceFile): TopLevelDeclaration[] {
+    return source.statements.flatMap((statement): TopLevelDeclaration[] => {
+        const exported = hasExportModifier(statement)
+        if (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) {
+            return [{ statement, name: statement.name.text, kind: "type", exported }]
+        }
+        if (ts.isClassDeclaration(statement) || ts.isFunctionDeclaration(statement) || ts.isEnumDeclaration(statement)) {
+            return statement.name ? [{ statement, name: statement.name.text, kind: "value", exported }] : []
+        }
+        if (ts.isVariableStatement(statement)) {
+            return statement.declarationList.declarations.flatMap(declaration => (ts.isIdentifier(declaration.name) ? [{ statement, name: declaration.name.text, kind: "value", exported }] : []))
+        }
+        return []
+    })
+}
+
+function collectReferencedNames(body: string): ReadonlySet<string> {
+    const names = new Set<string>()
+    const visit = (node: ts.Node): void => {
+        if (ts.isIdentifier(node)) names.add(node.text)
+        ts.forEachChild(node, visit)
+    }
+    visit(parseSource(body))
+    return names
+}
+
+function hasExportModifier(statement: ts.Statement): boolean {
+    return ts.canHaveModifiers(statement) && (ts.getModifiers(statement)?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false)
+}
+
+function parseSource(text: string): ts.SourceFile {
+    return ts.createSourceFile("generated.ts", text, ts.ScriptTarget.Latest, true)
 }
 
 function moduleName(fileName: string): string {
@@ -252,6 +291,10 @@ interface DeclaredName {
     name: string
     kind: "type" | "value"
     exported: boolean
+}
+
+interface TopLevelDeclaration extends DeclaredName {
+    statement: ts.Statement
 }
 
 interface IndexRow {
