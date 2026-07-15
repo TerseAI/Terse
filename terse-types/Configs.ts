@@ -1,6 +1,7 @@
 import * as z from "zod"
 
 import { IntegrationType, integrationTypeEnum } from "./Integrations"
+import { Timezone, timezoneSchema } from "./Timezones"
 
 export enum ConfigType {
     GMAIL = "gmail",
@@ -849,13 +850,17 @@ export const TimeTriggerConfigSchema = ConfigInstanceSchema.extend({
     integrationId: z.literal("system"),
     integrationType: z.literal(IntegrationType.CRON_JOB),
     configType: z.literal(ConfigType.TIME_TRIGGER),
-    cronExpression: z.string()
+    cronExpression: z.string(),
+    timezone: timezoneSchema.optional()
 })
 export type TimeTriggerConfigData = z.infer<typeof TimeTriggerConfigSchema>
 export type TimeTriggerConfigInstance = TimeTriggerConfigData & ConfigBehavior
 
 export class TimeTriggerConfig extends BaseConfigInstance<IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER, "system"> implements TimeTriggerConfigInstance {
-    constructor(public cronExpression: string) {
+    constructor(
+        public cronExpression: string,
+        public timezone?: Timezone
+    ) {
         super("system", IntegrationType.CRON_JOB, ConfigType.TIME_TRIGGER)
     }
 
@@ -866,7 +871,7 @@ export class TimeTriggerConfig extends BaseConfigInstance<IntegrationType.CRON_J
     formatForAgent(): string {
         const parts = [`Type: Time Trigger`]
         if (this.cronExpression) {
-            parts.push(`Schedule (UTC): ${this.cronExpression}`)
+            parts.push(`Schedule (${this.timezone ?? "UTC"}): ${this.cronExpression}`)
         }
         return parts.join("\n")
     }

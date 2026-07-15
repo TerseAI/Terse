@@ -142,8 +142,8 @@ export const Triggers = {
         }
     },
     schedule: {
-        /** Run on a cron schedule (5-field cron expression, evaluated in UTC) */
-        cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
+        /** Run on a cron schedule (5-field cron expression, evaluated as wall-clock time in `timezone` — an IANA name like "America/New_York", DST-aware — defaulting to UTC) */
+        cron(opts: { expression: string; timezone?: Timezone }): TypedTrigger<CronTrigger> {
             /* … */
         }
     }

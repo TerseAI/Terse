@@ -366,11 +366,11 @@ Choosing frequency:
 
 <CodeGroup>
 ```ts TypeScript
-triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })] // Every Monday at 9:00 UTC
+triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1", timezone: "America/New_York" })] // Every Monday at 9:00am Eastern
 ```
 </CodeGroup>
 
-Expressions use standard 5-field cron syntax (`minute hour day-of-month month day-of-week`) and are always evaluated in **UTC**. To schedule in a local timezone, convert the time to UTC first (e.g. 9am Eastern is `0 14 * * *` during standard time), and keep in mind the UTC offset shifts when daylight saving starts or ends.
+Expressions use standard 5-field cron syntax (`minute hour day-of-month month day-of-week`). The optional `timezone` is an IANA timezone name — the `Timezone` union exported by `terse-sdk`, so your editor autocompletes valid names — and the expression is evaluated as wall-clock time in that zone, adjusting automatically when daylight saving starts or ends. Omit it to evaluate in UTC.
 
 <Expandable title="Event payload">
   - `isManualTrigger` - whether the run was triggered manually from the dashboard

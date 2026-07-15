@@ -608,6 +608,7 @@ model automation_time_trigger_configs {
   automation_input_id String @unique // FK to automation_inputs
 
   cron_expression String
+  timezone        String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

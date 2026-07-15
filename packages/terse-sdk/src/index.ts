@@ -121,6 +121,8 @@ export {
 export type Trigger = SDKTrigger<_RawTrigger>
 
 export { FrequencyUnit, IntegrationType } from "terse-types"
+export { TIMEZONES } from "terse-types"
+export type { Timezone } from "terse-types"
 export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
 export type { SlackAttachments, SlackBlocks, SlackFiles } from "terse-types"
 

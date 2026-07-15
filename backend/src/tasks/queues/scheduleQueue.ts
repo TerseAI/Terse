@@ -1,16 +1,18 @@
 import { CronExpressionParser } from "cron-parser"
+import { Timezone } from "terse-types/Timezones"
 
 import logger from "../../common/logger"
 import { Boss } from "../../loaders/pgBoss"
 
 import { QueueName } from "./queueNames"
 
-export async function upsertScheduleTrigger(inputId: string, cronExpression: string): Promise<void> {
-    assertValidUserCron(inputId, cronExpression)
+export async function upsertScheduleTrigger(inputId: string, cronExpression: string, timezone?: Timezone): Promise<void> {
+    const tz = timezone ?? "UTC"
+    assertValidUserCron(inputId, cronExpression, tz)
     await Boss.getInstance()
         .getBoss()
-        .schedule(QueueName.Schedule, cronExpression, { inputId } satisfies ScheduleJobData, { tz: "UTC", key: inputId })
-    logger.info("Time trigger schedule upserted", { inputId, cronExpression })
+        .schedule(QueueName.Schedule, cronExpression, { inputId } satisfies ScheduleJobData, { tz, key: inputId })
+    logger.info("Time trigger schedule upserted", { inputId, cronExpression, timezone: tz })
 }
 
 export async function removeScheduleTrigger(inputId: string): Promise<void> {
@@ -24,12 +26,12 @@ export async function enqueueManualScheduleJob(inputId: string, manualContext?: 
         .send(QueueName.Schedule, { inputId, isManualTrigger: true, manualContext } satisfies ScheduleJobData)
 }
 
-export function assertValidUserCron(inputId: string, cronExpression: string): void {
+export function assertValidUserCron(inputId: string, cronExpression: string, timezone: Timezone = "UTC"): void {
     if (cronExpression.trim().split(/\s+/).length !== 5) {
         throw new InvalidCronExpressionError(inputId, cronExpression)
     }
     try {
-        CronExpressionParser.parse(cronExpression, { tz: "UTC" })
+        CronExpressionParser.parse(cronExpression, { tz: timezone })
     } catch {
         throw new InvalidCronExpressionError(inputId, cronExpression)
     }

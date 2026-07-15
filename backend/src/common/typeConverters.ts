@@ -35,6 +35,7 @@ import {
 } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 import { RunHistoryStatus as SharedRunHistoryStatus } from "terse-types/RunHistoryTypes"
+import { Timezone, timezoneSchema } from "terse-types/Timezones"
 
 import { AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
 
@@ -263,7 +264,7 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
     }
 
     if (channelInput.time_trigger_config) {
-        return new TimeTriggerConfig(channelInput.time_trigger_config.cron_expression || "")
+        return new TimeTriggerConfig(channelInput.time_trigger_config.cron_expression || "", toTimezone(channelInput.time_trigger_config.timezone))
     }
 
     if (channelInput.workos_config) {
@@ -309,6 +310,11 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
     }
 
     throw new Error(`No config found for channel input ${channelInput.id}`)
+}
+
+export const toTimezone = (value: string | null): Timezone | undefined => {
+    const parsed = timezoneSchema.safeParse(value)
+    return parsed.success ? parsed.data : undefined
 }
 
 /**
