@@ -1,0 +1,23 @@
+{{sectionHeader "Linear resources"}}
+
+{{> resource-class section.teamClass}}
+
+{{> resource-class section.projectClass}}
+
+{{#if toolFile}}
+{{sectionHeader "Linear tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Linear skill"}}
+
+/** Linear — read and write issues, optionally scoped to a team or project */
+export function linearSkill(opts?: { team?: LinearTeam; project?: LinearProject }): TypedSkill<{{{section.skillToolType}}}> {
+    return new LinearOutputConfig(
+        "{{escape section.id}}",
+        opts?.team?.teamId ?? null,
+        opts?.team?.name ?? null,
+        opts?.project?.projectId ?? null
+    )
+}

@@ -6,20 +6,23 @@ import { pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
 import { __resetRegisteredTerseInstances, fetchRegisteredJobs } from "terse-sdk"
-import type { SerializedEvent } from "terse-types"
+import type { SerializedEvent, ToolDefinition } from "terse-types"
+import { EXTERNAL_INTEGRATION_TYPES, IntegrationType } from "terse-types"
 import { tsImport } from "tsx/esm/api"
 
 import { CliError } from "../../cliError.js"
 import { ensureDotenvLoaded } from "../../dotenv.js"
 import { readProjectConfig } from "../../projectConfig.js"
 import type { LanguageProvider } from "../LanguageProvider.js"
-import type { CodegenInput } from "../codegenTypes.js"
+import type { CodegenHooks, CodegenResult, CodegenRunInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 
 import { buildWorkflowArtifacts, expectedWorkflowVersion } from "./durableRuntime.js"
-import { prepareTemplateContext } from "./prepareCodegenData.js"
+import { type IntegrationModule, type ModuleOutput, RUN_HISTORY_ACTION_HOIST } from "./modules/IntegrationModule.js"
+import { integrationModuleRegistry, terseModule } from "./modules/registry.js"
 import { type JobRuntime, directJobRuntime, durableJobRuntime } from "./runtimes/index.js"
-import { renderGeneratedCode } from "./templateEngine.js"
+import { assembleGeneratedFiles } from "./templateEngine.js"
+import { printHoistedShape } from "./typePrinter.js"
 
 const execAsync = promisify(exec)
 const execFileAsync = promisify(execFile)
@@ -81,8 +84,50 @@ class TypeScriptProvider implements LanguageProvider {
         return path.join(cwd, fs.existsSync(path.join(cwd, "src")) ? "src/terse.generated.ts" : "terse.generated.ts")
     }
 
-    renderGeneratedCode(input: CodegenInput): string {
-        return renderGeneratedCode(prepareTemplateContext(input))
+    async renderGeneratedFiles(input: CodegenRunInput, hooks?: CodegenHooks): Promise<CodegenResult> {
+        const activeSet = new Set(input.activeTypes)
+        const pins = input.activeConnections
+
+        const fetched = await Promise.all(
+            EXTERNAL_INTEGRATION_TYPES.map(async type => {
+                const module = integrationModuleRegistry[type]
+                const instances = activeSet.has(type) ? await module.fetchInstances(input.apiKey).catch(() => []) : []
+                return { module, instances }
+            })
+        )
+
+        for (const { module, instances } of fetched) {
+            assertPinExists(module, instances, pins[module.type])
+        }
+
+        hooks?.onFetchComplete?.()
+
+        const toolsByIntegration = groupToolsByIntegration(input.tools)
+        const moduleOutputs: ModuleOutput[] = [
+            await terseModule.render({ instance: undefined, instances: [], tools: toolsByIntegration.get(IntegrationType.TERSE) ?? [] }),
+            ...(await Promise.all(
+                fetched.map(({ module, instances }) =>
+                    module.render({
+                        instance: module.selectActiveInstance(instances, pins[module.type]),
+                        instances,
+                        tools: toolsByIntegration.get(module.type) ?? []
+                    })
+                )
+            ))
+        ]
+
+        const commonToolDeclarations = input.tools.length > 0 ? [await printHoistedShape(RUN_HISTORY_ACTION_HOIST, "output")] : []
+
+        const files = assembleGeneratedFiles({
+            availableIntegrations: input.availableIntegrations.length > 0 ? input.availableIntegrations.join(", ") : undefined,
+            moduleOutputs,
+            commonToolDeclarations
+        })
+
+        return {
+            files,
+            integrationSummaries: fetched.filter(entry => entry.instances.length > 0).map(entry => ({ label: entry.module.summaryLabel, instanceCount: entry.instances.length }))
+        }
     }
 
     async typecheck(): Promise<void> {
@@ -206,6 +251,24 @@ class TypeScriptProvider implements LanguageProvider {
 }
 
 export const typeScriptProvider = new TypeScriptProvider()
+
+function groupToolsByIntegration(tools: readonly ToolDefinition[]): Map<string, ToolDefinition[]> {
+    const byIntegration = new Map<string, ToolDefinition[]>()
+    for (const tool of tools) {
+        const key = tool.integration.toLowerCase()
+        byIntegration.set(key, [...(byIntegration.get(key) ?? []), tool])
+    }
+    return byIntegration
+}
+
+function assertPinExists(module: IntegrationModule, instances: readonly unknown[], pinnedId: string | undefined): void {
+    if (!pinnedId || instances.length === 0) return
+    if (instances.some(instance => module.instanceId(instance) === pinnedId)) return
+
+    throw new CliError("pinned_connection_missing", `The pinned ${module.type} connection '${pinnedId}' was not found in this workspace.`, {
+        detail: `Re-pin with \`terse integrate use ${module.type}\`, or remove the pin with \`terse integrate use ${module.type} --clear\`.`
+    })
+}
 
 // Durability is opt-in per job and unavailable on self-hosted control planes.
 function selectRuntime(job: CreateJobParameters): JobRuntime {

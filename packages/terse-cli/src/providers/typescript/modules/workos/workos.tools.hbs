@@ -1,0 +1,12 @@
+{{#if toolFile}}
+{{sectionHeader "WorkOS tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "WorkOS skill"}}
+
+/** WorkOS — manage users, organizations and invitations */
+export function workOSSkill(): TypedSkill<{{{section.skillToolType}}}> {
+    return new WorkOSOutputConfig("{{escape section.id}}")
+}

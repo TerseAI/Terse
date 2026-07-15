@@ -19,7 +19,7 @@
 - Use "integration" for a connected external system such as Attio, Apollo, Slack, Outreach, or Snowflake.
 - Use "skill" for the capabilities a workflow can use after you connect an integration and run code generation.
 - Use "trigger" for the event or schedule that starts a workflow.
-- Use "generated helpers" for the typed exports written to `src/terse.generated.ts`.
+- Use "generated helpers" for the typed exports written to `src/terse.generated.ts` and the `src/terse.generated/` folder.
 - Use "deploy" for syncing local code to Terse. Do not say "publish" unless the product UI does.
 - Use "API token" when referring to the token users create in the UI. Use `TERSE_API_KEY` when referring to the environment variable.
 
@@ -37,7 +37,7 @@
 - Use Attio as the primary CRM in examples unless a page needs CRM-agnostic language
 - Use Apollo as the primary enrichment provider in examples unless a page needs provider-agnostic language
 - State prerequisites before commands that depend on integrations, sample events, or an API token
-- Call out generated files clearly. Do not imply that users should hand-edit `src/terse.generated.ts`.
+- Call out generated files clearly. Do not imply that users should hand-edit `src/terse.generated.ts` or anything under `src/terse.generated/`.
 - When the UI and CLI overlap, explain which source of truth owns the configuration
 - Use the live UI label for buttons, tabs, and sidebar items. If the SDK still says "job" in code, explain that once and then keep using "workflow" in prose.
 

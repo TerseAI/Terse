@@ -1,0 +1,72 @@
+{{sectionHeader "Triggers"}}
+
+/**
+ * Triggers available in your workspace.
+ *
+ * Type `Triggers.` in your editor to see every connected integration with triggers.
+ * Use these in `createJob({ triggers: [...] })`.
+ */
+export const Triggers = {
+{{#each triggersAggregateLines}}
+{{{this}}}
+{{/each}}
+}
+
+{{sectionHeader "Skills"}}
+
+/**
+ * Skills available in your workspace.
+ *
+ * Type `Skills.` in your editor to see every connected integration's skill at a glance.
+ * Use these in `generateText({ skills: [...] })` (or `TerseAgent.create({ skills: [...] })`).
+ */
+export const Skills = {
+{{#each skillsAggregateLines}}
+{{{this}}}
+{{/each}}
+}
+
+{{sectionHeader "Typed Tools"}}
+
+export type GeneratedTools = {
+{{#each toolboxEntries}}
+    {{key}}: {{typeName}}
+{{/each}}
+}
+
+declare module "terse-sdk" {
+    interface TerseAgent {
+        readonly tools: GeneratedTools
+    }
+}
+
+function createTools(agent: TerseAgent): GeneratedTools {
+    const allowed: Set<string> = new Set(agent.skills.map(config => config.integrationType))
+    return {
+{{#each toolboxEntries}}
+        ...(allowed.has("{{escape integrationType}}") ? { {{key}}: {{constName}} } : {}),
+{{/each}}
+    } as GeneratedTools
+}
+
+;(globalThis as any).__terse_createTools = createTools
+
+/**
+ * Deterministic tool calls without an agent.
+ *
+ * `toolbox` exposes every connected integration tool as a typed function. Unlike
+ * `agent.tools`, it does not require constructing a `TerseAgent` and is not
+ * filtered by `skills`. Use it when you know exactly which tool to call and
+ * don't need an LLM in the loop.
+ *
+ * @example
+ * ```ts
+ * import { toolbox } from "./terse.generated"
+ * await toolbox.slack.sendMessage({ channelId: "...", message: "hi" })
+ * ```
+ */
+export const toolbox: GeneratedTools = {
+{{#each toolboxEntries}}
+    {{key}}: {{constName}},
+{{/each}}
+}

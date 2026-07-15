@@ -22,6 +22,22 @@ export enum IntegrationType {
 }
 export const integrationTypeEnum = z.enum(IntegrationType)
 
+export const BUILT_IN_INTEGRATION_TYPES = [IntegrationType.TERSE, IntegrationType.CRON_JOB, IntegrationType.WEBHOOK, IntegrationType.WEBMONITOR] as const
+export type BuiltInIntegrationType = (typeof BUILT_IN_INTEGRATION_TYPES)[number]
+export type ExternalIntegrationType = Exclude<IntegrationType, BuiltInIntegrationType>
+
+const builtInIntegrationTypes: ReadonlySet<IntegrationType> = new Set(BUILT_IN_INTEGRATION_TYPES)
+
+export function isBuiltInIntegrationType(type: IntegrationType): type is BuiltInIntegrationType {
+    return builtInIntegrationTypes.has(type)
+}
+
+export function isExternalIntegrationType(type: IntegrationType): type is ExternalIntegrationType {
+    return !isBuiltInIntegrationType(type)
+}
+
+export const EXTERNAL_INTEGRATION_TYPES: readonly ExternalIntegrationType[] = Object.values(IntegrationType).filter(isExternalIntegrationType)
+
 // MARK: Integration Metadata
 export interface IntegrationDetails {
     type: IntegrationType

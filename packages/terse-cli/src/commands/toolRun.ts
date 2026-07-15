@@ -6,7 +6,7 @@ import { CliError, isCliError } from "../cliError.js"
 import { readRawStdin } from "../cliHelpers.js"
 import { fetchIntegrationConnections } from "../integrationApi.js"
 import { readProjectConfig } from "../projectConfig.js"
-import { toCamelCase } from "../providers/typescript/prepareCodegenData.js"
+import { toCamelCase } from "../providers/typescript/modules/moduleHelpers.js"
 import { type ToolDetails, fetchToolDetails } from "../toolCatalog.js"
 
 export async function integrateToolRun(opts: IntegrateToolRunOpts): Promise<void> {

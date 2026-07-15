@@ -1,0 +1,150 @@
+{{sectionHeader "Attio workspace schemas"}}
+
+{{#each section.valueTypeLines}}
+{{{this}}}
+{{/each}}
+
+export type AttioAttributeDefinition<TSlug extends string = string, TType extends string = string> = {
+    apiSlug: TSlug
+    title?: string
+    type?: TType
+    isRequired?: boolean
+    isUnique?: boolean
+}
+
+export class AttioObject<
+    TSlug extends string = string,
+    TRecordValues extends Record<string, unknown> = Record<string, unknown>,
+    TInputValues extends Record<string, unknown> = TRecordValues
+> {
+    constructor(
+        public readonly apiSlug: TSlug,
+        public readonly name: string,
+        public readonly objectId: string,
+        public readonly attributes: readonly AttioAttributeDefinition[] = []
+    ) {}
+
+    declare readonly __recordValues: TRecordValues
+    declare readonly __inputValues: TInputValues
+{{#if section.objects.length}}
+
+{{#each section.objects}}
+    static {{staticName}} = new AttioObject<"{{escape apiSlug}}", {{{recordValuesType}}}, {{{inputValuesType}}}>("{{escape apiSlug}}", "{{escape singularNoun}}", "{{escape objectId}}", {{{attributeSource}}})
+{{/each}}
+{{/if}}
+}
+
+{{#if section.objects.length}}
+export type GeneratedAttioObject =
+{{#each section.objects}}
+    | typeof AttioObject.{{staticName}}
+{{/each}}
+{{else}}
+export type GeneratedAttioObject = AttioObject
+{{/if}}
+
+export class AttioList<
+    TSlug extends string = string,
+    TEntryValues extends Record<string, unknown> = Record<string, unknown>,
+    TEntryRecordValues extends Record<string, unknown> = TEntryValues
+> {
+    constructor(
+        public readonly apiSlug: TSlug,
+        public readonly name: string,
+        public readonly listId: string,
+        public readonly parentObject: string,
+        public readonly attributes: readonly AttioAttributeDefinition[] = []
+    ) {}
+
+    declare readonly __entryValues: TEntryValues
+    declare readonly __entryRecordValues: TEntryRecordValues
+{{#if section.lists.length}}
+
+{{#each section.lists}}
+    static {{staticName}} = new AttioList<"{{escape apiSlug}}", {{{entryValuesType}}}, {{{entryRecordValuesType}}}>("{{escape apiSlug}}", "{{escape name}}", "{{escape listId}}", "{{escape parentObject}}", {{{attributeSource}}})
+{{/each}}
+{{/if}}
+}
+
+{{#if section.lists.length}}
+export type GeneratedAttioList =
+{{#each section.lists}}
+    | typeof AttioList.{{staticName}}
+{{/each}}
+{{else}}
+export type GeneratedAttioList = AttioList
+{{/if}}
+
+{{sectionHeader "Attio type machinery"}}
+
+{{#if toolFile}}
+{{#each toolTypeDeclarations}}
+{{{this}}}
+{{/each}}
+export type __AttioPrimitive = string | number | boolean | null
+export type __AttioStructuredValue = Record<string, unknown>
+export type __AttioValue = __AttioPrimitive | __AttioStructuredValue | (__AttioPrimitive | __AttioStructuredValue)[]
+export type __AttioFilterAtom<T> = T extends AttioSelectOption ? string : T extends AttioActorReference ? string : T extends AttioRecordReferenceValue ? string : T extends AttioCurrencyValue ? number : T
+export type __AttioFilterShorthand<T> = T extends (infer U)[] ? __AttioFilterAtom<U> | __AttioFilterAtom<U>[] : __AttioFilterAtom<T>
+export type __AttioFilterValue<T> = __AttioFilterShorthand<T> | { $eq?: __AttioFilterShorthand<T>; $contains?: string; $starts_with?: string; $ends_with?: string } | Record<string, unknown>
+export type __AttioFilterExpression<TValues extends Record<string, unknown>> = Partial<{ [K in keyof TValues]: __AttioFilterValue<TValues[K]> }> & { $and?: Array<__AttioFilterExpression<TValues>>; $or?: Array<__AttioFilterExpression<TValues>> }
+export type __AttioRecordWithValues<TValues extends Record<string, unknown>> = Omit<AttioRecordBase, "values"> & TValues & { values: TValues; attributes: TValues }
+
+{{#if section.objects.length}}
+export type AttioInputValuesByObject = {
+{{#each section.objects}}
+    "{{escape apiSlug}}": {{inputValuesType}}
+{{/each}}
+}
+
+export type AttioRecordValuesByObject = {
+{{#each section.objects}}
+    "{{escape apiSlug}}": {{recordValuesType}}
+{{/each}}
+}
+
+export type AttioFilterByObject = {
+{{#each section.objects}}
+    "{{escape apiSlug}}": __AttioFilterExpression<AttioRecordValuesByObject["{{escape apiSlug}}"]>
+{{/each}}
+}
+
+export type AttioRecordByObject = {
+{{#each section.objects}}
+    "{{escape apiSlug}}": __AttioRecordWithValues<AttioRecordValuesByObject["{{escape apiSlug}}"]>
+{{/each}}
+}
+{{else}}
+export type AttioInputValuesByObject = Record<string, Record<string, __AttioValue>>
+export type AttioRecordValuesByObject = Record<string, Record<string, __AttioValue>>
+export type AttioFilterByObject = Record<string, __AttioFilterExpression<Record<string, __AttioValue>>>
+export type AttioRecordByObject = Record<string, __AttioRecordWithValues<Record<string, __AttioValue>>>
+{{/if}}
+
+export type AttioValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __inputValues: infer TInputValues } ? TInputValues : AttioInputValuesByObject[TObject["apiSlug"]]
+export type AttioRecordValuesFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = TObject extends { __recordValues: infer TRecordValues } ? TRecordValues : AttioRecordValuesByObject[TObject["apiSlug"]]
+export type AttioAttributeSlug<TObject extends GeneratedAttioObject = GeneratedAttioObject> = Extract<keyof AttioValuesFor<TObject>, string>
+export type AttioFilterFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioFilterExpression<AttioRecordValuesFor<TObject>>
+export type AttioRecordFor<TObject extends GeneratedAttioObject = GeneratedAttioObject> = __AttioRecordWithValues<AttioRecordValuesFor<TObject>>
+export type AttioQueryRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; filter?: AttioFilterFor<TObject> | null; limit?: number | null; offset?: number | null }
+export type AttioSearchRecordsParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; query: string; limit?: number | null }
+export type AttioGetRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }
+export type AttioCreateRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; values: AttioValuesFor<TObject> }
+export type AttioUpdateRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; values: Partial<AttioValuesFor<TObject>>; multiselectMode?: "overwrite" | "append" | null }
+export type AttioUpsertRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; matchingAttribute: AttioAttributeSlug<TObject>; records: AttioValuesFor<TObject>[] }
+export type AttioDeleteRecordParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string }
+export type AttioGetAttributeHistoryParams<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { object: TObject; recordId: string; attribute: AttioAttributeSlug<TObject>; limit?: number | null; offset?: number | null }
+export type AttioQueryRecordsResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number; offset: number }
+export type AttioSearchRecordsResult = { matches: NonNullable<AttioRecordsResult["matches"]>; count: number }
+export type AttioUpsertRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = { records: Array<AttioRecordFor<TObject>>; count: number }
+export type AttioSingleRecordResult<TObject extends GeneratedAttioObject = GeneratedAttioObject> = AttioRecordFor<TObject>
+export type AttioEntryValuesFor<TList> = TList extends { __entryValues: infer TValues } ? TValues : Record<string, unknown>
+export type AttioEntryRecordValuesFor<TList> = TList extends { __entryRecordValues: infer TValues extends Record<string, unknown> } ? TValues : Record<string, unknown>
+export type AttioEntryFilterFor<TList> = __AttioFilterExpression<AttioEntryRecordValuesFor<TList>>
+export type AttioListEntryFor<TList> = { id: { workspace_id: string; list_id: string; entry_id: string }; parent_record_id: string; parent_object: string; created_at: string; entry_values: AttioEntryRecordValuesFor<TList> }
+export type AttioListEntriesResult<TList> = { entries: Array<AttioListEntryFor<TList>>; count: number; offset: number }
+export type AttioListEntryResult<TList> = AttioListEntryFor<TList>
+export type __AttioSingleValue<T> = T extends (infer U)[] ? U : T
+export type AttioAttributeHistoryEntryFor<TValue> = { active_from: string; active_until: string | null; value: TValue }
+export type AttioAttributeHistoryResult<TValue = unknown> = { history: Array<AttioAttributeHistoryEntryFor<TValue>>; count: number }
+{{/if}}

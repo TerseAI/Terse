@@ -1,0 +1,68 @@
+{{sectionHeader "GitHub resources"}}
+
+export class GithubOwner {
+    constructor(public readonly name: string) {}
+{{#if section.owners.length}}
+
+{{#each section.owners}}
+    static {{staticName}} = new GithubOwner("{{escape name}}")
+{{/each}}
+{{/if}}
+}
+
+export class Repos {
+    constructor(
+        public readonly repositoryId: number,
+        public readonly name: string,
+        public readonly owner: GithubOwner,
+        public readonly fullName: string
+    ) {}
+{{#if section.repoGroups.length}}
+
+{{#each section.repoGroups}}
+    static {{ownerStaticName}} = {
+{{#each repos}}
+        {{staticName}}: new Repos({{id}}, "{{escape name}}", GithubOwner.{{../ownerStaticName}}, "{{escape fullName}}"),
+{{/each}}
+    } as const
+{{/each}}
+{{/if}}
+}
+
+{{#if repoMappings.length}}
+const __githubRepoNameToFullName = new Map<string, string>([
+{{#each repoMappings}}
+    ["{{escape name}}", "{{escape fullName}}"],
+{{/each}}
+])
+
+function __normalizeGitHubRepos(repo: unknown): string {
+    if (repo && typeof repo === "object" && "fullName" in (repo as Record<string, unknown>)) {
+        const fullName = (repo as { fullName?: unknown }).fullName
+        if (typeof fullName === "string" && fullName.length > 0) return fullName
+    }
+    if (typeof repo === "string") {
+        if (repo.includes("/")) return repo
+        return __githubRepoNameToFullName.get(repo) ?? repo
+    }
+    return String(repo ?? "")
+}
+
+function __normalizeGitHubReposNames(repositories: unknown): string[] {
+    if (!Array.isArray(repositories)) return []
+    return repositories.map(repo => __normalizeGitHubRepos(repo))
+}
+
+{{/if}}
+{{#if toolFile}}
+{{sectionHeader "GitHub tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "GitHub skill"}}
+
+/** GitHub — read code and pull requests from the given repositories */
+export function githubSkill(opts: { repos: Repos[] }): TypedSkill<{{{section.skillToolType}}}> {
+    return new GitHubConfig("{{escape section.id}}", opts.repos.map(r => r.repositoryId))
+}

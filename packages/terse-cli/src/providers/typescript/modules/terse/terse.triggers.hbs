@@ -1,0 +1,33 @@
+{{sectionHeader "Built-in triggers"}}
+
+{{#each triggerDeclarations}}
+{{{this}}}
+
+{{/each}}
+export const scheduleTriggers = {
+    /** Run on a cron schedule (5-field cron expression, evaluated in UTC) */
+    cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
+        return new TimeTriggerConfig(opts.expression)
+    },
+}
+
+export const webhookTriggers = {
+    /** Trigger via an external HTTP request to a generated URL */
+    onRequest<TBody = unknown>(): TypedTrigger<WebhookTrigger<TBody>> {
+        return new WebhookInputConfig()
+    },
+}
+
+/** Bind a web-monitor event to a Zod schema: the `payload` field types as the schema's output */
+export type WebMonitorTriggerFor<TSchema> = WebMonitorTrigger<InferStructuredOutput<TSchema>>
+
+export const webMonitorTriggers = {
+    /** Trigger when a query against the live web matches the given schema */
+    onEvent<const TSchema>(opts: {
+        query: string
+        frequency: { number: number; unit: FrequencyUnit }
+        outputSchema?: TSchema
+    }): TypedTrigger<WebMonitorTrigger<InferStructuredOutput<TSchema>>> {
+        return new WebMonitorConfig(opts.query, opts.frequency, opts.outputSchema)
+    },
+}

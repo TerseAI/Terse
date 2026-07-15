@@ -19,87 +19,9 @@ import {
     webhookJobChallengeRequestSchema,
     webhookJobTriggerRequestSchema
 } from "terse-types"
-// Re-export trigger event types enriched with SDK methods (formatForAgentRunner/debugLog)
-// so users get the correct type when annotating onTrigger/filter callback parameters.
-import type {
-    AttioCallRecordingCreatedTrigger as _RawAttioCallRecordingCreatedTrigger,
-    AttioCommentCreatedTrigger as _RawAttioCommentCreatedTrigger,
-    AttioCommentDeletedTrigger as _RawAttioCommentDeletedTrigger,
-    AttioCommentResolvedTrigger as _RawAttioCommentResolvedTrigger,
-    AttioCommentUnresolvedTrigger as _RawAttioCommentUnresolvedTrigger,
-    AttioListAttributeCreatedTrigger as _RawAttioListAttributeCreatedTrigger,
-    AttioListAttributeUpdatedTrigger as _RawAttioListAttributeUpdatedTrigger,
-    AttioListCreatedTrigger as _RawAttioListCreatedTrigger,
-    AttioListDeletedTrigger as _RawAttioListDeletedTrigger,
-    AttioListEntryCreatedTrigger as _RawAttioListEntryCreatedTrigger,
-    AttioListEntryDeletedTrigger as _RawAttioListEntryDeletedTrigger,
-    AttioListEntryUpdatedTrigger as _RawAttioListEntryUpdatedTrigger,
-    AttioListUpdatedTrigger as _RawAttioListUpdatedTrigger,
-    AttioNoteContentUpdatedTrigger as _RawAttioNoteContentUpdatedTrigger,
-    AttioNoteCreatedTrigger as _RawAttioNoteCreatedTrigger,
-    AttioNoteDeletedTrigger as _RawAttioNoteDeletedTrigger,
-    AttioNoteUpdatedTrigger as _RawAttioNoteUpdatedTrigger,
-    AttioObjectAttributeCreatedTrigger as _RawAttioObjectAttributeCreatedTrigger,
-    AttioObjectAttributeUpdatedTrigger as _RawAttioObjectAttributeUpdatedTrigger,
-    AttioRecordCreatedTrigger as _RawAttioRecordCreatedTrigger,
-    AttioRecordDeletedTrigger as _RawAttioRecordDeletedTrigger,
-    AttioRecordMergedTrigger as _RawAttioRecordMergedTrigger,
-    AttioRecordUpdatedTrigger as _RawAttioRecordUpdatedTrigger,
-    AttioTaskCreatedTrigger as _RawAttioTaskCreatedTrigger,
-    AttioTaskDeletedTrigger as _RawAttioTaskDeletedTrigger,
-    AttioTaskUpdatedTrigger as _RawAttioTaskUpdatedTrigger,
-    AttioTrigger as _RawAttioTrigger,
-    AttioWorkspaceMemberCreatedTrigger as _RawAttioWorkspaceMemberCreatedTrigger,
-    CronTrigger as _RawCronTrigger,
-    GithubIssueCommentCreatedTrigger as _RawGithubIssueCommentCreatedTrigger,
-    GithubPRClosedTrigger as _RawGithubPRClosedTrigger,
-    GithubPRMergedTrigger as _RawGithubPRMergedTrigger,
-    GithubPROpenedTrigger as _RawGithubPROpenedTrigger,
-    GithubPRSynchronizedTrigger as _RawGithubPRSynchronizedTrigger,
-    GithubPRTrigger as _RawGithubPRTrigger,
-    GithubPushTrigger as _RawGithubPushTrigger,
-    GithubTrigger as _RawGithubTrigger,
-    GmailTrigger as _RawGmailTrigger,
-    HeyReachCampaignCompletedTrigger as _RawHeyReachCampaignCompletedTrigger,
-    HeyReachConnectionRequestAcceptedTrigger as _RawHeyReachConnectionRequestAcceptedTrigger,
-    HeyReachConnectionRequestSentTrigger as _RawHeyReachConnectionRequestSentTrigger,
-    HeyReachFollowSentTrigger as _RawHeyReachFollowSentTrigger,
-    HeyReachInmailReplyReceivedTrigger as _RawHeyReachInmailReplyReceivedTrigger,
-    HeyReachInmailSentTrigger as _RawHeyReachInmailSentTrigger,
-    HeyReachLeadTagUpdatedTrigger as _RawHeyReachLeadTagUpdatedTrigger,
-    HeyReachLikedPostTrigger as _RawHeyReachLikedPostTrigger,
-    HeyReachMessageReplyReceivedTrigger as _RawHeyReachMessageReplyReceivedTrigger,
-    HeyReachMessageSentTrigger as _RawHeyReachMessageSentTrigger,
-    HeyReachTrigger as _RawHeyReachTrigger,
-    HeyReachViewedProfileTrigger as _RawHeyReachViewedProfileTrigger,
-    LinearCommentCreatedTrigger as _RawLinearCommentCreatedTrigger,
-    LinearIssueCreatedTrigger as _RawLinearIssueCreatedTrigger,
-    LinearIssueUpdatedTrigger as _RawLinearIssueUpdatedTrigger,
-    LinearTrigger as _RawLinearTrigger,
-    ManualSampleTrigger as _RawManualSampleTrigger,
-    SlackAppMentionTrigger as _RawSlackAppMentionTrigger,
-    SlackMessageTrigger as _RawSlackMessageTrigger,
-    SlackReactionAddedTrigger as _RawSlackReactionAddedTrigger,
-    SlackTrigger as _RawSlackTrigger,
-    Trigger as _RawTrigger,
-    WebMonitorTrigger as _RawWebMonitorTrigger,
-    WebhookTrigger as _RawWebhookTrigger,
-    WorkOSInvitationAcceptedTrigger as _RawWorkOSInvitationAcceptedTrigger,
-    WorkOSInvitationCreatedTrigger as _RawWorkOSInvitationCreatedTrigger,
-    WorkOSInvitationResentTrigger as _RawWorkOSInvitationResentTrigger,
-    WorkOSInvitationRevokedTrigger as _RawWorkOSInvitationRevokedTrigger,
-    WorkOSInvitationTrigger as _RawWorkOSInvitationTrigger,
-    WorkOSMembershipTrigger as _RawWorkOSMembershipTrigger,
-    WorkOSOrganizationMembershipCreatedTrigger as _RawWorkOSOrganizationMembershipCreatedTrigger,
-    WorkOSOrganizationMembershipDeletedTrigger as _RawWorkOSOrganizationMembershipDeletedTrigger,
-    WorkOSOrganizationMembershipUpdatedTrigger as _RawWorkOSOrganizationMembershipUpdatedTrigger,
-    WorkOSOrganizationTrigger as _RawWorkOSOrganizationTrigger,
-    WorkOSTrigger as _RawWorkOSTrigger,
-    WorkOSUserCreatedTrigger as _RawWorkOSUserCreatedTrigger,
-    WorkOSUserDeletedTrigger as _RawWorkOSUserDeletedTrigger,
-    WorkOSUserTrigger as _RawWorkOSUserTrigger,
-    WorkOSUserUpdatedTrigger as _RawWorkOSUserUpdatedTrigger
-} from "terse-types"
+// The type-erased base event type, enriched with the SDK methods (formatForAgentRunner/debugLog).
+// Concrete trigger types are generated into the user's workspace by `terse generate`.
+import type { Trigger as _RawTrigger } from "terse-types"
 import { sleep as workflowSleep } from "workflow"
 import { z } from "zod"
 
@@ -111,11 +33,11 @@ import { resolveRunIdentity } from "./runIdentity/index.js"
 import { openSessionStream } from "./sessionStream.js"
 import {
     type InferEvents,
-    InferStructuredOutput,
     type InferToolApprovals,
     type SDKTrigger,
     type StateAccessor,
     type StateDefinition,
+    type TriggerLike,
     type TypedSkill,
     type TypedTrigger,
     createSDKTrigger
@@ -151,6 +73,7 @@ export type {
     StateAccessor,
     StateDefinition,
     ToolboxEntry,
+    TriggerLike,
     TypedSkill,
     TypedTrigger
 } from "./types.js"
@@ -196,87 +119,10 @@ export {
 } from "terse-types"
 
 export type Trigger = SDKTrigger<_RawTrigger>
-export type AttioCallRecordingCreatedTrigger = SDKTrigger<_RawAttioCallRecordingCreatedTrigger>
-export type AttioCommentCreatedTrigger = SDKTrigger<_RawAttioCommentCreatedTrigger>
-export type AttioCommentResolvedTrigger = SDKTrigger<_RawAttioCommentResolvedTrigger>
-export type AttioCommentUnresolvedTrigger = SDKTrigger<_RawAttioCommentUnresolvedTrigger>
-export type AttioCommentDeletedTrigger = SDKTrigger<_RawAttioCommentDeletedTrigger>
-export type AttioListCreatedTrigger = SDKTrigger<_RawAttioListCreatedTrigger>
-export type AttioListUpdatedTrigger = SDKTrigger<_RawAttioListUpdatedTrigger>
-export type AttioListDeletedTrigger = SDKTrigger<_RawAttioListDeletedTrigger>
-export type AttioListAttributeCreatedTrigger = SDKTrigger<_RawAttioListAttributeCreatedTrigger>
-export type AttioListAttributeUpdatedTrigger = SDKTrigger<_RawAttioListAttributeUpdatedTrigger>
-export type AttioListEntryCreatedTrigger = SDKTrigger<_RawAttioListEntryCreatedTrigger>
-export type AttioListEntryUpdatedTrigger = SDKTrigger<_RawAttioListEntryUpdatedTrigger>
-export type AttioListEntryDeletedTrigger = SDKTrigger<_RawAttioListEntryDeletedTrigger>
-export type AttioObjectAttributeCreatedTrigger = SDKTrigger<_RawAttioObjectAttributeCreatedTrigger>
-export type AttioObjectAttributeUpdatedTrigger = SDKTrigger<_RawAttioObjectAttributeUpdatedTrigger>
-export type AttioNoteCreatedTrigger = SDKTrigger<_RawAttioNoteCreatedTrigger>
-export type AttioNoteContentUpdatedTrigger = SDKTrigger<_RawAttioNoteContentUpdatedTrigger>
-export type AttioNoteUpdatedTrigger = SDKTrigger<_RawAttioNoteUpdatedTrigger>
-export type AttioNoteDeletedTrigger = SDKTrigger<_RawAttioNoteDeletedTrigger>
-type _AttioRecordPayload<TValues> = Omit<_RawAttioRecordCreatedTrigger["record"], "values"> & { values: TValues }
-export type AttioRecordCreatedTrigger<TValues = Record<string, unknown>> = Omit<SDKTrigger<_RawAttioRecordCreatedTrigger>, "record"> & { record: _AttioRecordPayload<TValues> }
-export type AttioRecordMergedTrigger<TValues = Record<string, unknown>> = Omit<SDKTrigger<_RawAttioRecordMergedTrigger>, "record"> & { record: _AttioRecordPayload<TValues> }
-export type AttioRecordUpdatedTrigger<TValues = Record<string, unknown>> = Omit<SDKTrigger<_RawAttioRecordUpdatedTrigger>, "record"> & { record: _AttioRecordPayload<TValues> }
-export type AttioRecordDeletedTrigger = SDKTrigger<_RawAttioRecordDeletedTrigger>
-export type AttioTaskCreatedTrigger = SDKTrigger<_RawAttioTaskCreatedTrigger>
-export type AttioTaskUpdatedTrigger = SDKTrigger<_RawAttioTaskUpdatedTrigger>
-export type AttioTaskDeletedTrigger = SDKTrigger<_RawAttioTaskDeletedTrigger>
-export type AttioWorkspaceMemberCreatedTrigger = SDKTrigger<_RawAttioWorkspaceMemberCreatedTrigger>
-export type AttioTrigger = SDKTrigger<_RawAttioTrigger>
-export type CronTrigger = SDKTrigger<_RawCronTrigger>
-export type GithubPRClosedTrigger = SDKTrigger<_RawGithubPRClosedTrigger>
-export type GithubPROpenedTrigger = SDKTrigger<_RawGithubPROpenedTrigger>
-export type GithubPRMergedTrigger = SDKTrigger<_RawGithubPRMergedTrigger>
-export type GithubPRSynchronizedTrigger = SDKTrigger<_RawGithubPRSynchronizedTrigger>
-export type GithubIssueCommentCreatedTrigger = SDKTrigger<_RawGithubIssueCommentCreatedTrigger>
-export type GithubPRTrigger = SDKTrigger<_RawGithubPRTrigger>
-export type GithubPushTrigger = SDKTrigger<_RawGithubPushTrigger>
-export type GithubTrigger = SDKTrigger<_RawGithubTrigger>
-export type GmailTrigger = SDKTrigger<_RawGmailTrigger>
-export type HeyReachConnectionRequestSentTrigger = SDKTrigger<_RawHeyReachConnectionRequestSentTrigger>
-export type HeyReachConnectionRequestAcceptedTrigger = SDKTrigger<_RawHeyReachConnectionRequestAcceptedTrigger>
-export type HeyReachMessageSentTrigger = SDKTrigger<_RawHeyReachMessageSentTrigger>
-export type HeyReachMessageReplyReceivedTrigger = SDKTrigger<_RawHeyReachMessageReplyReceivedTrigger>
-export type HeyReachInmailSentTrigger = SDKTrigger<_RawHeyReachInmailSentTrigger>
-export type HeyReachInmailReplyReceivedTrigger = SDKTrigger<_RawHeyReachInmailReplyReceivedTrigger>
-export type HeyReachFollowSentTrigger = SDKTrigger<_RawHeyReachFollowSentTrigger>
-export type HeyReachLikedPostTrigger = SDKTrigger<_RawHeyReachLikedPostTrigger>
-export type HeyReachViewedProfileTrigger = SDKTrigger<_RawHeyReachViewedProfileTrigger>
-export type HeyReachCampaignCompletedTrigger = SDKTrigger<_RawHeyReachCampaignCompletedTrigger>
-export type HeyReachLeadTagUpdatedTrigger = SDKTrigger<_RawHeyReachLeadTagUpdatedTrigger>
-export type HeyReachTrigger = SDKTrigger<_RawHeyReachTrigger>
-export type LinearCommentCreatedTrigger = SDKTrigger<_RawLinearCommentCreatedTrigger>
-export type LinearIssueCreatedTrigger = SDKTrigger<_RawLinearIssueCreatedTrigger>
-export type LinearIssueUpdatedTrigger = SDKTrigger<_RawLinearIssueUpdatedTrigger>
-export type LinearTrigger = SDKTrigger<_RawLinearTrigger>
-export type ManualSampleTrigger = SDKTrigger<_RawManualSampleTrigger>
-export type SlackAppMentionTrigger = SDKTrigger<_RawSlackAppMentionTrigger>
-export type SlackMessageTrigger = SDKTrigger<_RawSlackMessageTrigger>
-export type SlackReactionAddedTrigger = SDKTrigger<_RawSlackReactionAddedTrigger>
-export type SlackTrigger = SDKTrigger<_RawSlackTrigger>
-export type WebhookTrigger<TBody = unknown> = SDKTrigger<_RawWebhookTrigger<TBody>>
-export type WebMonitorTrigger<TStructured = unknown> = SDKTrigger<_RawWebMonitorTrigger<TStructured>>
-export type WebMonitorTriggerFor<TSchema> = WebMonitorTrigger<InferStructuredOutput<TSchema>>
-export type WorkOSInvitationAcceptedTrigger = SDKTrigger<_RawWorkOSInvitationAcceptedTrigger>
-export type WorkOSInvitationCreatedTrigger = SDKTrigger<_RawWorkOSInvitationCreatedTrigger>
-export type WorkOSInvitationTrigger = SDKTrigger<_RawWorkOSInvitationTrigger>
-export type WorkOSInvitationResentTrigger = SDKTrigger<_RawWorkOSInvitationResentTrigger>
-export type WorkOSInvitationRevokedTrigger = SDKTrigger<_RawWorkOSInvitationRevokedTrigger>
-export type WorkOSOrganizationMembershipCreatedTrigger = SDKTrigger<_RawWorkOSOrganizationMembershipCreatedTrigger>
-export type WorkOSOrganizationMembershipDeletedTrigger = SDKTrigger<_RawWorkOSOrganizationMembershipDeletedTrigger>
-export type WorkOSOrganizationMembershipUpdatedTrigger = SDKTrigger<_RawWorkOSOrganizationMembershipUpdatedTrigger>
-export type WorkOSMembershipTrigger = SDKTrigger<_RawWorkOSMembershipTrigger>
-export type WorkOSOrganizationTrigger = SDKTrigger<_RawWorkOSOrganizationTrigger>
-export type WorkOSTrigger = SDKTrigger<_RawWorkOSTrigger>
-export type WorkOSUserCreatedTrigger = SDKTrigger<_RawWorkOSUserCreatedTrigger>
-export type WorkOSUserDeletedTrigger = SDKTrigger<_RawWorkOSUserDeletedTrigger>
-export type WorkOSUserUpdatedTrigger = SDKTrigger<_RawWorkOSUserUpdatedTrigger>
-export type WorkOSUserTrigger = SDKTrigger<_RawWorkOSUserTrigger>
 
 export { FrequencyUnit, IntegrationType } from "terse-types"
 export type { SdkAgentRunOptionsPayload, SdkAgentRunRequestBody, SdkAgentRunResponseBody, SdkAgentStreamEvent, ToolInputByName, ToolOutputByName } from "terse-types"
+export type { SlackAttachments, SlackBlocks, SlackFiles } from "terse-types"
 
 export { RunHistoryAction, RunHistoryDecision, RunHistoryRecord, RunHistoryStatus, RunHistoryTrigger } from "terse-types"
 
@@ -284,7 +130,7 @@ export { RunHistoryAction, RunHistoryDecision, RunHistoryRecord, RunHistoryStatu
 
 type Action = RunHistoryAction
 
-export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = TypedTrigger[], TStates extends readonly StateDefinition[] = readonly StateDefinition[]> = {
+export type CreateJobParameters<TTriggers extends readonly TypedTrigger<TriggerLike>[] = TypedTrigger<TriggerLike>[], TStates extends readonly StateDefinition[] = readonly StateDefinition[]> = {
     name: string
     triggers: [...TTriggers]
     states?: [...TStates]
@@ -294,7 +140,7 @@ export type CreateJobParameters<TTriggers extends readonly TypedTrigger[] = Type
     durable?: boolean
 }
 
-export function createJob<TTriggers extends readonly TypedTrigger[], const TStates extends readonly StateDefinition[] = readonly []>(params: CreateJobParameters<TTriggers, TStates>) {
+export function createJob<TTriggers extends readonly TypedTrigger<TriggerLike>[], const TStates extends readonly StateDefinition[] = readonly []>(params: CreateJobParameters<TTriggers, TStates>) {
     const currentJobs = fetchRegisteredJobs()
     if (currentJobs.has(params.name)) {
         throw new Error(`Job "${params.name}" is registered twice on this Terse instance.`)
@@ -313,7 +159,7 @@ export function createJob<TTriggers extends readonly TypedTrigger[], const TStat
 const TERSE_INSTANCES_KEY = Symbol.for("jobs.instances")
 type GlobalWithInstances = typeof globalThis & { [TERSE_INSTANCES_KEY]?: Map<string, CreateJobParameters> }
 
-function registerJob<TTriggers extends readonly TypedTrigger[]>(job: CreateJobParameters<TTriggers>): void {
+function registerJob<TTriggers extends readonly TypedTrigger<TriggerLike>[]>(job: CreateJobParameters<TTriggers>): void {
     const g = globalThis as GlobalWithInstances
     g[TERSE_INSTANCES_KEY] ??= new Map<string, CreateJobParameters>()
 

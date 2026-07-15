@@ -1,2 +1,3 @@
 src/terse.generated.ts
+src/terse.generated/
 src/terse.jobs.ts

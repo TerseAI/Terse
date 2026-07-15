@@ -1,6 +1,6 @@
 # Common Improvement Patterns
 
-Before/after shapes for the fixes the analysis pass most often lands on. Method and constant names come from the project's `src/terse.generated.ts`; never invent them.
+Before/after shapes for the fixes the analysis pass most often lands on. Method and constant names come from the project's generated files; never invent them.
 
 ## Add bot filtering
 
@@ -74,7 +74,8 @@ onTrigger: async (event) => {
 // AFTER: annotate with the precise trigger type that matches your trigger factory.
 // `Triggers.github.onPROpened(...)` returns a typed trigger, so `event` infers
 // as `GithubPROpenedTrigger` — annotating just makes it explicit.
-import { GithubPROpenedTrigger, generateText } from "terse-sdk"
+import { generateText } from "terse-sdk"
+import type { GithubPROpenedTrigger } from "./terse.generated"
 
 onTrigger: async (event: GithubPROpenedTrigger) => {
     const { title, url } = event.pullRequest

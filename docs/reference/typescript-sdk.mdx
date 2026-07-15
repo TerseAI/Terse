@@ -27,13 +27,13 @@ Import these from `terse-sdk`:
 
 `terse-sdk` re-exports types you may need when annotating handlers or consuming run history. You don't need to import these unless you're typing data the SDK doesn't return for you.
 
-| Group                                | Types                                                                                                                                                                                                                                                |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Base event interface                 | `Trigger`                                                                                                                                                                                                                                            |
-| System trigger event types           | `CronTrigger`, `ManualSampleTrigger`, `WebhookTrigger<BodyType>`, `WebMonitorTrigger<TStructured>`, `WebMonitorTriggerFor<TSchema>`                                                                                                                  |
-| Integration trigger event types      | `GithubTrigger`, `GithubPRTrigger`, `AttioTrigger`, `AttioRecordCreatedTrigger`, `HeyReachTrigger`, `HeyReachMessageReplyReceivedTrigger`, and similar per-integration types. See [Triggers](/reference/triggers) for the full set.                  |
-| Integration event-type enums         | `SlackEventType`, `GitHubEventType`, `LinearEventType`, `GmailEventType`, `WorkOSEventType`, `HeyReachEventType`, `AttioEventType`, `FrequencyUnit`                                                                                                  |
-| Run history (Activity, API payloads) | `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`                                                                                                                                                |
+| Group                                | Types                                                                                                                                               |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base event interface                 | `Trigger`                                                                                                                                           |
+| Integration event-type enums         | `SlackEventType`, `GitHubEventType`, `LinearEventType`, `GmailEventType`, `WorkOSEventType`, `HeyReachEventType`, `AttioEventType`, `FrequencyUnit` |
+| Run history (Activity, API payloads) | `RunHistoryRecord`, `RunHistoryStatus`, `RunHistoryTrigger`, `RunHistoryDecision`, `RunHistoryAction`                                               |
+
+All concrete trigger types, built-in (`CronTrigger`, `WebhookTrigger<TBody>`, `WebMonitorTrigger<TStructured>`, `WebMonitorTriggerFor<TSchema>`) and integration (`GithubPROpenedTrigger`, `SlackMessageTrigger`, `AttioRecordCreatedTrigger`, ...), along with tool `Params`/`Result` types, are generated into your workspace by `terse generate`; import them from `"./terse.generated"`.
 
 For TypeScript workflows that use structured output schemas, also install and import `zod`:
 
@@ -55,7 +55,7 @@ The API token list in the app shows **user** tokens only. Short-lived project to
 
 ## Trigger payloads
 
-Exported trigger types extend the canonical trigger object with two methods used everywhere Terse turns an event into prompts or logging:
+Trigger types exported from `./terse.generated` extend the canonical trigger object with two methods used everywhere Terse turns an event into prompts or logging:
 
 - `formatForAgentRunner()` returns a string to include in agent prompts (matches how the platform formats the event for the model)
 - `debugLog()` returns a one-line description for logs and CLI sample lists
@@ -68,13 +68,13 @@ Registers a workflow at load time. The CLI imports your entry file (`src/terse.j
 
 Duplicate `name` values throw an error when the second job registers. At most **one** webhook trigger is allowed per workflow.
 
-| Field       | Type                                     | Description                                                                                       |
-| ----------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `name`      | `string`                                        | Unique workflow identifier. Used to match workflows across deploys and in `terse test`.           |
-| `triggers`  | typed trigger array                             | One or more triggers that start the workflow.                                                     |
-| `states`    | `{ key, value }[]`                              | Optional typed persistent state. `value` is a Zod schema. See [job state](#job-state).            |
-| `filter`    | `(event, state) => boolean \| Promise<boolean>` | Optional function to skip the run for specific events. See [filtering events](#filtering-events).  |
-| `onTrigger` | `(event, state) => Promise<void>`               | The workflow handler. Called once per trigger event.                                              |
+| Field       | Type                                            | Description                                                                                                                       |
+| ----------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `name`      | `string`                                        | Unique workflow identifier. Used to match workflows across deploys and in `terse test`.                                           |
+| `triggers`  | typed trigger array                             | One or more triggers that start the workflow.                                                                                     |
+| `states`    | `{ key, value }[]`                              | Optional typed persistent state. `value` is a Zod schema. See [job state](#job-state).                                            |
+| `filter`    | `(event, state) => boolean \| Promise<boolean>` | Optional function to skip the run for specific events. See [filtering events](#filtering-events).                                 |
+| `onTrigger` | `(event, state) => Promise<void>`               | The workflow handler. Called once per trigger event.                                                                              |
 | `durable`   | `boolean`                                       | Optional. When `true`, the job can use `sleep()`, `jobStep()`, and `waitForInput()`. See [Durability](/core-concepts/durability). |
 
 To point the SDK at a self-hosted control plane, set `TERSE_BACKEND_URL` (it defaults to `https://api.useterse.ai`). To route execution to a self-hosted data plane, set `remoteServerUrl` in `terse.config.json` instead.
@@ -82,8 +82,9 @@ To point the SDK at a self-hosted control plane, set `TERSE_BACKEND_URL` (it def
 Pass `skills`, `toolApprovals`, and the agent `prompt` to `TerseAgent.create()` inside `onTrigger`, not on `createJob`.
 
 ```ts
-import { GithubPRTrigger, TerseAgent, createJob } from "terse-sdk"
+import { TerseAgent, createJob } from "terse-sdk"
 
+import { GithubPRTrigger } from "./terse.generated"
 import { Repos, Skills, SlackChannel, Triggers } from "./terse.generated"
 
 createJob({
@@ -122,12 +123,12 @@ createJob({
     name: "track-account",
     triggers: [Triggers.github.onPROpened({ repo: Repos.MyOrg.MyRepo })],
     states: [
-        { key: "profile", value: Profile },                 // no default
-        { key: "seenCount", value: z.number().default(0) }  // default → never undefined
+        { key: "profile", value: Profile }, // no default
+        { key: "seenCount", value: z.number().default(0) } // default → never undefined
     ],
     onTrigger: async (event, state) => {
-        const count = await state.get("seenCount")   // number (default applied)
-        await state.set("seenCount", count + 1)      // returns the written number
+        const count = await state.get("seenCount") // number (default applied)
+        await state.set("seenCount", count + 1) // returns the written number
     }
 })
 ```
@@ -160,12 +161,12 @@ const scored = await generateText({
 // scored is typed as: { score: number; rationale: string }
 ```
 
-| Field           | Type                | Description                                                                                |
-| --------------- | ------------------- | ------------------------------------------------------------------------------------------ |
-| `prompt`        | `string`            | The instruction for the model. Include event context via `event.formatForAgentRunner()`.  |
-| `skills`        | skill array         | Optional. Scopes which integration tools the model may call during the run.                |
-| `toolApprovals` | `string[]`          | Optional. Tool names that pause for [human approval](/core-concepts/human-in-the-loop).    |
-| `outputSchema`  | `zod` schema        | Optional. Returns a typed, validated object instead of a string.                           |
+| Field           | Type         | Description                                                                              |
+| --------------- | ------------ | ---------------------------------------------------------------------------------------- |
+| `prompt`        | `string`     | The instruction for the model. Include event context via `event.formatForAgentRunner()`. |
+| `skills`        | skill array  | Optional. Scopes which integration tools the model may call during the run.              |
+| `toolApprovals` | `string[]`   | Optional. Tool names that pause for [human approval](/core-concepts/human-in-the-loop).  |
+| `outputSchema`  | `zod` schema | Optional. Returns a typed, validated object instead of a string.                         |
 
 For deterministic calls (a fixed Slack message, a known field update), use [`toolbox.*`](#toolbox-generated) instead — no agent needed. Between `generateText` for reasoning and `toolbox` for fixed actions, you rarely touch `TerseAgent` directly.
 
@@ -356,12 +357,12 @@ Replay-safe logging: `await log("processed", count)`. In a durable job the call 
 
 Posts an interactive input request and suspends until a human responds. Returns a typed `InputResponse` with `choice`, optional `text` (when the selected option has `freeText: true`), `respondent`, and `delivery`.
 
-| Field     | Type                              | Description                                                                 |
-| --------- | --------------------------------- | --------------------------------------------------------------------------- |
-| `via`     | `InputTarget`                     | Where to deliver the prompt. Use `slack({ channel })` with a channel id.    |
-| `prompt`  | `string`                          | The question shown to the respondent.                                       |
-| `details` | `Record<string, string>`          | Optional key/value pairs rendered alongside the prompt.                     |
-| `options` | `InputOption[]`                   | Action buttons. Each has `id`, `label`, optional `description`, and optional `freeText`. |
+| Field     | Type                     | Description                                                                              |
+| --------- | ------------------------ | ---------------------------------------------------------------------------------------- |
+| `via`     | `InputTarget`            | Where to deliver the prompt. Use `slack({ channel })` with a channel id.                 |
+| `prompt`  | `string`                 | The question shown to the respondent.                                                    |
+| `details` | `Record<string, string>` | Optional key/value pairs rendered alongside the prompt.                                  |
+| `options` | `InputOption[]`          | Action buttons. Each has `id`, `label`, optional `description`, and optional `freeText`. |
 
 `result.choice` is typed to the union of your option ids. See [Durability — Waiting for human input](/core-concepts/durability#waiting-for-human-input).
 
@@ -375,19 +376,19 @@ Target constructor for `waitForInput`. Pass a Slack channel id (for example `Sla
 
 Event typing depends on the trigger.
 
-| Trigger source           | Event type                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| GitHub events            | A `Github*Trigger` matching your helper, or `GithubTrigger` when using `Triggers.github.trigger()`      |
-| Slack events             | `SlackMessageTrigger`, `SlackAppMentionTrigger`, `SlackReactionAddedTrigger`, or `SlackTrigger` (union) |
-| Linear events            | `LinearIssueCreatedTrigger`, `LinearIssueUpdatedTrigger`, `LinearCommentCreatedTrigger`, `LinearTrigger`|
-| Gmail events             | `GmailTrigger`                                                                                          |
-| Attio events             | The matching `Attio*Trigger` for your helper, or `AttioTrigger` when using `Triggers.attio.trigger()`   |
-| HeyReach outreach events | The matching `HeyReach*Trigger` for your helper, or `HeyReachTrigger` (union)                           |
-| WorkOS events            | The matching `WorkOS*Trigger` for your helper, or `WorkOSTrigger` (union)                               |
-| Scheduled cron triggers  | `CronTrigger`                                                                                           |
-| Manual trigger           | `ManualSampleTrigger`                                                                                   |
-| Webhook HTTP requests    | `WebhookTrigger<TBody>`                                                                                 |
-| Web monitor              | `WebMonitorTrigger<TStructured>` (use `WebMonitorTriggerFor<typeof schema>` when annotating manually)   |
+| Trigger source           | Event type                                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| GitHub events            | A `Github*Trigger` matching your helper, or `GithubTrigger` when using `Triggers.github.trigger()`       |
+| Slack events             | `SlackMessageTrigger`, `SlackAppMentionTrigger`, `SlackReactionAddedTrigger`, or `SlackTrigger` (union)  |
+| Linear events            | `LinearIssueCreatedTrigger`, `LinearIssueUpdatedTrigger`, `LinearCommentCreatedTrigger`, `LinearTrigger` |
+| Gmail events             | `GmailTrigger`                                                                                           |
+| Attio events             | The matching `Attio*Trigger` for your helper, or `AttioTrigger` when using `Triggers.attio.trigger()`    |
+| HeyReach outreach events | The matching `HeyReach*Trigger` for your helper, or `HeyReachTrigger` (union)                            |
+| WorkOS events            | The matching `WorkOS*Trigger` for your helper, or `WorkOSTrigger` (union)                                |
+| Scheduled cron triggers  | `CronTrigger`                                                                                            |
+| Manual trigger           | `Trigger` (the base event type from `terse-sdk`)                                                         |
+| Webhook HTTP requests    | `WebhookTrigger<TBody>`                                                                                  |
+| Web monitor              | `WebMonitorTrigger<TStructured>` (use `WebMonitorTriggerFor<typeof schema>` when annotating manually)    |
 
 `Trigger` is the common base interface. Use the most specific trigger event type your trigger exposes. For webhooks, use `Triggers.webhook.onRequest<YourBodyType>()` from `terse.generated` so `event.body` matches the JSON you POST to the webhook URL.
 

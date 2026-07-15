@@ -1,6 +1,6 @@
 # Integration researcher
 
-A read-only research task on third-party platforms that Terse does not cover with a built-in integration — the external rungs of the orchestrator's integration ladder (rung 3: official SDK; rung 4: community wrapper or hand-rolled typed fetch client). Dispatched only after the orchestrator's workspace scan and the docs brief confirm the gap. If you are running as a subagent, this file plus the context block is everything you need, and your entire reply must be the research brief. If no subagent harness is available, the orchestrator follows this template inline and writes out the same brief before continuing.
+A read-only research task on third-party platforms that Terse does not cover with a built-in integration — the external rungs of the orchestrator's integration ladder (rung 3: official SDK; rung 4: community wrapper or hand-rolled typed fetch client). Dispatched only after the orchestrator's workspace scan confirms the gap. If you are running as a subagent, this file plus the context block is everything you need, and your entire reply must be the research brief. If no subagent harness is available, the orchestrator follows this template inline and writes out the same brief before continuing.
 
 ## Context from the orchestrator
 

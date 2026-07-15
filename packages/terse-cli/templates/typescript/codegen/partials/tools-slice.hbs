@@ -1,0 +1,18 @@
+{{#each declarations}}
+{{{this}}}
+
+{{/each}}
+export type {{typeName}} = {
+{{#each methods}}
+{{#if description}}    /** {{description}} */
+{{/if}}    {{{generatedSignature}}}
+{{/each}}
+}
+
+export const {{constName}}: {{typeName}} = {
+{{#each methods}}
+{{#each runtimeLines}}
+    {{{this}}}
+{{/each}}
+{{/each}}
+}

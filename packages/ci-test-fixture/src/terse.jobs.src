@@ -1,6 +1,6 @@
-import { createJob, generateText, type WebhookTrigger } from "terse-sdk"
+import { createJob, generateText } from "terse-sdk"
 
-import { Triggers } from "./terse.generated"
+import { Triggers, type WebhookTrigger } from "./terse.generated"
 
 // ─── Job 1: Simple webhook trigger, no skills ───────────────────────────────
 // Validates the minimal job shape: a single webhook trigger calling the agent.

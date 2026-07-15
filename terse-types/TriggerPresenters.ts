@@ -1,4 +1,6 @@
-import { IntegrationType } from "./Integrations"
+import type { z } from "zod"
+
+import type { TriggerDisplay } from "./TriggerDefinition"
 import type {
     AttioTrigger,
     CronTrigger,
@@ -7,163 +9,30 @@ import type {
     HeyReachTrigger,
     LinearTrigger,
     ManualSampleTrigger,
-    SlackTrigger,
-    Trigger,
     WebMonitorTrigger,
     WebhookTrigger,
-    WorkOSTrigger
+    WorkOSTrigger,
+    slackTriggerSchema
 } from "./Triggers"
 
-interface TriggerPresenter<TEvent extends Trigger> {
-    formatForAgent(event: TEvent): string
-    debug(event: TEvent): string
-    display(event: TEvent): TriggerDisplay
+export type { TriggerDisplay } from "./TriggerDefinition"
+
+export function formatManualSampleTrigger(event: ManualSampleTrigger): string {
+    return `Manual sample event for ${event.integrationType}.`
 }
 
-export interface TriggerDisplay {
-    title: string
-    subtitle: string
+export function debugManualSampleTrigger(event: ManualSampleTrigger): string {
+    return `${event.integrationType} ${event.eventType}`
 }
 
-type IntegrationTrigger = Exclude<Trigger, ManualSampleTrigger>
-type SupportedIntegrationType = IntegrationTrigger["integrationType"]
-
-type TriggerPresenterRegistry = {
-    manual_sample: TriggerPresenter<ManualSampleTrigger>
-} & {
-    [K in SupportedIntegrationType]: TriggerPresenter<Extract<IntegrationTrigger, { integrationType: K }>>
-}
-
-const TriggerPresenters = {
-    manual_sample: {
-        formatForAgent: (event: ManualSampleTrigger): string => `Manual sample event for ${event.integrationType}.`,
-        debug: (event: ManualSampleTrigger): string => `${event.integrationType} ${event.eventType}`,
-        display: (event: ManualSampleTrigger): TriggerDisplay => ({
-            title: `Manual ${event.integrationType} sample`,
-            subtitle: event.eventType
-        })
-    },
-    [IntegrationType.GITHUB]: {
-        formatForAgent: formatGithubTrigger,
-        debug: (event: GithubTrigger): string => `GitHub Event: ${event.eventType} - ${event.repository.owner}/${event.repository.name} - ${event.sender.login}`,
-        display: formatGithubDisplay
-    },
-    [IntegrationType.SLACK]: {
-        formatForAgent: formatSlackTrigger,
-        debug: (event: SlackTrigger): string => {
-            const isDM = event.channelType === "im"
-            return `Slack Event: ${event.eventType} - ${isDM ? "DM" : event.channelName || event.channelId} - ${event.userName || event.userId}`
-        },
-        display: formatSlackDisplay
-    },
-    [IntegrationType.GMAIL]: {
-        formatForAgent: formatGmailTrigger,
-        debug: (event: GmailTrigger): string => `Gmail Event: ${event.subject} message ID: ${event.messageId}`,
-        display: (event: GmailTrigger): TriggerDisplay => ({
-            title: event.subject || "(no subject)",
-            subtitle: `from ${event.from}`
-        })
-    },
-    [IntegrationType.LINEAR]: {
-        formatForAgent: formatLinearTrigger,
-        debug: (event: LinearTrigger): string => {
-            if (event.type === "Issue") {
-                return `Linear ${event.type} Event: ${event.data.identifier} - ${event.data.title} (${event.action})`
-            }
-            return `Linear ${event.type} Event: Comment on issue ${event.data.issueId || "Unknown"} (${event.action})`
-        },
-        display: (event: LinearTrigger): TriggerDisplay => {
-            if (event.type === "Issue") {
-                return {
-                    title: `${event.data.identifier} ${event.data.title}`,
-                    subtitle: `${event.data.team?.name || "Linear"} · ${event.action} issue`
-                }
-            }
-            return {
-                title: `Comment on ${event.data.issueId || "Unknown issue"}`,
-                subtitle: `${event.actor.name} · ${event.action} comment`
-            }
-        }
-    },
-    [IntegrationType.WORKOS]: {
-        formatForAgent: formatWorkOSTrigger,
-        debug: (event: WorkOSTrigger): string => `WorkOS ${event.eventType}`,
-        display: formatWorkOSDisplay
-    },
-    [IntegrationType.HEY_REACH]: {
-        formatForAgent: formatHeyReachTrigger,
-        debug: (event: HeyReachTrigger): string => `HeyReach ${event.eventType}${event.lead?.id != null ? ` lead=${event.lead.id}` : ""}`,
-        display: formatHeyReachDisplay
-    },
-    [IntegrationType.ATTIO]: {
-        formatForAgent: formatAttioTrigger,
-        debug: (event: AttioTrigger): string => `Attio ${event.eventType}${event.objectSlug ? ` object=${event.objectSlug}` : ""}`,
-        display: formatAttioDisplay
-    },
-    [IntegrationType.WEBHOOK]: {
-        formatForAgent: formatWebhookTrigger,
-        debug: (event: WebhookTrigger): string => `Webhook Trigger (${event.method})`,
-        display: formatWebhookDisplay
-    },
-    [IntegrationType.CRON_JOB]: {
-        formatForAgent: formatCronTrigger,
-        debug: (event: CronTrigger): string => (event.isManualTrigger ? "Manual Trigger" : "Scheduled Event"),
-        display: formatCronDisplay
-    },
-    [IntegrationType.WEBMONITOR]: {
-        formatForAgent: formatWebMonitorTrigger,
-        debug: (event: WebMonitorTrigger): string => `${event.query.slice(0, 80)}${event.query.length > 80 ? "…" : ""}`,
-        display: formatWebMonitorDisplay
-    }
-} as TriggerPresenterRegistry
-
-function dispatchPresenter(event: IntegrationTrigger, method: keyof TriggerPresenter<Trigger>): string | TriggerDisplay {
-    switch (event.integrationType) {
-        case IntegrationType.GITHUB:
-            return TriggerPresenters[IntegrationType.GITHUB][method](event)
-        case IntegrationType.SLACK:
-            return TriggerPresenters[IntegrationType.SLACK][method](event)
-        case IntegrationType.GMAIL:
-            return TriggerPresenters[IntegrationType.GMAIL][method](event)
-        case IntegrationType.LINEAR:
-            return TriggerPresenters[IntegrationType.LINEAR][method](event)
-        case IntegrationType.WORKOS:
-            return TriggerPresenters[IntegrationType.WORKOS][method](event)
-        case IntegrationType.HEY_REACH:
-            return TriggerPresenters[IntegrationType.HEY_REACH][method](event)
-        case IntegrationType.ATTIO:
-            return TriggerPresenters[IntegrationType.ATTIO][method](event)
-        case IntegrationType.WEBHOOK:
-            return TriggerPresenters[IntegrationType.WEBHOOK][method](event)
-        case IntegrationType.CRON_JOB:
-            return TriggerPresenters[IntegrationType.CRON_JOB][method](event)
-        case IntegrationType.WEBMONITOR:
-            return TriggerPresenters[IntegrationType.WEBMONITOR][method](event)
+export function displayManualSampleTrigger(event: ManualSampleTrigger): TriggerDisplay {
+    return {
+        title: `Manual ${event.integrationType} sample`,
+        subtitle: event.eventType
     }
 }
 
-export function formatTriggerForAgent(event: Trigger): string {
-    if (event.eventType === "manual_sample") {
-        return TriggerPresenters.manual_sample.formatForAgent(event)
-    }
-    return dispatchPresenter(event, "formatForAgent") as string
-}
-
-export function debugTrigger(event: Trigger): string {
-    if (event.eventType === "manual_sample") {
-        return TriggerPresenters.manual_sample.debug(event)
-    }
-    return dispatchPresenter(event, "debug") as string
-}
-
-export function displayTrigger(event: Trigger): TriggerDisplay {
-    if (event.eventType === "manual_sample") {
-        return TriggerPresenters.manual_sample.display(event)
-    }
-    return dispatchPresenter(event, "display") as TriggerDisplay
-}
-
-function formatGithubTrigger(event: GithubTrigger): string {
+export function formatGithubTrigger(event: GithubTrigger): string {
     const indentMultiline = (text: string): string =>
         text
             .split("\n")
@@ -264,7 +133,42 @@ function formatGithubTrigger(event: GithubTrigger): string {
     ].join("\n\n")
 }
 
-function formatSlackTrigger(event: SlackTrigger): string {
+export function debugGithubTrigger(event: GithubTrigger): string {
+    return `GitHub Event: ${event.eventType} - ${event.repository.owner}/${event.repository.name} - ${event.sender.login}`
+}
+
+export function formatGithubDisplay(event: GithubTrigger): TriggerDisplay {
+    if (event.eventType === "issue_comment.created") {
+        const kind = event.issue.isPullRequest ? "PR" : "Issue"
+        return {
+            title: `Comment on #${event.issue.number} ${truncateForDisplay(event.issue.title, 80)}`,
+            subtitle: `${event.repository.owner}/${event.repository.name} · ${kind} comment by ${event.sender.login}`
+        }
+    }
+
+    if (event.pullRequest) {
+        return {
+            title: `#${event.pullRequest.number} ${truncateForDisplay(event.pullRequest.title, 80)}`,
+            subtitle: `${event.repository.owner}/${event.repository.name} · ${event.eventType} by ${event.sender.login}`
+        }
+    }
+
+    if (event.commits.length > 0) {
+        const latestCommit = event.commits[event.commits.length - 1]
+        const commitMessage = latestCommit.message || (latestCommit as { name?: string }).name || latestCommit.sha.slice(0, 7)
+        return {
+            title: truncateForDisplay(commitMessage, 80),
+            subtitle: `${event.repository.owner}/${event.repository.name} · ${event.commits.length} commit${event.commits.length === 1 ? "" : "s"} on ${event.branch || "branch"}`
+        }
+    }
+
+    return {
+        title: `${event.repository.owner}/${event.repository.name}`,
+        subtitle: `${event.eventType} by ${event.sender.login}`
+    }
+}
+
+export function formatSlackTrigger(event: SlackTriggerEvent): string {
     const blockContent = JSON.stringify(event.blocks)
     const attachmentContent = JSON.stringify(event.attachments)
     const messageText = event.text || "(no plain text)"
@@ -305,7 +209,12 @@ function formatSlackTrigger(event: SlackTrigger): string {
         `
 }
 
-function formatSlackDisplay(event: SlackTrigger): TriggerDisplay {
+export function debugSlackTrigger(event: SlackTriggerEvent): string {
+    const isDM = event.channelType === "im"
+    return `Slack Event: ${event.eventType} - ${isDM ? "DM" : event.channelName || event.channelId} - ${event.userName || event.userId}`
+}
+
+export function formatSlackDisplay(event: SlackTriggerEvent): TriggerDisplay {
     const channelLabel = event.channelType === "im" ? "DM" : event.channelName || event.channelId
     const actorLabel = event.userName || event.userId
 
@@ -323,133 +232,7 @@ function formatSlackDisplay(event: SlackTrigger): TriggerDisplay {
     }
 }
 
-function truncateForDisplay(value: string, maxLength: number): string {
-    return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value
-}
-
-function formatGithubDisplay(event: GithubTrigger): TriggerDisplay {
-    if (event.eventType === "issue_comment.created") {
-        const kind = event.issue.isPullRequest ? "PR" : "Issue"
-        return {
-            title: `Comment on #${event.issue.number} ${truncateForDisplay(event.issue.title, 80)}`,
-            subtitle: `${event.repository.owner}/${event.repository.name} · ${kind} comment by ${event.sender.login}`
-        }
-    }
-
-    if (event.pullRequest) {
-        return {
-            title: `#${event.pullRequest.number} ${truncateForDisplay(event.pullRequest.title, 80)}`,
-            subtitle: `${event.repository.owner}/${event.repository.name} · ${event.eventType} by ${event.sender.login}`
-        }
-    }
-
-    if (event.commits.length > 0) {
-        const latestCommit = event.commits[event.commits.length - 1]
-        const commitMessage = latestCommit.message || (latestCommit as { name?: string }).name || latestCommit.sha.slice(0, 7)
-        return {
-            title: truncateForDisplay(commitMessage, 80),
-            subtitle: `${event.repository.owner}/${event.repository.name} · ${event.commits.length} commit${event.commits.length === 1 ? "" : "s"} on ${event.branch || "branch"}`
-        }
-    }
-
-    return {
-        title: `${event.repository.owner}/${event.repository.name}`,
-        subtitle: `${event.eventType} by ${event.sender.login}`
-    }
-}
-
-function formatWorkOSDisplay(event: WorkOSTrigger): TriggerDisplay {
-    if ("user" in event && event.user) {
-        return {
-            title: event.user.email,
-            subtitle: humanizeWorkOSEventType(event.eventType)
-        }
-    }
-
-    if ("organization" in event && event.organization) {
-        return {
-            title: event.organization.name,
-            subtitle: humanizeWorkOSEventType(event.eventType)
-        }
-    }
-
-    if ("invitation" in event && event.invitation) {
-        return {
-            title: event.invitation.email,
-            subtitle: humanizeWorkOSEventType(event.eventType)
-        }
-    }
-
-    if ("membership" in event && event.membership) {
-        return {
-            title: event.membership.role.slug,
-            subtitle: humanizeWorkOSEventType(event.eventType)
-        }
-    }
-
-    return {
-        title: "WorkOS event",
-        subtitle: humanizeWorkOSEventType(event.eventType)
-    }
-}
-
-function humanizeWorkOSEventType(eventType: string): string {
-    return eventType.replaceAll(".", " ")
-}
-
-function formatWebhookDisplay(event: WebhookTrigger): TriggerDisplay {
-    const bodyPreview = summarizeUnknown(event.body)
-    return {
-        title: bodyPreview || "Webhook trigger",
-        subtitle: event.method
-    }
-}
-
-function formatCronDisplay(event: CronTrigger): TriggerDisplay {
-    return {
-        title: event.isManualTrigger ? "Manual trigger" : "Scheduled event",
-        subtitle: event.manualContext ? truncateForDisplay(event.manualContext, 80) : event.inputId
-    }
-}
-
-function formatWebMonitorDisplay(event: WebMonitorTrigger): TriggerDisplay {
-    const sourceLabel = firstHost(event.sourceUrls)
-    const outputPreview = typeof event.payload === "string" ? event.payload : typeof event.rawPayload === "string" ? event.rawPayload : ""
-
-    return {
-        title: sourceLabel ? `Change detected on ${sourceLabel}` : "Web monitor match",
-        subtitle: truncateForDisplay(outputPreview || event.query, 100)
-    }
-}
-
-function firstHost(urls: string[]): string | null {
-    const first = urls[0]
-    if (!first) return null
-
-    try {
-        return new URL(first).host
-    } catch {
-        return first
-    }
-}
-
-function summarizeUnknown(value: unknown): string {
-    if (typeof value === "string") {
-        return truncateForDisplay(value.trim() || "Webhook trigger", 80)
-    }
-
-    if (value && typeof value === "object") {
-        const record = value as Record<string, unknown>
-        const preferred = [record.title, record.subject, record.name, record.action, record.type, record.event].find(v => typeof v === "string" && v.trim().length > 0)
-        if (typeof preferred === "string") {
-            return truncateForDisplay(preferred, 80)
-        }
-    }
-
-    return "Webhook trigger"
-}
-
-function formatGmailTrigger(event: GmailTrigger): string {
+export function formatGmailTrigger(event: GmailTrigger): string {
     const attachmentInfo = event.attachments?.map(attachment => `- ${attachment.filename} ${attachment.isInline ? "Inline" : "Attachment"} (${attachment.mimeType})`).join("\n") || "No attachments"
 
     return `
@@ -469,7 +252,18 @@ function formatGmailTrigger(event: GmailTrigger): string {
         `
 }
 
-function formatLinearTrigger(event: LinearTrigger): string {
+export function debugGmailTrigger(event: GmailTrigger): string {
+    return `Gmail Event: ${event.subject} message ID: ${event.messageId}`
+}
+
+export function formatGmailDisplay(event: GmailTrigger): TriggerDisplay {
+    return {
+        title: event.subject || "(no subject)",
+        subtitle: `from ${event.from}`
+    }
+}
+
+export function formatLinearTrigger(event: LinearTrigger): string {
     const indentMultiline = (text: string): string =>
         text
             .split("\n")
@@ -509,7 +303,27 @@ function formatLinearTrigger(event: LinearTrigger): string {
     return sections.join("\n\n")
 }
 
-function formatWorkOSTrigger(event: WorkOSTrigger): string {
+export function debugLinearTrigger(event: LinearTrigger): string {
+    if (event.type === "Issue") {
+        return `Linear ${event.type} Event: ${event.data.identifier} - ${event.data.title} (${event.action})`
+    }
+    return `Linear ${event.type} Event: Comment on issue ${event.data.issueId || "Unknown"} (${event.action})`
+}
+
+export function formatLinearDisplay(event: LinearTrigger): TriggerDisplay {
+    if (event.type === "Issue") {
+        return {
+            title: `${event.data.identifier} ${event.data.title}`,
+            subtitle: `${event.data.team?.name || "Linear"} · ${event.action} issue`
+        }
+    }
+    return {
+        title: `Comment on ${event.data.issueId || "Unknown issue"}`,
+        subtitle: `${event.actor.name} · ${event.action} comment`
+    }
+}
+
+export function formatWorkOSTrigger(event: WorkOSTrigger): string {
     const parts = [`WorkOS Event: ${event.eventType}`]
 
     if ("user" in event && event.user) {
@@ -524,39 +338,50 @@ function formatWorkOSTrigger(event: WorkOSTrigger): string {
     return parts.join("\n")
 }
 
-function formatWebhookTrigger(event: WebhookTrigger): string {
-    return `Webhook request received.\n\nMethod: ${event.method}\n\nPayload:\n${JSON.stringify(event.body, null, 2)}`
+export function debugWorkOSTrigger(event: WorkOSTrigger): string {
+    return `WorkOS ${event.eventType}`
 }
 
-function formatWebMonitorTrigger(event: WebMonitorTrigger): string {
-    const lines = [
-        `Web event for monitored query (frequency: ${event.frequency.number}${event.frequency.unit}).`,
-        `Query: ${event.query}`,
-        `Monitor ID: ${event.monitorId}`,
-        `Event Group ID: ${event.eventGroupId}`,
-        `Output Type: ${event.outputType}`
-    ]
-
-    if (Object.keys(event.metadata).length > 0) {
-        lines.push(`Metadata:\n${JSON.stringify(event.metadata, null, 2)}`)
+export function formatWorkOSDisplay(event: WorkOSTrigger): TriggerDisplay {
+    if ("user" in event && event.user) {
+        return {
+            title: event.user.email,
+            subtitle: humanizeWorkOSEventType(event.eventType)
+        }
     }
 
-    lines.push(`Payload:\n${JSON.stringify(event.payload, null, 2)}`)
-    if (event.rawPayload) {
-        lines.push(`Raw Payload:\n${event.rawPayload}`)
+    if ("organization" in event && event.organization) {
+        return {
+            title: event.organization.name,
+            subtitle: humanizeWorkOSEventType(event.eventType)
+        }
     }
-    return lines.join("\n\n")
+
+    if ("invitation" in event && event.invitation) {
+        return {
+            title: event.invitation.email,
+            subtitle: humanizeWorkOSEventType(event.eventType)
+        }
+    }
+
+    if ("membership" in event && event.membership) {
+        return {
+            title: event.membership.role.slug,
+            subtitle: humanizeWorkOSEventType(event.eventType)
+        }
+    }
+
+    return {
+        title: "WorkOS event",
+        subtitle: humanizeWorkOSEventType(event.eventType)
+    }
 }
 
-function heyReachLeadFullName(event: HeyReachTrigger): string | null {
-    const lead = event.lead
-    if (!lead) return null
-    const composed = [lead.first_name, lead.last_name].filter(Boolean).join(" ").trim() || lead.full_name?.trim() || ""
-    const idStr = lead.id != null ? String(lead.id) : null
-    return composed || idStr
+function humanizeWorkOSEventType(eventType: string): string {
+    return eventType.replaceAll(".", " ")
 }
 
-function formatHeyReachTrigger(event: HeyReachTrigger): string {
+export function formatHeyReachTrigger(event: HeyReachTrigger): string {
     const lines = [`HeyReach Event: ${event.eventType}`, `Event ID: ${event.eventId}`, `Created At: ${event.createdAt}`]
     const leadName = heyReachLeadFullName(event)
     if (leadName) lines.push(`Lead: ${leadName}`)
@@ -577,9 +402,62 @@ function formatHeyReachTrigger(event: HeyReachTrigger): string {
     return lines.join("\n")
 }
 
+export function debugHeyReachTrigger(event: HeyReachTrigger): string {
+    return `HeyReach ${event.eventType}${event.lead?.id != null ? ` lead=${event.lead.id}` : ""}`
+}
+
+export function formatHeyReachDisplay(event: HeyReachTrigger): TriggerDisplay {
+    const subtitle = humanizeHeyReachEventType(event.eventType)
+    const leadName = heyReachLeadFullName(event)
+    if (leadName) {
+        return { title: leadName, subtitle }
+    }
+    if (event.campaign?.name) {
+        return { title: event.campaign.name, subtitle }
+    }
+    return { title: "HeyReach event", subtitle }
+}
+
+function heyReachLeadFullName(event: HeyReachTrigger): string | null {
+    const lead = event.lead
+    if (!lead) return null
+    const composed = [lead.first_name, lead.last_name].filter(Boolean).join(" ").trim() || lead.full_name?.trim() || ""
+    const idStr = lead.id != null ? String(lead.id) : null
+    return composed || idStr
+}
+
 function humanizeHeyReachEventType(eventType: string): string {
     return eventType
         .split("_")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(" ")
+}
+
+export function formatAttioTrigger(event: AttioTrigger): string {
+    const lines = [`Attio Event: ${event.eventType}`, `Event ID: ${event.eventId}`, `Created At: ${event.createdAt}`, `Workspace ID: ${event.workspaceId}`]
+    if (event.objectSlug) lines.push(`Object: ${event.objectSlug}`)
+    const resource = attioResourceLabel(event)
+    if (resource) lines.push(`Resource: ${resource}`)
+    if (event.actor.type) lines.push(`Actor: ${event.actor.type}${event.actor.id ? ` (${event.actor.id})` : ""}`)
+    lines.push(`\nFull Event:\n${JSON.stringify(event.rawEvent, null, 2)}`)
+    return lines.join("\n")
+}
+
+export function debugAttioTrigger(event: AttioTrigger): string {
+    return `Attio ${event.eventType}${event.objectSlug ? ` object=${event.objectSlug}` : ""}`
+}
+
+export function formatAttioDisplay(event: AttioTrigger): TriggerDisplay {
+    const subtitle = humanizeAttioEventType(event.eventType)
+    const resource = attioResourceLabel(event)
+    return { title: resource ?? "Attio event", subtitle }
+}
+
+export function humanizeAttioEventType(eventType: string): string {
+    return eventType
+        .replace(/[-.]/g, " ")
+        .split(" ")
         .filter(Boolean)
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(" ")
@@ -599,44 +477,23 @@ function attioResourceLabel(event: AttioTrigger): string | null {
     return null
 }
 
-export function humanizeAttioEventType(eventType: string): string {
-    return eventType
-        .replace(/[-.]/g, " ")
-        .split(" ")
-        .filter(Boolean)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(" ")
+export function formatWebhookTrigger(event: WebhookTrigger): string {
+    return `Webhook request received.\n\nMethod: ${event.method}\n\nPayload:\n${JSON.stringify(event.body, null, 2)}`
 }
 
-function formatAttioTrigger(event: AttioTrigger): string {
-    const lines = [`Attio Event: ${event.eventType}`, `Event ID: ${event.eventId}`, `Created At: ${event.createdAt}`, `Workspace ID: ${event.workspaceId}`]
-    if (event.objectSlug) lines.push(`Object: ${event.objectSlug}`)
-    const resource = attioResourceLabel(event)
-    if (resource) lines.push(`Resource: ${resource}`)
-    if (event.actor.type) lines.push(`Actor: ${event.actor.type}${event.actor.id ? ` (${event.actor.id})` : ""}`)
-    lines.push(`\nFull Event:\n${JSON.stringify(event.rawEvent, null, 2)}`)
-    return lines.join("\n")
+export function debugWebhookTrigger(event: WebhookTrigger): string {
+    return `Webhook Trigger (${event.method})`
 }
 
-function formatAttioDisplay(event: AttioTrigger): TriggerDisplay {
-    const subtitle = humanizeAttioEventType(event.eventType)
-    const resource = attioResourceLabel(event)
-    return { title: resource ?? "Attio event", subtitle }
-}
-
-function formatHeyReachDisplay(event: HeyReachTrigger): TriggerDisplay {
-    const subtitle = humanizeHeyReachEventType(event.eventType)
-    const leadName = heyReachLeadFullName(event)
-    if (leadName) {
-        return { title: leadName, subtitle }
+export function formatWebhookDisplay(event: WebhookTrigger): TriggerDisplay {
+    const bodyPreview = summarizeUnknown(event.body)
+    return {
+        title: bodyPreview || "Webhook trigger",
+        subtitle: event.method
     }
-    if (event.campaign?.name) {
-        return { title: event.campaign.name, subtitle }
-    }
-    return { title: "HeyReach event", subtitle }
 }
 
-function formatCronTrigger(event: CronTrigger): string {
+export function formatCronTrigger(event: CronTrigger): string {
     if (event.isManualTrigger) {
         let message = `This is a manually triggered event for the channel input ${event.inputId}.`
         if (event.manualContext) {
@@ -646,3 +503,81 @@ function formatCronTrigger(event: CronTrigger): string {
     }
     return `This is a scheduled event for the channel input ${event.inputId}. The channel input is configured to run at the following cron expression.`
 }
+
+export function debugCronTrigger(event: CronTrigger): string {
+    return event.isManualTrigger ? "Manual Trigger" : "Scheduled Event"
+}
+
+export function formatCronDisplay(event: CronTrigger): TriggerDisplay {
+    return {
+        title: event.isManualTrigger ? "Manual trigger" : "Scheduled event",
+        subtitle: event.manualContext ? truncateForDisplay(event.manualContext, 80) : event.inputId
+    }
+}
+
+export function formatWebMonitorTrigger(event: WebMonitorTrigger): string {
+    const lines = [
+        `Web event for monitored query (frequency: ${event.frequency.number}${event.frequency.unit}).`,
+        `Query: ${event.query}`,
+        `Monitor ID: ${event.monitorId}`,
+        `Event Group ID: ${event.eventGroupId}`,
+        `Output Type: ${event.outputType}`
+    ]
+
+    if (Object.keys(event.metadata).length > 0) {
+        lines.push(`Metadata:\n${JSON.stringify(event.metadata, null, 2)}`)
+    }
+
+    lines.push(`Payload:\n${JSON.stringify(event.payload, null, 2)}`)
+    if (event.rawPayload) {
+        lines.push(`Raw Payload:\n${event.rawPayload}`)
+    }
+    return lines.join("\n\n")
+}
+
+export function debugWebMonitorTrigger(event: WebMonitorTrigger): string {
+    return `${event.query.slice(0, 80)}${event.query.length > 80 ? "…" : ""}`
+}
+
+export function formatWebMonitorDisplay(event: WebMonitorTrigger): TriggerDisplay {
+    const sourceLabel = firstHost(event.sourceUrls)
+    const outputPreview = typeof event.payload === "string" ? event.payload : typeof event.rawPayload === "string" ? event.rawPayload : ""
+
+    return {
+        title: sourceLabel ? `Change detected on ${sourceLabel}` : "Web monitor match",
+        subtitle: truncateForDisplay(outputPreview || event.query, 100)
+    }
+}
+
+function firstHost(urls: string[]): string | null {
+    const first = urls[0]
+    if (!first) return null
+
+    try {
+        return new URL(first).host
+    } catch {
+        return first
+    }
+}
+
+function summarizeUnknown(value: unknown): string {
+    if (typeof value === "string") {
+        return truncateForDisplay(value.trim() || "Webhook trigger", 80)
+    }
+
+    if (value && typeof value === "object") {
+        const record = value as Record<string, unknown>
+        const preferred = [record.title, record.subject, record.name, record.action, record.type, record.event].find(v => typeof v === "string" && v.trim().length > 0)
+        if (typeof preferred === "string") {
+            return truncateForDisplay(preferred, 80)
+        }
+    }
+
+    return "Webhook trigger"
+}
+
+function truncateForDisplay(value: string, maxLength: number): string {
+    return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value
+}
+
+type SlackTriggerEvent = z.infer<typeof slackTriggerSchema>

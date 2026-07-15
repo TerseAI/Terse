@@ -390,7 +390,7 @@ Non-interactive counterpart to the \`terse integrate use\` picker: list here, th
 
 integrateCommand
     .command("use")
-    .description("Pin which connection this project generates against, then regenerate terse.generated.ts")
+    .description("Pin which connection this project generates against, then regenerate terse.generated.ts and terse.generated/")
     .argument("<type>", "Integration type (e.g. slack)")
     .argument("[connection-id]", "Connection ID; omit to pick interactively (or auto-pin a single connection)")
     .option("--clear", "Remove this integration's pin and regenerate")
