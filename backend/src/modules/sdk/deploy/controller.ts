@@ -203,10 +203,10 @@ function findInvalidCronTrigger(jobs: SdkDeployJob[]): string | null {
         for (const trigger of job.triggers) {
             if (trigger.configType !== ConfigType.TIME_TRIGGER) continue
             try {
-                assertValidUserCron(job.jobName, trigger.cronExpression)
+                assertValidUserCron(job.jobName, trigger.cronExpression, trigger.timezone)
             } catch (error) {
                 if (error instanceof InvalidCronExpressionError) {
-                    return `Job "${job.jobName}" has an invalid cron expression "${trigger.cronExpression}" — expected a standard 5-field cron (UTC).`
+                    return `Job "${job.jobName}" has an invalid cron expression "${trigger.cronExpression}" — expected a standard 5-field cron.`
                 }
                 throw error
             }

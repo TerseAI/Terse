@@ -15,7 +15,8 @@ export class ScheduleTrigger implements Trigger<TimeTriggerConfig> {
         await tx.automation_time_trigger_configs.create({
             data: {
                 automation_input_id: agentTriggerId,
-                cron_expression: trigger.cronExpression
+                cron_expression: trigger.cronExpression,
+                timezone: trigger.timezone
             }
         })
     }

@@ -222,7 +222,7 @@ function TimeBody({ config, label, type }: { config: TimeTriggerConfigData; labe
     const description = config.cronExpression ? safeCronDescription(config.cronExpression) : null
     return (
         <Frame type={type} label={label} summary={description ?? undefined}>
-            <Field label="Schedule (UTC)">
+            <Field label={`Schedule (${config.timezone ?? "UTC"})`}>
                 <code className="bg-muted/60 text-foreground inline-block rounded-md px-2 py-1 font-mono text-xs">{config.cronExpression}</code>
             </Field>
         </Frame>

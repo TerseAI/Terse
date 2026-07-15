@@ -6,6 +6,7 @@ import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import logger, { runWithUserContext } from "../../common/logger"
+import { toTimezone } from "../../common/typeConverters"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { removeScheduleTrigger, upsertScheduleTrigger } from "../../tasks/queues/scheduleQueue"
@@ -134,17 +135,20 @@ export class CronJobIntegrationManager
             return
         }
 
+        const timezone = toTimezone(agentTrigger.time_trigger_config.timezone)
         try {
-            await upsertScheduleTrigger(agentTrigger.id, cronExpression)
+            await upsertScheduleTrigger(agentTrigger.id, cronExpression, timezone)
             logger.info("✅ Validated time trigger schedule", {
                 inputId: agentTrigger.id,
-                cronExpression
+                cronExpression,
+                timezone
             })
         } catch (error) {
             logger.error("❌ Failed to validate time trigger schedule", {
                 error,
                 inputId: agentTrigger.id,
-                cronExpression
+                cronExpression,
+                timezone
             })
             throw error
         }

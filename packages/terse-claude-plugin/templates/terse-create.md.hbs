@@ -206,6 +206,8 @@ Choose triggers based on what events the job should respond to. Your workspace s
 
 Only use triggers and resources that actually exist in the generated files. Do not invent constants that are not defined there.
 
+When the user gives a schedule in their local time, keep it in their timezone: `Triggers.schedule.cron` takes an optional `timezone` (a typed IANA name like `"America/New_York"`, autocompleted from the `Timezone` union) and evaluates the expression as wall-clock time in that zone, DST-aware. Do not convert the user's time to UTC by hand; omitting `timezone` means UTC.
+
 ### 7. Pick skills and connect integrations
 
 **Skills shape what the model can do during a `generateText` run.** They scope the tools the model is allowed to pick. `toolbox.*` is unscoped and works without any skills at all.

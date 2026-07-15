@@ -11,6 +11,7 @@ export class TerseModule extends IntegrationModule<undefined, undefined> {
     readonly summaryLabel = "Terse"
     protected readonly sectionImports = [
         "TimeTriggerConfig",
+        "Timezone",
         "WebConfig",
         "ImageEditConfig",
         "MemoryConfig",
