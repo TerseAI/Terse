@@ -21,6 +21,7 @@ import type {
     WorkOSInputConfigData
 } from "terse-types"
 
+import { describeCron, formatNextRun, getNextRun } from "@/lib/cron"
 import ToolCallParameters from "@/modules/chat/components/ToolCallParameters"
 import { useAttioObjects } from "@/modules/integrations/api/useAttioObjects"
 import { useGithubIntegrations } from "@/modules/integrations/api/useGithubIntegrations"
@@ -28,8 +29,7 @@ import { useGithubResources } from "@/modules/integrations/api/useGithubResource
 import { useHeyReachCampaigns } from "@/modules/integrations/api/useHeyReachCampaigns"
 import { useLinearTeams } from "@/modules/integrations/api/useLinearTeams"
 import { useSlackUsers } from "@/modules/integrations/api/useSlackUsers"
-
-import { getCronDescription } from "../../../components/ScheduleEditor"
+import { getUserTimezone } from "@/utils/timezone"
 
 import { IconForConfigType } from "./Integration"
 
@@ -219,11 +219,26 @@ function GmailBody({ config, label, type }: { config: GmailConfigData; label: st
 }
 
 function TimeBody({ config, label, type }: { config: TimeTriggerConfigData; label: string; type: ConfigType }) {
-    const description = config.cronExpression ? safeCronDescription(config.cronExpression) : null
+    const timezone = config.timezone ?? "UTC"
+    if (!config.cronExpression) {
+        return (
+            <Frame type={type} label={label}>
+                <Field label={`Schedule (${timezone})`}>
+                    <EmptyValue text="No schedule configured" />
+                </Field>
+            </Frame>
+        )
+    }
+
+    const nextRun = getNextRun(config.cronExpression, timezone)
+    const description = describeCron(config.cronExpression)
+    const anchoredDescription = description && timezone !== getUserTimezone() ? `${description} (${timezone})` : description
     return (
-        <Frame type={type} label={label} summary={description ?? undefined}>
-            <Field label={`Schedule (${config.timezone ?? "UTC"})`}>
-                <code className="bg-muted/60 text-foreground inline-block rounded-md px-2 py-1 font-mono text-xs">{config.cronExpression}</code>
+        <Frame type={type} label={label} summary={nextRun ? `Next run: ${formatNextRun(nextRun)}` : undefined}>
+            <Field label={`Schedule (${timezone})`}>
+                <code className="bg-muted/60 text-foreground inline-block rounded-md px-2 py-1 font-mono text-xs select-all">{config.cronExpression}</code>
+                {anchoredDescription ? <p className="text-muted-foreground mt-1.5 text-xs">{anchoredDescription}</p> : null}
+                {!description && !nextRun ? <p className="text-muted-foreground mt-1.5 text-xs">Unrecognized cron expression</p> : null}
             </Field>
         </Frame>
     )
@@ -401,16 +416,6 @@ function CopyButton({ text }: { text: string }) {
 function formatFrequency(frequency: { number: number; unit: FrequencyUnit }): string {
     const amount = Math.max(1, frequency.number)
     return amount === 1 ? `Every ${frequency.unit}` : `Every ${amount} ${frequency.unit}s`
-}
-
-function safeCronDescription(expression: string): string | null {
-    try {
-        const description = getCronDescription(expression)
-        if (!description || description === "No schedule configured") return null
-        return description
-    } catch {
-        return null
-    }
 }
 
 function formatSlackEvent(type: string): string {
