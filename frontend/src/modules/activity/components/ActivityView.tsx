@@ -162,7 +162,7 @@ export default function ActivityPage() {
                         />
                     </div>
                 ) : (
-                    <div className="divide-y divide-border/40">
+                    <div role="list" aria-label="Run history" className="divide-y divide-border/40">
                         {runs.map(run => (
                             <RunHistoryRow key={run.id} run={run} onOpenChat={handleOpenChat} />
                         ))}
