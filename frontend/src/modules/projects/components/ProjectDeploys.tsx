@@ -71,7 +71,15 @@ function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
                     <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div className="relative flex-1">
                             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
-                            <Input type="search" aria-label="Search deployments" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by id, deployer, or status…" className="h-9 pl-8" disabled={isLoadingDeploys} />
+                            <Input
+                                type="search"
+                                aria-label="Search deployments"
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                                placeholder="Search by id, deployer, or status…"
+                                className="h-9 pl-8"
+                                disabled={isLoadingDeploys}
+                            />
                         </div>
                         <Select value={statusFilter} onValueChange={v => setStatusFilter(v as DeployStatusFilter)} disabled={isLoadingDeploys}>
                             <SelectTrigger size="sm" className="sm:w-[170px]">

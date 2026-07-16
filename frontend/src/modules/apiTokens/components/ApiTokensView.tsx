@@ -307,7 +307,14 @@ function CreateTokenDialog({ open, createdRawToken, onOpenChange, onCreated }: C
                     </div>
                 ) : (
                     <div className="flex flex-col gap-2">
-                        <Input aria-label="Token name" placeholder="e.g. CI/CD pipeline" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCreate()} autoFocus />
+                        <Input
+                            aria-label="Token name"
+                            placeholder="e.g. CI/CD pipeline"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && handleCreate()}
+                            autoFocus
+                        />
                         {error && <p className="text-xs text-danger">{error}</p>}
                     </div>
                 )}
