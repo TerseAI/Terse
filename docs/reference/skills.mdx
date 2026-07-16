@@ -151,6 +151,26 @@ skills: [Skills.gmailDraft()]
 | -------------------- | ------------------------------------ | ------ |
 | `gmail_create_draft` | Create draft emails for human review | Write  |
 
+## Meta Ads
+
+Read campaign performance, sync custom audiences, and send offline conversions via the Conversions API. Optionally scope to a default ad account.
+
+```ts
+import { MetaAdsAdAccount, Skills } from "./terse.generated"
+
+skills: [Skills.metaAds({ adAccount: MetaAdsAdAccount.Primary })]
+```
+
+`adAccount` is optional. Omit it and the model discovers ad accounts with `meta_ads_read_campaigns`.
+
+| Tool                             | Description                                                            | Access |
+| -------------------------------- | ---------------------------------------------------------------------- | ------ |
+| `meta_ads_read_campaigns`        | List ad accounts, campaigns, or ad sets with status and budget         | Read   |
+| `meta_ads_read_insights`         | Spend, impressions, clicks, and conversions at campaign/ad set level   | Read   |
+| `meta_ads_read_audiences`        | List custom audiences with approximate sizes                           | Read   |
+| `meta_ads_update_audience_users` | Add or remove people on a custom audience (emails/phones hashed)       | Write  |
+| `meta_ads_send_conversions`      | Send offline conversion events via the Conversions API                 | Write  |
+
 ## Snowflake
 
 Read-only SQL query execution.

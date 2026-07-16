@@ -8,6 +8,7 @@ import { GmailIntegrationManager } from "../gmail/integration"
 import { HeyReachIntegrationManager } from "../heyreach/integration"
 import { LaunchDarklyIntegrationManager } from "../launchdarkly/integration"
 import { LinearIntegrationManager } from "../linear/integration"
+import { MetaAdsIntegrationManager } from "../metaAds/integration"
 import { NotionIntegrationManager } from "../notion/integration"
 import { PosthogIntegrationManager } from "../posthog/integration"
 import { ResendIntegrationManager } from "../resend/integration"
@@ -43,7 +44,8 @@ function buildIntegrationTuple() {
         new AttioIntegrationManager(),
         new SnowflakeIntegrationManager(),
         new HeyReachIntegrationManager(),
-        new ResendIntegrationManager()
+        new ResendIntegrationManager(),
+        new MetaAdsIntegrationManager()
     ] as const satisfies readonly IntegrationWithInstallation[]
 }
 

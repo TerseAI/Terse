@@ -18,6 +18,7 @@ import {
     LinearInputConfig,
     LinearOutputConfig,
     MemoryConfig,
+    MetaAdsOutputConfig,
     NotionConfig,
     PosthogConfig,
     ResendOutputConfig,
@@ -75,6 +76,8 @@ const convertIntegrationTypeToPrismaIntegrationType = (integrationType: Integrat
             return PrismaIntegrationType.HEY_REACH
         case IntegrationType.RESEND:
             return PrismaIntegrationType.RESEND
+        case IntegrationType.META_ADS:
+            return PrismaIntegrationType.META_ADS
         default:
             throw integrationType satisfies never
     }
@@ -118,6 +121,8 @@ const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationType: Pr
             return IntegrationType.HEY_REACH
         case PrismaIntegrationType.RESEND:
             return IntegrationType.RESEND
+        case PrismaIntegrationType.META_ADS:
+            return IntegrationType.META_ADS
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -160,6 +165,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.HEY_REACH
         case IntegrationType.RESEND:
             return PrismaIntegrationType.RESEND
+        case IntegrationType.META_ADS:
+            return PrismaIntegrationType.META_ADS
         default:
             throw integrationType satisfies never
     }
@@ -204,6 +211,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.HEY_REACH
         case PrismaIntegrationType.RESEND:
             return IntegrationType.RESEND
+        case PrismaIntegrationType.META_ADS:
+            return IntegrationType.META_ADS
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -398,6 +407,10 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
         return new ResendOutputConfig(integrationId)
     }
 
+    if (channelOutput.config_type === OutputConfigType.META_ADS) {
+        return new MetaAdsOutputConfig(integrationId, channelOutput.meta_ads_config?.ad_account_id ?? null)
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION:
@@ -473,6 +486,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("SNOWFLAKE_OUTPUT is an output type, not an input type")
         case ConfigType.RESEND_OUTPUT:
             throw new Error("RESEND_OUTPUT is an output type, not an input type")
+        case ConfigType.META_ADS_OUTPUT:
+            throw new Error("META_ADS_OUTPUT is an output type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -547,6 +562,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.SNOWFLAKE
         case ConfigType.RESEND_OUTPUT:
             return OutputConfigType.RESEND
+        case ConfigType.META_ADS_OUTPUT:
+            return OutputConfigType.META_ADS
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }

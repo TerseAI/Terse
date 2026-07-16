@@ -100,6 +100,7 @@ export {
     LinearInputConfig,
     LinearOutputConfig,
     MemoryConfig,
+    MetaAdsOutputConfig,
     NotionConfig,
     PosthogConfig,
     ResendOutputConfig,

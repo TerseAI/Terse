@@ -11,6 +11,7 @@ import {
     HeyReachIcon,
     LaunchDarklyIcon,
     LinearIcon,
+    MetaAdsIcon,
     NotionIcon,
     PosthogIcon,
     ResendIcon,
@@ -65,6 +66,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <AttioIcon />
         case ConfigType.RESEND_OUTPUT:
             return <ResendIcon />
+        case ConfigType.META_ADS_OUTPUT:
+            return <MetaAdsIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -106,6 +109,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <HeyReachIcon />
         case IntegrationType.RESEND:
             return <ResendIcon />
+        case IntegrationType.META_ADS:
+            return <MetaAdsIcon />
         default:
             throw integration satisfies never
     }

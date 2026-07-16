@@ -9,6 +9,7 @@ import { GmailModule } from "./gmail/GmailModule.js"
 import { HeyReachModule } from "./hey_reach/HeyReachModule.js"
 import { LaunchDarklyModule } from "./launchdarkly/LaunchDarklyModule.js"
 import { LinearModule } from "./linear/LinearModule.js"
+import { MetaAdsModule } from "./meta_ads/MetaAdsModule.js"
 import { NotionModule } from "./notion/NotionModule.js"
 import { PosthogModule } from "./posthog/PosthogModule.js"
 import { ResendModule } from "./resend/ResendModule.js"
@@ -35,7 +36,8 @@ export const integrationModuleRegistry: Record<ExternalIntegrationType, Integrat
     [IntegrationType.LAUNCHDARKLY]: new LaunchDarklyModule(),
     [IntegrationType.WORKOS]: new WorkOSModule(),
     [IntegrationType.ATTIO]: new AttioModule(),
-    [IntegrationType.SNOWFLAKE]: new SnowflakeModule()
+    [IntegrationType.SNOWFLAKE]: new SnowflakeModule(),
+    [IntegrationType.META_ADS]: new MetaAdsModule()
 }
 
 export const terseModule = new TerseModule()

@@ -947,6 +947,83 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (rowCount !== undefined) return `Query plan retrieved (${rowCount} step${rowCount !== 1 ? "s" : ""})`
             return "Query plan retrieved"
         }
+    },
+
+    // ===================
+    // Meta Ads Tools
+    // ===================
+    meta_ads_read_campaigns: {
+        preparing: "Loading Meta Ads structure",
+        executing: params => {
+            const request = params?.request as { action?: string } | undefined
+            if (request?.action === "list_ad_accounts") return "Loading ad accounts"
+            if (request?.action === "list_adsets") return "Loading ad sets"
+            return "Loading campaigns"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            const request = params?.request as { action?: string } | undefined
+            const noun = request?.action === "list_ad_accounts" ? "ad account" : request?.action === "list_adsets" ? "ad set" : "campaign"
+            return count !== undefined ? `Found ${count} ${noun}${count !== 1 ? "s" : ""}` : `Loaded ${noun}s`
+        }
+    },
+    meta_ads_read_insights: {
+        preparing: "Loading ad performance",
+        executing: () => "Loading Meta Ads insights",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            return count !== undefined ? `Loaded ${count} insight row${count !== 1 ? "s" : ""}` : "Insights loaded"
+        }
+    },
+    meta_ads_read_audiences: {
+        preparing: "Loading custom audiences",
+        executing: () => "Loading custom audiences",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            return count !== undefined ? `Found ${count} audience${count !== 1 ? "s" : ""}` : "Audiences loaded"
+        }
+    },
+    meta_ads_update_audience_users: {
+        preparing: "Getting audience update ready",
+        executing: params => {
+            const request = params?.request as { action?: string; users?: unknown[] } | undefined
+            const count = request?.users?.length
+            const verb = request?.action === "remove" ? "Removing" : "Adding"
+            return count !== undefined ? `${verb} ${count} user${count !== 1 ? "s" : ""}` : `${verb} audience users`
+        },
+        complete: params => {
+            const request = params?.request as { action?: string; users?: unknown[] } | undefined
+            const count = request?.users?.length
+            const verb = request?.action === "remove" ? "Removed" : "Added"
+            return count !== undefined ? `${verb} ${count} user${count !== 1 ? "s" : ""}` : `${verb} audience users`
+        },
+        approval: params => {
+            const request = params?.request as { action?: string; users?: unknown[] } | undefined
+            const count = request?.users?.length ?? 0
+            const verb = request?.action === "remove" ? "Remove" : "Add"
+            return `${verb} ${count} user${count !== 1 ? "s" : ""} ${request?.action === "remove" ? "from" : "to"} this custom audience?`
+        }
+    },
+    meta_ads_send_conversions: {
+        preparing: "Getting conversion events ready",
+        executing: params => {
+            const request = params?.request as { events?: unknown[] } | undefined
+            const count = request?.events?.length
+            return count !== undefined ? `Sending ${count} conversion event${count !== 1 ? "s" : ""}` : "Sending conversion events"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const received = parsed?.eventsReceived as number | undefined
+            return received !== undefined ? `Meta received ${received} event${received !== 1 ? "s" : ""}` : "Conversion events sent"
+        },
+        approval: params => {
+            const request = params?.request as { events?: unknown[] } | undefined
+            const count = request?.events?.length ?? 0
+            return `Send ${count} conversion event${count !== 1 ? "s" : ""} to Meta?`
+        }
     }
 }
 

@@ -146,6 +146,13 @@ export const settings = {
         redirectUri: requireEnv("ATTIO_REDIRECT_URI")
     })),
 
+    // Meta Ads OAuth — opt-in
+    metaAds: optionalIntegrationSettings(["META_ADS_CLIENT_ID", "META_ADS_CLIENT_SECRET", "META_ADS_REDIRECT_URI"], () => ({
+        clientId: requireEnv("META_ADS_CLIENT_ID"),
+        clientSecret: requireEnv("META_ADS_CLIENT_SECRET"),
+        redirectUri: requireEnv("META_ADS_REDIRECT_URI")
+    })),
+
     // Google Cloud Platform — opt-in. Powers GoogleSecretManagerClient, Cloud Scheduler, GCS uploads.
     gcp: optionalIntegrationSettings(["GCP_SERVICE_ACCOUNT_BASE64", "GCP_PROJECT_ID"], () => ({
         serviceAccountBase64: requireEnv("GCP_SERVICE_ACCOUNT_BASE64"),
@@ -227,7 +234,7 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 }
 
 // Export individual always-on settings for convenience. Opt-in integration blocks
-// (gmail, githubApp, notion, slack, linear, attio, parallel) must be
+// (gmail, githubApp, notion, slack, linear, attio, metaAds, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
 export const { jwt, gemini, urls, gcs, optional, redis, pgboss } = settings
 

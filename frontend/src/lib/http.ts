@@ -25,6 +25,7 @@ import {
     IntegrationWithStatus,
     LaunchDarklyIntegration,
     LinearIntegration,
+    MetaAdsIntegration,
     NotionIntegration,
     PosthogIntegration,
     ResendIntegration,
@@ -235,6 +236,11 @@ interface BackendService {
      * Gets all Attio integrations for the current user
      */
     getAttioIntegrations(): Promise<AttioIntegration[]>
+
+    /**
+     * Gets all Meta Ads integrations for the current user
+     */
+    getMetaAdsIntegrations(): Promise<MetaAdsIntegration[]>
 
     /**
      * Gets available Attio objects for a specific integration
@@ -722,6 +728,10 @@ export const BackendProvider: BackendService = {
 
     getAttioIntegrations: () => {
         return axios.get<AttioIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getMetaAdsIntegrations: () => {
+        return axios.get<MetaAdsIntegration[]>(`${backendBaseUrl}${ApiRoutes.META_ADS.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     getAttioObjects: (integrationId: string) => {

@@ -14,7 +14,7 @@ Terse supports two connection types:
 
 | Type      | Flow                                                        | Examples                                            |
 | --------- | ----------------------------------------------------------- | --------------------------------------------------- |
-| **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Linear, Notion, Attio         |
+| **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Linear, Notion, Attio, Meta Ads |
 | **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, WorkOS   |
 
 After connecting, run `terse generate` to turn your active integrations into typed code.
@@ -74,6 +74,7 @@ Some skills accept configuration that scopes what the model sees or where it act
 | `Skills.slack()`     | `channel`     | Targets a specific channel for messaging               |
 | `Skills.github()`    | `repos`       | Scopes code access to specific repositories            |
 | `Skills.linear()`    | `team`, `project` | Optionally scopes to a team and/or project         |
+| `Skills.metaAds()`   | `adAccount`   | Optionally scopes to a default ad account              |
 | `Skills.snowflake()` | None          | Read-only SQL queries against your warehouse           |
 | `Skills.web()`       | None          | Built-in web search, page extraction, and research     |
 

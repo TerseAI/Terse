@@ -10,6 +10,7 @@ import {
     LaunchDarklyConfig,
     LinearOutputConfig,
     MemoryConfig,
+    MetaAdsOutputConfig,
     NotionConfig,
     PosthogConfig,
     ResendOutputConfig,
@@ -30,6 +31,7 @@ import { GmailDraftOutput } from "../gmail/GmailDraftOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
 import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
+import { MetaAdsOutput } from "../metaAds/MetaAdsOutput"
 import { NotionOutput } from "../notion/NotionOutput"
 import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { ResendOutput } from "../resend/ResendOutput"
@@ -65,6 +67,7 @@ export class OutputFactory {
             [OutputConfigType.WORKOS, () => new WorkOSOutput()],
             [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()],
             [OutputConfigType.RESEND, () => new ResendOutput()],
+            [OutputConfigType.META_ADS, () => new MetaAdsOutput()],
             [OutputConfigType.MEMORY, () => new MemoryOutput()]
         ]
         if (settings.tavily.apiKey) entries.push([OutputConfigType.WEB, () => new WebOutput()])
@@ -133,6 +136,9 @@ export class OutputFactory {
                 break
             case OutputConfigType.RESEND:
                 ;(output as Output<ResendOutputConfig>).configs = configs as ResendOutputConfig[]
+                break
+            case OutputConfigType.META_ADS:
+                ;(output as Output<MetaAdsOutputConfig>).configs = configs as MetaAdsOutputConfig[]
                 break
             default:
                 throw configType satisfies never

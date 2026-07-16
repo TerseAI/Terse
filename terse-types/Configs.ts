@@ -28,7 +28,8 @@ export enum ConfigType {
     WEBHOOK_INPUT = "webhook_input",
     WEBMONITOR = "webmonitor",
     HEY_REACH_INPUT = "hey_reach_input",
-    RESEND_OUTPUT = "resend_output"
+    RESEND_OUTPUT = "resend_output",
+    META_ADS_OUTPUT = "meta_ads_output"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -271,6 +272,15 @@ export const ResendOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const MetaAdsOutputConfigMetadata = {
+    configType: ConfigType.META_ADS_OUTPUT,
+    name: "Meta Ads",
+    description: "Read campaign performance, sync custom audiences, and send offline conversions to Meta Ads",
+    integrationType: IntegrationType.META_ADS,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -298,7 +308,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
     [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata,
-    [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata
+    [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata,
+    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -1154,6 +1165,35 @@ export class ResendOutputConfig extends BaseConfigInstance<IntegrationType.RESEN
     }
 }
 
+export const MetaAdsOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.META_ADS),
+    configType: z.literal(ConfigType.META_ADS_OUTPUT),
+    adAccountId: z.string().nullable()
+})
+export type MetaAdsOutputConfigData = z.infer<typeof MetaAdsOutputConfigSchema>
+export type MetaAdsOutputConfigInstance = MetaAdsOutputConfigData & ConfigBehavior
+
+export class MetaAdsOutputConfig extends BaseConfigInstance<IntegrationType.META_ADS, ConfigType.META_ADS_OUTPUT> implements MetaAdsOutputConfigInstance {
+    constructor(
+        integrationId: string,
+        public adAccountId: string | null = null
+    ) {
+        super(integrationId, IntegrationType.META_ADS, ConfigType.META_ADS_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Meta Ads Output`, `Integration ID: ${this.integrationId}`]
+        if (this.adAccountId) {
+            parts.push(`Ad Account: ${this.adAccountId}`)
+        }
+        return parts.join("\n")
+    }
+}
+
 export const WebhookInputConfigSchema = ConfigInstanceSchema.extend({
     integrationId: z.literal("system"),
     integrationType: z.literal(IntegrationType.WEBHOOK),
@@ -1293,7 +1333,8 @@ export const configDataSchema = z.union([
     WebhookInputConfigSchema,
     WebMonitorConfigSchema,
     HeyReachInputConfigSchema,
-    ResendOutputConfigSchema
+    ResendOutputConfigSchema,
+    MetaAdsOutputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1329,7 +1370,8 @@ export const skillConfigDataSchema = z.union([
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
-    ResendOutputConfigSchema
+    ResendOutputConfigSchema,
+    MetaAdsOutputConfigSchema
 ])
 export type SkillConfigData = z.infer<typeof skillConfigDataSchema>
 
@@ -1360,6 +1402,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.WORKOS_OUTPUT:
         case ConfigType.SNOWFLAKE_OUTPUT:
         case ConfigType.RESEND_OUTPUT:
+        case ConfigType.META_ADS_OUTPUT:
             return !!config.integrationId
         case ConfigType.GITHUB:
             return (config.repositoryIds?.length ?? 0) > 0
@@ -1506,6 +1549,11 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Snowflake Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.RESEND_OUTPUT:
             return `Type: Resend Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.META_ADS_OUTPUT: {
+            const parts = [`Type: Meta Ads Output`, `Integration ID: ${config.integrationId}`]
+            if (config.adAccountId) parts.push(`Ad Account: ${config.adAccountId}`)
+            return parts.join("\n")
+        }
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
         case ConfigType.WEBMONITOR: {
@@ -1550,6 +1598,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.WEBMONITOR]: typeof WebMonitorConfig
     [ConfigType.HEY_REACH_INPUT]: typeof HeyReachInputConfig
     [ConfigType.RESEND_OUTPUT]: typeof ResendOutputConfig
+    [ConfigType.META_ADS_OUTPUT]: typeof MetaAdsOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1577,5 +1626,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
     [ConfigType.WEBMONITOR]: WebMonitorConfig,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig,
-    [ConfigType.RESEND_OUTPUT]: ResendOutputConfig
+    [ConfigType.RESEND_OUTPUT]: ResendOutputConfig,
+    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfig
 } as const satisfies ConfigMetadataMap

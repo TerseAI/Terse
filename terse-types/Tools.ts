@@ -3252,6 +3252,242 @@ export const resendSendTemplateTool = defineTool({
     outputSchema: resendSendTemplateOutputSchema
 })
 
+const metaAdsToolInput = <T extends z.ZodType>(request: T) =>
+    z.object({
+        integrationId: z.string().describe("The integration ID of the Meta Ads connection to use."),
+        request: request.describe("The operation to perform and its arguments.")
+    })
+
+const metaAdsAdAccountIdField = z.string().describe("The Meta ad account ID, with or without the 'act_' prefix (e.g. 'act_1234567890').")
+
+export const metaAdsAdAccountEntitySchema = z.object({
+    id: z.string(),
+    account_id: z.string(),
+    name: z.string(),
+    currency: z.string().optional(),
+    account_status: z.number().optional()
+})
+export type MetaAdsAdAccountEntity = z.infer<typeof metaAdsAdAccountEntitySchema>
+
+export const metaAdsCampaignSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.string(),
+    effective_status: z.string().optional(),
+    objective: z.string().optional(),
+    daily_budget: z.string().optional(),
+    lifetime_budget: z.string().optional(),
+    start_time: z.string().optional(),
+    stop_time: z.string().optional()
+})
+export type MetaAdsCampaign = z.infer<typeof metaAdsCampaignSchema>
+
+export const metaAdsAdSetSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.string(),
+    effective_status: z.string().optional(),
+    campaign_id: z.string().optional(),
+    daily_budget: z.string().optional(),
+    lifetime_budget: z.string().optional(),
+    optimization_goal: z.string().optional(),
+    start_time: z.string().optional(),
+    end_time: z.string().optional()
+})
+export type MetaAdsAdSet = z.infer<typeof metaAdsAdSetSchema>
+
+export const metaAdsInsightsRowSchema = z.object({
+    date_start: z.string().optional(),
+    date_stop: z.string().optional(),
+    campaign_id: z.string().optional(),
+    campaign_name: z.string().optional(),
+    adset_id: z.string().optional(),
+    adset_name: z.string().optional(),
+    spend: z.string().optional(),
+    impressions: z.string().optional(),
+    clicks: z.string().optional(),
+    ctr: z.string().optional(),
+    cpc: z.string().optional(),
+    reach: z.string().optional(),
+    actions: z.array(z.object({ action_type: z.string(), value: z.string() })).optional()
+})
+export type MetaAdsInsightsRow = z.infer<typeof metaAdsInsightsRowSchema>
+
+export const metaAdsCustomAudienceSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    subtype: z.string().optional(),
+    approximate_count_lower_bound: z.number().optional(),
+    approximate_count_upper_bound: z.number().optional(),
+    delivery_status: z
+        .object({
+            code: z.number().optional(),
+            description: z.string().optional()
+        })
+        .optional()
+})
+export type MetaAdsCustomAudience = z.infer<typeof metaAdsCustomAudienceSchema>
+
+export const metaAdsListAdAccountsRequestSchema = z.object({
+    action: z.literal("list_ad_accounts").describe("List the ad accounts accessible to the connected Meta user.")
+})
+export const metaAdsListCampaignsRequestSchema = z.object({
+    action: z.literal("list_campaigns").describe("List campaigns in an ad account with status and budget."),
+    adAccountId: metaAdsAdAccountIdField,
+    effectiveStatuses: z.array(z.string()).nullable().optional().describe("Only campaigns whose effective status is in this list (e.g. ACTIVE, PAUSED)."),
+    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of campaigns to return (default 100).")
+})
+export const metaAdsListAdSetsRequestSchema = z.object({
+    action: z.literal("list_adsets").describe("List ad sets in an ad account with status and budget."),
+    adAccountId: metaAdsAdAccountIdField,
+    campaignId: z.string().nullable().optional().describe("Only ad sets belonging to this campaign."),
+    effectiveStatuses: z.array(z.string()).nullable().optional().describe("Only ad sets whose effective status is in this list (e.g. ACTIVE, PAUSED)."),
+    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of ad sets to return (default 100).")
+})
+export const metaAdsReadCampaignsRequestSchema = z.discriminatedUnion("action", [metaAdsListAdAccountsRequestSchema, metaAdsListCampaignsRequestSchema, metaAdsListAdSetsRequestSchema])
+
+export type MetaAdsListAdAccountsRequest = z.infer<typeof metaAdsListAdAccountsRequestSchema>
+export type MetaAdsListCampaignsRequest = z.infer<typeof metaAdsListCampaignsRequestSchema>
+export type MetaAdsListAdSetsRequest = z.infer<typeof metaAdsListAdSetsRequestSchema>
+export type MetaAdsReadCampaignsRequest = z.infer<typeof metaAdsReadCampaignsRequestSchema>
+
+export const metaAdsDatePresetSchema = z.enum(["today", "yesterday", "last_7d", "last_14d", "last_28d", "last_30d", "last_90d", "this_month", "last_month", "this_quarter", "maximum"])
+export type MetaAdsDatePreset = z.infer<typeof metaAdsDatePresetSchema>
+
+export const metaAdsReadInsightsRequestSchema = z.object({
+    adAccountId: metaAdsAdAccountIdField,
+    level: z.enum(["campaign", "adset"]).describe("Aggregation level for insight rows."),
+    datePreset: metaAdsDatePresetSchema.nullable().optional().describe("Relative date range. Use either datePreset or since/until, not both."),
+    since: z.string().nullable().optional().describe("Start date (YYYY-MM-DD). Use together with until instead of datePreset."),
+    until: z.string().nullable().optional().describe("End date (YYYY-MM-DD), inclusive."),
+    campaignIds: z.array(z.string()).nullable().optional().describe("Restrict results to these campaign IDs."),
+    adsetIds: z.array(z.string()).nullable().optional().describe("Restrict results to these ad set IDs."),
+    timeIncrement: z.number().int().min(1).max(90).nullable().optional().describe("Split rows into N-day windows (1 = daily). Omit for a single aggregate row per entity.")
+})
+export type MetaAdsReadInsightsRequest = z.infer<typeof metaAdsReadInsightsRequestSchema>
+
+export const metaAdsReadAudiencesRequestSchema = z.object({
+    adAccountId: metaAdsAdAccountIdField,
+    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of audiences to return (default 100).")
+})
+export type MetaAdsReadAudiencesRequest = z.infer<typeof metaAdsReadAudiencesRequestSchema>
+
+const metaAdsAudienceUserSchema = z.object({
+    email: z.string().nullable().optional().describe("Email address. Normalized and SHA-256 hashed before upload; never sent in plain text."),
+    phone: z.string().nullable().optional().describe("Phone number including country code. Normalized and SHA-256 hashed before upload."),
+    externalId: z.string().nullable().optional().describe("Your CRM identifier for this person (sent as EXTERN_ID).")
+})
+export type MetaAdsAudienceUser = z.infer<typeof metaAdsAudienceUserSchema>
+
+const metaAdsAudienceUsersFields = {
+    audienceId: z.string().describe("The custom audience ID."),
+    users: z.array(metaAdsAudienceUserSchema).min(1).max(500).describe("Users to match. Each entry needs at least one of email, phone, or externalId.")
+}
+export const metaAdsAddAudienceUsersRequestSchema = z.object({
+    action: z.literal("add").describe("Add users to the custom audience."),
+    ...metaAdsAudienceUsersFields
+})
+export const metaAdsRemoveAudienceUsersRequestSchema = z.object({
+    action: z.literal("remove").describe("Remove users from the custom audience."),
+    ...metaAdsAudienceUsersFields
+})
+export const metaAdsUpdateAudienceUsersRequestSchema = z.discriminatedUnion("action", [metaAdsAddAudienceUsersRequestSchema, metaAdsRemoveAudienceUsersRequestSchema])
+
+export type MetaAdsAddAudienceUsersRequest = z.infer<typeof metaAdsAddAudienceUsersRequestSchema>
+export type MetaAdsRemoveAudienceUsersRequest = z.infer<typeof metaAdsRemoveAudienceUsersRequestSchema>
+export type MetaAdsUpdateAudienceUsersRequest = z.infer<typeof metaAdsUpdateAudienceUsersRequestSchema>
+
+export const metaAdsConversionEventSchema = z.object({
+    eventName: z.string().describe("Event name, e.g. 'Purchase', 'Lead', or a custom event name."),
+    eventTime: z.number().int().describe("Unix timestamp in seconds when the conversion happened; must be within the last 7 days."),
+    actionSource: z
+        .enum(["website", "email", "phone_call", "chat", "physical_store", "system_generated", "app", "other"])
+        .describe("Where the conversion happened. Use 'system_generated' for CRM-sourced conversions."),
+    userData: metaAdsAudienceUserSchema
+        .extend({
+            clickId: z.string().nullable().optional().describe("Meta click ID (fbc) captured from the original ad click, for click-through matching."),
+            browserId: z.string().nullable().optional().describe("Meta browser ID (fbp) cookie value.")
+        })
+        .describe("Match keys for the person who converted. Provide as many as available; emails and phones are hashed before upload."),
+    eventId: z.string().nullable().optional().describe("Deduplication ID shared with any pixel event for the same conversion."),
+    value: z.number().nullable().optional().describe("Monetary value of the conversion."),
+    currency: z.string().nullable().optional().describe("ISO 4217 currency code; required when value is set."),
+    eventSourceUrl: z.string().nullable().optional().describe("URL where the conversion happened, when actionSource is 'website'.")
+})
+export type MetaAdsConversionEvent = z.infer<typeof metaAdsConversionEventSchema>
+
+export const metaAdsSendConversionsRequestSchema = z.object({
+    datasetId: z.string().describe("The dataset (pixel) ID that receives Conversions API events."),
+    events: z.array(metaAdsConversionEventSchema).min(1).max(1000).describe("Conversion events to send.")
+})
+export type MetaAdsSendConversionsRequest = z.infer<typeof metaAdsSendConversionsRequestSchema>
+
+export const metaAdsReadCampaignsInputSchema = metaAdsToolInput(metaAdsReadCampaignsRequestSchema)
+export const metaAdsReadInsightsInputSchema = metaAdsToolInput(metaAdsReadInsightsRequestSchema)
+export const metaAdsReadAudiencesInputSchema = metaAdsToolInput(metaAdsReadAudiencesRequestSchema)
+export const metaAdsUpdateAudienceUsersInputSchema = metaAdsToolInput(metaAdsUpdateAudienceUsersRequestSchema)
+export const metaAdsSendConversionsInputSchema = metaAdsToolInput(metaAdsSendConversionsRequestSchema)
+
+export const metaAdsReadCampaignsOutputSchema = toolOutputBaseSchema.extend({
+    adAccounts: z.array(metaAdsAdAccountEntitySchema).optional(),
+    campaigns: z.array(metaAdsCampaignSchema).optional(),
+    adsets: z.array(metaAdsAdSetSchema).optional(),
+    count: z.number()
+})
+
+export const metaAdsReadInsightsOutputSchema = toolOutputBaseSchema.extend({
+    rows: z.array(metaAdsInsightsRowSchema),
+    count: z.number()
+})
+
+export const metaAdsReadAudiencesOutputSchema = toolOutputBaseSchema.extend({
+    audiences: z.array(metaAdsCustomAudienceSchema),
+    count: z.number()
+})
+
+export const metaAdsUpdateAudienceUsersOutputSchema = toolOutputBaseSchema.extend({
+    audienceId: z.string(),
+    numReceived: z.number(),
+    numInvalidEntries: z.number()
+})
+
+export const metaAdsSendConversionsOutputSchema = toolOutputBaseSchema.extend({
+    datasetId: z.string(),
+    eventsReceived: z.number(),
+    fbtraceId: z.string().optional()
+})
+
+export const metaAdsReadCampaignsTool = defineTool({
+    name: "meta_ads_read_campaigns",
+    description: "Read Meta Ads account structure: list ad accounts, or list campaigns / ad sets with status and budget.",
+    inputSchema: metaAdsReadCampaignsInputSchema,
+    outputSchema: metaAdsReadCampaignsOutputSchema
+})
+export const metaAdsReadInsightsTool = defineTool({
+    name: "meta_ads_read_insights",
+    description: "Read Meta Ads performance insights (spend, impressions, clicks, conversions) at campaign or ad set level for a date range.",
+    inputSchema: metaAdsReadInsightsInputSchema,
+    outputSchema: metaAdsReadInsightsOutputSchema
+})
+export const metaAdsReadAudiencesTool = defineTool({
+    name: "meta_ads_read_audiences",
+    description: "List the custom audiences in a Meta ad account, with approximate sizes and delivery status.",
+    inputSchema: metaAdsReadAudiencesInputSchema,
+    outputSchema: metaAdsReadAudiencesOutputSchema
+})
+export const metaAdsUpdateAudienceUsersTool = defineTool({
+    name: "meta_ads_update_audience_users",
+    description: "Add or remove people on a Meta custom audience. Emails and phone numbers are normalized and SHA-256 hashed before upload.",
+    inputSchema: metaAdsUpdateAudienceUsersInputSchema,
+    outputSchema: metaAdsUpdateAudienceUsersOutputSchema
+})
+export const metaAdsSendConversionsTool = defineTool({
+    name: "meta_ads_send_conversions",
+    description: "Send offline conversion events to Meta via the Conversions API so campaign delivery can optimize on downstream outcomes (e.g. deals won).",
+    inputSchema: metaAdsSendConversionsInputSchema,
+    outputSchema: metaAdsSendConversionsOutputSchema
+})
+
 export const ToolDefinitions = {
     [linearCreateTicketTool.name]: linearCreateTicketTool,
     [linearUpdateTicketTool.name]: linearUpdateTicketTool,
@@ -3334,7 +3570,12 @@ export const ToolDefinitions = {
     [webResearchTool.name]: webResearchTool,
     [imageEditTool.name]: imageEditTool,
     [memoryTool.name]: memoryTool,
-    [resendSendTemplateTool.name]: resendSendTemplateTool
+    [resendSendTemplateTool.name]: resendSendTemplateTool,
+    [metaAdsReadCampaignsTool.name]: metaAdsReadCampaignsTool,
+    [metaAdsReadInsightsTool.name]: metaAdsReadInsightsTool,
+    [metaAdsReadAudiencesTool.name]: metaAdsReadAudiencesTool,
+    [metaAdsUpdateAudienceUsersTool.name]: metaAdsUpdateAudienceUsersTool,
+    [metaAdsSendConversionsTool.name]: metaAdsSendConversionsTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions
