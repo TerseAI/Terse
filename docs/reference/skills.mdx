@@ -168,8 +168,11 @@ skills: [Skills.metaAds({ adAccount: MetaAdsAdAccount.Primary })]
 | `meta_ads_read_campaigns`        | List ad accounts, campaigns, or ad sets with status and budget         | Read   |
 | `meta_ads_read_insights`         | Spend, impressions, clicks, and conversions at campaign/ad set level   | Read   |
 | `meta_ads_read_audiences`        | List custom audiences with approximate sizes                           | Read   |
+| `meta_ads_list_pixels`           | List pixels (Conversions API dataset IDs) in an ad account             | Read   |
 | `meta_ads_update_audience_users` | Add or remove people on a custom audience (emails/phones hashed)       | Write  |
 | `meta_ads_send_conversions`      | Send offline conversion events via the Conversions API                 | Write  |
+
+`meta_ads_read_insights` follows Graph API pagination up to 2000 rows and sets `truncated: true` in the result when more rows exist; narrow the date range or filter by campaign/ad set IDs to fetch the remainder.
 
 ## Snowflake
 

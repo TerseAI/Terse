@@ -22,6 +22,45 @@ export async function metaGraphList<T>(accessToken: string, path: string, itemSc
     return parsed.data
 }
 
+export async function metaGraphListPaged<T>(accessToken: string, path: string, itemSchema: z.ZodType<T>, what: string, maxItems: number): Promise<MetaGraphPagedResult<T>> {
+    const envelope = z.object({
+        data: z.array(itemSchema),
+        paging: z.object({ next: z.string().optional() }).optional()
+    })
+
+    const items: T[] = []
+    let payload = await metaGraphRawRequest(accessToken, path, {})
+    for (;;) {
+        const parsed = envelope.safeParse(payload)
+        if (!parsed.success) {
+            throw new MetaAdsPayloadError(what, parsed.error)
+        }
+        items.push(...parsed.data.data)
+
+        // paging.next is a complete URL that already carries access_token and appsecret_proof.
+        const next = parsed.data.paging?.next
+        if (!next) {
+            return { items, truncated: false }
+        }
+        if (items.length >= maxItems) {
+            return { items: items.slice(0, maxItems), truncated: true }
+        }
+        payload = await metaGraphFollowNext(next, what)
+    }
+}
+
+async function metaGraphFollowNext(nextUrl: string, what: string): Promise<unknown> {
+    const response = await fetch(nextUrl)
+    const responseText = await response.text()
+    if (!response.ok) {
+        throw new MetaAdsApiError(response.status, extractGraphErrorMessage(responseText))
+    }
+    if (!responseText) {
+        throw new MetaAdsApiError(response.status, `Empty ${what} page from Meta Graph API pagination`)
+    }
+    return JSON.parse(responseText)
+}
+
 export async function fetchMetaAdsAdAccounts(accessToken: string): Promise<MetaAdsAdAccountEntity[]> {
     return metaGraphList(accessToken, "/me/adaccounts?fields=id,account_id,name,currency,account_status&limit=200", metaAdsAdAccountEntitySchema, "ad accounts")
 }
@@ -118,4 +157,9 @@ export class MetaAdsPayloadError extends Error {
 export interface MetaGraphRequestOptions {
     readonly method?: "GET" | "POST" | "DELETE"
     readonly body?: unknown
+}
+
+export interface MetaGraphPagedResult<T> {
+    readonly items: T[]
+    readonly truncated: boolean
 }

@@ -5,7 +5,7 @@ import type { MetaAdsReadInsightsRequest, ToolOutputByName } from "terse-types"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 import { metaAdsToolExecute } from "./metaAdsApi"
-import { buildMetaQuery, metaGraphList, toActPath } from "./metaAdsGraph"
+import { buildMetaQuery, metaGraphListPaged, toActPath } from "./metaAdsGraph"
 
 export const metaAdsReadInsightsTool = defineSessionTool({
     name: "meta_ads_read_insights",
@@ -13,6 +13,7 @@ export const metaAdsReadInsightsTool = defineSessionTool({
 })
 
 const INSIGHT_METRIC_FIELDS = ["spend", "impressions", "clicks", "ctr", "cpc", "reach", "actions"]
+const MAX_INSIGHT_ROWS = 2000
 
 async function executeReadInsightsRequest(request: MetaAdsReadInsightsRequest, accessToken: string): Promise<MetaAdsReadInsightsOutput> {
     const entityFields = request.level === "campaign" ? ["campaign_id", "campaign_name"] : ["campaign_id", "campaign_name", "adset_id", "adset_name"]
@@ -26,17 +27,18 @@ async function executeReadInsightsRequest(request: MetaAdsReadInsightsRequest, a
         limit: 500
     })
 
-    const rows = await metaGraphList(accessToken, `/${toActPath(request.adAccountId)}/insights${query}`, metaAdsInsightsRowSchema, "insights")
+    const { items: rows, truncated } = await metaGraphListPaged(accessToken, `/${toActPath(request.adAccountId)}/insights${query}`, metaAdsInsightsRowSchema, "insights", MAX_INSIGHT_ROWS)
     return {
         success: true,
         rows,
         count: rows.length,
+        truncated,
         actions: [
             {
                 action: "Read ad insights",
                 integration: IntegrationType.META_ADS,
                 target: toActPath(request.adAccountId),
-                details: `Fetched ${rows.length} ${request.level}-level insight row(s)`,
+                details: `Fetched ${rows.length} ${request.level}-level insight row(s)${truncated ? " (truncated)" : ""}`,
                 type: RunHistoryActionType.read
             }
         ]

@@ -977,6 +977,15 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return count !== undefined ? `Loaded ${count} insight row${count !== 1 ? "s" : ""}` : "Insights loaded"
         }
     },
+    meta_ads_list_pixels: {
+        preparing: "Loading pixels",
+        executing: () => "Loading Meta pixels",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            return count !== undefined ? `Found ${count} pixel${count !== 1 ? "s" : ""}` : "Pixels loaded"
+        }
+    },
     meta_ads_read_audiences: {
         preparing: "Loading custom audiences",
         executing: () => "Loading custom audiences",

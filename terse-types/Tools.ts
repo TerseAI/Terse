@@ -3366,6 +3366,19 @@ export const metaAdsReadInsightsRequestSchema = z.object({
 })
 export type MetaAdsReadInsightsRequest = z.infer<typeof metaAdsReadInsightsRequestSchema>
 
+export const metaAdsPixelSchema = z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    last_fired_time: z.string().optional()
+})
+export type MetaAdsPixel = z.infer<typeof metaAdsPixelSchema>
+
+export const metaAdsListPixelsRequestSchema = z.object({
+    adAccountId: metaAdsAdAccountIdField,
+    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of pixels to return (default 100).")
+})
+export type MetaAdsListPixelsRequest = z.infer<typeof metaAdsListPixelsRequestSchema>
+
 export const metaAdsReadAudiencesRequestSchema = z.object({
     adAccountId: metaAdsAdAccountIdField,
     limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of audiences to return (default 100).")
@@ -3424,6 +3437,7 @@ export type MetaAdsSendConversionsRequest = z.infer<typeof metaAdsSendConversion
 
 export const metaAdsReadCampaignsInputSchema = metaAdsToolInput(metaAdsReadCampaignsRequestSchema)
 export const metaAdsReadInsightsInputSchema = metaAdsToolInput(metaAdsReadInsightsRequestSchema)
+export const metaAdsListPixelsInputSchema = metaAdsToolInput(metaAdsListPixelsRequestSchema)
 export const metaAdsReadAudiencesInputSchema = metaAdsToolInput(metaAdsReadAudiencesRequestSchema)
 export const metaAdsUpdateAudienceUsersInputSchema = metaAdsToolInput(metaAdsUpdateAudienceUsersRequestSchema)
 export const metaAdsSendConversionsInputSchema = metaAdsToolInput(metaAdsSendConversionsRequestSchema)
@@ -3437,6 +3451,12 @@ export const metaAdsReadCampaignsOutputSchema = toolOutputBaseSchema.extend({
 
 export const metaAdsReadInsightsOutputSchema = toolOutputBaseSchema.extend({
     rows: z.array(metaAdsInsightsRowSchema),
+    count: z.number(),
+    truncated: z.boolean()
+})
+
+export const metaAdsListPixelsOutputSchema = toolOutputBaseSchema.extend({
+    pixels: z.array(metaAdsPixelSchema),
     count: z.number()
 })
 
@@ -3465,9 +3485,16 @@ export const metaAdsReadCampaignsTool = defineTool({
 })
 export const metaAdsReadInsightsTool = defineTool({
     name: "meta_ads_read_insights",
-    description: "Read Meta Ads performance insights (spend, impressions, clicks, conversions) at campaign or ad set level for a date range.",
+    description:
+        "Read Meta Ads performance insights (spend, impressions, clicks, conversions) at campaign or ad set level for a date range. Follows pagination up to 2000 rows; the result sets truncated=true when more rows exist, so narrow the date range or filter by campaign/ad set IDs to fetch the rest.",
     inputSchema: metaAdsReadInsightsInputSchema,
     outputSchema: metaAdsReadInsightsOutputSchema
+})
+export const metaAdsListPixelsTool = defineTool({
+    name: "meta_ads_list_pixels",
+    description: "List the Meta pixels (Conversions API datasets) in an ad account. Use a pixel ID as the datasetId for meta_ads_send_conversions.",
+    inputSchema: metaAdsListPixelsInputSchema,
+    outputSchema: metaAdsListPixelsOutputSchema
 })
 export const metaAdsReadAudiencesTool = defineTool({
     name: "meta_ads_read_audiences",
@@ -3573,6 +3600,7 @@ export const ToolDefinitions = {
     [resendSendTemplateTool.name]: resendSendTemplateTool,
     [metaAdsReadCampaignsTool.name]: metaAdsReadCampaignsTool,
     [metaAdsReadInsightsTool.name]: metaAdsReadInsightsTool,
+    [metaAdsListPixelsTool.name]: metaAdsListPixelsTool,
     [metaAdsReadAudiencesTool.name]: metaAdsReadAudiencesTool,
     [metaAdsUpdateAudienceUsersTool.name]: metaAdsUpdateAudienceUsersTool,
     [metaAdsSendConversionsTool.name]: metaAdsSendConversionsTool
