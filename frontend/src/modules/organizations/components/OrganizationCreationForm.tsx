@@ -208,12 +208,20 @@ export default function OrganizationCreationForm() {
                                     {logoPreview ? (
                                         <div className="relative">
                                             <img src={logoPreview} alt="Logo preview" className="h-16 w-16 rounded-lg object-cover border" />
-                                            <Button type="button" variant="destructive" size="icon" onClick={clearLogo} disabled={isLoading} className="absolute -top-3 -right-3 h-7 w-7 rounded-full">
+                                            <Button type="button" variant="destructive" size="icon" aria-label="Remove logo" onClick={clearLogo} disabled={isLoading} className="absolute -top-3 -right-3 h-7 w-7 rounded-full">
                                                 <X className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
                                     ) : (
-                                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="h-16 w-16 rounded-lg border-dashed">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            aria-label="Upload organization logo"
+                                            aria-describedby={error ? "organization-form-error" : undefined}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isLoading}
+                                            className="h-16 w-16 rounded-lg border-dashed"
+                                        >
                                             <ImagePlus className="h-6 w-6 text-muted-foreground" />
                                         </Button>
                                     )}
@@ -222,7 +230,11 @@ export default function OrganizationCreationForm() {
                                 </div>
                             </FormControl>
                         </FormItem>
-                        {error && <p className="text-sm text-danger">{error}</p>}
+                        {error && (
+                            <p id="organization-form-error" role="alert" className="text-sm text-danger">
+                                {error}
+                            </p>
+                        )}
                     </CardContent>
                     <CardFooter className="flex justify-end pt-6">
                         <Button type="submit" disabled={isLoading} className="w-1/2 max-w-32">

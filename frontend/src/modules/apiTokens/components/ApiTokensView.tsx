@@ -307,7 +307,7 @@ function CreateTokenDialog({ open, createdRawToken, onOpenChange, onCreated }: C
                     </div>
                 ) : (
                     <div className="flex flex-col gap-2">
-                        <Input placeholder="e.g. CI/CD pipeline" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCreate()} autoFocus />
+                        <Input aria-label="Token name" placeholder="e.g. CI/CD pipeline" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCreate()} autoFocus />
                         {error && <p className="text-xs text-danger">{error}</p>}
                     </div>
                 )}
@@ -387,7 +387,7 @@ function RenameTokenDialogContent({ token, onOpenChange, onUpdated }: RenameToke
                 <DialogDescription>Enter a new name for "{token.name}".</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2">
-                <Input placeholder="New token name" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSave()} autoFocus />
+                <Input aria-label="Token name" placeholder="New token name" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSave()} autoFocus />
                 {error && <p className="text-xs text-danger">{error}</p>}
             </div>
             <DialogFooter>
