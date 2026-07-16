@@ -29,6 +29,7 @@ import { useGithubResources } from "@/modules/integrations/api/useGithubResource
 import { useHeyReachCampaigns } from "@/modules/integrations/api/useHeyReachCampaigns"
 import { useLinearTeams } from "@/modules/integrations/api/useLinearTeams"
 import { useSlackUsers } from "@/modules/integrations/api/useSlackUsers"
+import { getUserTimezone } from "@/utils/timezone"
 
 import { IconForConfigType } from "./Integration"
 
@@ -219,13 +220,25 @@ function GmailBody({ config, label, type }: { config: GmailConfigData; label: st
 
 function TimeBody({ config, label, type }: { config: TimeTriggerConfigData; label: string; type: ConfigType }) {
     const timezone = config.timezone ?? "UTC"
-    const nextRun = config.cronExpression ? getNextRun(config.cronExpression, timezone) : null
-    const description = config.cronExpression ? describeCron(config.cronExpression) : null
+    if (!config.cronExpression) {
+        return (
+            <Frame type={type} label={label}>
+                <Field label={`Schedule (${timezone})`}>
+                    <EmptyValue text="No schedule configured" />
+                </Field>
+            </Frame>
+        )
+    }
+
+    const nextRun = getNextRun(config.cronExpression, timezone)
+    const description = describeCron(config.cronExpression)
+    const anchoredDescription = description && timezone !== getUserTimezone() ? `${description} (${timezone})` : description
     return (
         <Frame type={type} label={label} summary={nextRun ? `Next run: ${formatNextRun(nextRun)}` : undefined}>
             <Field label={`Schedule (${timezone})`}>
-                <code className="bg-muted/60 text-foreground inline-block rounded-md px-2 py-1 font-mono text-xs">{config.cronExpression}</code>
-                {description ? <p className="text-muted-foreground mt-1.5 text-xs">{description}</p> : null}
+                <code className="bg-muted/60 text-foreground inline-block rounded-md px-2 py-1 font-mono text-xs select-all">{config.cronExpression}</code>
+                {anchoredDescription ? <p className="text-muted-foreground mt-1.5 text-xs">{anchoredDescription}</p> : null}
+                {!description && !nextRun ? <p className="text-muted-foreground mt-1.5 text-xs">Unrecognized cron expression</p> : null}
             </Field>
         </Frame>
     )

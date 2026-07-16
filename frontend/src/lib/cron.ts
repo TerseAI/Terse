@@ -10,6 +10,8 @@ export function describeCron(cron: string): string | null {
 }
 
 export function getNextRun(cron: string, timezone: string): Date | null {
+    // cron-parser treats an empty expression as "* * * * *"
+    if (!cron.trim()) return null
     try {
         return CronExpressionParser.parse(cron, { tz: timezone }).next().toDate()
     } catch {
