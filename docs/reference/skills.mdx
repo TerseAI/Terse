@@ -240,17 +240,19 @@ Lead and company enrichment plus prospect search via [Apollo.io](https://www.apo
 skills: [Skills.apollo()]
 ```
 
-| Tool                       | Description                                              | Access |
-| -------------------------- | -------------------------------------------------------- | ------ |
-| `apolloEnrichPerson`       | Enrich a person by Apollo ID, email, or name + domain    | Read   |
-| `apolloBulkEnrichPeople`   | Enrich up to 10 people in one call                       | Read   |
-| `apolloEnrichOrganization` | Enrich a company by domain (firmographics)               | Read   |
-| `apolloSearchPeople`       | Search for people by title, seniority, location, company | Read   |
+| Tool                       | Description                                               | Access |
+| -------------------------- | --------------------------------------------------------- | ------ |
+| `apolloEnrichPerson`       | Enrich a person by Apollo ID, email, or name + domain     | Read   |
+| `apolloBulkEnrichPeople`   | Enrich up to 10 people in one call                        | Read   |
+| `apolloEnrichOrganization` | Enrich a company by domain (firmographics)                | Read   |
+| `apolloSearchPeople`       | Search for people by title, seniority, location, company  | Read   |
+| `apollo_list_job_postings` | List a company's active job postings as a hiring signal   | Read   |
 
 Credit and key notes:
 
 - Person and organization enrichment consume Apollo **export credits** per matched record. Prefer `apolloBulkEnrichPeople` for lists.
 - `apolloSearchPeople` consumes no credits but requires the connected key to be an Apollo **master API key**, and its results never include emails — pass result `id`s to `apolloBulkEnrichPeople` to unlock contact data.
+- `apollo_list_job_postings` works with any Apollo key but consumes credits **per page returned** — fetch one large page (up to 500 postings) instead of paging in small steps. Postings carry title/URL/location/date metadata only, no descriptions.
 - Personal emails are only returned when `revealPersonalEmails` is set, and Apollo suppresses them for people in GDPR regions.
 
 ## Web (built-in)

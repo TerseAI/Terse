@@ -3397,6 +3397,37 @@ export const apolloSearchPeopleTool = defineTool({
     })
 })
 
+export const apolloJobPostingSchema = z.object({
+    id: z.string(),
+    title: z.string().nullable(),
+    url: z.string().nullable(),
+    city: z.string().nullable(),
+    state: z.string().nullable(),
+    country: z.string().nullable(),
+    postedAt: z.string().nullable(),
+    lastSeenAt: z.string().nullable()
+})
+
+export const apolloListJobPostingsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Apollo connection to use."),
+    organizationId: z.string().describe("The Apollo organization ID to list job postings for, e.g. the id returned by apolloEnrichOrganization or in apolloSearchPeople results."),
+    page: z.number().int().min(1).nullable().optional().describe("Result page to fetch. Default 1."),
+    perPage: z.number().int().min(1).max(500).nullable().optional().describe("Results per page, 1-500. Default 100. Apollo charges per page returned, so prefer one large page over many small ones.")
+})
+
+export const apolloListJobPostingsTool = defineTool({
+    name: "apollo_list_job_postings",
+    description:
+        "List active job postings at a company via Apollo.io, as a hiring signal (open roles, titles, locations, posted dates). Takes the Apollo organization ID from apolloEnrichOrganization. Works with any Apollo key (no master key needed) but consumes Apollo credits per page of results returned — fetch one large page instead of paging in small steps. Postings include title/url/location metadata only, not full descriptions; assess role fit from the title.",
+    inputSchema: apolloListJobPostingsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        postings: z.array(apolloJobPostingSchema),
+        totalPostings: z.number().int(),
+        page: z.number().int(),
+        perPage: z.number().int()
+    })
+})
+
 export const ToolDefinitions = {
     [linearCreateTicketTool.name]: linearCreateTicketTool,
     [linearUpdateTicketTool.name]: linearUpdateTicketTool,
@@ -3483,7 +3514,8 @@ export const ToolDefinitions = {
     [apolloEnrichPersonTool.name]: apolloEnrichPersonTool,
     [apolloBulkEnrichPeopleTool.name]: apolloBulkEnrichPeopleTool,
     [apolloEnrichOrganizationTool.name]: apolloEnrichOrganizationTool,
-    [apolloSearchPeopleTool.name]: apolloSearchPeopleTool
+    [apolloSearchPeopleTool.name]: apolloSearchPeopleTool,
+    [apolloListJobPostingsTool.name]: apolloListJobPostingsTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

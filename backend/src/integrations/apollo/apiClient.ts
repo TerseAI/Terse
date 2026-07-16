@@ -103,6 +103,28 @@ export async function searchApolloPeople(apiKey: string, filters: ApolloPeopleSe
     }
 }
 
+export async function listApolloJobPostings(apiKey: string, organizationId: string, pagination: { page?: number | null; perPage?: number | null }): Promise<ApolloJobPostingsResult> {
+    const page = pagination.page ?? 1
+    const perPage = pagination.perPage ?? 100
+    const params = new URLSearchParams({ page: String(page), per_page: String(perPage) })
+
+    const response = await fetch(`${APOLLO_API_BASE}/organizations/${encodeURIComponent(organizationId)}/job_postings?${params.toString()}`, {
+        method: "GET",
+        headers: apolloHeaders(apiKey)
+    })
+    if (!response.ok) {
+        throw new ApolloApiError("organizations/job_postings", response.status, await response.text())
+    }
+    const data = apolloJobPostingsResponseSchema.parse(await response.json())
+    const postings = (data.organization_job_postings ?? []).map(projectJobPosting)
+    return {
+        postings,
+        totalPostings: data.pagination?.total_entries ?? postings.length,
+        page: data.pagination?.page ?? page,
+        perPage
+    }
+}
+
 function apolloHeaders(apiKey: string): Record<string, string> {
     return { "x-api-key": apiKey, "Cache-Control": "no-cache", Accept: "application/json" }
 }
@@ -191,6 +213,19 @@ function projectOrganization(raw: z.infer<typeof apolloRawOrganizationSchema>): 
     }
 }
 
+function projectJobPosting(raw: z.infer<typeof apolloRawJobPostingSchema>): ApolloJobPosting {
+    return {
+        id: raw.id,
+        title: raw.title ?? null,
+        url: raw.url ?? null,
+        city: raw.city ?? null,
+        state: raw.state ?? null,
+        country: raw.country ?? null,
+        postedAt: raw.posted_at ?? null,
+        lastSeenAt: raw.last_seen_at ?? null
+    }
+}
+
 function describeApolloFailure(endpoint: string, status: number): string {
     switch (status) {
         case 401:
@@ -266,6 +301,27 @@ const apolloPeopleSearchResponseSchema = z.object({
     people: z.array(apolloRawPersonSchema).nullish(),
     contacts: z.array(apolloRawPersonSchema).nullish(),
     total_entries: z.number().int().nullish(),
+    pagination: z
+        .object({
+            page: z.number().int().nullish(),
+            total_entries: z.number().int().nullish()
+        })
+        .nullish()
+})
+
+const apolloRawJobPostingSchema = z.object({
+    id: z.string(),
+    title: z.string().nullish(),
+    url: z.string().nullish(),
+    city: z.string().nullish(),
+    state: z.string().nullish(),
+    country: z.string().nullish(),
+    posted_at: z.string().nullish(),
+    last_seen_at: z.string().nullish()
+})
+
+const apolloJobPostingsResponseSchema = z.object({
+    organization_job_postings: z.array(apolloRawJobPostingSchema).nullish(),
     pagination: z
         .object({
             page: z.number().int().nullish(),
@@ -366,6 +422,24 @@ export interface ApolloPeopleSearchFilters {
 export interface ApolloPeopleSearchResult {
     people: ApolloSearchPerson[]
     totalEntries: number
+    page: number
+    perPage: number
+}
+
+export interface ApolloJobPosting {
+    id: string
+    title: string | null
+    url: string | null
+    city: string | null
+    state: string | null
+    country: string | null
+    postedAt: string | null
+    lastSeenAt: string | null
+}
+
+export interface ApolloJobPostingsResult {
+    postings: ApolloJobPosting[]
+    totalPostings: number
     page: number
     perPage: number
 }
