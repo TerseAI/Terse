@@ -5,6 +5,7 @@ export enum IntegrationType {
     GITHUB = "github",
     HEY_REACH = "hey_reach",
     RESEND = "resend",
+    APOLLO = "apollo",
     GMAIL = "gmail",
     LINEAR = "linear",
     SLACK = "slack",
@@ -184,6 +185,14 @@ export const ResendIntegrationMetadata = {
     isOutput: true
 } as const satisfies IntegrationDetails
 
+export const ApolloIntegrationMetadata = {
+    type: IntegrationType.APOLLO,
+    name: "Apollo",
+    description: "Enrich people and companies and search for prospects using Apollo.io",
+    isInput: false,
+    isOutput: true
+} as const satisfies IntegrationDetails
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails> // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -203,7 +212,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.WEBHOOK]: WebhookIntegrationMetadata,
     [IntegrationType.WEBMONITOR]: WebMonitorIntegrationMetadata,
     [IntegrationType.HEY_REACH]: HeyReachIntegrationMetadata,
-    [IntegrationType.RESEND]: ResendIntegrationMetadata
+    [IntegrationType.RESEND]: ResendIntegrationMetadata,
+    [IntegrationType.APOLLO]: ApolloIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -243,7 +253,8 @@ export const InstallationOptionsSchemas = {
     [IntegrationType.WEBHOOK]: NoInstallationOptionsSchema,
     [IntegrationType.WEBMONITOR]: NoInstallationOptionsSchema,
     [IntegrationType.HEY_REACH]: NoInstallationOptionsSchema,
-    [IntegrationType.RESEND]: NoInstallationOptionsSchema
+    [IntegrationType.RESEND]: NoInstallationOptionsSchema,
+    [IntegrationType.APOLLO]: NoInstallationOptionsSchema
 } as const satisfies Record<IntegrationType, z.ZodTypeAny>
 
 export type InstallationOptionsFor<T extends IntegrationType> = z.infer<(typeof InstallationOptionsSchemas)[T]>
@@ -290,6 +301,9 @@ export type HeyReachIntegration = z.infer<typeof HeyReachIntegrationSchema>
 
 export const ResendIntegrationSchema = IntegrationInstanceSchema
 export type ResendIntegration = z.infer<typeof ResendIntegrationSchema>
+
+export const ApolloIntegrationSchema = IntegrationInstanceSchema
+export type ApolloIntegration = z.infer<typeof ApolloIntegrationSchema>
 
 export const ResendTemplateVariableSchema = z.object({
     key: z.string(),

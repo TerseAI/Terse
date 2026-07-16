@@ -3,6 +3,7 @@ import { IntegrationType } from "terse-types/Integrations"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
+import ApolloIntegrationCard from "./ApolloIntegrationCard"
 import AttioIntegrationCard from "./AttioIntegrationCard"
 import DatadogIntegrationCard from "./DatadogIntegrationCard"
 import GithubIntegrationCard from "./GithubIntegrationCard"
@@ -50,6 +51,8 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <HeyReachIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.RESEND:
             return <ResendIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.APOLLO:
+            return <ApolloIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:
         case IntegrationType.WEBMONITOR:
             return null

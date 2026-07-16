@@ -111,3 +111,11 @@ export function ResendIcon() {
         </svg>
     )
 }
+
+export function ApolloIcon() {
+    return (
+        <svg className="w-full h-full text-[theme(text-primary)]" viewBox="0 0 24 24" fill="currentColor" aria-label="Apollo">
+            <path d="M12 2 L22 22 H17.6 L15.9 18.3 H8.1 L6.4 22 H2 Z M12 8.9 L9.5 14.5 H14.5 Z" fillRule="evenodd" />
+        </svg>
+    )
+}

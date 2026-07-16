@@ -232,6 +232,27 @@ skills: [Skills.workOS()]
 | `listWorkOSOrganizations` | List organizations | Read   |
 | `getWorkOSUser`           | Get user details   | Read   |
 
+## Apollo
+
+Lead and company enrichment plus prospect search via [Apollo.io](https://www.apollo.io), using your own Apollo API key.
+
+```ts
+skills: [Skills.apollo()]
+```
+
+| Tool                       | Description                                              | Access |
+| -------------------------- | -------------------------------------------------------- | ------ |
+| `apolloEnrichPerson`       | Enrich a person by Apollo ID, email, or name + domain    | Read   |
+| `apolloBulkEnrichPeople`   | Enrich up to 10 people in one call                       | Read   |
+| `apolloEnrichOrganization` | Enrich a company by domain (firmographics)               | Read   |
+| `apolloSearchPeople`       | Search for people by title, seniority, location, company | Read   |
+
+Credit and key notes:
+
+- Person and organization enrichment consume Apollo **export credits** per matched record. Prefer `apolloBulkEnrichPeople` for lists.
+- `apolloSearchPeople` consumes no credits but requires the connected key to be an Apollo **master API key**, and its results never include emails — pass result `id`s to `apolloBulkEnrichPeople` to unlock contact data.
+- Personal emails are only returned when `revealPersonalEmails` is set, and Apollo suppresses them for people in GDPR regions.
+
 ## Web (built-in)
 
 Web search and research tools available to all workflows.

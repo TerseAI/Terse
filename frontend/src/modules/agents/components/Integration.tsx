@@ -3,6 +3,7 @@ import { ConfigType } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
 
 import {
+    ApolloIcon,
     AttioIcon,
     CalendarClockIcon,
     DatadogIcon,
@@ -65,6 +66,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <AttioIcon />
         case ConfigType.RESEND_OUTPUT:
             return <ResendIcon />
+        case ConfigType.APOLLO_OUTPUT:
+            return <ApolloIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -106,6 +109,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <HeyReachIcon />
         case IntegrationType.RESEND:
             return <ResendIcon />
+        case IntegrationType.APOLLO:
+            return <ApolloIcon />
         default:
             throw integration satisfies never
     }

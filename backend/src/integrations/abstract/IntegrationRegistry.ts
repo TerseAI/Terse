@@ -1,5 +1,6 @@
 import { IntegrationDetails, IntegrationInstance, IntegrationType } from "terse-types"
 
+import { ApolloIntegrationManager } from "../apollo/integration"
 import { AttioIntegrationManager } from "../attio/integration"
 import { CronJobIntegrationManager } from "../cronJob/integration"
 import { DatadogIntegrationManager } from "../datadog/integration"
@@ -43,7 +44,8 @@ function buildIntegrationTuple() {
         new AttioIntegrationManager(),
         new SnowflakeIntegrationManager(),
         new HeyReachIntegrationManager(),
-        new ResendIntegrationManager()
+        new ResendIntegrationManager(),
+        new ApolloIntegrationManager()
     ] as const satisfies readonly IntegrationWithInstallation[]
 }
 
