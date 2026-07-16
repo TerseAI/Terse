@@ -1,5 +1,6 @@
 import { InputConfigType, OutputConfigType, IntegrationType as PrismaIntegrationType, RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 import {
+    ApolloOutputConfig,
     AttioInputConfig,
     AttioOutputConfig,
     ConfigData,
@@ -75,6 +76,8 @@ const convertIntegrationTypeToPrismaIntegrationType = (integrationType: Integrat
             return PrismaIntegrationType.HEY_REACH
         case IntegrationType.RESEND:
             return PrismaIntegrationType.RESEND
+        case IntegrationType.APOLLO:
+            return PrismaIntegrationType.APOLLO
         default:
             throw integrationType satisfies never
     }
@@ -118,6 +121,8 @@ const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationType: Pr
             return IntegrationType.HEY_REACH
         case PrismaIntegrationType.RESEND:
             return IntegrationType.RESEND
+        case PrismaIntegrationType.APOLLO:
+            return IntegrationType.APOLLO
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -160,6 +165,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.HEY_REACH
         case IntegrationType.RESEND:
             return PrismaIntegrationType.RESEND
+        case IntegrationType.APOLLO:
+            return PrismaIntegrationType.APOLLO
         default:
             throw integrationType satisfies never
     }
@@ -204,6 +211,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.HEY_REACH
         case PrismaIntegrationType.RESEND:
             return IntegrationType.RESEND
+        case PrismaIntegrationType.APOLLO:
+            return IntegrationType.APOLLO
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -398,6 +407,10 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
         return new ResendOutputConfig(integrationId)
     }
 
+    if (channelOutput.config_type === OutputConfigType.APOLLO) {
+        return new ApolloOutputConfig(integrationId)
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION:
@@ -473,6 +486,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("SNOWFLAKE_OUTPUT is an output type, not an input type")
         case ConfigType.RESEND_OUTPUT:
             throw new Error("RESEND_OUTPUT is an output type, not an input type")
+        case ConfigType.APOLLO_OUTPUT:
+            throw new Error("APOLLO_OUTPUT is an output type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -547,6 +562,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.SNOWFLAKE
         case ConfigType.RESEND_OUTPUT:
             return OutputConfigType.RESEND
+        case ConfigType.APOLLO_OUTPUT:
+            return OutputConfigType.APOLLO
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }

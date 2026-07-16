@@ -15,6 +15,7 @@ import {
 } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
 import {
+    ApolloIntegration,
     AttioIntegration,
     DatadogIntegration,
     GithubIntegration,
@@ -293,6 +294,9 @@ interface BackendService {
 
     getResendIntegrations(): Promise<ResendIntegration[]>
     createOrUpdateResendIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
+
+    getApolloIntegrations(): Promise<ApolloIntegration[]>
+    createOrUpdateApolloIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
 
     /**
      * Gets available channels for a Slack integration
@@ -842,6 +846,16 @@ export const BackendProvider: BackendService = {
         const body: Record<string, string> = { apiKey }
         if (stateToken) body.state = stateToken
         return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.RESEND.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
+    },
+
+    getApolloIntegrations: () => {
+        return axios.get<ApolloIntegration[]>(`${backendBaseUrl}${ApiRoutes.APOLLO.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    createOrUpdateApolloIntegration: (apiKey: string, stateToken?: string) => {
+        const body: Record<string, string> = { apiKey }
+        if (stateToken) body.state = stateToken
+        return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.APOLLO.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
     },
 
     getSlackIntegrations: () => {

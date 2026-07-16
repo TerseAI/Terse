@@ -3252,6 +3252,182 @@ export const resendSendTemplateTool = defineTool({
     outputSchema: resendSendTemplateOutputSchema
 })
 
+// Apollo schemas — projections of Apollo.io's large payloads down to the fields GTM workflows need
+export const apolloOrganizationSummarySchema = z.object({
+    id: z.string().nullable(),
+    name: z.string().nullable(),
+    websiteUrl: z.string().nullable(),
+    primaryDomain: z.string().nullable(),
+    industry: z.string().nullable(),
+    estimatedNumEmployees: z.number().int().nullable()
+})
+
+export const apolloEnrichedPersonSchema = z.object({
+    id: z.string(),
+    firstName: z.string().nullable(),
+    lastName: z.string().nullable(),
+    name: z.string().nullable(),
+    title: z.string().nullable(),
+    seniority: z.string().nullable(),
+    email: z.string().nullable(),
+    emailStatus: z.string().nullable(),
+    linkedinUrl: z.string().nullable(),
+    city: z.string().nullable(),
+    state: z.string().nullable(),
+    country: z.string().nullable(),
+    organization: apolloOrganizationSummarySchema.nullable()
+})
+
+export const apolloOrganizationSchema = apolloOrganizationSummarySchema.extend({
+    keywords: z.array(z.string()),
+    annualRevenuePrinted: z.string().nullable(),
+    totalFundingPrinted: z.string().nullable(),
+    latestFundingStage: z.string().nullable(),
+    foundedYear: z.number().int().nullable(),
+    city: z.string().nullable(),
+    state: z.string().nullable(),
+    country: z.string().nullable(),
+    linkedinUrl: z.string().nullable(),
+    shortDescription: z.string().nullable(),
+    technologyNames: z.array(z.string())
+})
+
+export const apolloSearchPersonSchema = z.object({
+    id: z.string(),
+    firstName: z.string().nullable(),
+    lastName: z.string().nullable(),
+    name: z.string().nullable(),
+    title: z.string().nullable(),
+    hasEmail: z.boolean().nullable(),
+    linkedinUrl: z.string().nullable(),
+    city: z.string().nullable(),
+    state: z.string().nullable(),
+    country: z.string().nullable(),
+    organization: apolloOrganizationSummarySchema.nullable()
+})
+
+// Apollo input schemas
+const apolloPersonMatchFields = {
+    id: z.string().nullable().optional().describe("Apollo person ID, e.g. from apolloSearchPeople results. The most reliable match key."),
+    email: z.string().nullable().optional().describe("The person's email address."),
+    firstName: z.string().nullable().optional().describe("The person's first name."),
+    lastName: z.string().nullable().optional().describe("The person's last name."),
+    name: z.string().nullable().optional().describe("The person's full name, if first/last are not known separately."),
+    domain: z.string().nullable().optional().describe("The person's employer domain, without www or @ (e.g. acme.com)."),
+    organizationName: z.string().nullable().optional().describe("The person's employer name."),
+    linkedinUrl: z.string().nullable().optional().describe("The person's LinkedIn profile URL.")
+}
+
+export const apolloEnrichPersonInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Apollo connection to use."),
+    ...apolloPersonMatchFields,
+    revealPersonalEmails: z.boolean().nullable().optional().describe("Also return personal emails (may consume extra credits; suppressed for people in GDPR regions). Default false.")
+})
+
+export const apolloBulkEnrichPeopleInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Apollo connection to use."),
+    people: z.array(z.object(apolloPersonMatchFields)).describe("Up to 10 people to enrich (Apollo's bulk_match limit). Each entry needs at least one match key (id, email, or name + domain)."),
+    revealPersonalEmails: z.boolean().nullable().optional().describe("Also return personal emails (may consume extra credits; suppressed for people in GDPR regions). Default false.")
+})
+
+export const apolloEnrichOrganizationInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Apollo connection to use."),
+    domain: z.string().describe("The company domain to enrich, without www or @ (e.g. acme.com).")
+})
+
+export const apolloSearchPeopleInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Apollo connection to use."),
+    personTitles: z.array(z.string()).nullable().optional().describe('Job titles to match, e.g. ["Head of Marketing", "DevRel"].'),
+    includeSimilarTitles: z.boolean().nullable().optional().describe("Whether to also match titles similar to personTitles. Default true."),
+    personSeniorities: z.array(z.string()).nullable().optional().describe("Seniorities to match: owner, founder, c_suite, partner, vp, head, director, manager, senior, entry, intern."),
+    personLocations: z.array(z.string()).nullable().optional().describe('Person locations, e.g. ["New York, US", "Germany"].'),
+    organizationLocations: z.array(z.string()).nullable().optional().describe("Company HQ locations."),
+    organizationDomains: z.array(z.string()).nullable().optional().describe("Company domains to search within, without www or @."),
+    organizationNumEmployeesRanges: z.array(z.string()).nullable().optional().describe('Headcount ranges as "min,max" strings, e.g. ["11,50", "51,200"].'),
+    keywords: z.string().nullable().optional().describe("Free-text keywords to narrow results."),
+    contactEmailStatus: z.array(z.string()).nullable().optional().describe("Filter by email status: verified, unverified, likely to engage, unavailable."),
+    page: z.number().int().min(1).nullable().optional().describe("Result page to fetch. Default 1."),
+    perPage: z.number().int().min(1).max(100).nullable().optional().describe("Results per page, 1-100. Default 25.")
+})
+
+export const apolloEnrichPersonTool = defineTool({
+    name: "apolloEnrichPerson",
+    description:
+        "Enrich a person via Apollo.io by Apollo ID, email, or name plus company domain. Returns contact details, seniority, location, and employer firmographics. Consumes one Apollo export credit per successful match.",
+    inputSchema: apolloEnrichPersonInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        found: z.boolean(),
+        person: apolloEnrichedPersonSchema.nullable()
+    })
+})
+
+export const apolloBulkEnrichPeopleTool = defineTool({
+    name: "apolloBulkEnrichPeople",
+    description:
+        "Enrich up to 10 people in a single Apollo.io call, using the same match keys as apolloEnrichPerson. Consumes one Apollo export credit per matched person. Prefer this over repeated apolloEnrichPerson calls for lists.",
+    inputSchema: apolloBulkEnrichPeopleInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        matches: z.array(apolloEnrichedPersonSchema),
+        matchedCount: z.number().int(),
+        requestedCount: z.number().int()
+    })
+})
+
+export const apolloEnrichOrganizationTool = defineTool({
+    name: "apolloEnrichOrganization",
+    description:
+        "Enrich a company via Apollo.io by domain. Returns firmographics: industry, headcount, revenue, funding, location, keywords, and technologies. Consumes one Apollo export credit per matched company.",
+    inputSchema: apolloEnrichOrganizationInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        found: z.boolean(),
+        organization: apolloOrganizationSchema.nullable()
+    })
+})
+
+export const apolloSearchPeopleTool = defineTool({
+    name: "apolloSearchPeople",
+    description:
+        "Search Apollo.io for people by title, seniority, location, company domain, and headcount filters to build prospect lists. Consumes no credits but requires the connected key to be an Apollo master API key. Results never include emails — pass result ids to apolloBulkEnrichPeople to unlock contact data.",
+    inputSchema: apolloSearchPeopleInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        people: z.array(apolloSearchPersonSchema),
+        totalEntries: z.number().int(),
+        page: z.number().int(),
+        perPage: z.number().int()
+    })
+})
+
+export const apolloJobPostingSchema = z.object({
+    id: z.string(),
+    title: z.string().nullable(),
+    url: z.string().nullable(),
+    city: z.string().nullable(),
+    state: z.string().nullable(),
+    country: z.string().nullable(),
+    postedAt: z.string().nullable(),
+    lastSeenAt: z.string().nullable()
+})
+
+export const apolloListJobPostingsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Apollo connection to use."),
+    organizationId: z.string().describe("The Apollo organization ID to list job postings for, e.g. the id returned by apolloEnrichOrganization or in apolloSearchPeople results."),
+    page: z.number().int().min(1).nullable().optional().describe("Result page to fetch. Default 1."),
+    perPage: z.number().int().min(1).max(500).nullable().optional().describe("Results per page, 1-500. Default 100. Apollo charges per page returned, so prefer one large page over many small ones.")
+})
+
+export const apolloListJobPostingsTool = defineTool({
+    name: "apollo_list_job_postings",
+    description:
+        "List active job postings at a company via Apollo.io, as a hiring signal (open roles, titles, locations, posted dates). Takes the Apollo organization ID from apolloEnrichOrganization. Works with any Apollo key (no master key needed) but consumes Apollo credits per page of results returned — fetch one large page instead of paging in small steps. Postings include title/url/location metadata only, not full descriptions; assess role fit from the title.",
+    inputSchema: apolloListJobPostingsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        postings: z.array(apolloJobPostingSchema),
+        totalPostings: z.number().int(),
+        page: z.number().int(),
+        perPage: z.number().int()
+    })
+})
+
 export const ToolDefinitions = {
     [linearCreateTicketTool.name]: linearCreateTicketTool,
     [linearUpdateTicketTool.name]: linearUpdateTicketTool,
@@ -3334,7 +3510,12 @@ export const ToolDefinitions = {
     [webResearchTool.name]: webResearchTool,
     [imageEditTool.name]: imageEditTool,
     [memoryTool.name]: memoryTool,
-    [resendSendTemplateTool.name]: resendSendTemplateTool
+    [resendSendTemplateTool.name]: resendSendTemplateTool,
+    [apolloEnrichPersonTool.name]: apolloEnrichPersonTool,
+    [apolloBulkEnrichPeopleTool.name]: apolloBulkEnrichPeopleTool,
+    [apolloEnrichOrganizationTool.name]: apolloEnrichOrganizationTool,
+    [apolloSearchPeopleTool.name]: apolloSearchPeopleTool,
+    [apolloListJobPostingsTool.name]: apolloListJobPostingsTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

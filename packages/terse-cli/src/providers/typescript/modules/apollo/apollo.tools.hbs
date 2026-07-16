@@ -1,0 +1,12 @@
+{{#if toolFile}}
+{{sectionHeader "Apollo tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Apollo skill"}}
+
+/** Apollo — enrich people and companies and search for prospects. Enrichment consumes Apollo export credits; search is credit-free but requires a master API key. */
+export function apolloSkill(): TypedSkill<{{{section.skillToolType}}}> {
+    return new ApolloOutputConfig("{{escape section.id}}")
+}
