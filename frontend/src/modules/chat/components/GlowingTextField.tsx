@@ -238,7 +238,7 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                     {isFullyTyped && inputValue.length === 0 && onPlaceholderSelect && (
                         <div
                             aria-hidden="true"
-                            className={`absolute flex items-center gap-1.5 text-xs text-muted-foreground/70 pointer-events-none animate-in fade-in duration-300 ${hasActionButton ? "right-14" : "right-4"} ${isLarge ? "bottom-4" : "top-1/2 -translate-y-1/2"}`}
+                            className={`absolute flex items-center gap-1.5 text-xs text-muted-foreground pointer-events-none animate-in fade-in duration-300 ${hasActionButton ? "right-14" : "right-4"} ${isLarge ? "bottom-4" : "top-1/2 -translate-y-1/2"}`}
                         >
                             <kbd className="px-1.5 py-0.5 bg-muted/30 border border-border/30 rounded text-[10px] font-mono">Tab</kbd>
                             <span>to use</span>

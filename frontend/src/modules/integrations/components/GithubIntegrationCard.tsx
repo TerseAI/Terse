@@ -74,7 +74,7 @@ function GithubIntegrationCard({ className, isActive = true, stateToken, compact
                         <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                             <Github className="w-10 h-10 text-muted-foreground mb-3" />
                             <p className="text-sm text-muted-foreground">No GitHub integration connected</p>
-                            <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub account</p>
+                            <p className="text-xs text-muted-foreground mt-1">Connect your GitHub account</p>
                         </div>
                     ) : (
                         <>
@@ -113,7 +113,7 @@ function GithubCardContent({ repositories, isLoading, onViewAll }: { repositorie
                 <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                     <Github className="w-10 h-10 text-muted-foreground mb-3" />
                     <p className="text-sm text-muted-foreground">No GitHub repositories connected</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub repositories</p>
+                    <p className="text-xs text-muted-foreground mt-1">Connect your GitHub repositories</p>
                 </div>
             ) : (
                 <div className="flex flex-col gap-2 text-sm text-muted-foreground min-w-50">

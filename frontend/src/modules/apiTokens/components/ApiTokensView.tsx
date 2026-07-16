@@ -124,7 +124,7 @@ function TokensTable({ tokens, onRename, onDelete }: TokensTableProps) {
                                             <TooltipContent>{getFullTimestamp(token.lastUsedAt)}</TooltipContent>
                                         </Tooltip>
                                     ) : (
-                                        <span className="text-muted-foreground/70">Never</span>
+                                        <span className="text-muted-foreground">Never</span>
                                     )}
                                 </TableCell>
                                 <TableCell>

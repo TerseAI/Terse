@@ -15,7 +15,7 @@ export default function TriggeredBy({ userId, showLabel = true, className }: Pro
     if (isLoading) {
         return (
             <span className={wrapperClass}>
-                {showLabel && <span className="text-muted-foreground/70">Triggered by</span>}
+                {showLabel && <span className="text-muted-foreground">Triggered by</span>}
                 <Skeleton className="size-4 shrink-0 rounded-full" />
                 <Skeleton className="h-3 w-14 rounded" />
             </span>
@@ -25,7 +25,7 @@ export default function TriggeredBy({ userId, showLabel = true, className }: Pro
     if (isError || !user) {
         return (
             <span className={wrapperClass} title="This user is no longer active">
-                {showLabel && <span className="text-muted-foreground/70">Triggered by</span>}
+                {showLabel && <span className="text-muted-foreground">Triggered by</span>}
                 <Avatar className="size-4 shrink-0">
                     <AvatarFallback>
                         <User2 className="size-2.5" />
@@ -40,7 +40,7 @@ export default function TriggeredBy({ userId, showLabel = true, className }: Pro
 
     return (
         <span className={wrapperClass} title={user.email ? `${name} · ${user.email}` : name}>
-            {showLabel && <span className="text-muted-foreground/70">Triggered by</span>}
+            {showLabel && <span className="text-muted-foreground">Triggered by</span>}
             <Avatar className="size-4 shrink-0">
                 {user.displayPhotoUrl ? <AvatarImage src={user.displayPhotoUrl} alt="" /> : null}
                 <AvatarFallback className="text-[8px] font-medium">{initialsOf(name)}</AvatarFallback>

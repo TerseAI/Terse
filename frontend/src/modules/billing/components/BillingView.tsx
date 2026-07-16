@@ -157,7 +157,7 @@ export default function BillingPage() {
                                     <h2 className="text-sm font-medium text-foreground">Last 30 days</h2>
                                 </div>
                                 <div className="text-xs text-muted-foreground sm:text-right">
-                                    {usageRangeLabel} <span className="text-muted-foreground/70">· times shown in UTC</span>
+                                    {usageRangeLabel} <span className="text-muted-foreground">· times shown in UTC</span>
                                 </div>
                             </div>
                             <div className="px-6 py-6">
