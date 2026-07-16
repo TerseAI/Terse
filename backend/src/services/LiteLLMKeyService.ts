@@ -4,7 +4,7 @@ import { z } from "zod"
 import logger from "../common/logger"
 import { settings } from "../settings"
 
-export const LITELLM_MAIN_MODEL = "claude-sonnet-5"
+export const LITELLM_MAIN_MODEL = "claude-opus-4-8"
 export const LITELLM_SMALL_MODEL = "claude-haiku-4-5"
 
 const keyGenerateResponse = z.object({ key: z.string() })
