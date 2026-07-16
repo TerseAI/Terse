@@ -13,6 +13,8 @@ import { SearchBar } from "@/modules/runHistory/components/SearchBar"
 import StatusFilter from "@/modules/runHistory/components/StatusFilter"
 import { useRunHistoryChatDrawer } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
+const DEFAULT_STATUSES: readonly RunHistoryStatus[] = Object.values(RunHistoryStatus)
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -42,9 +44,7 @@ function LoadingSkeleton() {
 export default function ActivityPage() {
     const [currentPage, setCurrentPage] = useState(1)
     const [runsPerPage, setRunsPerPage] = useState(20)
-    const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
-        new Set([RunHistoryStatus.SUCCESS, RunHistoryStatus.FAILED, RunHistoryStatus.CANCELLED, RunHistoryStatus.IN_PROGRESS, RunHistoryStatus.AWAITING_APPROVAL, RunHistoryStatus.SUSPENDED])
-    )
+    const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(new Set(DEFAULT_STATUSES))
     const [searchQuery, setSearchQuery] = useState("")
     const [includeTest, setIncludeTest] = useState(false)
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
@@ -94,7 +94,7 @@ export default function ActivityPage() {
         })
     }
 
-    const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length || includeTest
+    const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < DEFAULT_STATUSES.length || includeTest
 
     const startIndex = (currentPage - 1) * runsPerPage
 
@@ -156,17 +156,7 @@ export default function ActivityPage() {
                             onClearAll={() => {
                                 setSearchQuery("")
                                 setDateRange({ from: undefined, to: undefined })
-                                setSelectedStatuses(
-                                    new Set([
-                                        RunHistoryStatus.SUCCESS,
-                                        RunHistoryStatus.FAILED,
-                                        RunHistoryStatus.CANCELLED,
-                                        RunHistoryStatus.SKIPPED,
-                                        RunHistoryStatus.IN_PROGRESS,
-                                        RunHistoryStatus.AWAITING_APPROVAL,
-                                        RunHistoryStatus.SUSPENDED
-                                    ])
-                                )
+                                setSelectedStatuses(new Set(DEFAULT_STATUSES))
                                 setCurrentPage(1)
                             }}
                         />

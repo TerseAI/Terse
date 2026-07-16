@@ -120,6 +120,7 @@ export function MultiSelect({
                                 </span>
                             )}
                             <button
+                                type="button"
                                 onClick={() => handleRemove(option.id)}
                                 className="ml-1 rounded-full hover:bg-secondary-foreground/20 p-0.5"
                                 aria-label={`Remove ${option.label}`}

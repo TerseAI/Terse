@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom"
+import { Navigate } from "react-router-dom"
 
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
@@ -7,14 +7,13 @@ import OrganizationCreationForm from "@/modules/organizations/components/Organiz
 
 export default function OrganizationCreationPage() {
     const { user, isLoading } = useAuth()
-    const navigate = useNavigate()
-
-    if (!user || user.organizationId) {
-        navigate(FrontendRoutes.HOME, { replace: true })
-    }
 
     if (isLoading) {
         return null
+    }
+
+    if (!user || user.organizationId) {
+        return <Navigate to={FrontendRoutes.HOME} replace />
     }
 
     return (
