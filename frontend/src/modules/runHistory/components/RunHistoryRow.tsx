@@ -57,15 +57,15 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                             e.stopPropagation()
                             navigate(buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId }))
                         }}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[160px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                         title={run.agentName}
                     >
                         {run.agentName}
                     </button>
                     {run.trigger.subheader && (
                         <>
-                            <span className="text-muted-foreground/40">·</span>
-                            <span className="text-xs text-muted-foreground truncate max-w-[200px]">{run.trigger.subheader}</span>
+                            <span className="text-muted-foreground/40 shrink-0">·</span>
+                            <span className="text-xs text-muted-foreground truncate">{run.trigger.subheader}</span>
                         </>
                     )}
                 </div>
