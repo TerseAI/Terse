@@ -6,6 +6,7 @@ import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { type BalanceSummary, FrontendRoutes, type Plan, isPurchasablePlan } from "terse-types"
 
+import { FetchErrorCard } from "@/components/FetchErrorCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -26,7 +27,7 @@ export default function BillingPage() {
     const usageRangeLabel = formatUsageRangeLabel()
     const { billingEnabled, balance, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
     const usageRange = computeDefaultUsageRange()
-    const { buckets } = useBillingUsageBuckets({ timezone: "UTC", start: usageRange.start, end: usageRange.end })
+    const { buckets, isError: bucketsError, mutate: retryBuckets } = useBillingUsageBuckets({ timezone: "UTC", start: usageRange.start, end: usageRange.end })
     const catalogEnabled = billingEnabled !== false
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(catalogEnabled)
     const { status: billingStatus, isLoading: billingStatusLoading } = useBillingStatus()
@@ -161,7 +162,7 @@ export default function BillingPage() {
                                 </div>
                             </div>
                             <div className="px-6 py-6">
-                                <UsageChart buckets={buckets} />
+                                {bucketsError && !buckets ? <FetchErrorCard message="Couldn't load usage history." onRetry={() => void retryBuckets()} /> : <UsageChart buckets={buckets} />}
                             </div>
                         </section>
                     </>
