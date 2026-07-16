@@ -32,7 +32,7 @@ import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, cr
 import { TriggerRuntime } from "../abstract/TriggerRuntime"
 
 import { initializeSlackWebClient, resolveSlackAccessToken } from "./client"
-import { SLACKBOT_USER_ID } from "./helpers"
+import { isHumanAuthoredSlackMessage, isSlackMessageRedelivery } from "./messageGuards"
 
 export class SlackIntegrationManager
     extends Integration<SlackIntegration, SimplifiedSlackEvent, typeof SlackIntegrationMetadata, SlackChannelShared | SlackUserResponse>
@@ -1624,6 +1624,14 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
             return
         }
 
+        if (isSlackMessageRedelivery(messageEvent)) {
+            logger.debug("Ignoring Slack message re-delivery event", {
+                subtype: messageEvent.subtype,
+                teamId
+            })
+            return
+        }
+
         // Get the Slack integration
         const slackIntegration = await db().slack_integrations.findFirst({
             where: {
@@ -1638,7 +1646,7 @@ async function handleSlackMessageLikeEvent(event: SimplifiedSlackEvent, teamId: 
 
         const isAppMention = messageEvent.type === "app_mention"
         const isDirectMessage = messageEvent.channel_type === SlackChannelType.IM
-        const isFromHumanUser = !messageEvent.bot_id && messageEvent.subtype !== "bot_message" && messageEvent.user !== SLACKBOT_USER_ID
+        const isFromHumanUser = isHumanAuthoredSlackMessage(messageEvent)
         const shouldFallback = isFromHumanUser && (isAppMention || isDirectMessage) && Boolean(messageEvent.channel)
 
         const filteredWorkspaceUserIntegrations = await getFilteredWorkspaceUserIntegrations(teamId, messageEvent.channel!, messageEvent.channel_type || null)
