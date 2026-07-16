@@ -2028,6 +2028,7 @@ export const attioAttributeSchema = z
     .object({
         api_slug: z.string().optional(),
         title: z.string().optional(),
+        description: z.string().nullable().optional(),
         type: z.string().optional(),
         is_required: z.boolean().optional(),
         is_unique: z.boolean().optional(),
@@ -2606,30 +2607,53 @@ export const attioModifySchemaRequestSchema = z.discriminatedUnion("action", [
             .describe(
                 "Attio attribute type, e.g. 'text', 'number', 'checkbox', 'currency', 'date', 'timestamp', 'rating', 'status', 'select', 'record-reference', 'actor-reference', 'location', 'domain', 'email-address', 'phone-number'."
             ),
+        description: z.string().nullable().optional().describe("Text description of the attribute, shown in the Attio UI."),
         isRequired: z.boolean().nullable().optional().describe("Whether a value is required. Defaults to false."),
         isUnique: z.boolean().nullable().optional().describe("Whether values must be unique. Defaults to false."),
         isMultiselect: z.boolean().nullable().optional().describe("Whether the attribute holds multiple values. Defaults to false."),
+        defaultValue: z
+            .string()
+            .nullable()
+            .optional()
+            .describe('Optional JSON object string for a default value, e.g. \'{"type":"dynamic","template":"current-user"}\' or \'{"type":"static","template":[...]}\'.'),
+        relationship: z
+            .string()
+            .nullable()
+            .optional()
+            .describe(
+                'Optional JSON object string creating the paired attribute of a bidirectional record-reference, e.g. \'{"object":"companies","title":"Projects","api_slug":"projects","is_multiselect":true}\'.'
+            ),
         config: z.string().nullable().optional().describe('Optional JSON object string for type-specific config, e.g. \'{"record_reference":{"allowed_objects":["people"]}}\'.')
     }),
     z.object({
-        action: z.literal("update_attribute").describe("Update an attribute's title or constraints."),
+        action: z.literal("update_attribute").describe("Update an attribute's title, description, slug, constraints, default value or config, or archive it."),
         ...attioSchemaTargetFields,
         attributeSlug: z.string(),
         title: z.string().nullable().optional(),
-        isRequired: z.boolean().nullable().optional()
+        newApiSlug: z.string().nullable().optional().describe("New unique attribute slug (snake_case)."),
+        description: z.string().nullable().optional().describe("Text description of the attribute. Pass an empty string to clear it."),
+        isRequired: z.boolean().nullable().optional(),
+        isUnique: z.boolean().nullable().optional(),
+        isArchived: z.boolean().nullable().optional().describe("Archive or restore the attribute."),
+        defaultValue: z.string().nullable().optional().describe('Optional JSON object string for a default value, e.g. \'{"type":"dynamic","template":"current-user"}\'.'),
+        config: z.string().nullable().optional().describe('Optional JSON object string for type-specific config, e.g. \'{"currency":{"default_currency_code":"USD","display_type":"symbol"}}\'.')
     }),
     z.object({
         action: z.literal("create_status").describe("Add a new status to a status attribute. Rerun terse generate afterwards to refresh generated constants."),
         ...attioSchemaTargetFields,
         attributeSlug: z.string(),
-        title: z.string().describe("The status title.")
+        title: z.string().describe("The status title."),
+        celebrationEnabled: z.boolean().nullable().optional().describe("Whether arriving at this status triggers a celebration effect. Defaults to false."),
+        targetTimeInStatus: z.string().nullable().optional().describe("Target time a record should spend in this status, as an ISO-8601 duration (e.g. 'P7D').")
     }),
     z.object({
-        action: z.literal("update_status").describe("Rename or archive a status."),
+        action: z.literal("update_status").describe("Rename, reconfigure or archive a status."),
         ...attioSchemaTargetFields,
         attributeSlug: z.string(),
         statusId: z.string().describe("The status ID (UUID)."),
         title: z.string().nullable().optional(),
+        celebrationEnabled: z.boolean().nullable().optional().describe("Whether arriving at this status triggers a celebration effect."),
+        targetTimeInStatus: z.string().nullable().optional().describe("Target time a record should spend in this status, as an ISO-8601 duration (e.g. 'P7D')."),
         isArchived: z.boolean().nullable().optional()
     }),
     z.object({
