@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 
+import { toast } from "sonner"
 import { type KeyedMutator } from "swr"
 
 /**
@@ -13,6 +14,10 @@ export function useOAuthSuccessListener<T = any>(mutate: KeyedMutator<T>, succes
             if (event.data?.type === "oauth-success") {
                 mutate()
                 successCallback?.()
+            }
+            if (event.data?.type === "oauth-error") {
+                // Fixed id dedupes the toast when several integration hooks are mounted
+                toast.error("Failed to connect integration. Please try again.", { id: "oauth-error", duration: Infinity, closeButton: true })
             }
         }
 

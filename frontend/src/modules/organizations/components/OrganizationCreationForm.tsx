@@ -132,7 +132,7 @@ export default function OrganizationCreationForm() {
         return (
             <Card className="w-[90%] max-w-md md:w-1/2 md:max-w-lg border-border shadow-sm">
                 <CardHeader>
-                    <img src="/terse.png" alt="Terse" className="h-10 w-10 object-contain mb-2" />
+                    <img src="/terse-160.png" alt="Terse" className="h-10 w-10 object-contain mb-2" />
                     <CardTitle className="text-card-foreground">Organization created!</CardTitle>
                     <CardDescription className="text-muted-foreground">Redirecting you to the app…</CardDescription>
                 </CardHeader>
@@ -144,7 +144,7 @@ export default function OrganizationCreationForm() {
         <Card className="w-[90%] max-w-md md:w-1/2 md:max-w-lg border-border shadow-sm">
             <CardHeader className="space-y-4">
                 <div className="flex items-center">
-                    <img src="/terse.png" alt="Terse" className="h-10 w-10 object-contain shrink-0" />
+                    <img src="/terse-160.png" alt="Terse" className="h-10 w-10 object-contain shrink-0" />
                     <CardTitle className="text-card-foreground text-xl m-0">Welcome to Terse</CardTitle>
                 </div>
                 <CardDescription className="text-muted-foreground">{needsName ? "To get started, we need a few more details about you." : "To get started, create your organization."}</CardDescription>

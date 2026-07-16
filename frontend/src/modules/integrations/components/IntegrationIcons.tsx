@@ -49,7 +49,7 @@ export function NotionIcon() {
 }
 
 export function TerseIcon() {
-    return <img src="/terse.png" alt="Terse" className="w-full h-full object-contain" />
+    return <img src="/terse-160.png" alt="Terse" className="w-full h-full object-contain" />
 }
 
 export function PosthogIcon() {

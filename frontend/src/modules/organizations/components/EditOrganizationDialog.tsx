@@ -117,7 +117,7 @@ export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationD
         }
     }
 
-    const displayLogo = logoPreview || logoUrl || "/terse.png"
+    const displayLogo = logoPreview || logoUrl || "/terse-160.png"
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
