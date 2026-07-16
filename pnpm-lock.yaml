@@ -385,6 +385,9 @@ importers:
       cron-parser:
         specifier: ^5.4.0
         version: 5.5.0
+      cronstrue:
+        specifier: ^3.24.0
+        version: 3.24.0
       framer-motion:
         specifier: ^12.23.0
         version: 12.38.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -4885,6 +4888,10 @@ packages:
   cron-parser@5.6.1:
     resolution: {integrity: sha512-QBm4o1PwZiuY7KFbVvW7FLC8bozy7YWzv+Fz6KRS7sQghzcbDZCGxr/Bc5b6TQreAoSwuWVP491dIcK0THCX6A==}
     engines: {node: '>=18'}
+
+  cronstrue@3.24.0:
+    resolution: {integrity: sha512-t/Ji3Ur2c/pzhIAWNwC0ftl3JAE4dLfCjAdZoTZXmPDZwcispnS1PaMcMS4OmIIXyIVouAz+yw+mfQiE3hz5OQ==}
+    hasBin: true
 
   cross-fetch@3.2.0:
     resolution: {integrity: sha512-Q+xVJLoGOeIMXZmbUK4HYk+69cQH6LudR0Vu/pRm2YlU/hDV9CiS0gKUMaWY5f2NeUH9C1nV3bsTlCo0FsTV1Q==}
@@ -13356,6 +13363,8 @@ snapshots:
   cron-parser@5.6.1:
     dependencies:
       luxon: 3.7.2
+
+  cronstrue@3.24.0: {}
 
   cross-fetch@3.2.0:
     dependencies:
