@@ -212,7 +212,7 @@ export const settings = {
     })),
 
     aisdk: {
-        default: optionalEnv("MODEL_DEFAULT", "anthropic:claude-opus-4-7")
+        default: optionalEnv("MODEL_DEFAULT", "openai:gpt-5.6-sol")
     },
 
     billing: {
