@@ -8,6 +8,7 @@
     "scripts": {
         "format": "prettier --config ../.prettierrc --write \"src/**/*.ts\" ",
         "format:check": "prettier --config ../.prettierrc --check \"src/**/*.ts\"",
+        "types:apollo": "node --import tsx scripts/typeGen/apollo-io.ts",
         "predev": "pnpm run db:generate",
         "dev": "node ./scripts/dev.mjs",
         "dev:server": "tsx watch src/server.ts",
@@ -116,6 +117,7 @@
         "@types/node": "^24.0.10",
         "@types/uuid": "^10.0.0",
         "@types/ws": "^8.18.1",
+        "openapi-typescript": "^7.13.0",
         "prettier": "^3.8.1",
         "prisma": "^6.19.0",
         "tsc-esm-fix": "^3.1.2",
