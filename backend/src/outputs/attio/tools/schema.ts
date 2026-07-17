@@ -84,10 +84,12 @@ async function executeModifySchemaRequest(request: AttioModifySchemaRequest, acc
                     title: request.title,
                     api_slug: request.apiSlug,
                     type: request.attributeType,
-                    description: null,
+                    description: request.description ?? null,
                     is_required: request.isRequired ?? false,
                     is_unique: request.isUnique ?? false,
                     is_multiselect: request.isMultiselect ?? false,
+                    default_value: parseOptionalJsonObject(request.defaultValue, "defaultValue") ?? null,
+                    relationship: parseOptionalJsonObject(request.relationship, "relationship") ?? null,
                     config: parseOptionalJsonObject(request.config, "config") ?? {}
                 }
             }
@@ -100,7 +102,15 @@ async function executeModifySchemaRequest(request: AttioModifySchemaRequest, acc
         case "update_attribute": {
             const updates: Record<string, unknown> = {}
             if (request.title != null) updates.title = request.title
+            if (request.newApiSlug != null) updates.api_slug = request.newApiSlug
+            if (request.description != null) updates.description = request.description === "" ? null : request.description
             if (request.isRequired != null) updates.is_required = request.isRequired
+            if (request.isUnique != null) updates.is_unique = request.isUnique
+            if (request.isArchived != null) updates.is_archived = request.isArchived
+            const defaultValue = parseOptionalJsonObject(request.defaultValue, "defaultValue")
+            if (defaultValue) updates.default_value = defaultValue
+            const config = parseOptionalJsonObject(request.config, "config")
+            if (config) updates.config = config
             const attribute = await attioRequestData(accessToken, `${attributePath(request)}`, attioAttributeSchema, "attribute", { method: "PATCH", body: { data: updates } })
             return {
                 attribute,
@@ -108,7 +118,10 @@ async function executeModifySchemaRequest(request: AttioModifySchemaRequest, acc
             }
         }
         case "create_status": {
-            const status = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, attioStatusSchema, "status", { method: "POST", body: { data: { title: request.title } } })
+            const statusData: Record<string, unknown> = { title: request.title }
+            if (request.celebrationEnabled != null) statusData.celebration_enabled = request.celebrationEnabled
+            if (request.targetTimeInStatus != null) statusData.target_time_in_status = request.targetTimeInStatus
+            const status = await attioRequestData(accessToken, `${attributePath(request)}/statuses`, attioStatusSchema, "status", { method: "POST", body: { data: statusData } })
             return {
                 status,
                 actions: [schemaAction("Created status", `${request.identifier}/${request.attributeSlug}`, `Added status "${request.title}"`, RunHistoryActionType.create)]
@@ -117,6 +130,8 @@ async function executeModifySchemaRequest(request: AttioModifySchemaRequest, acc
         case "update_status": {
             const updates: Record<string, unknown> = {}
             if (request.title != null) updates.title = request.title
+            if (request.celebrationEnabled != null) updates.celebration_enabled = request.celebrationEnabled
+            if (request.targetTimeInStatus != null) updates.target_time_in_status = request.targetTimeInStatus
             if (request.isArchived != null) updates.is_archived = request.isArchived
             const status = await attioRequestData(accessToken, `${attributePath(request)}/statuses/${encodeURIComponent(request.statusId)}`, attioStatusSchema, "status", {
                 method: "PATCH",

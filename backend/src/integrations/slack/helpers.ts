@@ -7,6 +7,7 @@ import logger from "../../common/logger"
 import { SlackApprovalMessageStatus } from "../../integrations/slack/ApprovalStatus"
 import { createApprovalMessage, createNotificationMessage, createRunFailureNotificationMessage, createUpdatedApprovalMessage } from "../../integrations/slack/blockKitHelpers"
 import { initializeSlackWebClient, resolveSlackAccessToken } from "../../integrations/slack/client"
+import { SLACKBOT_USER_ID } from "../../integrations/slack/messageGuards"
 import { db } from "../../loaders/prisma"
 import { FailureState } from "../../modules/agents/AgentRunner/runHistory"
 import { settings } from "../../settings"
@@ -28,7 +29,7 @@ export interface RunFailureNotificationContext {
     failureState: FailureState
 }
 
-export const SLACKBOT_USER_ID = "USLACKBOT"
+export { SLACKBOT_USER_ID }
 
 export function describeSlackPostMessageError(error: unknown): string | null {
     const code = (error as { data?: { error?: string } } | null | undefined)?.data?.error
