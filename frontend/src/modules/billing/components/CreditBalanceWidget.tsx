@@ -26,10 +26,10 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
         return null
     }
 
-    const { consumedCredits, totalCreditCapacity, hardCap } = balance
+    const { consumedCredits, totalCreditCapacity, hardCap, remainingCredits } = balance
     const withinIncluded = consumedCredits <= totalCreditCapacity
-    const capPct = Math.floor((consumedCredits / hardCap) * 100)
-    const overHardCap = consumedCredits >= hardCap
+    const capPct = Math.min(100, Math.floor((consumedCredits / hardCap) * 100))
+    const overHardCap = remainingCredits <= 0
 
     const fillClass = setFillClass(balance)
 
@@ -40,8 +40,11 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
         <div>
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <p className="text-sm tabular-nums">
-                    <span className="font-semibold text-foreground">{formatCredits(consumedCredits)}</span>
-                    <span className="text-muted-foreground"> / {formatCredits(hardCap)} credits used</span>
+                    <span className="font-semibold text-foreground">{formatCredits(remainingCredits)}</span>
+                    <span className="text-muted-foreground"> credits remaining</span>
+                </p>
+                <p className="text-xs tabular-nums text-muted-foreground">
+                    {formatCredits(consumedCredits)} / {formatCredits(hardCap)} used this period
                 </p>
             </div>
 
@@ -56,7 +59,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
                 </Tooltip>
             </div>
 
-            {withinIncluded && <p className="mt-2 text-xs text-muted-foreground">{capPct}% of your hard limit</p>}
+            {withinIncluded && <p className="mt-2 text-xs text-muted-foreground">{capPct}% of this period's credits used</p>}
 
             {overHardCap && (
                 <div className="mt-3 space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-xs">

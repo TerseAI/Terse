@@ -23,10 +23,10 @@ import { getUserTimezone } from "@/utils/timezone"
 
 export default function BillingPage() {
     const timezone = getUserTimezone()
-    const usageRangeLabel = formatUsageRangeLabel()
     const { billingEnabled, balance, isLoading: balanceLoading, isError: balanceError } = useBillingContext({ timezone })
-    const usageRange = computeDefaultUsageRange()
-    const { buckets } = useBillingUsageBuckets({ timezone: "UTC", start: usageRange.start, end: usageRange.end })
+    const usageRange = computeUsageRange(balance)
+    const usageRangeLabel = balance ? formatBillingPeriodLabel(balance) : null
+    const { buckets } = useBillingUsageBuckets(usageRange ? { timezone: "UTC", start: usageRange.start, end: usageRange.end } : null)
     const catalogEnabled = billingEnabled !== false
     const { plans, isLoading: catalogLoading, isError: catalogError, mutate: retryCatalog } = useBillingCatalog(catalogEnabled)
     const { status: billingStatus, isLoading: billingStatusLoading } = useBillingStatus()
@@ -154,11 +154,13 @@ export default function BillingPage() {
                         <section aria-label="Usage history" className="rounded-lg border border-border bg-card">
                             <div className="flex flex-col gap-1 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <h2 className="text-sm font-medium text-foreground">Last 30 days</h2>
+                                    <h2 className="text-sm font-medium text-foreground">Usage this billing period</h2>
                                 </div>
-                                <div className="text-xs text-muted-foreground sm:text-right">
-                                    {usageRangeLabel} <span className="text-muted-foreground/70">· times shown in UTC</span>
-                                </div>
+                                {usageRangeLabel && (
+                                    <div className="text-xs text-muted-foreground sm:text-right">
+                                        {usageRangeLabel} <span className="text-muted-foreground/70">· times shown in UTC</span>
+                                    </div>
+                                )}
                             </div>
                             <div className="px-6 py-6">
                                 <UsageChart buckets={buckets} />
@@ -198,15 +200,20 @@ function formatScheduledChange(balance: BalanceSummary): string | null {
     return `Switch to ${balance.scheduledChange.period === "yearly" ? "annual" : "monthly"} billing scheduled for ${effectiveAt}.`
 }
 
-function formatUsageRangeLabel(): string {
-    const today = DateTime.utc().startOf("day")
-    const start = today.minus({ days: 29 })
+function formatBillingPeriodLabel(balance: BalanceSummary): string {
     const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
-    return `${formatter.format(start.toJSDate())} - ${formatter.format(today.toJSDate())}`
+    return `${formatter.format(new Date(balance.periodStart))} - ${formatter.format(new Date(balance.periodEnd))}`
 }
 
-function computeDefaultUsageRange(): { start: Date; end: Date } {
-    const end = DateTime.utc().plus({ days: 1 }).startOf("day").toJSDate()
-    const start = DateTime.fromJSDate(end).toUTC().minus({ days: 30 }).toJSDate()
-    return { start, end }
+// Usage chart spans the current billing period so it lines up with the credit
+// balance above. The window is capped at today so we don't render empty future
+// days for the remainder of the period.
+function computeUsageRange(balance: BalanceSummary | null): { start: Date; end: Date } | null {
+    if (!balance) return null
+    const start = DateTime.fromJSDate(new Date(balance.periodStart)).toUTC()
+    const periodEnd = DateTime.fromJSDate(new Date(balance.periodEnd)).toUTC()
+    const tomorrow = DateTime.utc().plus({ days: 1 }).startOf("day")
+    const end = DateTime.min(periodEnd, tomorrow)
+    if (start >= end) return null
+    return { start: start.toJSDate(), end: end.toJSDate() }
 }
