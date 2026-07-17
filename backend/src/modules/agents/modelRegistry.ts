@@ -5,7 +5,7 @@ import { ModelReference, SUPPORTED_PROVIDERS, SupportedProvider } from "terse-ty
 
 import { settings } from "../../settings"
 
-const DEFAULT_MODEL_REF = "openai:gpt-5.2"
+const DEFAULT_MODEL_REF = "openai:gpt-5.6-sol"
 
 function getDefaultModelRef(): string {
     return DEFAULT_MODEL_REF
@@ -14,7 +14,7 @@ function getDefaultModelRef(): string {
 export function getConfiguredModelReference(): string {
     const modelRef = settings.aisdk.default
     if (!modelRef?.trim()) {
-        throw new Error("Default model not set. Set MODEL_DEFAULT (e.g. anthropic:claude-opus-4-7).")
+        throw new Error("Default model not set. Set MODEL_DEFAULT (e.g. openai:gpt-5.6-sol).")
     }
     return modelRef
 }
