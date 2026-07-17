@@ -225,7 +225,7 @@ export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
 
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <span className="text-muted-foreground cursor-default text-xs tabular-nums">
+                    <span tabIndex={0} className="text-muted-foreground cursor-default rounded-sm text-xs tabular-nums outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
                         {relative}
                         {durationLabel ? <span className="text-muted-foreground/60"> · in {durationLabel}</span> : null}
                     </span>
@@ -247,15 +247,25 @@ export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
                 )}
             </div>
 
-            {showFailureReason ? (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <p className="text-muted-foreground col-span-full mt-1 line-clamp-2 cursor-default text-xs sm:col-span-3 sm:col-start-2">{deploy.failureReason}</p>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-md whitespace-pre-wrap">{deploy.failureReason}</TooltipContent>
-                </Tooltip>
-            ) : null}
+            {showFailureReason ? <FailureReason reason={deploy.failureReason ?? ""} /> : null}
         </li>
+    )
+}
+
+function FailureReason({ reason }: { reason: string }) {
+    const [expanded, setExpanded] = useState(false)
+    return (
+        <button
+            type="button"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(prev => !prev)}
+            className={cn(
+                "text-muted-foreground col-span-full mt-1 cursor-pointer rounded-sm text-left text-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:col-span-3 sm:col-start-2",
+                expanded ? "whitespace-pre-wrap" : "line-clamp-2"
+            )}
+        >
+            {reason}
+        </button>
     )
 }
 

@@ -391,7 +391,7 @@ function StreamTab({ label, badge }: { label: string; badge?: number }) {
         <Tab
             className={({ selected }) =>
                 cn(
-                    "group focus:outline-none",
+                    "group rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                     "relative -mb-px inline-flex items-center gap-2 border-b-2 pb-3 text-[10px] font-semibold tracking-[0.18em] uppercase transition-colors",
                     selected ? "text-foreground border-foreground" : "text-muted-foreground hover:text-foreground border-transparent"
                 )

@@ -8,6 +8,7 @@ import { buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { AgentActivityItem, CountByString, StatsInterval } from "terse-types/types"
 
+import { FetchErrorCard } from "@/components/FetchErrorCard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -366,7 +367,7 @@ function StatsPageSkeleton() {
 
 function StatsPage() {
     const [selectedInterval, setSelectedInterval] = useState<StatsInterval>("1mo")
-    const { stats, isLoading } = useStats(selectedInterval)
+    const { stats, isLoading, isError, mutate } = useStats(selectedInterval)
 
     const dailyEvents = useMemo(() => stats?.dailyEvents ?? [], [stats])
 
@@ -383,7 +384,9 @@ function StatsPage() {
                     <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
                 </div>
 
-                {isLoading || !stats ? (
+                {isError && !stats ? (
+                    <FetchErrorCard message="Couldn't load stats." onRetry={() => void mutate()} />
+                ) : isLoading || !stats ? (
                     <StatsPageSkeleton />
                 ) : (
                     <>

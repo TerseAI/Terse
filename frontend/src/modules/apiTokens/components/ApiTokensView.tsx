@@ -124,7 +124,7 @@ function TokensTable({ tokens, onRename, onDelete }: TokensTableProps) {
                                             <TooltipContent>{getFullTimestamp(token.lastUsedAt)}</TooltipContent>
                                         </Tooltip>
                                     ) : (
-                                        <span className="text-muted-foreground/70">Never</span>
+                                        <span className="text-muted-foreground">Never</span>
                                     )}
                                 </TableCell>
                                 <TableCell>
@@ -307,7 +307,14 @@ function CreateTokenDialog({ open, createdRawToken, onOpenChange, onCreated }: C
                     </div>
                 ) : (
                     <div className="flex flex-col gap-2">
-                        <Input placeholder="e.g. CI/CD pipeline" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCreate()} autoFocus />
+                        <Input
+                            aria-label="Token name"
+                            placeholder="e.g. CI/CD pipeline"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && handleCreate()}
+                            autoFocus
+                        />
                         {error && <p className="text-xs text-danger">{error}</p>}
                     </div>
                 )}
@@ -340,28 +347,39 @@ interface RenameTokenDialogProps {
 }
 
 function RenameTokenDialog({ token, onOpenChange, onUpdated }: RenameTokenDialogProps) {
-    const [name, setName] = useState("")
-    const [isSaving, setIsSaving] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-
     const handleOpen = (open: boolean) => {
         if (!open) {
             onOpenChange()
-            setName("")
-            setError(null)
         }
     }
 
+    return (
+        <Dialog open={!!token} onOpenChange={handleOpen}>
+            {token && <RenameTokenDialogContent key={token.id} token={token} onOpenChange={onOpenChange} onUpdated={onUpdated} />}
+        </Dialog>
+    )
+}
+
+interface RenameTokenDialogContentProps {
+    token: ApiToken
+    onOpenChange: () => void
+    onUpdated: () => void
+}
+
+function RenameTokenDialogContent({ token, onOpenChange, onUpdated }: RenameTokenDialogContentProps) {
+    const [name, setName] = useState(token.name)
+    const [isSaving, setIsSaving] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
     const handleSave = async () => {
         const trimmed = name.trim()
-        if (!token || !trimmed) return
+        if (!trimmed) return
         setIsSaving(true)
         setError(null)
         try {
             await BackendProvider.updateApiToken(token.id, trimmed)
             onUpdated()
             onOpenChange()
-            setName("")
         } catch {
             setError("Failed to rename token. Please try again.")
         } finally {
@@ -370,26 +388,24 @@ function RenameTokenDialog({ token, onOpenChange, onUpdated }: RenameTokenDialog
     }
 
     return (
-        <Dialog open={!!token} onOpenChange={handleOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Rename token</DialogTitle>
-                    <DialogDescription>Enter a new name for "{token?.name}".</DialogDescription>
-                </DialogHeader>
-                <div className="flex flex-col gap-2">
-                    <Input placeholder="New token name" value={name || token?.name || ""} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSave()} autoFocus />
-                    {error && <p className="text-xs text-danger">{error}</p>}
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button onClick={handleSave} disabled={!name.trim() || isSaving}>
-                        {isSaving ? "Saving..." : "Save"}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Rename token</DialogTitle>
+                <DialogDescription>Enter a new name for "{token.name}".</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+                <Input aria-label="Token name" placeholder="New token name" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSave()} autoFocus />
+                {error && <p className="text-xs text-danger">{error}</p>}
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button onClick={handleSave} disabled={!name.trim() || isSaving}>
+                    {isSaving ? "Saving..." : "Save"}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
     )
 }
 

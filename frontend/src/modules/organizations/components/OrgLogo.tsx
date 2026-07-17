@@ -23,7 +23,7 @@ export function OrgLogo({ organizationId, alt, size = "md", className }: OrgLogo
     const [imageError, setImageError] = useState(false)
 
     const sizeClass = sizeClasses[size]
-    const fallbackSrc = "/terse.png"
+    const fallbackSrc = "/terse-160.png"
     const imageSrc = logoUrl || fallbackSrc
 
     // Reset loading states when logoUrl changes

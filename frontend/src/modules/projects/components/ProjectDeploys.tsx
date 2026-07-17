@@ -5,6 +5,7 @@ import { ArrowLeft, Search } from "lucide-react"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import type { ProjectDeploy, ProjectDeployStatus } from "terse-types/types"
 
+import { FetchErrorCard } from "@/components/FetchErrorCard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -29,7 +30,7 @@ export default function ProjectDeploysPage() {
 
 function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
     const { project, isLoading: isLoadingProject, isError: isProjectError } = useProject(projectId)
-    const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(projectId)
+    const { deploys, isLoading: isLoadingDeploys, isError: isDeploysError, mutate: retryDeploys } = useProjectDeploys(projectId)
 
     const [query, setQuery] = useState("")
     const [sort, setSort] = useState<DeploySortKey>("newest")
@@ -70,7 +71,15 @@ function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
                     <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div className="relative flex-1">
                             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
-                            <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by id, deployer, or status…" className="h-9 pl-8" disabled={isLoadingDeploys} />
+                            <Input
+                                type="search"
+                                aria-label="Search deployments"
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                                placeholder="Search by id, deployer, or status…"
+                                className="h-9 pl-8"
+                                disabled={isLoadingDeploys}
+                            />
                         </div>
                         <Select value={statusFilter} onValueChange={v => setStatusFilter(v as DeployStatusFilter)} disabled={isLoadingDeploys}>
                             <SelectTrigger size="sm" className="sm:w-[170px]">
@@ -98,6 +107,8 @@ function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
 
                     {isLoadingDeploys ? (
                         <DeploysSkeleton />
+                    ) : isDeploysError && !deploys ? (
+                        <FetchErrorCard message="Couldn't load deployments." onRetry={() => void retryDeploys()} />
                     ) : allDeploys.length === 0 ? (
                         <DeploysEmpty />
                     ) : filtered.length === 0 ? (

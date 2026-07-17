@@ -69,7 +69,15 @@ export default function ApprovalRequestItem({ approval, onAction }: ApprovalRequ
                 <div className="ml-auto flex flex-shrink-0 items-center gap-2">
                     {orderedActions.map(action =>
                         action.type === "open_run_history" ? (
-                            <Button key={`${approval.id}-${action.deepLink}`} type="button" size="icon-sm" variant="outline" onClick={() => onAction(action.deepLink)} title="Open run history">
+                            <Button
+                                key={`${approval.id}-${action.deepLink}`}
+                                type="button"
+                                size="icon-sm"
+                                variant="outline"
+                                aria-label="Open run history"
+                                onClick={() => onAction(action.deepLink)}
+                                title="Open run history"
+                            >
                                 {getIconForAction(action.type)}
                             </Button>
                         ) : (
