@@ -952,7 +952,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
     // ===================
     // Apollo Tools
     // ===================
-    apolloEnrichPerson: {
+    apollo_enrich_person: {
         preparing: "Preparing person enrichment",
         executing: params => {
             const target = (params?.email ?? params?.name) as string | undefined
@@ -971,7 +971,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return target ? `Enrich ${truncate(target)} via Apollo (uses a credit)?` : "Enrich this person via Apollo (uses a credit)?"
         }
     },
-    apolloBulkEnrichPeople: {
+    apollo_bulk_enrich_people: {
         preparing: "Preparing bulk enrichment",
         executing: params => {
             const people = params?.people as unknown[] | undefined
@@ -989,7 +989,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return people ? `Enrich ${people.length} people via Apollo (uses credits)?` : "Bulk enrich people via Apollo (uses credits)?"
         }
     },
-    apolloEnrichOrganization: {
+    apollo_enrich_organization: {
         preparing: "Preparing company enrichment",
         executing: params => {
             const domain = params?.domain as string | undefined
@@ -1008,7 +1008,7 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return domain ? `Enrich ${truncate(domain)} via Apollo (uses a credit)?` : "Enrich this company via Apollo (uses a credit)?"
         }
     },
-    apolloSearchPeople: {
+    apollo_search_people: {
         preparing: "Preparing prospect search",
         executing: () => "Searching Apollo for people",
         complete: (_params, result) => {

@@ -3308,7 +3308,7 @@ export const apolloSearchPersonSchema = z.object({
 
 // Apollo input schemas
 const apolloPersonMatchFields = {
-    id: z.string().nullable().optional().describe("Apollo person ID, e.g. from apolloSearchPeople results. The most reliable match key."),
+    id: z.string().nullable().optional().describe("Apollo person ID, e.g. from apollo_search_people results. The most reliable match key."),
     email: z.string().nullable().optional().describe("The person's email address."),
     firstName: z.string().nullable().optional().describe("The person's first name."),
     lastName: z.string().nullable().optional().describe("The person's last name."),
@@ -3351,7 +3351,7 @@ export const apolloSearchPeopleInputSchema = z.object({
 })
 
 export const apolloEnrichPersonTool = defineTool({
-    name: "apolloEnrichPerson",
+    name: "apollo_enrich_person",
     description:
         "Enrich a person via Apollo.io by Apollo ID, email, or name plus company domain. Returns contact details, seniority, location, and employer firmographics. Consumes one Apollo export credit per successful match.",
     inputSchema: apolloEnrichPersonInputSchema,
@@ -3362,9 +3362,9 @@ export const apolloEnrichPersonTool = defineTool({
 })
 
 export const apolloBulkEnrichPeopleTool = defineTool({
-    name: "apolloBulkEnrichPeople",
+    name: "apollo_bulk_enrich_people",
     description:
-        "Enrich up to 10 people in a single Apollo.io call, using the same match keys as apolloEnrichPerson. Consumes one Apollo export credit per matched person. Prefer this over repeated apolloEnrichPerson calls for lists.",
+        "Enrich up to 10 people in a single Apollo.io call, using the same match keys as apollo_enrich_person. Consumes one Apollo export credit per matched person. Prefer this over repeated apollo_enrich_person calls for lists.",
     inputSchema: apolloBulkEnrichPeopleInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         matches: z.array(apolloEnrichedPersonSchema),
@@ -3374,7 +3374,7 @@ export const apolloBulkEnrichPeopleTool = defineTool({
 })
 
 export const apolloEnrichOrganizationTool = defineTool({
-    name: "apolloEnrichOrganization",
+    name: "apollo_enrich_organization",
     description:
         "Enrich a company via Apollo.io by domain. Returns firmographics: industry, headcount, revenue, funding, location, keywords, and technologies. Consumes one Apollo export credit per matched company.",
     inputSchema: apolloEnrichOrganizationInputSchema,
@@ -3385,9 +3385,9 @@ export const apolloEnrichOrganizationTool = defineTool({
 })
 
 export const apolloSearchPeopleTool = defineTool({
-    name: "apolloSearchPeople",
+    name: "apollo_search_people",
     description:
-        "Search Apollo.io for people by title, seniority, location, company domain, and headcount filters to build prospect lists. Consumes no credits but requires the connected key to be an Apollo master API key. Results never include emails — pass result ids to apolloBulkEnrichPeople to unlock contact data.",
+        "Search Apollo.io for people by title, seniority, location, company domain, and headcount filters to build prospect lists. Consumes no credits but requires the connected key to be an Apollo master API key. Results never include emails — pass result ids to apollo_bulk_enrich_people to unlock contact data.",
     inputSchema: apolloSearchPeopleInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         people: z.array(apolloSearchPersonSchema),
@@ -3410,7 +3410,7 @@ export const apolloJobPostingSchema = z.object({
 
 export const apolloListJobPostingsInputSchema = z.object({
     integrationId: z.string().describe("The integration ID of the Apollo connection to use."),
-    organizationId: z.string().describe("The Apollo organization ID to list job postings for, e.g. the id returned by apolloEnrichOrganization or in apolloSearchPeople results."),
+    organizationId: z.string().describe("The Apollo organization ID to list job postings for, e.g. the id returned by apollo_enrich_organization or in apollo_search_people results."),
     page: z.number().int().min(1).nullable().optional().describe("Result page to fetch. Default 1."),
     perPage: z.number().int().min(1).max(500).nullable().optional().describe("Results per page, 1-500. Default 100. Apollo charges per page returned, so prefer one large page over many small ones.")
 })
@@ -3418,7 +3418,7 @@ export const apolloListJobPostingsInputSchema = z.object({
 export const apolloListJobPostingsTool = defineTool({
     name: "apollo_list_job_postings",
     description:
-        "List active job postings at a company via Apollo.io, as a hiring signal (open roles, titles, locations, posted dates). Takes the Apollo organization ID from apolloEnrichOrganization. Works with any Apollo key (no master key needed) but consumes Apollo credits per page of results returned — fetch one large page instead of paging in small steps. Postings include title/url/location metadata only, not full descriptions; assess role fit from the title.",
+        "List active job postings at a company via Apollo.io, as a hiring signal (open roles, titles, locations, posted dates). Takes the Apollo organization ID from apollo_enrich_organization. Works with any Apollo key (no master key needed) but consumes Apollo credits per page of results returned — fetch one large page instead of paging in small steps. Postings include title/url/location metadata only, not full descriptions; assess role fit from the title.",
     inputSchema: apolloListJobPostingsInputSchema,
     outputSchema: toolOutputBaseSchema.extend({
         postings: z.array(apolloJobPostingSchema),

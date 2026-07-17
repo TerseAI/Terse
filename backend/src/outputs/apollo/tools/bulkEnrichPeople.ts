@@ -7,11 +7,11 @@ import { defineSessionTool } from "../../../tools/toolUtils"
 import { requireApolloApiKey } from "../apolloCredentials"
 
 export const apolloBulkEnrichPeopleTool = defineSessionTool({
-    name: "apolloBulkEnrichPeople",
+    name: "apollo_bulk_enrich_people",
     execute: async ({ integrationId, people, revealPersonalEmails }, runContext) => {
         if (!runContext?.context) throw new Error("No context provided")
         if (people.length === 0 || people.length > 10) {
-            throw new Error(`apolloBulkEnrichPeople requires 1-10 people per call (got ${people.length}). Split larger lists into batches of 10.`)
+            throw new Error(`apollo_bulk_enrich_people requires 1-10 people per call (got ${people.length}). Split larger lists into batches of 10.`)
         }
         const apiKey = await requireApolloApiKey(integrationId, runContext.context.user)
 

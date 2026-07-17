@@ -7,7 +7,7 @@ import { defineSessionTool } from "../../../tools/toolUtils"
 import { requireApolloApiKey } from "../apolloCredentials"
 
 export const apolloEnrichPersonTool = defineSessionTool({
-    name: "apolloEnrichPerson",
+    name: "apollo_enrich_person",
     execute: async ({ integrationId, revealPersonalEmails, ...matchKeys }, runContext) => {
         if (!runContext?.context) throw new Error("No context provided")
         const apiKey = await requireApolloApiKey(integrationId, runContext.context.user)
