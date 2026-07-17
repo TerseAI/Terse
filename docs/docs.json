@@ -20,7 +20,7 @@
         "groups": [
             {
                 "group": "Getting started",
-                "pages": ["index", "quickstart", "context-as-code"]
+                "pages": ["quickstart", "context-as-code"]
             },
             {
                 "group": "Deployment",
