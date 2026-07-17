@@ -1,14 +1,5 @@
 import { z } from "zod"
 
-import type { SuccessResponseBody } from "./apollo.generated.js"
-import {
-    bulkPeopleEnrichmentResponseSchema,
-    organizationEnrichmentResponseSchema,
-    organizationJobsPostingsResponseSchema,
-    peopleApiSearchResponseSchema,
-    peopleEnrichmentResponseSchema
-} from "./apolloSchemas.generated.js"
-
 const APOLLO_API_BASE = "https://api.apollo.io/api/v1"
 const APOLLO_HEALTH_URL = "https://api.apollo.io/v1/auth/health"
 const MAX_LIST_FIELD_ITEMS = 50
@@ -35,7 +26,7 @@ export async function enrichApolloPerson(apiKey: string, input: ApolloPersonMatc
     if (!response.ok) {
         throw new ApolloApiError("people/match", response.status, await response.text())
     }
-    const data = peopleEnrichmentResponseSchema.parse(await response.json())
+    const data = apolloPersonMatchResponseSchema.parse(await response.json())
     return data.person ? projectPerson(data.person) : null
 }
 
@@ -62,8 +53,8 @@ export async function bulkEnrichApolloPeople(apiKey: string, people: ApolloPerso
     if (!response.ok) {
         throw new ApolloApiError("people/bulk_match", response.status, await response.text())
     }
-    const data = bulkPeopleEnrichmentResponseSchema.parse(await response.json())
-    return (data.matches ?? []).map(projectPerson)
+    const data = apolloBulkMatchResponseSchema.parse(await response.json())
+    return (data.matches ?? []).filter((match): match is z.infer<typeof apolloRawPersonSchema> => match !== null).map(projectPerson)
 }
 
 export async function enrichApolloOrganization(apiKey: string, domain: string): Promise<ApolloOrganization | null> {
@@ -75,7 +66,7 @@ export async function enrichApolloOrganization(apiKey: string, domain: string): 
     if (!response.ok) {
         throw new ApolloApiError("organizations/enrich", response.status, await response.text())
     }
-    const data = organizationEnrichmentResponseSchema.parse(await response.json())
+    const data = apolloOrganizationEnrichResponseSchema.parse(await response.json())
     return data.organization ? projectOrganization(data.organization) : null
 }
 
@@ -102,12 +93,12 @@ export async function searchApolloPeople(apiKey: string, filters: ApolloPeopleSe
     if (!response.ok) {
         throw new ApolloApiError("mixed_people/api_search", response.status, await response.text())
     }
-    const data = peopleApiSearchResponseSchema.parse(await response.json())
-    const rawPeople = data.people ?? []
+    const data = apolloPeopleSearchResponseSchema.parse(await response.json())
+    const rawPeople = [...(data.people ?? []), ...(data.contacts ?? [])]
     return {
         people: rawPeople.map(projectSearchPerson),
-        totalEntries: data.total_entries ?? rawPeople.length,
-        page,
+        totalEntries: data.pagination?.total_entries ?? data.total_entries ?? rawPeople.length,
+        page: data.pagination?.page ?? page,
         perPage
     }
 }
@@ -124,12 +115,12 @@ export async function listApolloJobPostings(apiKey: string, organizationId: stri
     if (!response.ok) {
         throw new ApolloApiError("organizations/job_postings", response.status, await response.text())
     }
-    const data = organizationJobsPostingsResponseSchema.parse(await response.json())
+    const data = apolloJobPostingsResponseSchema.parse(await response.json())
     const postings = (data.organization_job_postings ?? []).map(projectJobPosting)
     return {
         postings,
-        totalPostings: postings.length,
-        page,
+        totalPostings: data.pagination?.total_entries ?? postings.length,
+        page: data.pagination?.page ?? page,
         perPage
     }
 }
@@ -160,9 +151,9 @@ function appendAll(params: URLSearchParams, key: string, values: readonly string
     ;(values ?? []).forEach(value => params.append(key, value))
 }
 
-function projectPerson(raw: ApolloRawPerson): ApolloEnrichedPerson {
+function projectPerson(raw: z.infer<typeof apolloRawPersonSchema>): ApolloEnrichedPerson {
     return {
-        id: requireApolloId(raw.id, "person"),
+        id: raw.id,
         firstName: raw.first_name ?? null,
         lastName: raw.last_name ?? null,
         name: raw.name ?? null,
@@ -178,23 +169,23 @@ function projectPerson(raw: ApolloRawPerson): ApolloEnrichedPerson {
     }
 }
 
-function projectSearchPerson(raw: ApolloRawSearchPerson): ApolloSearchPerson {
+function projectSearchPerson(raw: z.infer<typeof apolloRawPersonSchema>): ApolloSearchPerson {
     return {
-        id: requireApolloId(raw.id, "search person"),
+        id: raw.id,
         firstName: raw.first_name ?? null,
-        lastName: raw.last_name_obfuscated ?? null,
-        name: null,
+        lastName: raw.last_name ?? raw.last_name_obfuscated ?? null,
+        name: raw.name ?? null,
         title: raw.title ?? null,
-        hasEmail: raw.has_email ?? null,
-        linkedinUrl: null,
-        city: null,
-        state: null,
-        country: null,
-        organization: raw.organization ? projectSearchOrganizationSummary(raw.organization) : null
+        hasEmail: raw.has_email ?? (raw.email ? true : null),
+        linkedinUrl: raw.linkedin_url ?? null,
+        city: raw.city ?? null,
+        state: raw.state ?? null,
+        country: raw.country ?? null,
+        organization: raw.organization ? projectOrganizationSummary(raw.organization) : null
     }
 }
 
-function projectOrganizationSummary(raw: ApolloRawOrganizationSummary): ApolloOrganizationSummary {
+function projectOrganizationSummary(raw: z.infer<typeof apolloRawOrganizationSchema>): ApolloOrganizationSummary {
     return {
         id: raw.id ?? null,
         name: raw.name ?? null,
@@ -205,18 +196,7 @@ function projectOrganizationSummary(raw: ApolloRawOrganizationSummary): ApolloOr
     }
 }
 
-function projectSearchOrganizationSummary(raw: ApolloRawSearchOrganization): ApolloOrganizationSummary {
-    return {
-        id: null,
-        name: raw.name ?? null,
-        websiteUrl: null,
-        primaryDomain: null,
-        industry: null,
-        estimatedNumEmployees: null
-    }
-}
-
-function projectOrganization(raw: ApolloRawOrganization): ApolloOrganization {
+function projectOrganization(raw: z.infer<typeof apolloRawOrganizationSchema>): ApolloOrganization {
     return {
         ...projectOrganizationSummary(raw),
         keywords: (raw.keywords ?? []).slice(0, MAX_LIST_FIELD_ITEMS),
@@ -233,26 +213,17 @@ function projectOrganization(raw: ApolloRawOrganization): ApolloOrganization {
     }
 }
 
-function projectJobPosting(raw: ApolloRawJobPosting): ApolloJobPosting {
+function projectJobPosting(raw: z.infer<typeof apolloRawJobPostingSchema>): ApolloJobPosting {
     return {
-        id: requireApolloId(raw.id, "job posting"),
+        id: raw.id,
         title: raw.title ?? null,
         url: raw.url ?? null,
-        city: optionalString(raw.city),
-        state: optionalString(raw.state),
+        city: raw.city ?? null,
+        state: raw.state ?? null,
         country: raw.country ?? null,
         postedAt: raw.posted_at ?? null,
         lastSeenAt: raw.last_seen_at ?? null
     }
-}
-
-function requireApolloId(value: string | undefined, resource: string): string {
-    if (!value) throw new Error(`Apollo returned a ${resource} without an id`)
-    return value
-}
-
-function optionalString(value: unknown): string | null {
-    return typeof value === "string" ? value : null
 }
 
 function describeApolloFailure(endpoint: string, status: number): string {
@@ -274,6 +245,89 @@ function describeApolloFailure(endpoint: string, status: number): string {
 
 const apolloHealthResponseSchema = z.object({
     is_logged_in: z.boolean().optional()
+})
+
+const apolloRawOrganizationSchema = z.object({
+    id: z.string().nullish(),
+    name: z.string().nullish(),
+    website_url: z.string().nullish(),
+    primary_domain: z.string().nullish(),
+    industry: z.string().nullish(),
+    estimated_num_employees: z.number().int().nullish(),
+    keywords: z.array(z.string()).nullish(),
+    annual_revenue_printed: z.string().nullish(),
+    total_funding_printed: z.string().nullish(),
+    latest_funding_stage: z.string().nullish(),
+    founded_year: z.number().int().nullish(),
+    city: z.string().nullish(),
+    state: z.string().nullish(),
+    country: z.string().nullish(),
+    linkedin_url: z.string().nullish(),
+    short_description: z.string().nullish(),
+    technology_names: z.array(z.string()).nullish()
+})
+
+const apolloRawPersonSchema = z.object({
+    id: z.string(),
+    first_name: z.string().nullish(),
+    last_name: z.string().nullish(),
+    last_name_obfuscated: z.string().nullish(),
+    name: z.string().nullish(),
+    title: z.string().nullish(),
+    seniority: z.string().nullish(),
+    email: z.string().nullish(),
+    email_status: z.string().nullish(),
+    has_email: z.boolean().nullish(),
+    linkedin_url: z.string().nullish(),
+    city: z.string().nullish(),
+    state: z.string().nullish(),
+    country: z.string().nullish(),
+    organization: apolloRawOrganizationSchema.nullish()
+})
+
+const apolloPersonMatchResponseSchema = z.object({
+    person: apolloRawPersonSchema.nullish()
+})
+
+const apolloBulkMatchResponseSchema = z.object({
+    matches: z.array(apolloRawPersonSchema.nullable()).nullish()
+})
+
+const apolloOrganizationEnrichResponseSchema = z.object({
+    organization: apolloRawOrganizationSchema.nullish()
+})
+
+const apolloPeopleSearchResponseSchema = z.object({
+    people: z.array(apolloRawPersonSchema).nullish(),
+    contacts: z.array(apolloRawPersonSchema).nullish(),
+    total_entries: z.number().int().nullish(),
+    pagination: z
+        .object({
+            page: z.number().int().nullish(),
+            total_entries: z.number().int().nullish()
+        })
+        .nullish()
+})
+
+const apolloRawJobPostingSchema = z.object({
+    id: z.string(),
+    title: z.string().nullish(),
+    url: z.string().nullish(),
+    city: z.string().nullish(),
+    state: z.string().nullish(),
+    country: z.string().nullish(),
+    posted_at: z.string().nullish(),
+    last_seen_at: z.string().nullish()
+})
+
+const apolloJobPostingsResponseSchema = z.object({
+    organization_job_postings: z.array(apolloRawJobPostingSchema).nullish(),
+    pagination: z
+        .object({
+            page: z.number().int().nullish(),
+            total_entries: z.number().int().nullish()
+        })
+        .nullish()
 })
 
 export class ApolloApiError extends Error {
@@ -389,10 +443,3 @@ export interface ApolloJobPostingsResult {
     page: number
     perPage: number
 }
-
-type ApolloRawPerson = NonNullable<SuccessResponseBody<"people-enrichment">["person"]> | NonNullable<NonNullable<SuccessResponseBody<"bulk-people-enrichment">["matches"]>[number]>
-type ApolloRawOrganizationSummary = NonNullable<NonNullable<SuccessResponseBody<"people-enrichment">["person"]>["organization"]>
-type ApolloRawOrganization = NonNullable<SuccessResponseBody<"organization-enrichment">["organization"]>
-type ApolloRawSearchPerson = NonNullable<SuccessResponseBody<"people-api-search">["people"]>[number]
-type ApolloRawSearchOrganization = NonNullable<ApolloRawSearchPerson["organization"]>
-type ApolloRawJobPosting = NonNullable<SuccessResponseBody<"organization-jobs-postings">["organization_job_postings"]>[number]
