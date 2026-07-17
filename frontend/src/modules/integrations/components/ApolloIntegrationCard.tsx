@@ -47,18 +47,48 @@ export default function ApolloIntegrationCard({ className, isActive = true, stat
 
     const dialog = (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
+            <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Connect Apollo</DialogTitle>
                     <DialogDescription>
-                        Use an Apollo.io API key. People search requires a master API key; enrichment works with a scoped key.{" "}
-                        <a className="underline" href="https://developer.apollo.io/keys/" target="_blank" rel="noreferrer">
-                            Create one in Apollo
+                        Create a key in Apollo under Settings &gt; Integrations &gt; API Keys.{" "}
+                        <a className="underline" href="https://developer.apollo.io/keys/#/keys" target="_blank" rel="noreferrer">
+                            Open Apollo API Keys
                         </a>
                         .
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="space-y-4">
+                    <section className="space-y-3 text-sm" aria-labelledby="apollo-permissions-heading">
+                        <div>
+                            <h3 id="apollo-permissions-heading" className="font-medium">
+                                Permissions
+                            </h3>
+                            <p className="text-muted-foreground">Add the endpoints you want to use. Finding Prospects requires a master key.</p>
+                        </div>
+                        <dl className="divide-y divide-border">
+                            <div className="space-y-1 py-2 first:pt-0">
+                                <dt className="font-medium">Enrich People</dt>
+                                <dd className="flex flex-col gap-1 text-muted-foreground">
+                                    <code className="break-all text-foreground">api/v1/people/match</code>
+                                    <code className="break-all text-foreground">api/v1/people/bulk_match</code>
+                                </dd>
+                            </div>
+                            <div className="space-y-1 py-2">
+                                <dt className="font-medium">Enrich Organization</dt>
+                                <dd className="flex flex-col gap-1 text-muted-foreground">
+                                    <code className="break-all text-foreground">api/v1/organizations/enrich</code>
+                                    <code className="break-all text-foreground">api/v1/organizations/{"{organization_id}"}/job_postings</code>
+                                </dd>
+                            </div>
+                            <div className="space-y-1 pt-2">
+                                <dt className="font-medium">Finding Prospects</dt>
+                                <dd>
+                                    <code className="break-all text-foreground">api/v1/mixed_people/api_search</code>
+                                </dd>
+                            </div>
+                        </dl>
+                    </section>
                     <div className="space-y-2">
                         <Label htmlFor="apollo-api-key">API Key</Label>
                         <div className="relative">

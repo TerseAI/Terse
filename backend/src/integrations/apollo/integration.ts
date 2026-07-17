@@ -49,20 +49,20 @@ export class ApolloIntegrationManager extends Integration<ApolloIntegration, nev
                 type: "password",
                 label: "API Key",
                 placeholder: "Enter your Apollo.io API key",
-                required: true,
-                hint: "Create an API key in Apollo under Settings > Integrations > API Keys. People search requires a master API key; enrichment works with a scoped key."
+                required: true
             }
         ]
     }
 
     getFormSetup(): FormIntegrationSetup {
         return {
-            title: "Connect Apollo",
-            url: "https://developer.apollo.io/keys/",
+            title: "Human action required: configure an Apollo API key",
+            url: "https://developer.apollo.io/keys/#/keys",
             instructions: [
-                "Create an API key in Apollo under Settings > Integrations > API Keys.",
-                "Enable it as a master key if you want people search; enrichment works with a key scoped to the enrichment endpoints.",
-                "Enrichment calls consume Apollo export credits from your plan."
+                "In Apollo, create an API key under Settings > Integrations > API Keys.",
+                "Enrich People: grant api/v1/people/match and api/v1/people/bulk_match.",
+                "Enrich Organization: grant api/v1/organizations/enrich and api/v1/organizations/{organization_id}/job_postings.",
+                "Finding Prospects: enable Set as master key for api/v1/mixed_people/api_search."
             ]
         }
     }
