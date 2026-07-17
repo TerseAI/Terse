@@ -68,6 +68,7 @@ type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         attio_config: true
         snowflake_config: true
         resend_config: true
+        apollo_config: true
     }
 }>
 export type AgentOutputWithConfigs = AutomationOutputWithConfigs // Alias for rebranding (formerly ChannelOutputWithConfigs)
@@ -109,6 +110,7 @@ type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 attio_config: true
                 snowflake_config: true
                 resend_config: true
+                apollo_config: true
             }
         }
     }

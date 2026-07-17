@@ -583,7 +583,11 @@ export async function integrateDescribe(opts: IntegrateDescribeOpts): Promise<vo
             process.stdout.write(`  ${chalk.cyan(field.name)} [${field.type}]${req}${chalk.dim(hint)}\n`)
         }
         if (payload.setup) {
-            process.stdout.write(`\nSetup: ${chalk.cyan(payload.setup.url)}\n`)
+            process.stdout.write(`\n${chalk.yellow(payload.setup.title)}\n`)
+            process.stdout.write(`${chalk.cyan(payload.setup.url)}\n`)
+            for (const instruction of payload.setup.instructions) {
+                process.stdout.write(`  ${chalk.dim("•")} ${instruction}\n`)
+            }
         }
     } else {
         process.stdout.write("OAuth — use `terse integrate connect <type>` in an interactive terminal, or open the auth URL manually and poll with `terse integrate wait`.\n")

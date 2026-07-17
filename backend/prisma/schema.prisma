@@ -171,6 +171,15 @@ model resend_integrations {
   @@index([organization_id])
 }
 
+model apollo_integrations {
+  id              String   @id @default(cuid())
+  organization_id String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([organization_id])
+}
+
 // LaunchDarkly Integration
 model launchdarkly_integrations {
   id              String   @id @default(cuid())
@@ -433,6 +442,7 @@ model automation_outputs {
   attio_config         automation_attio_configs?
   snowflake_config     automation_snowflake_configs?
   resend_config        automation_resend_output_configs?
+  apollo_config        automation_apollo_output_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -706,6 +716,15 @@ model automation_resend_output_configs {
   automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
+model automation_apollo_output_configs {
+  id                   String   @id @default(cuid())
+  automation_output_id String   @unique
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+}
+
 // GitHub Event Types
 enum GitHubEventType {
   PUSH
@@ -735,6 +754,7 @@ enum IntegrationType {
   WEBMONITOR
   HEY_REACH
   RESEND
+  APOLLO
 }
 
 enum InputConfigType {
@@ -770,6 +790,7 @@ enum OutputConfigType {
   WORKOS
   SNOWFLAKE
   RESEND
+  APOLLO
 }
 
 enum KnowledgeBaseConfigType {

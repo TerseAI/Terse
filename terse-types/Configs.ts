@@ -28,7 +28,8 @@ export enum ConfigType {
     WEBHOOK_INPUT = "webhook_input",
     WEBMONITOR = "webmonitor",
     HEY_REACH_INPUT = "hey_reach_input",
-    RESEND_OUTPUT = "resend_output"
+    RESEND_OUTPUT = "resend_output",
+    APOLLO_OUTPUT = "apollo_output"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -271,6 +272,15 @@ export const ResendOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const ApolloOutputConfigMetadata = {
+    configType: ConfigType.APOLLO_OUTPUT,
+    name: "Apollo",
+    description: "Enrich people and companies and search for prospects using Apollo.io",
+    integrationType: IntegrationType.APOLLO,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -298,7 +308,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
     [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata,
-    [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata
+    [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata,
+    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -1154,6 +1165,27 @@ export class ResendOutputConfig extends BaseConfigInstance<IntegrationType.RESEN
     }
 }
 
+export const ApolloOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.APOLLO),
+    configType: z.literal(ConfigType.APOLLO_OUTPUT)
+})
+export type ApolloOutputConfigData = z.infer<typeof ApolloOutputConfigSchema>
+export type ApolloOutputConfigInstance = ApolloOutputConfigData & ConfigBehavior
+
+export class ApolloOutputConfig extends BaseConfigInstance<IntegrationType.APOLLO, ConfigType.APOLLO_OUTPUT> implements ApolloOutputConfigInstance {
+    constructor(integrationId: string) {
+        super(integrationId, IntegrationType.APOLLO, ConfigType.APOLLO_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        return `Type: Apollo Output\nIntegration ID: ${this.integrationId}`
+    }
+}
+
 export const WebhookInputConfigSchema = ConfigInstanceSchema.extend({
     integrationId: z.literal("system"),
     integrationType: z.literal(IntegrationType.WEBHOOK),
@@ -1293,7 +1325,8 @@ export const configDataSchema = z.union([
     WebhookInputConfigSchema,
     WebMonitorConfigSchema,
     HeyReachInputConfigSchema,
-    ResendOutputConfigSchema
+    ResendOutputConfigSchema,
+    ApolloOutputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1329,7 +1362,8 @@ export const skillConfigDataSchema = z.union([
     WorkOSOutputConfigSchema,
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
-    ResendOutputConfigSchema
+    ResendOutputConfigSchema,
+    ApolloOutputConfigSchema
 ])
 export type SkillConfigData = z.infer<typeof skillConfigDataSchema>
 
@@ -1360,6 +1394,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.WORKOS_OUTPUT:
         case ConfigType.SNOWFLAKE_OUTPUT:
         case ConfigType.RESEND_OUTPUT:
+        case ConfigType.APOLLO_OUTPUT:
             return !!config.integrationId
         case ConfigType.GITHUB:
             return (config.repositoryIds?.length ?? 0) > 0
@@ -1506,6 +1541,8 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Snowflake Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.RESEND_OUTPUT:
             return `Type: Resend Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.APOLLO_OUTPUT:
+            return `Type: Apollo Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
         case ConfigType.WEBMONITOR: {
@@ -1550,6 +1587,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.WEBMONITOR]: typeof WebMonitorConfig
     [ConfigType.HEY_REACH_INPUT]: typeof HeyReachInputConfig
     [ConfigType.RESEND_OUTPUT]: typeof ResendOutputConfig
+    [ConfigType.APOLLO_OUTPUT]: typeof ApolloOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1577,5 +1615,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
     [ConfigType.WEBMONITOR]: WebMonitorConfig,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig,
-    [ConfigType.RESEND_OUTPUT]: ResendOutputConfig
+    [ConfigType.RESEND_OUTPUT]: ResendOutputConfig,
+    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfig
 } as const satisfies ConfigMetadataMap

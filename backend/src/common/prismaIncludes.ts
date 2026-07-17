@@ -27,6 +27,7 @@ export function getOutputConfigInclude() {
         workos_output_config: true,
         attio_config: true,
         snowflake_config: true,
-        resend_config: true
+        resend_config: true,
+        apollo_config: true
     } as const
 }

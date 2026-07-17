@@ -1,5 +1,6 @@
 import { OutputConfigType } from "@prisma/client"
 import {
+    ApolloOutputConfig,
     AttioOutputConfig,
     ConfigData,
     DatadogConfig,
@@ -23,6 +24,7 @@ import { IntegrationType } from "terse-types/Integrations"
 import { convertPrismaOutputConfigToConfigData } from "../../common/typeConverters"
 import { settings } from "../../settings"
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma"
+import { ApolloOutput } from "../apollo/ApolloOutput"
 import { AttioOutput } from "../attio/AttioOutput"
 import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
 import { GithubSkillOutput } from "../github/GithubSkillOutput"
@@ -65,6 +67,7 @@ export class OutputFactory {
             [OutputConfigType.WORKOS, () => new WorkOSOutput()],
             [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()],
             [OutputConfigType.RESEND, () => new ResendOutput()],
+            [OutputConfigType.APOLLO, () => new ApolloOutput()],
             [OutputConfigType.MEMORY, () => new MemoryOutput()]
         ]
         if (settings.tavily.apiKey) entries.push([OutputConfigType.WEB, () => new WebOutput()])
@@ -133,6 +136,9 @@ export class OutputFactory {
                 break
             case OutputConfigType.RESEND:
                 ;(output as Output<ResendOutputConfig>).configs = configs as ResendOutputConfig[]
+                break
+            case OutputConfigType.APOLLO:
+                ;(output as Output<ApolloOutputConfig>).configs = configs as ApolloOutputConfig[]
                 break
             default:
                 throw configType satisfies never

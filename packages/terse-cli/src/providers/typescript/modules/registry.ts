@@ -2,6 +2,7 @@ import type { ExternalIntegrationType } from "terse-types"
 import { IntegrationType } from "terse-types"
 
 import type { IntegrationModule } from "./IntegrationModule.js"
+import { ApolloModule } from "./apollo/ApolloModule.js"
 import { AttioModule } from "./attio/AttioModule.js"
 import { DatadogModule } from "./datadog/DatadogModule.js"
 import { GithubModule } from "./github/GithubModule.js"
@@ -35,7 +36,8 @@ export const integrationModuleRegistry: Record<ExternalIntegrationType, Integrat
     [IntegrationType.LAUNCHDARKLY]: new LaunchDarklyModule(),
     [IntegrationType.WORKOS]: new WorkOSModule(),
     [IntegrationType.ATTIO]: new AttioModule(),
-    [IntegrationType.SNOWFLAKE]: new SnowflakeModule()
+    [IntegrationType.SNOWFLAKE]: new SnowflakeModule(),
+    [IntegrationType.APOLLO]: new ApolloModule()
 }
 
 export const terseModule = new TerseModule()

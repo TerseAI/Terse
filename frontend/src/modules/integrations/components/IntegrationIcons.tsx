@@ -111,3 +111,7 @@ export function ResendIcon() {
         </svg>
     )
 }
+
+export function ApolloIcon() {
+    return <img src="/apollo.jpeg" alt="Apollo" className="w-full h-full object-contain" />
+}

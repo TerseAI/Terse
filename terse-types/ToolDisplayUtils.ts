@@ -947,6 +947,89 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (rowCount !== undefined) return `Query plan retrieved (${rowCount} step${rowCount !== 1 ? "s" : ""})`
             return "Query plan retrieved"
         }
+    },
+
+    // ===================
+    // Apollo Tools
+    // ===================
+    apollo_enrich_person: {
+        preparing: "Preparing person enrichment",
+        executing: params => {
+            const target = (params?.email ?? params?.name) as string | undefined
+            return target ? `Enriching ${truncate(target)}` : "Enriching person"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const person = parsed?.person as { name?: string } | null | undefined
+            if (person?.name) return `Enriched ${truncate(person.name)}`
+            if (parsed && parsed.found === false) return "No match found"
+            const target = (params?.email ?? params?.name) as string | undefined
+            return target ? `Enriched ${truncate(target)}` : "Person enrichment complete"
+        },
+        approval: params => {
+            const target = (params?.email ?? params?.name) as string | undefined
+            return target ? `Enrich ${truncate(target)} via Apollo (uses a credit)?` : "Enrich this person via Apollo (uses a credit)?"
+        }
+    },
+    apollo_bulk_enrich_people: {
+        preparing: "Preparing bulk enrichment",
+        executing: params => {
+            const people = params?.people as unknown[] | undefined
+            return people ? `Enriching ${people.length} people` : "Enriching people"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const matched = parsed?.matchedCount as number | undefined
+            const requested = parsed?.requestedCount as number | undefined
+            if (matched !== undefined && requested !== undefined) return `Enriched ${matched} of ${requested} people`
+            return "Bulk enrichment complete"
+        },
+        approval: params => {
+            const people = params?.people as unknown[] | undefined
+            return people ? `Enrich ${people.length} people via Apollo (uses credits)?` : "Bulk enrich people via Apollo (uses credits)?"
+        }
+    },
+    apollo_enrich_organization: {
+        preparing: "Preparing company enrichment",
+        executing: params => {
+            const domain = params?.domain as string | undefined
+            return domain ? `Enriching ${truncate(domain)}` : "Enriching company"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const organization = parsed?.organization as { name?: string } | null | undefined
+            if (organization?.name) return `Enriched ${truncate(organization.name)}`
+            if (parsed && parsed.found === false) return "No match found"
+            const domain = params?.domain as string | undefined
+            return domain ? `Enriched ${truncate(domain)}` : "Company enrichment complete"
+        },
+        approval: params => {
+            const domain = params?.domain as string | undefined
+            return domain ? `Enrich ${truncate(domain)} via Apollo (uses a credit)?` : "Enrich this company via Apollo (uses a credit)?"
+        }
+    },
+    apollo_search_people: {
+        preparing: "Preparing prospect search",
+        executing: () => "Searching Apollo for people",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const total = parsed?.totalEntries as number | undefined
+            if (total !== undefined) return `Found ${total} matching ${total === 1 ? "person" : "people"}`
+            return "People search complete"
+        }
+    },
+    apollo_list_job_postings: {
+        preparing: "Preparing job posting lookup",
+        executing: params => {
+            const organizationId = params?.organizationId as string | undefined
+            return organizationId ? `Loading job postings for ${truncate(organizationId)}` : "Loading job postings"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const total = parsed?.totalPostings as number | undefined
+            if (total !== undefined) return `Found ${total} job posting${total !== 1 ? "s" : ""}`
+            return "Job postings loaded"
+        }
     }
 }
 

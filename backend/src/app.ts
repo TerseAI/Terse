@@ -20,6 +20,7 @@ import authRouter from "./modules/auth/routes"
 import billingCacheInvalidationRouter from "./modules/billing/cache-invalidation/routes"
 import billingRouter from "./modules/billing/routes"
 import improvementsRouter from "./modules/improvements/routes"
+import apolloRouter from "./modules/integrations/apollo/routes"
 import { handleAttioWebhook } from "./modules/integrations/attio/controller"
 import attioRouter from "./modules/integrations/attio/routes"
 import datadogRouter from "./modules/integrations/datadog/routes"
@@ -227,6 +228,7 @@ export function createApp(options: CreateAppOptions) {
     app.use(authRouter)
     // Per-vendor integration routers (mounted at vendor-specific prefixes). Gated on
     // integration availability so unconfigured providers return a clean 404.
+    if (isIntegrationAvailable(IntegrationType.APOLLO)) app.use("/apollo", apolloRouter)
     if (isIntegrationAvailable(IntegrationType.ATTIO)) app.use("/attio", attioRouter)
     if (isIntegrationAvailable(IntegrationType.DATADOG)) app.use("/datadog", datadogRouter)
     if (isIntegrationAvailable(IntegrationType.GITHUB)) app.use("/github", githubVendorRouter)

@@ -80,6 +80,7 @@ export type {
 
 // Re-export shared types for consumer convenience
 export {
+    ApolloOutputConfig,
     AttioEventType,
     AttioInputConfig,
     AttioOutputConfig,

@@ -98,6 +98,9 @@
         "INTEGRATIONS": "/resend/integrations",
         "TEMPLATES": "/resend/templates"
     },
+    "APOLLO": {
+        "INTEGRATIONS": "/apollo/integrations"
+    },
     "AGENTS": {
         "LIST": "/agents",
         "RECENT": "/agents/recent",
