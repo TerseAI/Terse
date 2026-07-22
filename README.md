@@ -82,6 +82,18 @@ terse deploy
 
 That's it. `terse deploy` ships to the Terse Cloud data plane — no infra to stand up.
 
+## Deploy on Render
+
+For teams that want to run the self-hosted control plane on Render, this repository includes an optional Blueprint contributed in this PR. It provisions the frontend, backend, Postgres, and Redis, and generates the JWT secret automatically.
+
+<p>
+  <a href="https://render.com/deploy?repo=https://github.com/TerseAI/Terse">
+    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" />
+  </a>
+</p>
+
+After deployment, configure any provider credentials you plan to use, such as `OPENAI_API_KEY`, in the backend service's environment. OAuth integrations also require their provider callback URLs to point to the deployed backend. See the self-hosting documentation for the application-level configuration and operational considerations.
+
 ## Deployment
 
 Terse has two planes you can place independently. Most users pick one of the named tiers below.
