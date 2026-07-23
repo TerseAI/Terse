@@ -7,7 +7,7 @@ services:
     runtime: node
     region: oregon
     plan: starter
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter terse-types build && pnpm --filter backend db:generate && pnpm --filter backend build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter terse-types build && pnpm --filter backend db:generate && pnpm --filter backend build
     preDeployCommand: pnpm --filter backend exec prisma migrate deploy
     startCommand: pnpm --filter backend start
     healthCheckPath: /healthz
@@ -58,7 +58,7 @@ services:
   - type: web
     name: terse-frontend
     runtime: static
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter terse-types build && pnpm --filter frontend build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter terse-types build && pnpm --filter frontend build
     staticPublishPath: frontend/dist
     routes:
       - type: rewrite
