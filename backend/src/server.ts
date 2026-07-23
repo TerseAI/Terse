@@ -63,8 +63,10 @@ process.on("unhandledRejection", (reason: unknown) => {
     logger.error("❌ Unhandled Promise Rejection (safety net)", { error: errorMessage, stack })
 })
 
-server.listen(3001, () => {
-    logger.info("🚀 Express backend running on http://localhost:3001")
+const port = Number(process.env.PORT ?? 3001)
+
+server.listen(port, () => {
+    logger.info(`🚀 Express backend running on port ${port}`)
 })
 
 const SHUTDOWN_GRACE_MS = 25_000

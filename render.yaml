@@ -1,0 +1,86 @@
+previews:
+  generation: off
+
+services:
+  - type: web
+    name: terse-backend
+    runtime: node
+    region: oregon
+    plan: starter
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter terse-types build && pnpm --filter backend db:generate && pnpm --filter backend build
+    preDeployCommand: pnpm --filter backend exec prisma migrate deploy
+    startCommand: pnpm --filter backend start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: terse-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: terse-redis
+          type: keyvalue
+          property: connectionString
+      - key: FRONTEND_URL
+        fromService:
+          name: terse-frontend
+          type: web
+          property: host
+          protocol: https
+      - key: BACKEND_URL
+        fromService:
+          name: terse-backend
+          type: web
+          property: host
+          protocol: https
+      - key: INTERNAL_BACKEND_URL
+        fromService:
+          name: terse-backend
+          type: web
+          property: host
+          protocol: http
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  - type: keyvalue
+    name: terse-redis
+    region: oregon
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
+  - type: web
+    name: terse-frontend
+    runtime: static
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter terse-types build && pnpm --filter frontend build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: terse-backend
+          type: web
+          property: host
+          protocol: https
+      - key: VITE_BACKEND_REDIRECT_URL
+        fromService:
+          name: terse-backend
+          type: web
+          property: host
+          protocol: https
+
+databases:
+  - name: terse-postgres
+    plan: basic-256mb
+    region: oregon
+    databaseName: terse
+    user: terse
