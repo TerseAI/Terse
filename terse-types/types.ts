@@ -850,13 +850,15 @@ export const sdkInputResponsePayloadSchema = z.object({
 export type SdkInputResponsePayload = z.infer<typeof sdkInputResponsePayloadSchema>
 
 export const sdkCreateProjectRequestBodySchema = z.object({
-    name: z.string().min(1)
+    name: z.string().min(1),
+    selfHosted: z.boolean().optional()
 })
 export type SdkCreateProjectRequestBody = z.infer<typeof sdkCreateProjectRequestBodySchema>
 
 export const sdkCreateProjectResponseBodySchema = z.object({
     projectId: z.string(),
-    name: z.string()
+    name: z.string(),
+    signingSecret: z.string().optional()
 })
 export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
 

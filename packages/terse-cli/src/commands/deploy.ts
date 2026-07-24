@@ -185,7 +185,7 @@ async function tryRecoverStaleProject(error: unknown, args: { apiKey: string; co
     const proceed = await confirm({ message: `Create a new project named "${args.config.name}" and re-link this directory?`, default: false })
     if (!proceed) process.exit(1)
 
-    const newProject = await createRemoteProject(args.apiKey, args.config.name)
+    const { config: newProject } = await createRemoteProject(args.apiKey, args.config.name)
     writeProjectConfig(process.cwd(), { ...args.config, projectId: newProject.projectId })
     console.log(chalk.green(`  Re-linked to ${newProject.projectId}. Retrying deploy…\n`))
     return true

@@ -111,11 +111,11 @@ export async function handleRotateProjectApiKey(req: Request, res: Response) {
 export async function handleProjectCreate(req: Request, res: Response) {
     const user = requireUser(req, res)
     if (!user) return
-    const { name } = sdkCreateProjectRequestBodySchema.parse(req.body)
+    const { name, selfHosted } = sdkCreateProjectRequestBodySchema.parse(req.body)
     try {
-        const { projectId, name: projectName } = await createProject(name, user.organizationId)
+        const { projectId, name: projectName, signingSecret } = await createProject(name, user.organizationId, selfHosted)
         analytics.capture(user.id, AnalyticsEvent.PROJECT_CREATED, { projectId, projectName, organizationId: user.organizationId })
-        const response: SdkCreateProjectResponseBody = { projectId, name: projectName }
+        const response: SdkCreateProjectResponseBody = { projectId, name: projectName, signingSecret }
         res.status(200).json(response)
     } catch (error) {
         return handleServiceError(error, res, { name, userId: user.id })

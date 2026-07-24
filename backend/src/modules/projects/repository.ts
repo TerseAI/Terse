@@ -71,9 +71,9 @@ export async function updateProjectSigningSecret(projectId: string, signingSecre
     await db().projects.update({ where: { id: projectId }, data: { signing_secret: signingSecret } })
 }
 
-export async function createProjectRow(organizationId: string, name: string) {
+export async function createProjectRow(organizationId: string, name: string, signingSecret?: string) {
     return db().projects.create({
-        data: { name, organization_id: organizationId }
+        data: { name, organization_id: organizationId, signing_secret: signingSecret }
     })
 }
 
