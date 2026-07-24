@@ -171,11 +171,7 @@ export async function rotateProjectApiKey(projectId: string, organizationId: str
     return { projectApiKey: rawToken }
 }
 
-export async function createProject(
-    name: string,
-    organizationId: string,
-    selfHosted?: boolean
-): Promise<{ projectId: string; name: string; signingSecret?: string }> {
+export async function createProject(name: string, organizationId: string, selfHosted?: boolean): Promise<{ projectId: string; name: string; signingSecret?: string }> {
     try {
         const signingSecret = selfHosted ? generateWebhookSecret() : undefined
         const project = await createProjectRow(organizationId, name, signingSecret)

@@ -51,11 +51,7 @@ export function writeProjectConfig(cwd: string, config: TerseProjectConfig): voi
     fs.writeFileSync(filePath, serialized)
 }
 
-export async function createRemoteProject(
-    apiKey: string,
-    name: string,
-    selfHosted?: boolean
-): Promise<{ config: TerseProjectConfig; signingSecret?: string }> {
+export async function createRemoteProject(apiKey: string, name: string, selfHosted?: boolean): Promise<{ config: TerseProjectConfig; signingSecret?: string }> {
     const response = await fetchWithAuth(ApiRoutes.SDK.CREATE_PROJECT, apiKey, { name, selfHosted }, "POST")
     const parsed = sdkCreateProjectResponseBodySchema.parse(response)
     return { config: { projectId: parsed.projectId, name: parsed.name }, signingSecret: parsed.signingSecret }
