@@ -1,10 +1,9 @@
 import { confirm, intro, isCancel, log, outro } from "@clack/prompts"
 import chalk from "chalk"
-import { execFile as execFileCallback, spawn } from "node:child_process"
+import { spawn } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { promisify } from "node:util"
 import { z } from "zod"
 
 import { CliError } from "../cliError.js"
@@ -12,8 +11,6 @@ import { NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { getStoredApiKey } from "../userConfig.js"
 
 import { loginAndPersist } from "./auth.js"
-
-const execFile = promisify(execFileCallback)
 
 const REPO_SLUG = "TerseAI/Terse"
 const MARKETPLACE_URL = `https://raw.githubusercontent.com/${REPO_SLUG}/main/.claude-plugin/marketplace.json`
@@ -51,7 +48,6 @@ export async function update(): Promise<void> {
 }
 
 async function ensureGlobalCli(opts?: NonInteractiveOpts): Promise<void> {
-    if (await isOnPath("terse")) return
     if (!isNonInteractive(opts)) {
         const shouldInstall = await confirm({
             message: "Install the Terse CLI globally so `terse` works in every shell? (npm install -g terse-cli)"
@@ -65,10 +61,6 @@ async function ensureGlobalCli(opts?: NonInteractiveOpts): Promise<void> {
 }
 
 async function updateGlobalCli(): Promise<void> {
-    if (!(await isOnPath("terse"))) {
-        log.info("Terse CLI is not installed globally — skipping self-update. Run `terse install` to set it up.")
-        return
-    }
     log.step("Updating the Terse CLI")
     await runStreaming("npm", ["install", "-g", "terse-cli@latest"])
 }
@@ -166,15 +158,6 @@ async function ensureAuth(opts?: NonInteractiveOpts): Promise<void> {
         return
     }
     await loginAndPersist()
-}
-
-async function isOnPath(bin: string): Promise<boolean> {
-    try {
-        await execFile(bin, ["--version"])
-        return true
-    } catch {
-        return false
-    }
 }
 
 function readJsonFile(filePath: string): unknown {
