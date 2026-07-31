@@ -1036,6 +1036,8 @@ export const serializedEventSchema = z.object({
     eventType: TriggerTypeSchema,
     formattedContent: z.string(),
     debugLog: z.string(),
+    // Events recorded before triggeredAt existed fall back to the time they are read.
+    triggeredAt: z.iso.datetime({ offset: true }).default(() => new Date().toISOString()),
     display: serializedEventDisplaySchema.optional(),
     data: TriggerSchema
 })
@@ -1043,7 +1045,8 @@ export type SerializedEvent = z.infer<typeof serializedEventSchema>
 
 export const eventFixtureOverridesSchema = z.object({
     formattedContent: z.string().optional(),
-    debugLog: z.string().optional()
+    debugLog: z.string().optional(),
+    triggeredAt: z.iso.datetime({ offset: true }).optional()
 })
 export const eventFixtureSchema = z.intersection(TriggerSchema, eventFixtureOverridesSchema)
 export type EventFixture = z.infer<typeof eventFixtureSchema>
@@ -1056,6 +1059,7 @@ export function hydrateSerializedEvent(fixture: EventFixture): SerializedEvent {
         eventType: trigger.eventType,
         formattedContent: fixture.formattedContent ?? formatTriggerForAgent(trigger),
         debugLog: fixture.debugLog ?? debugTrigger(trigger),
+        triggeredAt: fixture.triggeredAt ?? new Date().toISOString(),
         display: displayTrigger(trigger),
         data: trigger
     }
@@ -1065,7 +1069,8 @@ export function toEventFixture(event: SerializedEvent): EventFixture {
     return {
         ...event.data,
         formattedContent: event.formattedContent,
-        debugLog: event.debugLog
+        debugLog: event.debugLog,
+        triggeredAt: event.triggeredAt
     }
 }
 

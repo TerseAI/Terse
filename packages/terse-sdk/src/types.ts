@@ -19,6 +19,8 @@ export interface ToolboxEntry {
 export type TriggerLike = { integrationType: string; eventType: string }
 
 export type SDKTrigger<TEvent extends TriggerLike = Trigger> = TEvent & {
+    /** When Terse received the trigger. Fixed for the life of the run, so it is stable across durable replays. */
+    triggeredAt: Date
     formatForAgentRunner(): string
     debugLog(): string
 }
@@ -30,6 +32,7 @@ export function createSDKTrigger(serialized: SerializedEvent): SDKTrigger {
     const transform = integrationType ? getEventTransform(integrationType) : undefined
     const data = transform ? transform(serialized.data) : serialized.data
     return Object.assign({}, data, {
+        triggeredAt: new Date(serialized.triggeredAt),
         formatForAgentRunner: () => serialized.formattedContent,
         debugLog: () => serialized.debugLog
     }) as SDKTrigger

@@ -55,12 +55,38 @@ The API token list in the app shows **user** tokens only. Short-lived project to
 
 ## Trigger payloads
 
-Trigger types exported from `./terse.generated` extend the canonical trigger object with two methods used everywhere Terse turns an event into prompts or logging:
+Trigger types exported from `./terse.generated` extend the canonical trigger object with the trigger time plus two methods used everywhere Terse turns an event into prompts or logging:
 
+- `triggeredAt` is a `Date`: the moment Terse received the trigger. See [trigger time](#trigger-time).
 - `formatForAgentRunner()` returns a string to include in agent prompts (matches how the platform formats the event for the model)
 - `debugLog()` returns a one-line description for logs and CLI sample lists
 
 Your `onTrigger` and `filter` callbacks receive these enriched objects, so you can call `event.formatForAgentRunner()` directly. For plain `Trigger` values (for example in tests), use `formatTriggerForAgent(event)` and `debugTrigger(event)` from `terse-sdk`.
+
+### Trigger time
+
+`event.triggeredAt` is the run's clock. It is stamped once when the trigger arrives, travels with the event, and is therefore identical on every read: after queue delay, after a retry, and on every durable replay of the same run. Anchor date math to it instead of `Date.now()` or `new Date()`, both of which drift between the moment the trigger fired and the moment your code reads them.
+
+```typescript
+createJob({
+    name: "Weekly search performance report",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    onTrigger: async event => {
+        const DAY_MS = 24 * 60 * 60 * 1000
+        // Search Console data lags ~3 days.
+        const end = new Date(event.triggeredAt.getTime() - 3 * DAY_MS)
+        const start = new Date(end.getTime() - 6 * DAY_MS)
+
+        const startDate = start.toISOString().slice(0, 10)
+        const endDate = end.toISOString().slice(0, 10)
+
+        // Query the reporting window with the toolbox or an agent skill.
+        console.log(`Reporting window: ${startDate} to ${endDate}`)
+    }
+})
+```
+
+To exercise window logic against a fixed date, add a top-level `triggeredAt` (an ISO 8601 timestamp) to an event fixture passed to `terse test`; it overrides the trigger time the same way `formattedContent` overrides the derived prompt text.
 
 ## `createJob(...)`
 

@@ -273,27 +273,12 @@ async function refreshAccessTokenIfNeeded(integration: PrismaGoogleSearchConsole
 
     const oauthClient = getSearchConsoleOAuth2Client()
 
-    try {
-        const tokenInfo = await oauthClient.getTokenInfo(currentAccessToken)
-        const expiresSoon = tokenInfo.expiry_date <= Date.now() + TOKEN_REFRESH_THRESHOLD_MS
-        if (expiresSoon) {
-            logger.info("Google Search Console access token is expiring soon, refreshing...", {
-                integrationId: integration.id,
-                tokenExpiry: tokenInfo.expiry_date
-            })
-        }
+    if (await isAccessTokenUsable(oauthClient, currentAccessToken, integration.id)) {
         return {
             access_token: currentAccessToken,
             refresh_token: refreshToken,
             isRefreshed: false
         }
-    } catch (error) {
-        // An expired, revoked, or otherwise invalid access token will generally
-        // cause getTokenInfo() to throw. Continue into the refresh path.
-        logger.info("Google Search Console access token is invalid or expired", {
-            integrationId: integration.id,
-            error
-        })
     }
 
     oauthClient.setCredentials({
@@ -312,5 +297,18 @@ async function refreshAccessTokenIfNeeded(integration: PrismaGoogleSearchConsole
         access_token: newAccessToken,
         refresh_token: refreshToken,
         isRefreshed: true
+    }
+}
+
+async function isAccessTokenUsable(oauthClient: OAuth2Client, accessToken: string, integrationId: string): Promise<boolean> {
+    try {
+        const tokenInfo = await oauthClient.getTokenInfo(accessToken)
+        if (tokenInfo.expiry_date > Date.now() + TOKEN_REFRESH_THRESHOLD_MS) return true
+        logger.info("Google Search Console access token is expiring soon, refreshing...", { integrationId, tokenExpiry: tokenInfo.expiry_date })
+        return false
+    } catch (error) {
+        // An expired, revoked, or otherwise invalid access token makes getTokenInfo() throw.
+        logger.info("Google Search Console access token is invalid or expired, refreshing...", { integrationId, error })
+        return false
     }
 }

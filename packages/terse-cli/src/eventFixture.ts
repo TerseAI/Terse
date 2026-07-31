@@ -35,5 +35,6 @@ const EXPECTED_FIXTURE_HINT = [
     '  "body": { "your": "payload" }',
     "}",
     'Optional top-level "formattedContent" / "debugLog" strings override the derived prompt and log text.',
+    'An optional top-level "triggeredAt" ISO 8601 timestamp pins event.triggeredAt so date windows are reproducible.',
     "Tip: `terse test show <id> --json` emits ready-to-use fixtures."
 ].join("\n")
