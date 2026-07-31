@@ -115,3 +115,7 @@ export function ResendIcon() {
 export function ApolloIcon() {
     return <img src="/apollo.jpeg" alt="Apollo" className="w-full h-full object-contain" />
 }
+
+export function GoogleSearchConsoleIcon() {
+    return <img src="/googleSearchConsoleLogo.svg" alt="Google Search Console" className="w-full h-full object-contain" />
+}

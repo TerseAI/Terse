@@ -19,7 +19,8 @@ export enum IntegrationType {
     ATTIO = "attio",
     SNOWFLAKE = "snowflake",
     WEBHOOK = "webhook",
-    WEBMONITOR = "webmonitor"
+    WEBMONITOR = "webmonitor",
+    GOOGLE_SEARCH_CONSOLE = "google_search_console"
 }
 export const integrationTypeEnum = z.enum(IntegrationType)
 
@@ -55,6 +56,14 @@ export const GmailIntegrationMetadata = {
     description: "Monitor incoming emails",
     isInput: true,
     isOutput: false
+} as const satisfies IntegrationDetails
+
+export const GoogleSearchConsoleIntegrationMetadata = {
+    type: IntegrationType.GOOGLE_SEARCH_CONSOLE,
+    name: "Google Search Console",
+    description: "Read Search Analytics data and manage connected Sites",
+    isInput: false,
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const NotionIntegrationMetadata = {
@@ -197,6 +206,7 @@ export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails>
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.GMAIL]: GmailIntegrationMetadata,
+    [IntegrationType.GOOGLE_SEARCH_CONSOLE]: GoogleSearchConsoleIntegrationMetadata,
     [IntegrationType.NOTION]: NotionIntegrationMetadata,
     [IntegrationType.LINEAR]: LinearIntegrationMetadata,
     [IntegrationType.SLACK]: SlackIntegrationMetadata,
@@ -239,6 +249,7 @@ export type AdditionalStateParams = Record<string, string>
 export const InstallationOptionsSchemas = {
     [IntegrationType.SLACK]: SlackInstallationOptionsSchema,
     [IntegrationType.GMAIL]: NoInstallationOptionsSchema,
+    [IntegrationType.GOOGLE_SEARCH_CONSOLE]: NoInstallationOptionsSchema,
     [IntegrationType.NOTION]: NoInstallationOptionsSchema,
     [IntegrationType.LINEAR]: NoInstallationOptionsSchema,
     [IntegrationType.GITHUB]: NoInstallationOptionsSchema,
@@ -272,6 +283,25 @@ export const GmailIntegrationSchema = IntegrationInstanceSchema.extend({
     watchExpiration: z.date().optional()
 })
 export type GmailIntegration = z.infer<typeof GmailIntegrationSchema>
+
+export const GoogleSearchConsoleIntegrationSchema = IntegrationInstanceSchema.extend({
+    email: z.email(),
+    googleAccountId: z.string()
+})
+export type GoogleSearchConsoleIntegration = z.infer<typeof GoogleSearchConsoleIntegrationSchema>
+
+export const googleSearchConsolePermissionLevelSchema = z.enum(["siteFullUser", "siteOwner", "siteRestrictedUser", "siteUnverifiedUser"])
+
+export const googleSearchConsoleSiteSchema = z.object({
+    siteUrl: z.string(),
+    permissionLevel: googleSearchConsolePermissionLevelSchema
+})
+export type GoogleSearchConsoleSite = z.infer<typeof googleSearchConsoleSiteSchema>
+
+export const googleSearchConsoleSitesResponseSchema = z.object({
+    sites: z.array(googleSearchConsoleSiteSchema)
+})
+export type GoogleSearchConsoleSitesResponse = z.infer<typeof googleSearchConsoleSitesResponseSchema>
 
 export const NotionIntegrationSchema = IntegrationInstanceSchema.extend({
     workspaceId: z.string().optional(),

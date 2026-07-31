@@ -28,6 +28,7 @@ import { githubAppCallbackIntegrate, githubAppUnifiedEvent } from "./modules/int
 import githubVendorRouter from "./modules/integrations/github/routes"
 import { handleGmailWebhook } from "./modules/integrations/gmail/controller"
 import gmailRouter from "./modules/integrations/gmail/routes"
+import googleSearchConsoleRouter from "./modules/integrations/googlesearchconsole/routes"
 import { handleHeyReachWebhook } from "./modules/integrations/heyreach/controller"
 import heyreachRouter from "./modules/integrations/heyreach/routes"
 import launchdarklyRouter from "./modules/integrations/launchdarkly/routes"
@@ -233,6 +234,7 @@ export function createApp(options: CreateAppOptions) {
     if (isIntegrationAvailable(IntegrationType.DATADOG)) app.use("/datadog", datadogRouter)
     if (isIntegrationAvailable(IntegrationType.GITHUB)) app.use("/github", githubVendorRouter)
     if (isIntegrationAvailable(IntegrationType.GMAIL)) app.use("/gmail", gmailRouter)
+    if (isIntegrationAvailable(IntegrationType.GOOGLE_SEARCH_CONSOLE)) app.use("/google-search-console", googleSearchConsoleRouter)
     if (isIntegrationAvailable(IntegrationType.HEY_REACH)) app.use("/heyreach", heyreachRouter)
     if (isIntegrationAvailable(IntegrationType.LAUNCHDARKLY)) app.use("/launchdarkly", launchdarklyRouter)
     if (isIntegrationAvailable(IntegrationType.LINEAR)) app.use("/linear", linearRouter)

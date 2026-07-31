@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { googleSearchConsoleSiteSchema } from "./Integrations"
 import { runHistoryActionBaseSchema } from "./RunHistoryTypes"
 import { LinearStateName } from "./TicketSystem"
 
@@ -3452,6 +3453,237 @@ export const apolloListJobPostingsTool = defineTool({
     })
 })
 
+const SITE_URL_DESCRIPTION =
+    'The Search Console property to operate on. Either a URL-prefix property including the trailing slash ("https://example.com/") or a Domain property ("sc-domain:example.com"). Must be within the properties this agent is allowed to use.'
+
+export const googleSearchConsoleIntegrationIdSchema = z.string().describe("The integration ID of the Google Search Console connection to use.")
+
+export const googleSearchConsoleListSitesTool = defineTool({
+    name: "google_search_console_list_sites",
+    description:
+        "List every Search Console property the connected Google account can access, with the account's permission level on each. Use this to discover the exact property identifier (URL-prefix or sc-domain form) to pass to the other Search Console tools. Note that the account may be able to see properties this agent is not allowed to act on.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        sites: z.array(googleSearchConsoleSiteSchema)
+    })
+})
+
+export const googleSearchConsoleGetSiteTool = defineTool({
+    name: "google_search_console_get_site",
+    description: "Retrieve one Search Console property and the connected account's permission level on it. Fails if the account has no access to the property.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION)
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        site: googleSearchConsoleSiteSchema
+    })
+})
+
+export const googleSearchConsoleAddSiteTool = defineTool({
+    name: "google_search_console_add_site",
+    description:
+        "Add a property to the connected Google account's Search Console. The property starts unverified and returns no Search Analytics data until ownership is verified out of band. Adding a property is a real change to the user's Google account, so only do it when explicitly asked.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION)
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        siteUrl: z.string()
+    })
+})
+
+export const googleSearchConsoleDeleteSiteTool = defineTool({
+    name: "google_search_console_delete_site",
+    description:
+        "Remove a property from the connected Google account's Search Console. This unlinks the account from the property and its historical Search Analytics data becomes inaccessible to this account. Destructive: confirm the exact property before calling.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION)
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        siteUrl: z.string()
+    })
+})
+
+export const googleSearchConsoleSitemapContentSchema = z.object({
+    type: z.string().nullable(),
+    submitted: z.number().nullable()
+})
+
+export const googleSearchConsoleSitemapSchema = z.object({
+    path: z.string().nullable(),
+    type: z.string().nullable(),
+    isPending: z.boolean().nullable(),
+    isSitemapsIndex: z.boolean().nullable(),
+    lastSubmitted: z.string().nullable(),
+    lastDownloaded: z.string().nullable(),
+    errors: z.number().nullable(),
+    warnings: z.number().nullable(),
+    contents: z.array(googleSearchConsoleSitemapContentSchema)
+})
+
+export const googleSearchConsoleListSitemapsTool = defineTool({
+    name: "google_search_console_list_sitemaps",
+    description:
+        "List the sitemaps Google knows about for a property, including submission time, last download time, and error and warning counts. Use this to check whether a sitemap was picked up and processed.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        sitemapIndex: z
+            .string()
+            .nullable()
+            .optional()
+            .describe('Full URL of a sitemap index file. When set, only the sitemaps contained in that index are returned, e.g. "https://example.com/sitemap_index.xml".')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        sitemaps: z.array(googleSearchConsoleSitemapSchema)
+    })
+})
+
+export const googleSearchConsoleGetSitemapTool = defineTool({
+    name: "google_search_console_get_sitemap",
+    description: "Retrieve the processing details of a single sitemap: pending state, error and warning counts, and per-content-type URL counts.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        feedpath: z.string().describe('Full URL of the sitemap, e.g. "https://example.com/sitemap.xml".')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        sitemap: googleSearchConsoleSitemapSchema
+    })
+})
+
+export const googleSearchConsoleSubmitSitemapTool = defineTool({
+    name: "google_search_console_submit_sitemap",
+    description:
+        "Submit a sitemap to Google for a property. Submission only queues the sitemap for crawling; processing results appear later via google_search_console_get_sitemap. The property must be verified and the account needs full or owner permission.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        feedpath: z.string().describe('Full URL of the sitemap to submit, e.g. "https://example.com/sitemap.xml". Must be hosted under the property.')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        feedpath: z.string()
+    })
+})
+
+export const googleSearchConsoleDeleteSitemapTool = defineTool({
+    name: "google_search_console_delete_sitemap",
+    description:
+        "Remove a sitemap submission from a property. Google stops tracking the sitemap; already-indexed URLs are not removed from the index. Destructive: confirm the exact sitemap before calling.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        feedpath: z.string().describe('Full URL of the sitemap to remove, e.g. "https://example.com/sitemap.xml".')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        feedpath: z.string()
+    })
+})
+
+export const googleSearchConsoleDimensionSchema = z.enum(["country", "device", "page", "query", "searchAppearance", "date"])
+
+export const googleSearchConsoleDimensionFilterSchema = z.object({
+    dimension: googleSearchConsoleDimensionSchema.describe("The dimension to filter on. You do not have to group by a dimension to filter on it."),
+    operator: z
+        .enum(["contains", "equals", "notContains", "notEquals", "includingRegex", "excludingRegex"])
+        .nullable()
+        .optional()
+        .describe('How to compare. Defaults to "equals". Regex operators use RE2 syntax.'),
+    expression: z.string().describe("The value to compare against. Comparisons are not case sensitive.")
+})
+
+export const googleSearchConsoleDimensionFilterGroupSchema = z.object({
+    groupType: z.enum(["and"]).nullable().optional().describe('How filters inside this group combine. Google currently only supports "and".'),
+    filters: z.array(googleSearchConsoleDimensionFilterSchema)
+})
+
+export const googleSearchConsoleSearchAnalyticsRowSchema = z.object({
+    dimensions: z.partialRecord(googleSearchConsoleDimensionSchema, z.string()).describe("The requested dimensions, keyed by dimension name. Empty when no dimensions were requested."),
+    clicks: z.number(),
+    impressions: z.number(),
+    ctr: z.number(),
+    position: z.number()
+})
+
+export const googleSearchConsoleQuerySearchAnalyticsTool = defineTool({
+    name: "google_search_console_query_search_analytics",
+    description: `Query Search Analytics for a property: clicks, impressions, CTR, and average position, optionally grouped and filtered by dimension.
+
+WHEN TO USE THIS TOOL:
+- Top queries or top pages for a date range
+- Comparing performance between two periods (run one query per period)
+- Drilling into one page, country, or device using dimensionFilterGroups
+
+IMPORTANT NOTES:
+- Dates are inclusive, YYYY-MM-DD, in PST (UTC-8). Search Console data lags by roughly 2-3 days, so a range ending today usually returns nothing for the most recent days.
+- Results are grouped in the order the dimensions are supplied, and each row's dimension values come back in the "dimensions" object keyed by dimension name.
+- Grouping or filtering by page forbids aggregationType "byProperty".
+- Google caps the result set at 25000 rows per request; page through larger result sets with startRow.
+- Anonymized queries are omitted from query-grouped results, so summing clicks across query rows will not match the property total.`,
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        startDate: z.string().describe("First day of the range, inclusive, as YYYY-MM-DD in PST."),
+        endDate: z.string().describe("Last day of the range, inclusive, as YYYY-MM-DD in PST. Must be on or after startDate."),
+        dimensions: z
+            .array(googleSearchConsoleDimensionSchema)
+            .nullable()
+            .optional()
+            .describe("Dimensions to group by, applied in the order given. Omit for a single totals row covering the whole range."),
+        dimensionFilterGroups: z.array(googleSearchConsoleDimensionFilterGroupSchema).nullable().optional().describe("Filters to apply. All groups must pass for a row to be returned."),
+        type: z.enum(["web", "image", "video", "news", "discover", "googleNews"]).nullable().optional().describe('Report type to query. Defaults to "web".'),
+        aggregationType: z.enum(["auto", "byPage", "byProperty"]).nullable().optional().describe('How data is aggregated. Defaults to "auto". Use "auto" whenever grouping or filtering by page.'),
+        rowLimit: z.number().int().min(1).max(25000).nullable().optional().describe("Maximum rows to return, 1 to 25000. Defaults to 1000."),
+        startRow: z.number().int().min(0).nullable().optional().describe("Zero-based index of the first row to return. Use with rowLimit to page through large result sets."),
+        dataState: z.enum(["final", "all"]).nullable().optional().describe('Whether to include incomplete recent data. "final" (the default) excludes it; "all" includes partial days.')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        rows: z.array(googleSearchConsoleSearchAnalyticsRowSchema),
+        responseAggregationType: z.string().nullable(),
+        firstIncompleteDate: z
+            .string()
+            .nullable()
+            .describe('First date whose data is still being collected, so values from it onward may change. Only populated when dataState is "all" and the results are grouped by date.')
+    })
+})
+
+export const googleSearchConsoleIndexStatusSchema = z.object({
+    verdict: z.string().nullable(),
+    coverageState: z.string().nullable(),
+    robotsTxtState: z.string().nullable(),
+    indexingState: z.string().nullable(),
+    pageFetchState: z.string().nullable(),
+    lastCrawlTime: z.string().nullable(),
+    crawledAs: z.string().nullable(),
+    googleCanonical: z.string().nullable(),
+    userCanonical: z.string().nullable(),
+    referringUrls: z.array(z.string()),
+    sitemap: z.array(z.string())
+})
+
+export const googleSearchConsoleInspectUrlTool = defineTool({
+    name: "google_search_console_inspect_url",
+    description:
+        "Inspect Google's index status for one URL under a property: whether it is indexed, the canonical Google picked, robots.txt and fetch state, last crawl time, and which sitemaps reference it. Use this to diagnose why a specific page is not appearing in search. The URL must sit under the property being inspected.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        inspectionUrl: z.string().describe("The fully-qualified URL to inspect. Must be under the property given in siteUrl."),
+        languageCode: z.string().nullable().optional().describe('BCP-47 language code for issue messages, e.g. "en-US". Defaults to "en-US".')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        inspectionResultLink: z.string().nullable().describe("Link to the same inspection in the Search Console UI."),
+        indexStatus: googleSearchConsoleIndexStatusSchema.nullable(),
+        mobileUsabilityVerdict: z.string().nullable(),
+        richResultsVerdict: z.string().nullable(),
+        ampVerdict: z.string().nullable()
+    })
+})
+
 export const ToolDefinitions = {
     [linearCreateTicketTool.name]: linearCreateTicketTool,
     [linearUpdateTicketTool.name]: linearUpdateTicketTool,
@@ -3539,7 +3771,17 @@ export const ToolDefinitions = {
     [apolloBulkEnrichPeopleTool.name]: apolloBulkEnrichPeopleTool,
     [apolloEnrichOrganizationTool.name]: apolloEnrichOrganizationTool,
     [apolloSearchPeopleTool.name]: apolloSearchPeopleTool,
-    [apolloListJobPostingsTool.name]: apolloListJobPostingsTool
+    [apolloListJobPostingsTool.name]: apolloListJobPostingsTool,
+    [googleSearchConsoleListSitesTool.name]: googleSearchConsoleListSitesTool,
+    [googleSearchConsoleGetSiteTool.name]: googleSearchConsoleGetSiteTool,
+    [googleSearchConsoleAddSiteTool.name]: googleSearchConsoleAddSiteTool,
+    [googleSearchConsoleDeleteSiteTool.name]: googleSearchConsoleDeleteSiteTool,
+    [googleSearchConsoleListSitemapsTool.name]: googleSearchConsoleListSitemapsTool,
+    [googleSearchConsoleGetSitemapTool.name]: googleSearchConsoleGetSitemapTool,
+    [googleSearchConsoleSubmitSitemapTool.name]: googleSearchConsoleSubmitSitemapTool,
+    [googleSearchConsoleDeleteSitemapTool.name]: googleSearchConsoleDeleteSitemapTool,
+    [googleSearchConsoleQuerySearchAnalyticsTool.name]: googleSearchConsoleQuerySearchAnalyticsTool,
+    [googleSearchConsoleInspectUrlTool.name]: googleSearchConsoleInspectUrlTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

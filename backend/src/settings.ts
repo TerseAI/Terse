@@ -106,6 +106,14 @@ export const settings = {
         pubsubServiceAccountEmail: optionalEnv("GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL")
     })),
 
+    // Google Search Console OAuth — opt-in. Shares the Gmail OAuth client credentials, so it needs
+    // its own redirect URI registered on that same client to land on the Search Console callback.
+    googleSearchConsole: optionalIntegrationSettings(["GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GOOGLE_SEARCH_CONSOLE_REDIRECT_URI"], () => ({
+        clientId: requireEnv("GMAIL_CLIENT_ID"),
+        clientSecret: requireEnv("GMAIL_CLIENT_SECRET"),
+        redirectUri: requireEnv("GOOGLE_SEARCH_CONSOLE_REDIRECT_URI")
+    })),
+
     // GitHub App (for repository integration and OAuth) — opt-in
     githubApp: optionalIntegrationSettings(["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "GITHUB_APP_CALLBACK_URL", "GITHUB_APP_NAME"], () => ({
         clientId: requireEnv("GITHUB_CLIENT_ID"),

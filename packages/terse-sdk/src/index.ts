@@ -93,6 +93,7 @@ export {
     GmailDraftOutputConfig,
     GmailEventType,
     GmailOutputConfig,
+    GoogleSearchConsoleOutputConfig,
     HeyReachEventType,
     HeyReachInputConfig,
     ImageEditConfig,

@@ -76,6 +76,10 @@ export const gmailIntegrationsKey = (): readonly [string] => {
     return ["gmailIntegrations"] as const
 }
 
+export const googleSearchConsoleIntegrationsKey = (): readonly [string] => {
+    return ["googleSearchConsoleIntegrations"] as const
+}
+
 export const githubIntegrationsKey = (): readonly [string] => {
     return ["githubIntegrations"] as const
 }

@@ -20,6 +20,7 @@ import {
     DatadogIntegration,
     GithubIntegration,
     GmailIntegration,
+    GoogleSearchConsoleIntegration,
     HeyReachIntegration,
     InstallationOptionsFor,
     IntegrationType,
@@ -162,6 +163,11 @@ interface BackendService {
      * Gets all Gmail integrations for the current user
      */
     getGmailIntegrations(): Promise<GmailIntegration[]>
+
+    /**
+     * Gets all Google Search Console integrations for the current user
+     */
+    getGoogleSearchConsoleIntegrations(): Promise<GoogleSearchConsoleIntegration[]>
 
     /**
      * Gets all GitHub integrations for the current user
@@ -692,6 +698,10 @@ export const BackendProvider: BackendService = {
 
     getGmailIntegrations: () => {
         return axios.get<GmailIntegration[]>(`${backendBaseUrl}${ApiRoutes.GMAIL.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getGoogleSearchConsoleIntegrations: () => {
+        return axios.get<GoogleSearchConsoleIntegration[]>(`${backendBaseUrl}${ApiRoutes.GOOGLE_SEARCH_CONSOLE.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
     getGithubIntegrations: () => {

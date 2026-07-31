@@ -7,6 +7,7 @@ import {
     GitHubConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
+    GoogleSearchConsoleConfigData,
     ImageEditConfig,
     LaunchDarklyConfig,
     LinearOutputConfig,
@@ -30,6 +31,7 @@ import { DatadogSkillOutput } from "../datadog/DatadogSkillOutput"
 import { GithubSkillOutput } from "../github/GithubSkillOutput"
 import { GmailDraftOutput } from "../gmail/GmailDraftOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
+import { GoogleSearchConsoleOutput } from "../google_search_console/GoogleSearchConsoleOutput"
 import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
 import { NotionOutput } from "../notion/NotionOutput"
@@ -68,6 +70,7 @@ export class OutputFactory {
             [OutputConfigType.SNOWFLAKE, () => new SnowflakeSkillOutput()],
             [OutputConfigType.RESEND, () => new ResendOutput()],
             [OutputConfigType.APOLLO, () => new ApolloOutput()],
+            [OutputConfigType.GOOGLE_SEARCH_CONSOLE, () => new GoogleSearchConsoleOutput()],
             [OutputConfigType.MEMORY, () => new MemoryOutput()]
         ]
         if (settings.tavily.apiKey) entries.push([OutputConfigType.WEB, () => new WebOutput()])
@@ -139,6 +142,9 @@ export class OutputFactory {
                 break
             case OutputConfigType.APOLLO:
                 ;(output as Output<ApolloOutputConfig>).configs = configs as ApolloOutputConfig[]
+                break
+            case OutputConfigType.GOOGLE_SEARCH_CONSOLE:
+                ;(output as Output<GoogleSearchConsoleConfigData>).configs = configs as GoogleSearchConsoleConfigData[]
                 break
             default:
                 throw configType satisfies never

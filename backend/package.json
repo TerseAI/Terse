@@ -43,6 +43,7 @@
         "@google-cloud/storage": "^7.14.0",
         "@google/genai": "^1.42.0",
         "@googleapis/gmail": "^16.1.1",
+        "@googleapis/searchconsole": "^6.0.1",
         "@linear/sdk": "^45.3.0",
         "@notionhq/client": "^5.4.0",
         "@octokit/rest": "^22.0.1",

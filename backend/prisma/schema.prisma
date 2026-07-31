@@ -113,6 +113,19 @@ model processed_gmail_messages {
   @@index([processed_at])
 }
 
+model google_search_console_integrations {
+  id                String   @id @default(cuid())
+  user_id           String
+  organization_id   String
+  email             String
+  google_account_id String
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([organization_id, google_account_id])
+}
+
 model processed_slack_events {
   id                   String   @id @default(cuid())
   slack_integration_id String
@@ -444,6 +457,8 @@ model automation_outputs {
   resend_config        automation_resend_output_configs?
   apollo_config        automation_apollo_output_configs?
 
+  google_search_console_config automation_google_search_console_configs?
+
   @@index([automation_id])
   @@index([config_type, integration_id])
 }
@@ -595,6 +610,19 @@ model automation_gmail_configs {
 
   automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+}
+
+// Google Search Console Configuration
+model automation_google_search_console_configs {
+  id                   String @id @default(cuid())
+  automation_output_id String @unique // FK to automation_outputs (unique constraint)
+
+  site_urls String[] @default([]) // Allowed Search Console properties, URL-prefix or sc-domain form
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
 // Attio Configuration
@@ -755,6 +783,7 @@ enum IntegrationType {
   HEY_REACH
   RESEND
   APOLLO
+  GOOGLE_SEARCH_CONSOLE
 }
 
 enum InputConfigType {
@@ -791,6 +820,7 @@ enum OutputConfigType {
   SNOWFLAKE
   RESEND
   APOLLO
+  GOOGLE_SEARCH_CONSOLE
 }
 
 enum KnowledgeBaseConfigType {

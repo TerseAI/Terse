@@ -6,6 +6,7 @@ import { CronJobIntegrationManager } from "../cronJob/integration"
 import { DatadogIntegrationManager } from "../datadog/integration"
 import { GithubIntegrationManager } from "../github/integration"
 import { GmailIntegrationManager } from "../gmail/integration"
+import { GoogleSearchConsoleIntegrationManager } from "../googlesearchconsole/integration"
 import { HeyReachIntegrationManager } from "../heyreach/integration"
 import { LaunchDarklyIntegrationManager } from "../launchdarkly/integration"
 import { LinearIntegrationManager } from "../linear/integration"
@@ -45,7 +46,8 @@ function buildIntegrationTuple() {
         new SnowflakeIntegrationManager(),
         new HeyReachIntegrationManager(),
         new ResendIntegrationManager(),
-        new ApolloIntegrationManager()
+        new ApolloIntegrationManager(),
+        new GoogleSearchConsoleIntegrationManager()
     ] as const satisfies readonly IntegrationWithInstallation[]
 }
 

@@ -42,6 +42,11 @@
         "CALLBACK": "/gmail/callback",
         "DELETE_INTEGRATION": "/gmail/delete-integration"
     },
+    "GOOGLE_SEARCH_CONSOLE": {
+        "INTEGRATIONS": "/google-search-console/integrations",
+        "CALLBACK": "/google-search-console/callback",
+        "SITES": "/google-search-console/sites"
+    },
     "NOTION": {
         "INTEGRATIONS": "/notion/integrations",
         "OAUTH_CALLBACK": "/notion/oauth/callback",

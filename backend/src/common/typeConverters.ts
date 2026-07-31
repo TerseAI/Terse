@@ -11,6 +11,7 @@ import {
     GmailConfig,
     GmailDraftOutputConfig,
     GmailOutputConfig,
+    GoogleSearchConsoleOutputConfig,
     HeyReachEventType,
     HeyReachInputConfig,
     ImageEditConfig,
@@ -39,94 +40,6 @@ import { RunHistoryStatus as SharedRunHistoryStatus } from "terse-types/RunHisto
 import { Timezone, timezoneSchema } from "terse-types/Timezones"
 
 import { AgentOutputWithConfigs, AgentTriggerWithConfigs } from "../types/prisma"
-
-const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
-    switch (integrationType) {
-        case IntegrationType.GITHUB:
-            return PrismaIntegrationType.GITHUB
-        case IntegrationType.GMAIL:
-            return PrismaIntegrationType.GMAIL
-        case IntegrationType.LINEAR:
-            return PrismaIntegrationType.LINEAR
-        case IntegrationType.SLACK:
-            return PrismaIntegrationType.SLACK
-        case IntegrationType.NOTION:
-            return PrismaIntegrationType.NOTION
-        case IntegrationType.TERSE:
-            return PrismaIntegrationType.TERSE
-        case IntegrationType.POSTHOG:
-            return PrismaIntegrationType.POSTHOG
-        case IntegrationType.CRON_JOB:
-            return PrismaIntegrationType.CRON_JOB
-        case IntegrationType.LAUNCHDARKLY:
-            return PrismaIntegrationType.LAUNCHDARKLY
-        case IntegrationType.DATADOG:
-            return PrismaIntegrationType.DATADOG
-        case IntegrationType.WORKOS:
-            return PrismaIntegrationType.WORKOS
-        case IntegrationType.ATTIO:
-            return PrismaIntegrationType.ATTIO
-        case IntegrationType.SNOWFLAKE:
-            return PrismaIntegrationType.SNOWFLAKE
-        case IntegrationType.WEBHOOK:
-            return PrismaIntegrationType.WEBHOOK
-        case IntegrationType.WEBMONITOR:
-            return PrismaIntegrationType.WEBMONITOR
-        case IntegrationType.HEY_REACH:
-            return PrismaIntegrationType.HEY_REACH
-        case IntegrationType.RESEND:
-            return PrismaIntegrationType.RESEND
-        case IntegrationType.APOLLO:
-            return PrismaIntegrationType.APOLLO
-        default:
-            throw integrationType satisfies never
-    }
-}
-
-const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationType: PrismaIntegrationType): IntegrationType => {
-    switch (prismaIntegrationType) {
-        case PrismaIntegrationType.GITHUB:
-            return IntegrationType.GITHUB
-        case PrismaIntegrationType.GMAIL:
-            return IntegrationType.GMAIL
-        case PrismaIntegrationType.LINEAR:
-            return IntegrationType.LINEAR
-        case PrismaIntegrationType.SLACK:
-            return IntegrationType.SLACK
-        case PrismaIntegrationType.NOTION:
-        case PrismaIntegrationType.NOTION_PAGE:
-            // Both NOTION and NOTION_PAGE map to NOTION in shared enum
-            return IntegrationType.NOTION
-        case PrismaIntegrationType.TERSE:
-            return IntegrationType.TERSE
-        case PrismaIntegrationType.POSTHOG:
-            return IntegrationType.POSTHOG
-        case PrismaIntegrationType.CRON_JOB:
-            return IntegrationType.CRON_JOB
-        case PrismaIntegrationType.LAUNCHDARKLY:
-            return IntegrationType.LAUNCHDARKLY
-        case PrismaIntegrationType.DATADOG:
-            return IntegrationType.DATADOG
-        case PrismaIntegrationType.WORKOS:
-            return IntegrationType.WORKOS
-        case PrismaIntegrationType.ATTIO:
-            return IntegrationType.ATTIO
-        case PrismaIntegrationType.SNOWFLAKE:
-            return IntegrationType.SNOWFLAKE
-        case PrismaIntegrationType.WEBHOOK:
-            return IntegrationType.WEBHOOK
-        case PrismaIntegrationType.WEBMONITOR:
-            return IntegrationType.WEBMONITOR
-        case PrismaIntegrationType.HEY_REACH:
-            return IntegrationType.HEY_REACH
-        case PrismaIntegrationType.RESEND:
-            return IntegrationType.RESEND
-        case PrismaIntegrationType.APOLLO:
-            return IntegrationType.APOLLO
-        default:
-            throw prismaIntegrationType satisfies never
-    }
-}
 
 // Convert IntegrationType to Prisma IntegrationType (for run history)
 export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -167,6 +80,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.RESEND
         case IntegrationType.APOLLO:
             return PrismaIntegrationType.APOLLO
+        case IntegrationType.GOOGLE_SEARCH_CONSOLE:
+            return PrismaIntegrationType.GOOGLE_SEARCH_CONSOLE
         default:
             throw integrationType satisfies never
     }
@@ -213,6 +128,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.RESEND
         case PrismaIntegrationType.APOLLO:
             return IntegrationType.APOLLO
+        case PrismaIntegrationType.GOOGLE_SEARCH_CONSOLE:
+            return IntegrationType.GOOGLE_SEARCH_CONSOLE
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -371,6 +288,10 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
         return new GmailOutputConfig(integrationId)
     }
 
+    if (channelOutput.google_search_console_config) {
+        return new GoogleSearchConsoleOutputConfig(integrationId, channelOutput.google_search_console_config.site_urls ?? [])
+    }
+
     if (channelOutput.attio_config) {
         return new AttioOutputConfig(integrationId, channelOutput.attio_config.object_slug)
     }
@@ -423,6 +344,7 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
         case OutputConfigType.LAUNCHDARKLY:
         case OutputConfigType.GMAIL_DRAFT:
         case OutputConfigType.ATTIO:
+        case OutputConfigType.GOOGLE_SEARCH_CONSOLE:
             break
         default:
             throw channelOutput.config_type satisfies never
@@ -488,40 +410,10 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("RESEND_OUTPUT is an output type, not an input type")
         case ConfigType.APOLLO_OUTPUT:
             throw new Error("APOLLO_OUTPUT is an output type, not an input type")
+        case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
+            throw new Error("GOOGLE_SEARCH_CONSOLE_OUTPUT is an output type, not an input type")
         default:
             throw configType satisfies never
-    }
-}
-
-const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigType): ConfigType => {
-    switch (inputConfigType) {
-        case InputConfigType.GMAIL:
-            return ConfigType.GMAIL
-        case InputConfigType.SLACK:
-            return ConfigType.SLACK
-        case InputConfigType.NOTION_PAGE:
-        case InputConfigType.NOTION_DATABASE:
-            return ConfigType.NOTION
-        case InputConfigType.LINEAR:
-            return ConfigType.LINEAR_INPUT
-        case InputConfigType.GITHUB:
-            return ConfigType.GITHUB
-        case InputConfigType.POSTHOG:
-            return ConfigType.POSTHOG
-        case InputConfigType.TIME_TRIGGER:
-            return ConfigType.TIME_TRIGGER
-        case InputConfigType.WORKOS_INPUT:
-            return ConfigType.WORKOS_INPUT
-        case InputConfigType.WEBHOOK_INPUT:
-            return ConfigType.WEBHOOK_INPUT
-        case InputConfigType.WEBMONITOR:
-            return ConfigType.WEBMONITOR
-        case InputConfigType.HEY_REACH_INPUT:
-            return ConfigType.HEY_REACH_INPUT
-        case InputConfigType.ATTIO_INPUT:
-            return ConfigType.ATTIO_INPUT
-        default:
-            throw inputConfigType satisfies never
     }
 }
 
@@ -564,6 +456,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.RESEND
         case ConfigType.APOLLO_OUTPUT:
             return OutputConfigType.APOLLO
+        case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
+            return OutputConfigType.GOOGLE_SEARCH_CONSOLE
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }

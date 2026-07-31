@@ -9,6 +9,7 @@ import {
     DatadogIcon,
     GithubIcon,
     GmailIcon,
+    GoogleSearchConsoleIcon,
     HeyReachIcon,
     LaunchDarklyIcon,
     LinearIcon,
@@ -68,6 +69,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <ResendIcon />
         case ConfigType.APOLLO_OUTPUT:
             return <ApolloIcon />
+        case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
+            return <GoogleSearchConsoleIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -111,6 +114,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <ResendIcon />
         case IntegrationType.APOLLO:
             return <ApolloIcon />
+        case IntegrationType.GOOGLE_SEARCH_CONSOLE:
+            return <GoogleSearchConsoleIcon />
         default:
             throw integration satisfies never
     }

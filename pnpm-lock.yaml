@@ -66,6 +66,9 @@ importers:
       '@googleapis/gmail':
         specifier: ^16.1.1
         version: 16.1.1
+      '@googleapis/searchconsole':
+        specifier: ^6.0.1
+        version: 6.0.1
       '@linear/sdk':
         specifier: ^45.3.0
         version: 45.3.0
@@ -1534,6 +1537,10 @@ packages:
 
   '@googleapis/gmail@16.1.1':
     resolution: {integrity: sha512-XFMMJvhpEoKzwBOHYrcbBu/jHS+8Aer5YmbMUsrZeJgXAbTD6K7K6+/1RJczXIqDoBzVDdECm4WtjAcvEHPLVg==}
+    engines: {node: '>=12.0.0'}
+
+  '@googleapis/searchconsole@6.0.1':
+    resolution: {integrity: sha512-aSBv0yp9HV9BgqX3bUj2DRY2kaIwcoN6ift+fKwPXj8eMoccJZzceQNshxt44V2ECkqwn7gvVEXVYTkw6zaTeQ==}
     engines: {node: '>=12.0.0'}
 
   '@graphql-typed-document-node/core@3.2.0':
@@ -9502,6 +9509,12 @@ snapshots:
       - utf-8-validate
 
   '@googleapis/gmail@16.1.1':
+    dependencies:
+      googleapis-common: 8.0.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@googleapis/searchconsole@6.0.1':
     dependencies:
       googleapis-common: 8.0.1
     transitivePeerDependencies:

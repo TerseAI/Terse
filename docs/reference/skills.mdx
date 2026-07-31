@@ -240,13 +240,13 @@ Lead and company enrichment plus prospect search via [Apollo.io](https://www.apo
 skills: [Skills.apollo()]
 ```
 
-| Tool                       | Description                                               | Access |
-| -------------------------- | --------------------------------------------------------- | ------ |
-| `apolloEnrichPerson`       | Enrich a person by Apollo ID, email, or name + domain     | Read   |
-| `apolloBulkEnrichPeople`   | Enrich up to 10 people in one call                        | Read   |
-| `apolloEnrichOrganization` | Enrich a company by domain (firmographics)                | Read   |
-| `apolloSearchPeople`       | Search for people by title, seniority, location, company  | Read   |
-| `apollo_list_job_postings` | List a company's active job postings as a hiring signal   | Read   |
+| Tool                       | Description                                              | Access |
+| -------------------------- | -------------------------------------------------------- | ------ |
+| `apolloEnrichPerson`       | Enrich a person by Apollo ID, email, or name + domain    | Read   |
+| `apolloBulkEnrichPeople`   | Enrich up to 10 people in one call                       | Read   |
+| `apolloEnrichOrganization` | Enrich a company by domain (firmographics)               | Read   |
+| `apolloSearchPeople`       | Search for people by title, seniority, location, company | Read   |
+| `apollo_list_job_postings` | List a company's active job postings as a hiring signal  | Read   |
 
 Credit and key notes:
 
@@ -254,6 +254,37 @@ Credit and key notes:
 - `apolloSearchPeople` consumes no credits but requires the connected key to be an Apollo **master API key**, and its results never include emails — pass result `id`s to `apolloBulkEnrichPeople` to unlock contact data.
 - `apollo_list_job_postings` works with any Apollo key but consumes credits **per page returned** — fetch one large page (up to 500 postings) instead of paging in small steps. Postings carry title/URL/location/date metadata only, no descriptions.
 - Personal emails are only returned when `revealPersonalEmails` is set, and Apollo suppresses them for people in GDPR regions.
+
+## Google Search Console
+
+Read Search Analytics and manage the properties and sitemaps of a connected Google account.
+
+```ts
+skills: [Skills.googleSearchConsole({ sites: [GoogleSearchConsoleSite.DomainAcmeCom] })]
+```
+
+`terse generate` writes one `GoogleSearchConsoleSite` static per property the connected account can access, so you reference properties by name instead of pasting identifiers.
+
+| Tool                                           | Description                                               | Access |
+| ---------------------------------------------- | --------------------------------------------------------- | ------ |
+| `google_search_console_list_sites`             | List every property the connected account can access      | Read   |
+| `google_search_console_get_site`               | Get one property and the account's permission level on it | Read   |
+| `google_search_console_add_site`               | Add a property to the connected account                   | Write  |
+| `google_search_console_delete_site`            | Remove a property from the connected account              | Write  |
+| `google_search_console_list_sitemaps`          | List the sitemaps Google knows about for a property       | Read   |
+| `google_search_console_get_sitemap`            | Get one sitemap's processing state, errors, and warnings  | Read   |
+| `google_search_console_submit_sitemap`         | Submit a sitemap for crawling                             | Write  |
+| `google_search_console_delete_sitemap`         | Remove a sitemap submission                               | Write  |
+| `google_search_console_query_search_analytics` | Query clicks, impressions, CTR, and position by dimension | Read   |
+| `google_search_console_inspect_url`            | Inspect Google's index status for one URL                 | Read   |
+
+Property and data notes:
+
+- A property is either a **URL-prefix** property (`https://example.com/`, trailing slash included) or a **Domain** property (`sc-domain:example.com`).
+- The properties you pass to the skill are the only ones the agent may act on, except `google_search_console_list_sites`, which lists everything the account can see. A Domain property also covers its subdomains.
+- Search Analytics dates are inclusive `YYYY-MM-DD` in PST and the data lags by roughly 2-3 days, so the most recent days come back empty rather than as zero traffic.
+- Query-grouped results omit anonymized queries, so their clicks will not sum to the property total.
+- Submitting a sitemap only queues it. Check the outcome later with `google_search_console_get_sitemap`.
 
 ## Web (built-in)
 

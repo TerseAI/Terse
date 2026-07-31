@@ -7,6 +7,7 @@ import { AttioModule } from "./attio/AttioModule.js"
 import { DatadogModule } from "./datadog/DatadogModule.js"
 import { GithubModule } from "./github/GithubModule.js"
 import { GmailModule } from "./gmail/GmailModule.js"
+import { GoogleSearchConsoleModule } from "./google_search_console/GoogleSearchConsoleModule.js"
 import { HeyReachModule } from "./hey_reach/HeyReachModule.js"
 import { LaunchDarklyModule } from "./launchdarkly/LaunchDarklyModule.js"
 import { LinearModule } from "./linear/LinearModule.js"
@@ -37,7 +38,8 @@ export const integrationModuleRegistry: Record<ExternalIntegrationType, Integrat
     [IntegrationType.WORKOS]: new WorkOSModule(),
     [IntegrationType.ATTIO]: new AttioModule(),
     [IntegrationType.SNOWFLAKE]: new SnowflakeModule(),
-    [IntegrationType.APOLLO]: new ApolloModule()
+    [IntegrationType.APOLLO]: new ApolloModule(),
+    [IntegrationType.GOOGLE_SEARCH_CONSOLE]: new GoogleSearchConsoleModule()
 }
 
 export const terseModule = new TerseModule()

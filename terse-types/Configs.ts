@@ -29,7 +29,8 @@ export enum ConfigType {
     WEBMONITOR = "webmonitor",
     HEY_REACH_INPUT = "hey_reach_input",
     RESEND_OUTPUT = "resend_output",
-    APOLLO_OUTPUT = "apollo_output"
+    APOLLO_OUTPUT = "apollo_output",
+    GOOGLE_SEARCH_CONSOLE_OUTPUT = "google_search_console_output"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -281,6 +282,15 @@ export const ApolloOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const GoogleSearchConsoleOutputConfigMetadata = {
+    configType: ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT,
+    name: "Google Search Console",
+    description: "Manage Google Search Console",
+    integrationType: IntegrationType.GOOGLE_SEARCH_CONSOLE,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -309,7 +319,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata,
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata,
-    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfigMetadata
+    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfigMetadata,
+    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -640,6 +651,31 @@ export class NotionConfig extends BaseConfigInstance<IntegrationType.NOTION, Con
             parts.push(`Pages: ${pageIds.map((id, i) => pageNames[i] || id).join(", ")}`)
         }
         return parts.join("\n")
+    }
+}
+
+export const GoogleSearchConsoleConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.GOOGLE_SEARCH_CONSOLE),
+    configType: z.literal(ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT),
+    siteUrls: z.array(z.string()).default([])
+})
+export type GoogleSearchConsoleConfigData = z.infer<typeof GoogleSearchConsoleConfigSchema>
+export type GoogleSearchConsoleConfigInstance = GoogleSearchConsoleConfigData & ConfigBehavior
+
+export class GoogleSearchConsoleOutputConfig extends BaseConfigInstance<IntegrationType.GOOGLE_SEARCH_CONSOLE, ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT> implements GoogleSearchConsoleConfigInstance {
+    constructor(
+        integrationId: string,
+        public siteUrls: string[] = []
+    ) {
+        super(integrationId, IntegrationType.GOOGLE_SEARCH_CONSOLE, ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return (this.siteUrls?.length ?? 0) > 0
+    }
+
+    formatForAgent(): string {
+        return `Type: Google Search Console\nIntegration ID: ${this.integrationId}\nAllowed properties: ${this.siteUrls.join(", ")}`
     }
 }
 
@@ -1326,7 +1362,8 @@ export const configDataSchema = z.union([
     WebMonitorConfigSchema,
     HeyReachInputConfigSchema,
     ResendOutputConfigSchema,
-    ApolloOutputConfigSchema
+    ApolloOutputConfigSchema,
+    GoogleSearchConsoleConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1363,7 +1400,8 @@ export const skillConfigDataSchema = z.union([
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
     ResendOutputConfigSchema,
-    ApolloOutputConfigSchema
+    ApolloOutputConfigSchema,
+    GoogleSearchConsoleConfigSchema
 ])
 export type SkillConfigData = z.infer<typeof skillConfigDataSchema>
 
@@ -1389,6 +1427,8 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
             return !!(config.channelId || (config.userIds?.length ?? 0) > 0 || config.listenToUserDms)
         case ConfigType.NOTION:
             return (config.databaseIds?.length ?? 0) > 0 || (config.pageIds?.length ?? 0) > 0
+        case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
+            return (config.siteUrls?.length ?? 0) > 0
         case ConfigType.LINEAR_OUTPUT:
         case ConfigType.DATADOG:
         case ConfigType.WORKOS_OUTPUT:
@@ -1447,6 +1487,8 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Gmail Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.GMAIL_DRAFT_OUTPUT:
             return `Type: Gmail Draft Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
+            return `Type: Google Search Console\nIntegration ID: ${config.integrationId}\nAllowed properties: ${config.siteUrls.join(", ")}`
         case ConfigType.NOTION: {
             const parts = [`Type: Notion`, `Integration ID: ${config.integrationId}`]
             const dbIds = config.databaseIds ?? []
@@ -1588,6 +1630,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.HEY_REACH_INPUT]: typeof HeyReachInputConfig
     [ConfigType.RESEND_OUTPUT]: typeof ResendOutputConfig
     [ConfigType.APOLLO_OUTPUT]: typeof ApolloOutputConfig
+    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: typeof GoogleSearchConsoleOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1616,5 +1659,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.WEBMONITOR]: WebMonitorConfig,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig,
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfig,
-    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfig
+    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfig,
+    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfig
 } as const satisfies ConfigMetadataMap
