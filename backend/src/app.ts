@@ -34,6 +34,7 @@ import heyreachRouter from "./modules/integrations/heyreach/routes"
 import launchdarklyRouter from "./modules/integrations/launchdarkly/routes"
 import { handleLinearWebhook } from "./modules/integrations/linear/controller"
 import linearRouter from "./modules/integrations/linear/routes"
+import metaAdsRouter from "./modules/integrations/metaAds/routes"
 import notionRouter from "./modules/integrations/notion/routes"
 import posthogRouter from "./modules/integrations/posthog/routes"
 import resendRouter from "./modules/integrations/resend/routes"
@@ -238,6 +239,7 @@ export function createApp(options: CreateAppOptions) {
     if (isIntegrationAvailable(IntegrationType.HEY_REACH)) app.use("/heyreach", heyreachRouter)
     if (isIntegrationAvailable(IntegrationType.LAUNCHDARKLY)) app.use("/launchdarkly", launchdarklyRouter)
     if (isIntegrationAvailable(IntegrationType.LINEAR)) app.use("/linear", linearRouter)
+    if (isIntegrationAvailable(IntegrationType.META_ADS)) app.use("/meta-ads", metaAdsRouter)
     if (isIntegrationAvailable(IntegrationType.NOTION)) app.use("/notion", notionRouter)
     if (isIntegrationAvailable(IntegrationType.POSTHOG)) app.use("/posthog", posthogRouter)
     if (isIntegrationAvailable(IntegrationType.RESEND)) app.use("/resend", resendRouter)

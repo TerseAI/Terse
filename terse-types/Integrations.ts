@@ -20,7 +20,8 @@ export enum IntegrationType {
     SNOWFLAKE = "snowflake",
     WEBHOOK = "webhook",
     WEBMONITOR = "webmonitor",
-    GOOGLE_SEARCH_CONSOLE = "google_search_console"
+    GOOGLE_SEARCH_CONSOLE = "google_search_console",
+    META_ADS = "meta_ads"
 }
 export const integrationTypeEnum = z.enum(IntegrationType)
 
@@ -186,6 +187,14 @@ export const HeyReachIntegrationMetadata = {
     isOutput: false
 } as const satisfies IntegrationDetails
 
+export const MetaAdsIntegrationMetadata = {
+    type: IntegrationType.META_ADS,
+    name: "Meta Ads",
+    description: "Read Meta ad campaign performance, sync custom audiences, and send offline conversions",
+    isInput: false,
+    isOutput: true
+} as const satisfies IntegrationDetails
+
 export const ResendIntegrationMetadata = {
     type: IntegrationType.RESEND,
     name: "Resend",
@@ -223,7 +232,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.WEBMONITOR]: WebMonitorIntegrationMetadata,
     [IntegrationType.HEY_REACH]: HeyReachIntegrationMetadata,
     [IntegrationType.RESEND]: ResendIntegrationMetadata,
-    [IntegrationType.APOLLO]: ApolloIntegrationMetadata
+    [IntegrationType.APOLLO]: ApolloIntegrationMetadata,
+    [IntegrationType.META_ADS]: MetaAdsIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -265,7 +275,8 @@ export const InstallationOptionsSchemas = {
     [IntegrationType.WEBMONITOR]: NoInstallationOptionsSchema,
     [IntegrationType.HEY_REACH]: NoInstallationOptionsSchema,
     [IntegrationType.RESEND]: NoInstallationOptionsSchema,
-    [IntegrationType.APOLLO]: NoInstallationOptionsSchema
+    [IntegrationType.APOLLO]: NoInstallationOptionsSchema,
+    [IntegrationType.META_ADS]: NoInstallationOptionsSchema
 } as const satisfies Record<IntegrationType, z.ZodTypeAny>
 
 export type InstallationOptionsFor<T extends IntegrationType> = z.infer<(typeof InstallationOptionsSchemas)[T]>
@@ -381,6 +392,20 @@ export const SnowflakeIntegrationSchema = IntegrationInstanceSchema.extend({
     schemaName: z.string().optional()
 })
 export type SnowflakeIntegration = z.infer<typeof SnowflakeIntegrationSchema>
+
+export const MetaAdsIntegrationSchema = IntegrationInstanceSchema.extend({
+    accountName: z.string().optional()
+})
+export type MetaAdsIntegration = z.infer<typeof MetaAdsIntegrationSchema>
+
+export const MetaAdsAdAccountSchema = z.object({
+    id: z.string(),
+    accountId: z.string(),
+    name: z.string(),
+    currency: z.string().optional(),
+    accountStatus: z.number().optional()
+})
+export type MetaAdsAdAccount = z.infer<typeof MetaAdsAdAccountSchema>
 
 export const CliIntegrationDisplayStateSchema = z.discriminatedUnion("status", [
     z.object({

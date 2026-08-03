@@ -30,7 +30,8 @@ export enum ConfigType {
     HEY_REACH_INPUT = "hey_reach_input",
     RESEND_OUTPUT = "resend_output",
     APOLLO_OUTPUT = "apollo_output",
-    GOOGLE_SEARCH_CONSOLE_OUTPUT = "google_search_console_output"
+    GOOGLE_SEARCH_CONSOLE_OUTPUT = "google_search_console_output",
+    META_ADS_OUTPUT = "meta_ads_output"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -273,6 +274,15 @@ export const ResendOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const MetaAdsOutputConfigMetadata = {
+    configType: ConfigType.META_ADS_OUTPUT,
+    name: "Meta Ads",
+    description: "Read campaign performance, sync custom audiences, and send offline conversions to Meta Ads",
+    integrationType: IntegrationType.META_ADS,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export const ApolloOutputConfigMetadata = {
     configType: ConfigType.APOLLO_OUTPUT,
     name: "Apollo",
@@ -320,7 +330,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata,
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata,
     [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfigMetadata,
-    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfigMetadata
+    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfigMetadata,
+    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -1201,6 +1212,35 @@ export class ResendOutputConfig extends BaseConfigInstance<IntegrationType.RESEN
     }
 }
 
+export const MetaAdsOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.META_ADS),
+    configType: z.literal(ConfigType.META_ADS_OUTPUT),
+    adAccountId: z.string().nullable()
+})
+export type MetaAdsOutputConfigData = z.infer<typeof MetaAdsOutputConfigSchema>
+export type MetaAdsOutputConfigInstance = MetaAdsOutputConfigData & ConfigBehavior
+
+export class MetaAdsOutputConfig extends BaseConfigInstance<IntegrationType.META_ADS, ConfigType.META_ADS_OUTPUT> implements MetaAdsOutputConfigInstance {
+    constructor(
+        integrationId: string,
+        public adAccountId: string | null = null
+    ) {
+        super(integrationId, IntegrationType.META_ADS, ConfigType.META_ADS_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Meta Ads Output`, `Integration ID: ${this.integrationId}`]
+        if (this.adAccountId) {
+            parts.push(`Ad Account: ${this.adAccountId}`)
+        }
+        return parts.join("\n")
+    }
+}
+
 export const ApolloOutputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.APOLLO),
     configType: z.literal(ConfigType.APOLLO_OUTPUT)
@@ -1363,7 +1403,8 @@ export const configDataSchema = z.union([
     HeyReachInputConfigSchema,
     ResendOutputConfigSchema,
     ApolloOutputConfigSchema,
-    GoogleSearchConsoleConfigSchema
+    GoogleSearchConsoleConfigSchema,
+    MetaAdsOutputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1401,7 +1442,8 @@ export const skillConfigDataSchema = z.union([
     SnowflakeOutputConfigSchema,
     ResendOutputConfigSchema,
     ApolloOutputConfigSchema,
-    GoogleSearchConsoleConfigSchema
+    GoogleSearchConsoleConfigSchema,
+    MetaAdsOutputConfigSchema
 ])
 export type SkillConfigData = z.infer<typeof skillConfigDataSchema>
 
@@ -1435,6 +1477,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.SNOWFLAKE_OUTPUT:
         case ConfigType.RESEND_OUTPUT:
         case ConfigType.APOLLO_OUTPUT:
+        case ConfigType.META_ADS_OUTPUT:
             return !!config.integrationId
         case ConfigType.GITHUB:
             return (config.repositoryIds?.length ?? 0) > 0
@@ -1585,6 +1628,11 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Resend Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.APOLLO_OUTPUT:
             return `Type: Apollo Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.META_ADS_OUTPUT: {
+            const parts = [`Type: Meta Ads Output`, `Integration ID: ${config.integrationId}`]
+            if (config.adAccountId) parts.push(`Ad Account: ${config.adAccountId}`)
+            return parts.join("\n")
+        }
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
         case ConfigType.WEBMONITOR: {
@@ -1631,6 +1679,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.RESEND_OUTPUT]: typeof ResendOutputConfig
     [ConfigType.APOLLO_OUTPUT]: typeof ApolloOutputConfig
     [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: typeof GoogleSearchConsoleOutputConfig
+    [ConfigType.META_ADS_OUTPUT]: typeof MetaAdsOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1660,5 +1709,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig,
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfig,
     [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfig,
-    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfig
+    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfig,
+    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfig
 } as const satisfies ConfigMetadataMap

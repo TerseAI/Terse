@@ -1,0 +1,16 @@
+{{sectionHeader "Meta Ads resources"}}
+
+{{> resource-class section.adAccountClass}}
+
+{{#if toolFile}}
+{{sectionHeader "Meta Ads tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Meta Ads skill"}}
+
+/** Meta Ads — read campaign performance, sync custom audiences, send offline conversions. Optionally scope to a default ad account. */
+export function metaAdsSkill(opts?: { adAccount?: MetaAdsAdAccount }): TypedSkill<{{{section.skillToolType}}}> {
+    return new MetaAdsOutputConfig("{{escape section.id}}", opts?.adAccount?.accountId ?? null)
+}

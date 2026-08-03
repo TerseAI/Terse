@@ -12,6 +12,7 @@ import GoogleSearchConsoleIntegrationCard from "./GoogleSearchConsoleIntegration
 import HeyReachIntegrationCard from "./HeyReachIntegrationCard"
 import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard"
 import LinearIntegrationCard from "./LinearIntegrationCard"
+import MetaAdsIntegrationCard from "./MetaAdsIntegrationCard"
 import NotionIntegrationCard from "./NotionIntegrationCard"
 import PosthogIntegrationCard from "./PosthogIntegrationCard"
 import ResendIntegrationCard from "./ResendIntegrationCard"
@@ -56,6 +57,8 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <ResendIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.APOLLO:
             return <ApolloIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.META_ADS:
+            return <MetaAdsIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:
         case IntegrationType.WEBMONITOR:
             return null

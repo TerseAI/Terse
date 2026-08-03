@@ -13,6 +13,7 @@ import {
     HeyReachIcon,
     LaunchDarklyIcon,
     LinearIcon,
+    MetaAdsIcon,
     NotionIcon,
     PosthogIcon,
     ResendIcon,
@@ -71,6 +72,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <ApolloIcon />
         case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
             return <GoogleSearchConsoleIcon />
+        case ConfigType.META_ADS_OUTPUT:
+            return <MetaAdsIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -116,6 +119,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <ApolloIcon />
         case IntegrationType.GOOGLE_SEARCH_CONSOLE:
             return <GoogleSearchConsoleIcon />
+        case IntegrationType.META_ADS:
+            return <MetaAdsIcon />
         default:
             throw integration satisfies never
     }

@@ -72,6 +72,7 @@ type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         resend_config: true
         apollo_config: true
         google_search_console_config: true
+        meta_ads_config: true
     }
 }>
 export type AgentOutputWithConfigs = AutomationOutputWithConfigs // Alias for rebranding (formerly ChannelOutputWithConfigs)
@@ -115,6 +116,7 @@ type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 resend_config: true
                 apollo_config: true
                 google_search_console_config: true
+                meta_ads_config: true
             }
         }
     }

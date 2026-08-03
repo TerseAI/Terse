@@ -12,6 +12,7 @@ import {
     LaunchDarklyConfig,
     LinearOutputConfig,
     MemoryConfig,
+    MetaAdsOutputConfig,
     NotionConfig,
     PosthogConfig,
     ResendOutputConfig,
@@ -34,6 +35,7 @@ import { GmailOutput } from "../gmail/GmailOutput"
 import { GoogleSearchConsoleOutput } from "../google_search_console/GoogleSearchConsoleOutput"
 import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
+import { MetaAdsOutput } from "../metaAds/MetaAdsOutput"
 import { NotionOutput } from "../notion/NotionOutput"
 import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
 import { ResendOutput } from "../resend/ResendOutput"
@@ -71,6 +73,7 @@ export class OutputFactory {
             [OutputConfigType.RESEND, () => new ResendOutput()],
             [OutputConfigType.APOLLO, () => new ApolloOutput()],
             [OutputConfigType.GOOGLE_SEARCH_CONSOLE, () => new GoogleSearchConsoleOutput()],
+            [OutputConfigType.META_ADS, () => new MetaAdsOutput()],
             [OutputConfigType.MEMORY, () => new MemoryOutput()]
         ]
         if (settings.tavily.apiKey) entries.push([OutputConfigType.WEB, () => new WebOutput()])
@@ -142,6 +145,9 @@ export class OutputFactory {
                 break
             case OutputConfigType.APOLLO:
                 ;(output as Output<ApolloOutputConfig>).configs = configs as ApolloOutputConfig[]
+                break
+            case OutputConfigType.META_ADS:
+                ;(output as Output<MetaAdsOutputConfig>).configs = configs as MetaAdsOutputConfig[]
                 break
             case OutputConfigType.GOOGLE_SEARCH_CONSOLE:
                 ;(output as Output<GoogleSearchConsoleConfigData>).configs = configs as GoogleSearchConsoleConfigData[]

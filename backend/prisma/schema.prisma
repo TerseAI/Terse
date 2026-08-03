@@ -184,6 +184,17 @@ model resend_integrations {
   @@index([organization_id])
 }
 
+model meta_ads_integrations {
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([organization_id])
+}
+
 model apollo_integrations {
   id              String   @id @default(cuid())
   organization_id String
@@ -456,6 +467,7 @@ model automation_outputs {
   snowflake_config     automation_snowflake_configs?
   resend_config        automation_resend_output_configs?
   apollo_config        automation_apollo_output_configs?
+  meta_ads_config      automation_meta_ads_configs?
 
   google_search_console_config automation_google_search_console_configs?
 
@@ -753,6 +765,16 @@ model automation_apollo_output_configs {
   automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
+model automation_meta_ads_configs {
+  id                   String   @id @default(cuid())
+  automation_output_id String   @unique
+  ad_account_id        String?
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+}
+
 // GitHub Event Types
 enum GitHubEventType {
   PUSH
@@ -784,6 +806,7 @@ enum IntegrationType {
   RESEND
   APOLLO
   GOOGLE_SEARCH_CONSOLE
+  META_ADS
 }
 
 enum InputConfigType {
@@ -821,6 +844,7 @@ enum OutputConfigType {
   RESEND
   APOLLO
   GOOGLE_SEARCH_CONSOLE
+  META_ADS
 }
 
 enum KnowledgeBaseConfigType {

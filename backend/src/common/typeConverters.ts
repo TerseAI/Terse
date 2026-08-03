@@ -20,6 +20,7 @@ import {
     LinearInputConfig,
     LinearOutputConfig,
     MemoryConfig,
+    MetaAdsOutputConfig,
     NotionConfig,
     PosthogConfig,
     ResendOutputConfig,
@@ -82,6 +83,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.APOLLO
         case IntegrationType.GOOGLE_SEARCH_CONSOLE:
             return PrismaIntegrationType.GOOGLE_SEARCH_CONSOLE
+        case IntegrationType.META_ADS:
+            return PrismaIntegrationType.META_ADS
         default:
             throw integrationType satisfies never
     }
@@ -130,6 +133,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.APOLLO
         case PrismaIntegrationType.GOOGLE_SEARCH_CONSOLE:
             return IntegrationType.GOOGLE_SEARCH_CONSOLE
+        case PrismaIntegrationType.META_ADS:
+            return IntegrationType.META_ADS
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -328,6 +333,10 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
         return new ResendOutputConfig(integrationId)
     }
 
+    if (channelOutput.config_type === OutputConfigType.META_ADS) {
+        return new MetaAdsOutputConfig(integrationId, channelOutput.meta_ads_config?.ad_account_id ?? null)
+    }
+
     if (channelOutput.config_type === OutputConfigType.APOLLO) {
         return new ApolloOutputConfig(integrationId)
     }
@@ -412,6 +421,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("APOLLO_OUTPUT is an output type, not an input type")
         case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
             throw new Error("GOOGLE_SEARCH_CONSOLE_OUTPUT is an output type, not an input type")
+        case ConfigType.META_ADS_OUTPUT:
+            throw new Error("META_ADS_OUTPUT is an output type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -458,6 +469,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.APOLLO
         case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
             return OutputConfigType.GOOGLE_SEARCH_CONSOLE
+        case ConfigType.META_ADS_OUTPUT:
+            return OutputConfigType.META_ADS
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }
