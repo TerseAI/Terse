@@ -222,6 +222,33 @@ Generation is asynchronous and the tool waits for it to finish, so a call can ta
 
 Every call spends Higgsfield credits, so the tool is marked as a write and can be gated behind approval. Use `batchSize: 4` when you want variants to compare, and match `size` to the placement: a landscape size such as `2048x1152` for feed ads, a portrait size such as `1152x2048` for stories.
 
+### Getting credentials
+
+Higgsfield uses a key pair rather than OAuth, so there is no browser consent step. You paste the credentials once and Terse stores them as a write-only secret.
+
+1. Sign in at [cloud.higgsfield.ai](https://cloud.higgsfield.ai) with email, Google, Apple, or Microsoft. This is the dashboard. `platform.higgsfield.ai` is the API endpoint itself and has no sign-up page, so do not go there looking for keys.
+2. Open the API keys section of the dashboard and generate a new key.
+3. Higgsfield issues **two** values: a **Key ID** and a **Key Secret**. Copy both before you leave the page.
+4. Make sure the account has credits. Every generation spends them, and an empty balance fails the call rather than returning a lower-quality image.
+
+Then connect it. The two values go in as a **single colon-joined string**, `KEY_ID:KEY_SECRET`, with no spaces, no quotes, and without the literal word `Key` that appears in Higgsfield's own `Authorization: Key ...` header examples. Terse splits on the colon and sends each half as the API expects.
+
+In the console, open the Higgsfield card and paste it into the one field.
+
+From the CLI, pass it on stdin rather than as a flag so the secret never reaches your shell history or the process list:
+
+```bash
+terse integrate connect higgsfield --fields-stdin <<<'{"credentials":"KEY_ID:KEY_SECRET"}'
+```
+
+`terse integrate describe higgsfield --json` prints the expected field, and `terse integrate disconnect higgsfield` removes the stored credentials.
+
+Terse validates the pair immediately by making one authenticated read against Higgsfield, so a bad paste is rejected at connect time with the reason, rather than surfacing later as a failed job.
+
+<Note>
+    The Key Secret is a credential with spend attached: anyone holding it can burn your Higgsfield credits. Terse stores it write-only, meaning no API, tool, or agent can read it back after it is saved. Rotate it in the Higgsfield dashboard and reconnect if you suspect it leaked.
+</Note>
+
 ## Snowflake
 
 Read-only SQL query execution.

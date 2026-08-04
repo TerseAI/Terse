@@ -54,7 +54,7 @@ export async function generateHiggsfieldImages(credentials: string, request: Hig
 
 export class HiggsfieldCredentialsError extends Error {
     constructor() {
-        super('Higgsfield credentials must be in "KEY_ID:KEY_SECRET" form.')
+        super('Higgsfield credentials must be the Key ID and Key Secret joined by a colon, as in "KEY_ID:KEY_SECRET". Generate a key at https://cloud.higgsfield.ai and paste both values.')
         this.name = "HiggsfieldCredentialsError"
     }
 }

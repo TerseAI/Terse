@@ -82,11 +82,11 @@ export function AttioIcon() {
 }
 
 export function HiggsfieldIcon() {
-    return <img src="/Higgsfield.svg" alt="Higgsfield" className="w-full h-full object-contain dark:invert" />
+    return <img src="/higgsfieldIcon.png" alt="Higgsfield" className="w-full h-full object-contain dark:invert" />
 }
 
 export function MetaAdsIcon() {
-    return <img src="/MetaAds.svg" alt="Meta Ads" className="w-full h-full object-contain" />
+    return <img src="/metaLogo.png" alt="Meta Ads" className="w-full h-full object-contain" />
 }
 
 export function SnowflakeIcon() {
@@ -125,5 +125,5 @@ export function ApolloIcon() {
 }
 
 export function GoogleSearchConsoleIcon() {
-    return <img src="/googleSearchConsoleLogo.svg" alt="Google Search Console" className="w-full h-full object-contain" />
+    return <img src="/googleSearchConsoleLogo.png" alt="Google Search Console" className="w-full h-full object-contain" />
 }

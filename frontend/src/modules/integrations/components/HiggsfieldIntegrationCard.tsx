@@ -51,16 +51,16 @@ export default function HiggsfieldIntegrationCard({ className, isActive = true, 
                 <DialogHeader>
                     <DialogTitle>Connect Higgsfield</DialogTitle>
                     <DialogDescription>
-                        Paste your key id and secret joined by a colon.{" "}
-                        <a className="underline" href="https://platform.higgsfield.ai" target="_blank" rel="noreferrer">
-                            Create one in Higgsfield
+                        Generate a key in the API keys section of the{" "}
+                        <a className="underline" href="https://cloud.higgsfield.ai" target="_blank" rel="noreferrer">
+                            Higgsfield dashboard
                         </a>
-                        .
+                        . It gives you a Key ID and a Key Secret. Paste them below as one string joined by a colon, with no spaces. Generation spends Higgsfield credits.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="higgsfield-credentials">API Credentials</Label>
+                        <Label htmlFor="higgsfield-credentials">Key ID and Key Secret</Label>
                         <div className="relative">
                             <Input
                                 id="higgsfield-credentials"
