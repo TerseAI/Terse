@@ -82,7 +82,7 @@ export function AttioIcon() {
 }
 
 export function HiggsfieldIcon() {
-    return <img src="/higgsfieldIcon.png" alt="Higgsfield" className="w-full h-full object-contain dark:invert" />
+    return <img src="/higgsfieldIcon.png" alt="Higgsfield" className="w-full h-full object-contain" />
 }
 
 export function MetaAdsIcon() {
