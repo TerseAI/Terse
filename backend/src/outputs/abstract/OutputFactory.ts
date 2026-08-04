@@ -8,11 +8,11 @@ import {
     GmailDraftOutputConfig,
     GmailOutputConfig,
     GoogleSearchConsoleConfigData,
+    HiggsfieldOutputConfig,
     ImageEditConfig,
     LaunchDarklyConfig,
     LinearOutputConfig,
     MemoryConfig,
-    HiggsfieldOutputConfig,
     MetaAdsOutputConfig,
     NotionConfig,
     PosthogConfig,
@@ -34,9 +34,9 @@ import { GithubSkillOutput } from "../github/GithubSkillOutput"
 import { GmailDraftOutput } from "../gmail/GmailDraftOutput"
 import { GmailOutput } from "../gmail/GmailOutput"
 import { GoogleSearchConsoleOutput } from "../google_search_console/GoogleSearchConsoleOutput"
+import { HiggsfieldOutput } from "../higgsfield/HiggsfieldOutput"
 import { LaunchDarklySkillOutput } from "../launchdarkly/LaunchDarklySkillOutput"
 import { LinearTicketOutput } from "../linear/LinearTicketOutput"
-import { HiggsfieldOutput } from "../higgsfield/HiggsfieldOutput"
 import { MetaAdsOutput } from "../metaAds/MetaAdsOutput"
 import { NotionOutput } from "../notion/NotionOutput"
 import { PosthogSkillOutput } from "../posthog/PosthogSkillOutput"
