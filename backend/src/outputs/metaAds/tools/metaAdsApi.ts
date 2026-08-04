@@ -7,7 +7,9 @@ import { MetaAdsIntegrationManager } from "../../../integrations/metaAds/integra
 import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
 import { formatError } from "../../../tools/toolUtils"
 
-export function metaAdsToolExecute<TName extends MetaAdsToolName>(toolName: TName, handler: (request: ToolInputByName[TName]["request"], accessToken: string) => Promise<ToolOutputByName[TName]>) {
+import { MetaAdsClient } from "./metaAdsClient"
+
+export function metaAdsToolExecute<TName extends MetaAdsToolName>(toolName: TName, handler: (request: ToolInputByName[TName]["request"], client: MetaAdsClient) => Promise<ToolOutputByName[TName]>) {
     return async (input: ToolInputByName[TName], runContext?: RunContext<SessionWithTracking<Session>>): Promise<ToolOutputByName[TName]> => {
         logger.debug(`Executing ${toolName} tool`, { integrationId: input.integrationId })
         if (!runContext?.context) {
@@ -17,7 +19,7 @@ export function metaAdsToolExecute<TName extends MetaAdsToolName>(toolName: TNam
         const accessToken = await resolveMetaAdsAccessToken(input.integrationId, runContext)
 
         try {
-            return await handler(input.request, accessToken)
+            return await handler(input.request, new MetaAdsClient(accessToken))
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext, error)
             logger.error(`Error executing ${toolName}`, { error: errorMessage, integrationId: input.integrationId })

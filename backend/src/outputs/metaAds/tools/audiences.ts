@@ -6,7 +6,7 @@ import { z } from "zod"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 import { metaAdsToolExecute } from "./metaAdsApi"
-import { buildMetaQuery, hashEmail, hashPhone, metaGraphList, metaGraphRequest, toActPath } from "./metaAdsGraph"
+import { MetaAdsClient, hashEmail, hashPhone, toActPath } from "./metaAdsClient"
 
 export const metaAdsReadAudiencesTool = defineSessionTool({
     name: "meta_ads_read_audiences",
@@ -18,12 +18,14 @@ export const metaAdsUpdateAudienceUsersTool = defineSessionTool({
     execute: metaAdsToolExecute("meta_ads_update_audience_users", executeUpdateAudienceUsersRequest)
 })
 
-async function executeReadAudiencesRequest(request: MetaAdsReadAudiencesRequest, accessToken: string): Promise<MetaAdsReadAudiencesOutput> {
-    const query = buildMetaQuery({
-        fields: "id,name,subtype,approximate_count_lower_bound,approximate_count_upper_bound,delivery_status",
-        limit: request.limit ?? 100
-    })
-    const audiences = await metaGraphList(accessToken, `/${toActPath(request.adAccountId)}/customaudiences${query}`, metaAdsCustomAudienceSchema, "custom audiences")
+const CUSTOM_AUDIENCE_FIELDS = ["id", "name", "subtype", "approximate_count_lower_bound", "approximate_count_upper_bound", "delivery_status"]
+
+async function executeReadAudiencesRequest(request: MetaAdsReadAudiencesRequest, client: MetaAdsClient): Promise<MetaAdsReadAudiencesOutput> {
+    const audiences = await client.collect(
+        () => client.adAccount(request.adAccountId).getCustomAudiences(CUSTOM_AUDIENCE_FIELDS, { limit: request.limit ?? 100 }),
+        metaAdsCustomAudienceSchema,
+        "custom audiences"
+    )
     return {
         success: true,
         audiences,
@@ -46,12 +48,14 @@ const audienceUsersResponseSchema = z.object({
     num_invalid_entries: z.number().optional()
 })
 
-async function executeUpdateAudienceUsersRequest(request: MetaAdsUpdateAudienceUsersRequest, accessToken: string): Promise<MetaAdsUpdateAudienceUsersOutput> {
+async function executeUpdateAudienceUsersRequest(request: MetaAdsUpdateAudienceUsersRequest, client: MetaAdsClient): Promise<MetaAdsUpdateAudienceUsersOutput> {
     const payload = buildHashedUsersPayload(request.users)
-    const response = await metaGraphRequest(accessToken, `/${encodeURIComponent(request.audienceId)}/users`, audienceUsersResponseSchema, "audience users update", {
-        method: request.action === "add" ? "POST" : "DELETE",
-        body: { payload }
-    })
+    const audience = client.customAudience(request.audienceId)
+    const response = await client.runParsed(
+        () => (request.action === "add" ? audience.createUser([], { payload }) : audience.deleteUsers({ payload })),
+        audienceUsersResponseSchema,
+        "audience users update"
+    )
 
     const verb = request.action === "add" ? "Added" : "Removed"
     return {

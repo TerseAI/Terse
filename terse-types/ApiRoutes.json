@@ -103,6 +103,9 @@
         "INTEGRATIONS": "/resend/integrations",
         "TEMPLATES": "/resend/templates"
     },
+    "HIGGSFIELD": {
+        "INTEGRATIONS": "/higgsfield/integrations"
+    },
     "META_ADS": {
         "INTEGRATIONS": "/meta-ads/integrations",
         "OAUTH_CALLBACK": "/meta-ads/oauth/callback",

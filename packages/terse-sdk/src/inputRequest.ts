@@ -1,4 +1,12 @@
-import type { SdkInputRequestDelivery, SdkInputRequestOption, SdkInputRequestRegisterBody, SdkInputRequestTarget, SdkInputResponsePayload, SdkInputResponseTransport } from "terse-types"
+import type {
+    SdkInputRequestDelivery,
+    SdkInputRequestImage,
+    SdkInputRequestOption,
+    SdkInputRequestRegisterBody,
+    SdkInputRequestTarget,
+    SdkInputResponsePayload,
+    SdkInputResponseTransport
+} from "terse-types"
 import { ApiRoutes, buildRoute, sdkInputRequestRegisterResponseSchema, sdkInputResponsePayloadSchema } from "terse-types"
 import { createHook } from "workflow"
 
@@ -43,8 +51,12 @@ export type WaitForInputParams<Options extends readonly InputOption[], Target ex
     via: Target
     prompt: string
     details?: Record<string, string>
+    /** Images to show alongside the prompt. URLs must be reachable by the delivery provider, which fetches them itself. */
+    images?: readonly InputImage[]
     options: Options
 }
+
+export type InputImage = { url: string; altText?: string }
 
 export function waitForInput<const Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
@@ -115,6 +127,7 @@ async function registerInputRequest(token: string, params: WaitForInputParams<re
         token,
         prompt: params.prompt,
         details: params.details,
+        images: params.images?.map(image => ({ url: image.url, altText: image.altText })),
         options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
         via: params.via,
         transport
@@ -136,6 +149,7 @@ async function deliverInputRequestStep(request: {
     token: string
     prompt: string
     details?: Record<string, string>
+    images?: SdkInputRequestImage[]
     options: SdkInputRequestOption[]
     via: InputTarget
     transport: SdkInputResponseTransport
@@ -150,6 +164,7 @@ async function deliverInputRequestStep(request: {
         runId,
         prompt: request.prompt,
         details: request.details,
+        images: request.images,
         options: request.options,
         via: request.via,
         transport: request.transport

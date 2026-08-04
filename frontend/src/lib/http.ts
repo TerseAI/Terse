@@ -30,6 +30,7 @@ import {
     MetaAdsIntegration,
     NotionIntegration,
     PosthogIntegration,
+    HiggsfieldIntegration,
     ResendIntegration,
     SlackIntegration,
     SnowflakeIntegration,
@@ -304,6 +305,8 @@ interface BackendService {
      */
     createOrUpdateHeyReachIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
 
+    getHiggsfieldIntegrations(): Promise<HiggsfieldIntegration[]>
+    createOrUpdateHiggsfieldIntegration(credentials: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
     getResendIntegrations(): Promise<ResendIntegration[]>
     createOrUpdateResendIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
 
@@ -856,6 +859,16 @@ export const BackendProvider: BackendService = {
             body.state = stateToken
         }
         return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
+    },
+
+    getHiggsfieldIntegrations: () => {
+        return axios.get<HiggsfieldIntegration[]>(`${backendBaseUrl}${ApiRoutes.HIGGSFIELD.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    createOrUpdateHiggsfieldIntegration: (credentials: string, stateToken?: string) => {
+        const body: Record<string, string> = { credentials }
+        if (stateToken) body.state = stateToken
+        return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.HIGGSFIELD.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
     },
 
     getResendIntegrations: () => {

@@ -132,6 +132,16 @@ function buildInputRequestBlocks(jobName: string, body: SdkInputRequestRegisterB
         }
     ]
 
+    // Images go above the details so a reviewer sees what they are approving
+    // before reading the copy that goes with it.
+    body.images?.forEach(image => {
+        blocks.push({
+            type: "image",
+            image_url: image.url,
+            alt_text: image.altText ?? "Attached image"
+        })
+    })
+
     const details = Object.entries(body.details ?? {})
     if (details.length > 0) {
         blocks.push({

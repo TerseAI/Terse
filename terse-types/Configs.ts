@@ -31,7 +31,8 @@ export enum ConfigType {
     RESEND_OUTPUT = "resend_output",
     APOLLO_OUTPUT = "apollo_output",
     GOOGLE_SEARCH_CONSOLE_OUTPUT = "google_search_console_output",
-    META_ADS_OUTPUT = "meta_ads_output"
+    META_ADS_OUTPUT = "meta_ads_output",
+    HIGGSFIELD_OUTPUT = "higgsfield_output"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -274,6 +275,15 @@ export const ResendOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const HiggsfieldOutputConfigMetadata = {
+    configType: ConfigType.HIGGSFIELD_OUTPUT,
+    name: "Higgsfield",
+    description: "Generate ad creative images from a text prompt using Higgsfield",
+    integrationType: IntegrationType.HIGGSFIELD,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export const MetaAdsOutputConfigMetadata = {
     configType: ConfigType.META_ADS_OUTPUT,
     name: "Meta Ads",
@@ -331,7 +341,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata,
     [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfigMetadata,
     [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfigMetadata,
-    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfigMetadata
+    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfigMetadata,
+    [ConfigType.HIGGSFIELD_OUTPUT]: HiggsfieldOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -1212,10 +1223,32 @@ export class ResendOutputConfig extends BaseConfigInstance<IntegrationType.RESEN
     }
 }
 
+export const HiggsfieldOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.HIGGSFIELD),
+    configType: z.literal(ConfigType.HIGGSFIELD_OUTPUT)
+})
+export type HiggsfieldOutputConfigData = z.infer<typeof HiggsfieldOutputConfigSchema>
+export type HiggsfieldOutputConfigInstance = HiggsfieldOutputConfigData & ConfigBehavior
+
+export class HiggsfieldOutputConfig extends BaseConfigInstance<IntegrationType.HIGGSFIELD, ConfigType.HIGGSFIELD_OUTPUT> implements HiggsfieldOutputConfigInstance {
+    constructor(integrationId: string) {
+        super(integrationId, IntegrationType.HIGGSFIELD, ConfigType.HIGGSFIELD_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        return `Type: Higgsfield Output\nIntegration ID: ${this.integrationId}`
+    }
+}
+
 export const MetaAdsOutputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.META_ADS),
     configType: z.literal(ConfigType.META_ADS_OUTPUT),
-    adAccountId: z.string().nullable()
+    adAccountId: z.string().nullable(),
+    pageId: z.string().nullable()
 })
 export type MetaAdsOutputConfigData = z.infer<typeof MetaAdsOutputConfigSchema>
 export type MetaAdsOutputConfigInstance = MetaAdsOutputConfigData & ConfigBehavior
@@ -1223,7 +1256,8 @@ export type MetaAdsOutputConfigInstance = MetaAdsOutputConfigData & ConfigBehavi
 export class MetaAdsOutputConfig extends BaseConfigInstance<IntegrationType.META_ADS, ConfigType.META_ADS_OUTPUT> implements MetaAdsOutputConfigInstance {
     constructor(
         integrationId: string,
-        public adAccountId: string | null = null
+        public adAccountId: string | null = null,
+        public pageId: string | null = null
     ) {
         super(integrationId, IntegrationType.META_ADS, ConfigType.META_ADS_OUTPUT)
     }
@@ -1236,6 +1270,9 @@ export class MetaAdsOutputConfig extends BaseConfigInstance<IntegrationType.META
         const parts = [`Type: Meta Ads Output`, `Integration ID: ${this.integrationId}`]
         if (this.adAccountId) {
             parts.push(`Ad Account: ${this.adAccountId}`)
+        }
+        if (this.pageId) {
+            parts.push(`Page: ${this.pageId}`)
         }
         return parts.join("\n")
     }
@@ -1404,7 +1441,8 @@ export const configDataSchema = z.union([
     ResendOutputConfigSchema,
     ApolloOutputConfigSchema,
     GoogleSearchConsoleConfigSchema,
-    MetaAdsOutputConfigSchema
+    MetaAdsOutputConfigSchema,
+    HiggsfieldOutputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1478,6 +1516,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.RESEND_OUTPUT:
         case ConfigType.APOLLO_OUTPUT:
         case ConfigType.META_ADS_OUTPUT:
+        case ConfigType.HIGGSFIELD_OUTPUT:
             return !!config.integrationId
         case ConfigType.GITHUB:
             return (config.repositoryIds?.length ?? 0) > 0
@@ -1628,9 +1667,12 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Resend Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.APOLLO_OUTPUT:
             return `Type: Apollo Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.HIGGSFIELD_OUTPUT:
+            return `Type: Higgsfield Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.META_ADS_OUTPUT: {
             const parts = [`Type: Meta Ads Output`, `Integration ID: ${config.integrationId}`]
             if (config.adAccountId) parts.push(`Ad Account: ${config.adAccountId}`)
+            if (config.pageId) parts.push(`Page: ${config.pageId}`)
             return parts.join("\n")
         }
         case ConfigType.WEBHOOK_INPUT:
@@ -1680,6 +1722,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.APOLLO_OUTPUT]: typeof ApolloOutputConfig
     [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: typeof GoogleSearchConsoleOutputConfig
     [ConfigType.META_ADS_OUTPUT]: typeof MetaAdsOutputConfig
+    [ConfigType.HIGGSFIELD_OUTPUT]: typeof HiggsfieldOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1710,5 +1753,6 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfig,
     [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfig,
     [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfig,
-    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfig
+    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfig,
+    [ConfigType.HIGGSFIELD_OUTPUT]: HiggsfieldOutputConfig
 } as const satisfies ConfigMetadataMap

@@ -1,0 +1,12 @@
+{{#if toolFile}}
+{{sectionHeader "Higgsfield tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Higgsfield skill"}}
+
+/** Higgsfield — generate ad creative images from a text prompt. Results are cached by Terse and returned as signed URLs. */
+export function higgsfieldSkill(): TypedSkill<{{{section.skillToolType}}}> {
+    return new HiggsfieldOutputConfig("{{escape section.id}}")
+}

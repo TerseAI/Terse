@@ -50,7 +50,7 @@ export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
 export { DurableOnlyError } from "./execution.js"
 
 export { slack, waitForInput } from "./inputRequest.js"
-export type { InputDelivery, InputOption, InputRespondent, InputResponse, InputTarget, SlackInputTarget, WaitForInputParams } from "./inputRequest.js"
+export type { InputDelivery, InputImage, InputOption, InputRespondent, InputResponse, InputTarget, SlackInputTarget, WaitForInputParams } from "./inputRequest.js"
 
 export { isAgentApprovalHandlingClaimed } from "./context.js"
 export type { TerseJobContext } from "./context.js"

@@ -69,6 +69,9 @@ importers:
       '@googleapis/searchconsole':
         specifier: ^6.0.1
         version: 6.0.1
+      '@higgsfield/client':
+        specifier: ^0.2.1
+        version: 0.2.1
       '@linear/sdk':
         specifier: ^45.3.0
         version: 45.3.0
@@ -162,6 +165,9 @@ importers:
       express:
         specifier: ^5.1.0
         version: 5.2.1
+      facebook-nodejs-business-sdk:
+        specifier: ^24.0.1
+        version: 24.0.1
       fernet:
         specifier: ^0.3.3
         version: 0.3.3
@@ -265,6 +271,9 @@ importers:
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
+      '@types/facebook-nodejs-business-sdk':
+        specifier: ^24.0.0
+        version: 24.0.0
       '@types/jsonwebtoken':
         specifier: ^9.0.10
         version: 9.0.10
@@ -1568,6 +1577,10 @@ packages:
     resolution: {integrity: sha512-LMcepvRaS9LYHJGsF0zzmgKCUim/X3N/DQKc4jepAXJ7l8QxJ1PmxJzqplF2Z3FE4PqBAIGyJAQ/w4B5dsqbtQ==}
     peerDependencies:
       react: '>= 16 || ^19.0.0-rc'
+
+  '@higgsfield/client@0.2.1':
+    resolution: {integrity: sha512-xRIlOF0jQwRQ1jIj93okju1PnG/ngx7yeJsmpPq2SSattWUMsL1TjkEZJlVfrrkUeDfP5g8TY/wJ/+TLRNwqFw==}
+    engines: {node: '>=14.0.0'}
 
   '@hono/node-server@2.0.3':
     resolution: {integrity: sha512-a0jV+/HRe3G5zjFID3zObAQFdkl6zpxTuqktdDDXS3MJKcrZIkB8OkLpNBlY/WXFqv2HF4a0takPej+aNFczWA==}
@@ -3964,6 +3977,9 @@ packages:
   '@types/express@5.0.6':
     resolution: {integrity: sha512-sKYVuV7Sv9fbPIt/442koC7+IIwK5olP1KWeD88e/idgoJqDm3JV/YUiPwkoKK92ylff2MGxSz1CSjsXelx0YA==}
 
+  '@types/facebook-nodejs-business-sdk@24.0.0':
+    resolution: {integrity: sha512-hfr0EPxBvw3c7tuaxpozm+GysF5nU2wmgAlASkmWErIkACh4Jqa4kH6cZDdrYTOOLXzg3HXAXhSfukpL91d7eA==}
+
   '@types/hast@3.0.4':
     resolution: {integrity: sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ==}
 
@@ -4920,6 +4936,9 @@ packages:
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
+  currency-codes@1.5.1:
+    resolution: {integrity: sha512-hqy8vtlIYKzO6pe2TE0V4/riZALIc7nhtE9cvxk5FDRCvfGplgzUvpTmZlMsyO+NeK5U41j+sQXJOo8l8v9kdg==}
+
   d3-array@3.2.4:
     resolution: {integrity: sha512-tdQAmyA18i4J7wprpYq8ClcxZy3SC31QMeByyCFyRt7BVHdREQZ5lpzoe5mFEYZUWe+oq8HBvk9JjpibyEV4Jg==}
     engines: {node: '>=12'}
@@ -5155,6 +5174,10 @@ packages:
 
   electron-to-chromium@1.5.331:
     resolution: {integrity: sha512-IbxXrsTlD3hRodkLnbxAPP4OuJYdWCeM3IOdT+CpcMoIwIoDfCmRpEtSPfwBXxVkg9xmBeY7Lz2Eo2TDn/HC3Q==}
+
+  email-validator@2.0.4:
+    resolution: {integrity: sha512-gYCwo7kh5S3IDyZPLZf6hSS0MnZT8QmJFqYvbqlDZSbwdZlY6QZWxJ4i/6UhITOJ4XzyI647Bm2MXKCLqnJ4nQ==}
+    engines: {node: '>4.0'}
 
   emoji-regex@10.6.0:
     resolution: {integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==}
@@ -5407,6 +5430,9 @@ packages:
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
 
+  facebook-nodejs-business-sdk@24.0.1:
+    resolution: {integrity: sha512-31uR42FO+V3ikQfVZyrnoc34pVYzxo4PE+BnKt1ziX9nGhSwsS7ogGDsMJQk7A3SdoWPIGgR2G4UbAY2s9zNVQ==}
+
   fast-check@3.23.2:
     resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
     engines: {node: '>=8.0.0'}
@@ -5536,6 +5562,9 @@ packages:
   find-versions@6.0.0:
     resolution: {integrity: sha512-2kCCtc+JvcZ86IGAz3Z2Y0A1baIz9fL31pH/0S1IqZr9Iwnjq8izfPtrCyQKO6TLMPELLsQMre7VDqeIKCsHkA==}
     engines: {node: '>=18'}
+
+  first-match@0.0.1:
+    resolution: {integrity: sha512-VvKbnaxrC0polTFDC+teKPTdl2mn6B/KUW+WB3C9RzKDeNwbzfLdnUz3FxC+tnjvus6bI0jWrWicQyVIPdS37A==}
 
   flat-cache@4.0.1:
     resolution: {integrity: sha512-f7ccFPK3SXFHpx15UIGyRJ/FJQctuKZ0zVuN3frBo4HnK3cay9VEW0R6yPYFHC0AgqhukPzKjq22t5DmAyqGyw==}
@@ -6018,6 +6047,9 @@ packages:
     resolution: {integrity: sha512-FFUtZMpoZ8RqHS3XeXEmHWLA4thH+ZxCv2lOiPIn1Xc7CxrqhWzNSDzD+/chS/zbYezmiwWLdQC09JdQKmthOw==}
     engines: {node: '>=20'}
 
+  iso-3166-1@2.1.1:
+    resolution: {integrity: sha512-RZxXf8cw5Y8LyHZIwIRvKw8sWTIHh2/txBT+ehO0QroesVfnz3JNFFX4i/OC/Yuv2bDIVYrHna5PMvjtpefq5w==}
+
   isomorphic-unfetch@3.1.0:
     resolution: {integrity: sha512-geDJjpoZ8N0kWexiwkX8F9NkTsXhetLPVbZFQ+JTW239QNOwvB0gniuR1Wc6f0AMTn7/mFGyXvHTifrCp/GH8Q==}
 
@@ -6049,6 +6081,9 @@ packages:
 
   jose@6.1.3:
     resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
+
+  js-sha256@0.9.0:
+    resolution: {integrity: sha512-sga3MHh9sgQN2+pJ9VYZ+1LPwXOxuBJBA5nrR5/ofPfuiJBE2hnjsaN8se8JznOmGLN2p49Pe5U/ttafcs/apA==}
 
   js-tiktoken@1.0.21:
     resolution: {integrity: sha512-biOj/6M5qdgx5TKjDnFT1ymSpM5tbd3ylwDtrQvFQSu0Z7bBYko2dF+W/aUkXUPuk6IVpRxk/3Q2sHOzGlS36g==}
@@ -6575,6 +6610,9 @@ packages:
     resolution: {integrity: sha512-CRdXtgfQH2jARmtNmPR0Q7jL20fiESbaYk1b0KvLD0jCdUuemepREtsbd8nbiY6BHV9OGGddAZITNXklupUPUQ==}
     engines: {node: '>=20.0.0'}
 
+  mixwith@0.1.1:
+    resolution: {integrity: sha512-DQsf/liljH/9e+94jR+xfK8vlKceeKdOM9H9UEXLwGuvEEpO6debNtJ9yt1ZKzPKPrwqGxzMdu0BR1fnQb6i4A==}
+
   mlly@1.8.2:
     resolution: {integrity: sha512-d+ObxMQFmbt10sretNDytwt85VrbkhhUA/JBGm1MPaWJ65Cl4wOgLaB1NYvJSZ0Ef03MMEU/0xpPMXUIQ29UfA==}
 
@@ -6718,6 +6756,9 @@ packages:
 
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
+
+  nub@0.0.0:
+    resolution: {integrity: sha512-dK0Ss9C34R/vV0FfYJXuqDAqHlaW9fvWVufq9MmGF2umCuDbd5GRfRD9fpi/LiM0l4ZXf8IBB+RYmZExqCrf0w==}
 
   nypm@0.6.5:
     resolution: {integrity: sha512-K6AJy1GMVyfyMXRVB88700BJqNUkByijGJM8kEHpLdcAt+vSQAVfkWWHYzuRXHSY6xA2sNc5RjTj0p9rE2izVQ==}
@@ -9550,6 +9591,14 @@ snapshots:
     dependencies:
       react: 19.2.4
 
+  '@higgsfield/client@0.2.1':
+    dependencies:
+      axios: 1.16.1
+      form-data: 4.0.6
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
   '@hono/node-server@2.0.3(hono@4.12.26)':
     dependencies:
       hono: 4.12.26
@@ -12229,6 +12278,8 @@ snapshots:
       '@types/express-serve-static-core': 5.0.7
       '@types/serve-static': 2.2.0
 
+  '@types/facebook-nodejs-business-sdk@24.0.0': {}
+
   '@types/hast@3.0.4':
     dependencies:
       '@types/unist': 3.0.3
@@ -13405,6 +13456,11 @@ snapshots:
 
   csstype@3.2.3: {}
 
+  currency-codes@1.5.1:
+    dependencies:
+      first-match: 0.0.1
+      nub: 0.0.0
+
   d3-array@3.2.4:
     dependencies:
       internmap: 2.0.3
@@ -13607,6 +13663,8 @@ snapshots:
       jake: 10.9.4
 
   electron-to-chromium@1.5.331: {}
+
+  email-validator@2.0.4: {}
 
   emoji-regex@10.6.0: {}
 
@@ -13974,6 +14032,18 @@ snapshots:
 
   extend@3.0.2: {}
 
+  facebook-nodejs-business-sdk@24.0.1:
+    dependencies:
+      axios: 1.16.1
+      currency-codes: 1.5.1
+      email-validator: 2.0.4
+      iso-3166-1: 2.1.1
+      js-sha256: 0.9.0
+      mixwith: 0.1.1
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
   fast-check@3.23.2:
     dependencies:
       pure-rand: 6.1.0
@@ -14115,6 +14185,8 @@ snapshots:
     dependencies:
       semver-regex: 4.0.5
       super-regex: 1.1.0
+
+  first-match@0.0.1: {}
 
   flat-cache@4.0.1:
     dependencies:
@@ -14622,6 +14694,8 @@ snapshots:
 
   isexe@4.0.0: {}
 
+  iso-3166-1@2.1.1: {}
+
   isomorphic-unfetch@3.1.0:
     dependencies:
       node-fetch: 2.7.0
@@ -14652,6 +14726,8 @@ snapshots:
   jose@5.10.0: {}
 
   jose@6.1.3: {}
+
+  js-sha256@0.9.0: {}
 
   js-tiktoken@1.0.21:
     dependencies:
@@ -15331,6 +15407,8 @@ snapshots:
 
   mixpart@0.0.6: {}
 
+  mixwith@0.1.1: {}
+
   mlly@1.8.2:
     dependencies:
       acorn: 8.16.0
@@ -15477,6 +15555,8 @@ snapshots:
   nth-check@2.1.1:
     dependencies:
       boolbase: 1.0.0
+
+  nub@0.0.0: {}
 
   nypm@0.6.5:
     dependencies:

@@ -5,19 +5,17 @@ import type { MetaAdsListPixelsRequest, ToolOutputByName } from "terse-types"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 import { metaAdsToolExecute } from "./metaAdsApi"
-import { buildMetaQuery, metaGraphList, toActPath } from "./metaAdsGraph"
+import { MetaAdsClient, toActPath } from "./metaAdsClient"
 
 export const metaAdsListPixelsTool = defineSessionTool({
     name: "meta_ads_list_pixels",
     execute: metaAdsToolExecute("meta_ads_list_pixels", executeListPixelsRequest)
 })
 
-async function executeListPixelsRequest(request: MetaAdsListPixelsRequest, accessToken: string): Promise<MetaAdsListPixelsOutput> {
-    const query = buildMetaQuery({
-        fields: "id,name,last_fired_time",
-        limit: request.limit ?? 100
-    })
-    const pixels = await metaGraphList(accessToken, `/${toActPath(request.adAccountId)}/adspixels${query}`, metaAdsPixelSchema, "pixels")
+const PIXEL_FIELDS = ["id", "name", "last_fired_time"]
+
+async function executeListPixelsRequest(request: MetaAdsListPixelsRequest, client: MetaAdsClient): Promise<MetaAdsListPixelsOutput> {
+    const pixels = await client.collect(() => client.adAccount(request.adAccountId).getAdsPixels(PIXEL_FIELDS, { limit: request.limit ?? 100 }), metaAdsPixelSchema, "pixels")
     return {
         success: true,
         pixels,

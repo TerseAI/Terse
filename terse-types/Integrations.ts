@@ -21,7 +21,8 @@ export enum IntegrationType {
     WEBHOOK = "webhook",
     WEBMONITOR = "webmonitor",
     GOOGLE_SEARCH_CONSOLE = "google_search_console",
-    META_ADS = "meta_ads"
+    META_ADS = "meta_ads",
+    HIGGSFIELD = "higgsfield"
 }
 export const integrationTypeEnum = z.enum(IntegrationType)
 
@@ -203,6 +204,14 @@ export const ResendIntegrationMetadata = {
     isOutput: true
 } as const satisfies IntegrationDetails
 
+export const HiggsfieldIntegrationMetadata = {
+    type: IntegrationType.HIGGSFIELD,
+    name: "Higgsfield",
+    description: "Generate ad creative images from a text prompt using Higgsfield",
+    isInput: false,
+    isOutput: true
+} as const satisfies IntegrationDetails
+
 export const ApolloIntegrationMetadata = {
     type: IntegrationType.APOLLO,
     name: "Apollo",
@@ -233,7 +242,8 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.HEY_REACH]: HeyReachIntegrationMetadata,
     [IntegrationType.RESEND]: ResendIntegrationMetadata,
     [IntegrationType.APOLLO]: ApolloIntegrationMetadata,
-    [IntegrationType.META_ADS]: MetaAdsIntegrationMetadata
+    [IntegrationType.META_ADS]: MetaAdsIntegrationMetadata,
+    [IntegrationType.HIGGSFIELD]: HiggsfieldIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -276,7 +286,8 @@ export const InstallationOptionsSchemas = {
     [IntegrationType.HEY_REACH]: NoInstallationOptionsSchema,
     [IntegrationType.RESEND]: NoInstallationOptionsSchema,
     [IntegrationType.APOLLO]: NoInstallationOptionsSchema,
-    [IntegrationType.META_ADS]: NoInstallationOptionsSchema
+    [IntegrationType.META_ADS]: NoInstallationOptionsSchema,
+    [IntegrationType.HIGGSFIELD]: NoInstallationOptionsSchema
 } as const satisfies Record<IntegrationType, z.ZodTypeAny>
 
 export type InstallationOptionsFor<T extends IntegrationType> = z.infer<(typeof InstallationOptionsSchemas)[T]>
@@ -342,6 +353,9 @@ export type HeyReachIntegration = z.infer<typeof HeyReachIntegrationSchema>
 
 export const ResendIntegrationSchema = IntegrationInstanceSchema
 export type ResendIntegration = z.infer<typeof ResendIntegrationSchema>
+
+export const HiggsfieldIntegrationSchema = IntegrationInstanceSchema
+export type HiggsfieldIntegration = z.infer<typeof HiggsfieldIntegrationSchema>
 
 export const ApolloIntegrationSchema = IntegrationInstanceSchema
 export type ApolloIntegration = z.infer<typeof ApolloIntegrationSchema>

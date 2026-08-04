@@ -10,6 +10,7 @@ import { GoogleSearchConsoleIntegrationManager } from "../googlesearchconsole/in
 import { HeyReachIntegrationManager } from "../heyreach/integration"
 import { LaunchDarklyIntegrationManager } from "../launchdarkly/integration"
 import { LinearIntegrationManager } from "../linear/integration"
+import { HiggsfieldIntegrationManager } from "../higgsfield/integration"
 import { MetaAdsIntegrationManager } from "../metaAds/integration"
 import { NotionIntegrationManager } from "../notion/integration"
 import { PosthogIntegrationManager } from "../posthog/integration"
@@ -49,7 +50,8 @@ function buildIntegrationTuple() {
         new ResendIntegrationManager(),
         new ApolloIntegrationManager(),
         new GoogleSearchConsoleIntegrationManager(),
-        new MetaAdsIntegrationManager()
+        new MetaAdsIntegrationManager(),
+        new HiggsfieldIntegrationManager()
     ] as const satisfies readonly IntegrationWithInstallation[]
 }
 

@@ -1114,6 +1114,77 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             const count = request?.events?.length ?? 0
             return `Send ${count} conversion event${count !== 1 ? "s" : ""} to Meta?`
         }
+    },
+    higgsfield_generate_image: {
+        preparing: "Getting image generation ready",
+        executing: params => {
+            const batchSize = params?.batchSize as number | undefined
+            return batchSize && batchSize > 1 ? `Generating ${batchSize} creative variants` : "Generating creative"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            return count !== undefined ? `Generated ${count} image${count !== 1 ? "s" : ""}` : "Image generation complete"
+        },
+        approval: params => {
+            const prompt = params?.prompt as string | undefined
+            return prompt ? `Generate creative for "${truncate(prompt)}" via Higgsfield (uses credits)?` : "Generate creative via Higgsfield (uses credits)?"
+        }
+    },
+    meta_ads_read_pages: {
+        preparing: "Loading Facebook Pages",
+        executing: () => "Loading Facebook Pages",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            return count !== undefined ? `Found ${count} Page${count !== 1 ? "s" : ""}` : "Pages loaded"
+        }
+    },
+    meta_ads_read_ads: {
+        preparing: "Loading ads and creatives",
+        executing: () => "Loading ads",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            return count !== undefined ? `Found ${count} ad${count !== 1 ? "s" : ""}` : "Ads loaded"
+        }
+    },
+    meta_ads_create_ad: {
+        preparing: "Getting the new ad ready",
+        executing: params => {
+            const request = params?.request as { name?: string } | undefined
+            return request?.name ? `Creating ad ${truncate(request.name)}` : "Creating ad"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const adId = parsed?.adId as string | undefined
+            const request = params?.request as { name?: string } | undefined
+            if (request?.name) return `Created ad ${truncate(request.name)}`
+            return adId ? `Created ad ${adId}` : "Ad created"
+        },
+        approval: params => {
+            const request = params?.request as { name?: string; status?: string } | undefined
+            const label = request?.name ? truncate(request.name) : "a new ad"
+            return `Create ${label} in this ad set${request?.status === "ACTIVE" ? " and start delivery" : " (paused)"}?`
+        }
+    },
+    meta_ads_set_status: {
+        preparing: "Getting the status change ready",
+        executing: params => {
+            const request = params?.request as { entityType?: string; status?: string } | undefined
+            const verb = request?.status === "PAUSED" ? "Pausing" : "Resuming"
+            return `${verb} ${request?.entityType ?? "entity"}`
+        },
+        complete: params => {
+            const request = params?.request as { entityType?: string; status?: string } | undefined
+            const verb = request?.status === "PAUSED" ? "Paused" : "Resumed"
+            return `${verb} ${request?.entityType ?? "entity"}`
+        },
+        approval: params => {
+            const request = params?.request as { entityType?: string; entityId?: string; status?: string } | undefined
+            const verb = request?.status === "PAUSED" ? "Pause" : "Resume"
+            return `${verb} ${request?.entityType ?? "entity"} ${request?.entityId ?? ""}?`.replace(/\s+\?$/, "?")
+        }
     }
 }
 

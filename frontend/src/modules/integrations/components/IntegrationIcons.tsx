@@ -81,6 +81,10 @@ export function AttioIcon() {
     return <img src="/Attio.svg" alt="Attio" className="w-full h-full object-contain dark:invert" />
 }
 
+export function HiggsfieldIcon() {
+    return <img src="/Higgsfield.svg" alt="Higgsfield" className="w-full h-full object-contain dark:invert" />
+}
+
 export function MetaAdsIcon() {
     return <img src="/MetaAds.svg" alt="Meta Ads" className="w-full h-full object-contain" />
 }

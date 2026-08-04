@@ -195,6 +195,15 @@ model meta_ads_integrations {
   @@index([organization_id])
 }
 
+model higgsfield_integrations {
+  id              String   @id @default(cuid())
+  organization_id String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([organization_id])
+}
+
 model apollo_integrations {
   id              String   @id @default(cuid())
   organization_id String
@@ -468,6 +477,7 @@ model automation_outputs {
   resend_config        automation_resend_output_configs?
   apollo_config        automation_apollo_output_configs?
   meta_ads_config      automation_meta_ads_configs?
+  higgsfield_config    automation_higgsfield_configs?
 
   google_search_console_config automation_google_search_console_configs?
 
@@ -765,10 +775,20 @@ model automation_apollo_output_configs {
   automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
+model automation_higgsfield_configs {
+  id                   String   @id @default(cuid())
+  automation_output_id String   @unique
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+}
+
 model automation_meta_ads_configs {
   id                   String   @id @default(cuid())
   automation_output_id String   @unique
   ad_account_id        String?
+  page_id              String?
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
@@ -807,6 +827,7 @@ enum IntegrationType {
   APOLLO
   GOOGLE_SEARCH_CONSOLE
   META_ADS
+  HIGGSFIELD
 }
 
 enum InputConfigType {
@@ -845,6 +866,7 @@ enum OutputConfigType {
   APOLLO
   GOOGLE_SEARCH_CONSOLE
   META_ADS
+  HIGGSFIELD
 }
 
 enum KnowledgeBaseConfigType {

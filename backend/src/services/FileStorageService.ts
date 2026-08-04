@@ -317,6 +317,11 @@ export function buildImageEditKey(organizationId: string, imageUrl: string, prom
     return `image-edits/${organizationId}/${hash}`
 }
 
+export function buildGeneratedImageKey(organizationId: string, jobId: string, sourceUrl: string): string {
+    const hash = crypto.createHash("sha256").update(`${organizationId}\0${jobId}\0${sourceUrl}`, "utf8").digest("hex")
+    return `generated-images/${organizationId}/${hash}`
+}
+
 // Organization logo helpers
 
 function buildOrgLogoKey(workosOrgId: string): string {

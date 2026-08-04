@@ -20,6 +20,7 @@ import {
     LinearInputConfig,
     LinearOutputConfig,
     MemoryConfig,
+    HiggsfieldOutputConfig,
     MetaAdsOutputConfig,
     NotionConfig,
     PosthogConfig,
@@ -85,6 +86,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.GOOGLE_SEARCH_CONSOLE
         case IntegrationType.META_ADS:
             return PrismaIntegrationType.META_ADS
+        case IntegrationType.HIGGSFIELD:
+            return PrismaIntegrationType.HIGGSFIELD
         default:
             throw integrationType satisfies never
     }
@@ -135,6 +138,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.GOOGLE_SEARCH_CONSOLE
         case PrismaIntegrationType.META_ADS:
             return IntegrationType.META_ADS
+        case PrismaIntegrationType.HIGGSFIELD:
+            return IntegrationType.HIGGSFIELD
         default:
             throw prismaIntegrationType satisfies never
     }
@@ -333,8 +338,12 @@ export const convertPrismaOutputConfigToConfigData = (channelOutput: AgentOutput
         return new ResendOutputConfig(integrationId)
     }
 
+    if (channelOutput.config_type === OutputConfigType.HIGGSFIELD) {
+        return new HiggsfieldOutputConfig(integrationId)
+    }
+
     if (channelOutput.config_type === OutputConfigType.META_ADS) {
-        return new MetaAdsOutputConfig(integrationId, channelOutput.meta_ads_config?.ad_account_id ?? null)
+        return new MetaAdsOutputConfig(integrationId, channelOutput.meta_ads_config?.ad_account_id ?? null, channelOutput.meta_ads_config?.page_id ?? null)
     }
 
     if (channelOutput.config_type === OutputConfigType.APOLLO) {
@@ -423,6 +432,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             throw new Error("GOOGLE_SEARCH_CONSOLE_OUTPUT is an output type, not an input type")
         case ConfigType.META_ADS_OUTPUT:
             throw new Error("META_ADS_OUTPUT is an output type, not an input type")
+        case ConfigType.HIGGSFIELD_OUTPUT:
+            throw new Error("HIGGSFIELD_OUTPUT is an output type, not an input type")
         default:
             throw configType satisfies never
     }
@@ -471,6 +482,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.GOOGLE_SEARCH_CONSOLE
         case ConfigType.META_ADS_OUTPUT:
             return OutputConfigType.META_ADS
+        case ConfigType.HIGGSFIELD_OUTPUT:
+            return OutputConfigType.HIGGSFIELD
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type.`)
     }

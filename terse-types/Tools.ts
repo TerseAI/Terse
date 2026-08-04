@@ -3735,6 +3735,14 @@ export const metaAdsInsightsRowSchema = z.object({
     campaign_name: z.string().optional(),
     adset_id: z.string().optional(),
     adset_name: z.string().optional(),
+    ad_id: z.string().optional(),
+    ad_name: z.string().optional(),
+    age: z.string().optional(),
+    gender: z.string().optional(),
+    country: z.string().optional(),
+    publisher_platform: z.string().optional(),
+    platform_position: z.string().optional(),
+    impression_device: z.string().optional(),
     spend: z.string().optional(),
     impressions: z.string().optional(),
     clicks: z.string().optional(),
@@ -3786,14 +3794,23 @@ export type MetaAdsReadCampaignsRequest = z.infer<typeof metaAdsReadCampaignsReq
 export const metaAdsDatePresetSchema = z.enum(["today", "yesterday", "last_7d", "last_14d", "last_28d", "last_30d", "last_90d", "this_month", "last_month", "this_quarter", "maximum"])
 export type MetaAdsDatePreset = z.infer<typeof metaAdsDatePresetSchema>
 
+export const metaAdsBreakdownSchema = z.enum(["age", "gender", "country", "publisher_platform", "platform_position", "impression_device"])
+export type MetaAdsBreakdown = z.infer<typeof metaAdsBreakdownSchema>
+
 export const metaAdsReadInsightsRequestSchema = z.object({
     adAccountId: metaAdsAdAccountIdField,
-    level: z.enum(["campaign", "adset"]).describe("Aggregation level for insight rows."),
+    level: z.enum(["campaign", "adset", "ad"]).describe("Aggregation level for insight rows. Use 'ad' to compare individual creatives against each other."),
     datePreset: metaAdsDatePresetSchema.nullable().optional().describe("Relative date range. Use either datePreset or since/until, not both."),
     since: z.string().nullable().optional().describe("Start date (YYYY-MM-DD). Use together with until instead of datePreset."),
     until: z.string().nullable().optional().describe("End date (YYYY-MM-DD), inclusive."),
     campaignIds: z.array(z.string()).nullable().optional().describe("Restrict results to these campaign IDs."),
     adsetIds: z.array(z.string()).nullable().optional().describe("Restrict results to these ad set IDs."),
+    adIds: z.array(z.string()).nullable().optional().describe("Restrict results to these ad IDs."),
+    breakdowns: z
+        .array(metaAdsBreakdownSchema)
+        .nullable()
+        .optional()
+        .describe("Split each row by these dimensions. Every breakdown multiplies the row count, so combine at most two and expect truncation."),
     timeIncrement: z.number().int().min(1).max(90).nullable().optional().describe("Split rows into N-day windows (1 = daily). Omit for a single aggregate row per entity.")
 })
 export type MetaAdsReadInsightsRequest = z.infer<typeof metaAdsReadInsightsRequestSchema>
@@ -3867,12 +3884,85 @@ export const metaAdsSendConversionsRequestSchema = z.object({
 })
 export type MetaAdsSendConversionsRequest = z.infer<typeof metaAdsSendConversionsRequestSchema>
 
+export const metaAdsPageSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    category: z.string().optional()
+})
+export type MetaAdsPage = z.infer<typeof metaAdsPageSchema>
+
+export const metaAdsReadPagesRequestSchema = z.object({
+    limit: z.number().int().min(1).max(200).nullable().optional().describe("Maximum number of pages to return (default 100).")
+})
+export type MetaAdsReadPagesRequest = z.infer<typeof metaAdsReadPagesRequestSchema>
+
+export const metaAdsAdCreativeSchema = z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    title: z.string().optional(),
+    body: z.string().optional(),
+    image_url: z.string().optional(),
+    thumbnail_url: z.string().optional(),
+    object_story_spec: z.unknown().optional()
+})
+export type MetaAdsAdCreative = z.infer<typeof metaAdsAdCreativeSchema>
+
+export const metaAdsAdSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.string(),
+    effective_status: z.string().optional(),
+    campaign_id: z.string().optional(),
+    adset_id: z.string().optional(),
+    created_time: z.string().optional(),
+    creative: metaAdsAdCreativeSchema.optional()
+})
+export type MetaAdsAd = z.infer<typeof metaAdsAdSchema>
+
+export const metaAdsReadAdsRequestSchema = z.object({
+    adAccountId: metaAdsAdAccountIdField,
+    adsetId: z.string().nullable().optional().describe("Only ads belonging to this ad set."),
+    campaignId: z.string().nullable().optional().describe("Only ads belonging to this campaign. Ignored when adsetId is set."),
+    effectiveStatuses: z.array(z.string()).nullable().optional().describe("Only ads whose effective status is in this list (e.g. ACTIVE, PAUSED, PENDING_REVIEW, DISAPPROVED)."),
+    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of ads to return (default 100).")
+})
+export type MetaAdsReadAdsRequest = z.infer<typeof metaAdsReadAdsRequestSchema>
+
+export const metaAdsCallToActionSchema = z.enum(["LEARN_MORE", "SHOP_NOW", "SIGN_UP", "SUBSCRIBE", "BOOK_TRAVEL", "DOWNLOAD", "GET_OFFER", "GET_QUOTE", "CONTACT_US", "APPLY_NOW", "NO_BUTTON"])
+export type MetaAdsCallToAction = z.infer<typeof metaAdsCallToActionSchema>
+
+export const metaAdsCreateAdRequestSchema = z.object({
+    adAccountId: metaAdsAdAccountIdField,
+    adsetId: z.string().describe("The ad set the new ad belongs to. Ad sets own targeting and budget, so the new ad inherits both."),
+    pageId: z.string().describe("The Facebook Page the ad is published as. Discover candidates with meta_ads_read_pages."),
+    name: z.string().describe("Internal name for the new ad, e.g. 'Spring promo - variant C'."),
+    message: z.string().describe("Primary text shown above the creative."),
+    linkUrl: z.string().describe("Destination URL for the click-through."),
+    pictureUrl: z.string().describe("Publicly reachable image URL. Meta fetches it once at creation and copies it into the ad account's image library."),
+    headline: z.string().nullable().optional().describe("Headline shown under the image."),
+    description: z.string().nullable().optional().describe("Link description shown under the headline."),
+    callToAction: metaAdsCallToActionSchema.nullable().optional().describe("Button label. Defaults to LEARN_MORE."),
+    status: z.enum(["ACTIVE", "PAUSED"]).nullable().optional().describe("Status to request after Meta's review completes. Defaults to PAUSED so a human can switch it on.")
+})
+export type MetaAdsCreateAdRequest = z.infer<typeof metaAdsCreateAdRequestSchema>
+
+export const metaAdsSetStatusRequestSchema = z.object({
+    entityType: z.enum(["campaign", "adset", "ad"]).describe("Which kind of object to update."),
+    entityId: z.string().describe("The ID of the campaign, ad set, or ad."),
+    status: z.enum(["ACTIVE", "PAUSED"]).describe("PAUSED stops delivery and spend; ACTIVE resumes it.")
+})
+export type MetaAdsSetStatusRequest = z.infer<typeof metaAdsSetStatusRequestSchema>
+
 export const metaAdsReadCampaignsInputSchema = metaAdsToolInput(metaAdsReadCampaignsRequestSchema)
 export const metaAdsReadInsightsInputSchema = metaAdsToolInput(metaAdsReadInsightsRequestSchema)
 export const metaAdsListPixelsInputSchema = metaAdsToolInput(metaAdsListPixelsRequestSchema)
 export const metaAdsReadAudiencesInputSchema = metaAdsToolInput(metaAdsReadAudiencesRequestSchema)
 export const metaAdsUpdateAudienceUsersInputSchema = metaAdsToolInput(metaAdsUpdateAudienceUsersRequestSchema)
 export const metaAdsSendConversionsInputSchema = metaAdsToolInput(metaAdsSendConversionsRequestSchema)
+export const metaAdsReadPagesInputSchema = metaAdsToolInput(metaAdsReadPagesRequestSchema)
+export const metaAdsReadAdsInputSchema = metaAdsToolInput(metaAdsReadAdsRequestSchema)
+export const metaAdsCreateAdInputSchema = metaAdsToolInput(metaAdsCreateAdRequestSchema)
+export const metaAdsSetStatusInputSchema = metaAdsToolInput(metaAdsSetStatusRequestSchema)
 
 export const metaAdsReadCampaignsOutputSchema = toolOutputBaseSchema.extend({
     adAccounts: z.array(metaAdsAdAccountEntitySchema).optional(),
@@ -3909,6 +3999,29 @@ export const metaAdsSendConversionsOutputSchema = toolOutputBaseSchema.extend({
     fbtraceId: z.string().optional()
 })
 
+export const metaAdsReadPagesOutputSchema = toolOutputBaseSchema.extend({
+    pages: z.array(metaAdsPageSchema),
+    count: z.number()
+})
+
+export const metaAdsReadAdsOutputSchema = toolOutputBaseSchema.extend({
+    ads: z.array(metaAdsAdSchema),
+    count: z.number()
+})
+
+export const metaAdsCreateAdOutputSchema = toolOutputBaseSchema.extend({
+    adId: z.string(),
+    creativeId: z.string(),
+    adsetId: z.string(),
+    requestedStatus: z.enum(["ACTIVE", "PAUSED"])
+})
+
+export const metaAdsSetStatusOutputSchema = toolOutputBaseSchema.extend({
+    entityType: z.enum(["campaign", "adset", "ad"]),
+    entityId: z.string(),
+    status: z.enum(["ACTIVE", "PAUSED"])
+})
+
 export const metaAdsReadCampaignsTool = defineTool({
     name: "meta_ads_read_campaigns",
     description: "Read Meta Ads account structure: list ad accounts, or list campaigns / ad sets with status and budget.",
@@ -3918,7 +4031,7 @@ export const metaAdsReadCampaignsTool = defineTool({
 export const metaAdsReadInsightsTool = defineTool({
     name: "meta_ads_read_insights",
     description:
-        "Read Meta Ads performance insights (spend, impressions, clicks, conversions) at campaign or ad set level for a date range. Follows pagination up to 2000 rows; the result sets truncated=true when more rows exist, so narrow the date range or filter by campaign/ad set IDs to fetch the rest.",
+        "Read Meta Ads performance insights (spend, impressions, clicks, conversions) at campaign, ad set, or ad level for a date range, optionally split by breakdowns. Use level='ad' to judge individual creatives. Follows pagination up to 2000 rows; the result sets truncated=true when more rows exist, so narrow the date range or filter by campaign/ad set/ad IDs to fetch the rest.",
     inputSchema: metaAdsReadInsightsInputSchema,
     outputSchema: metaAdsReadInsightsOutputSchema
 })
@@ -3945,6 +4058,83 @@ export const metaAdsSendConversionsTool = defineTool({
     description: "Send offline conversion events to Meta via the Conversions API so campaign delivery can optimize on downstream outcomes (e.g. deals won).",
     inputSchema: metaAdsSendConversionsInputSchema,
     outputSchema: metaAdsSendConversionsOutputSchema
+})
+export const higgsfieldImageSizeSchema = z.enum([
+    "2048x1152",
+    "2048x1536",
+    "2016x1344",
+    "1696x960",
+    "1632x1088",
+    "1152x2048",
+    "1536x2048",
+    "1344x2016",
+    "960x1696",
+    "1088x1632",
+    "1536x1536",
+    "1728x1728",
+    "1024x1024"
+])
+export type HiggsfieldImageSize = z.infer<typeof higgsfieldImageSizeSchema>
+
+export const higgsfieldGeneratedImageSchema = z.object({
+    jobId: z.string().describe("Higgsfield job that produced this image."),
+    url: z.string().describe("Signed Terse-hosted URL for the full-quality image. Valid for 24 hours; pass it straight to meta_ads_create_ad as pictureUrl."),
+    thumbnailUrl: z.string().nullable().describe("Signed URL for a smaller preview of the same image, when Higgsfield returned one.")
+})
+export type HiggsfieldGeneratedImage = z.infer<typeof higgsfieldGeneratedImageSchema>
+
+export const higgsfieldGenerateImageInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Higgsfield connection to use."),
+    prompt: z.string().min(1).describe("What to generate. Describe the subject, setting, mood, and any on-image text."),
+    size: higgsfieldImageSizeSchema.nullable().optional().describe("Output resolution and aspect ratio. Defaults to 1536x1536. Use a landscape size for feed ads."),
+    quality: z.enum(["720p", "1080p"]).nullable().optional().describe("Render quality. Defaults to 1080p."),
+    batchSize: z
+        .union([z.literal(1), z.literal(4)])
+        .nullable()
+        .optional()
+        .describe("Generate 1 or 4 variants in one call. Defaults to 1; use 4 when you want options to compare."),
+    styleId: z.string().nullable().optional().describe("Optional Higgsfield style preset ID."),
+    referenceImageUrls: z.array(z.string()).nullable().optional().describe("Publicly reachable reference images that steer style and subject consistency.")
+})
+
+export const higgsfieldGenerateImageOutputSchema = toolOutputBaseSchema.extend({
+    images: z.array(higgsfieldGeneratedImageSchema),
+    count: z.number()
+})
+
+export const higgsfieldGenerateImageTool = defineTool({
+    name: "higgsfield_generate_image",
+    description:
+        "Generate ad creative images from a text prompt with Higgsfield. Each result is cached by Terse and returned as a signed URL valid for 24 hours, which can be shown to a human for approval and then handed to meta_ads_create_ad as pictureUrl. Generation is asynchronous and this waits for it to finish, so expect it to take a while.",
+    inputSchema: higgsfieldGenerateImageInputSchema,
+    outputSchema: higgsfieldGenerateImageOutputSchema
+})
+
+export const metaAdsReadPagesTool = defineTool({
+    name: "meta_ads_read_pages",
+    description: "List the Facebook Pages the connected user manages. Every ad creative is published as a Page, so a pageId from here is required by meta_ads_create_ad.",
+    inputSchema: metaAdsReadPagesInputSchema,
+    outputSchema: metaAdsReadPagesOutputSchema
+})
+export const metaAdsReadAdsTool = defineTool({
+    name: "meta_ads_read_ads",
+    description:
+        "List ads with the creative attached to each one (primary text, headline, image). Pair with meta_ads_read_insights at level='ad' to attribute performance to a specific creative, and check effective_status for PENDING_REVIEW or DISAPPROVED.",
+    inputSchema: metaAdsReadAdsInputSchema,
+    outputSchema: metaAdsReadAdsOutputSchema
+})
+export const metaAdsCreateAdTool = defineTool({
+    name: "meta_ads_create_ad",
+    description:
+        "Create a new ad creative and the ad that uses it inside an existing ad set. Meta fetches pictureUrl once at creation and stores its own copy, so a temporary signed URL is fine. Ad creatives are immutable, so improving a creative means creating a new ad here and pausing the old one with meta_ads_set_status. New ads enter PENDING_REVIEW before reaching the requested status.",
+    inputSchema: metaAdsCreateAdInputSchema,
+    outputSchema: metaAdsCreateAdOutputSchema
+})
+export const metaAdsSetStatusTool = defineTool({
+    name: "meta_ads_set_status",
+    description: "Pause or resume a campaign, ad set, or ad. PAUSED stops delivery and spend immediately and is reversible.",
+    inputSchema: metaAdsSetStatusInputSchema,
+    outputSchema: metaAdsSetStatusOutputSchema
 })
 
 export const ToolDefinitions = {
@@ -4050,7 +4240,12 @@ export const ToolDefinitions = {
     [metaAdsListPixelsTool.name]: metaAdsListPixelsTool,
     [metaAdsReadAudiencesTool.name]: metaAdsReadAudiencesTool,
     [metaAdsUpdateAudienceUsersTool.name]: metaAdsUpdateAudienceUsersTool,
-    [metaAdsSendConversionsTool.name]: metaAdsSendConversionsTool
+    [metaAdsSendConversionsTool.name]: metaAdsSendConversionsTool,
+    [metaAdsReadPagesTool.name]: metaAdsReadPagesTool,
+    [metaAdsReadAdsTool.name]: metaAdsReadAdsTool,
+    [metaAdsCreateAdTool.name]: metaAdsCreateAdTool,
+    [metaAdsSetStatusTool.name]: metaAdsSetStatusTool,
+    [higgsfieldGenerateImageTool.name]: higgsfieldGenerateImageTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

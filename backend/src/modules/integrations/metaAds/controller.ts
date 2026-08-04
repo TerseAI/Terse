@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 
 import logger from "../../../common/logger"
 import { MetaAdsIntegrationManager } from "../../../integrations/metaAds/integration"
-import { MetaAdsApiError, fetchMetaAdsAdAccounts } from "../../../outputs/metaAds/tools/metaAdsGraph"
+import { MetaAdsApiError, fetchMetaAdsAdAccounts } from "../../../outputs/metaAds/tools/metaAdsClient"
 
 export async function getMetaAdsIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

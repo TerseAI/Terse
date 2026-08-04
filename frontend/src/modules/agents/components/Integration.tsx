@@ -13,6 +13,7 @@ import {
     HeyReachIcon,
     LaunchDarklyIcon,
     LinearIcon,
+    HiggsfieldIcon,
     MetaAdsIcon,
     NotionIcon,
     PosthogIcon,
@@ -74,6 +75,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <GoogleSearchConsoleIcon />
         case ConfigType.META_ADS_OUTPUT:
             return <MetaAdsIcon />
+        case ConfigType.HIGGSFIELD_OUTPUT:
+            return <HiggsfieldIcon />
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never
@@ -121,6 +124,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <GoogleSearchConsoleIcon />
         case IntegrationType.META_ADS:
             return <MetaAdsIcon />
+        case IntegrationType.HIGGSFIELD:
+            return <HiggsfieldIcon />
         default:
             throw integration satisfies never
     }

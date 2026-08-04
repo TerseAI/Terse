@@ -9,15 +9,15 @@ import { trackIntegrationAdded } from "../../common/analytics"
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
-import { fetchMetaAdsAdAccounts, metaGraphRequest } from "../../outputs/metaAds/tools/metaAdsGraph"
+import { fetchMetaAdsAdAccounts, fetchMetaAdsUserName } from "../../outputs/metaAds/tools/metaAdsClient"
 import { SecretNotFoundError } from "../../services/SecretService"
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 
-const META_OAUTH_DIALOG_URL = "https://www.facebook.com/v23.0/dialog/oauth"
-const META_OAUTH_SCOPES = "ads_read,ads_management,business_management"
+const META_OAUTH_DIALOG_URL = "https://www.facebook.com/v24.0/dialog/oauth"
+const META_OAUTH_SCOPES = "ads_read,ads_management,business_management,pages_show_list"
 
 export class MetaAdsIntegrationManager
     extends Integration<MetaAdsIntegration, never, typeof MetaAdsIntegrationMetadata, MetaAdsAdAccount>
@@ -206,8 +206,7 @@ export class MetaAdsIntegrationManager
 
     private async fetchAccountName(accessToken: string): Promise<string | undefined> {
         try {
-            const me = await metaGraphRequest(accessToken, "/me?fields=name", metaUserSchema, "user profile")
-            return me.name
+            return (await fetchMetaAdsUserName(accessToken)) ?? undefined
         } catch (fetchError) {
             logger.warn("Failed to fetch Meta user profile", { error: fetchError })
             return undefined
@@ -215,14 +214,14 @@ export class MetaAdsIntegrationManager
     }
 
     private async exchangeCodeForLongLivedToken(code: string): Promise<string> {
-        const tokenUrl = new URL("https://graph.facebook.com/v23.0/oauth/access_token")
+        const tokenUrl = new URL("https://graph.facebook.com/v24.0/oauth/access_token")
         tokenUrl.searchParams.append("client_id", this.config.clientId)
         tokenUrl.searchParams.append("client_secret", this.config.clientSecret)
         tokenUrl.searchParams.append("redirect_uri", this.config.redirectUri)
         tokenUrl.searchParams.append("code", code)
         const shortLived = await this.fetchAccessToken(tokenUrl, "code exchange")
 
-        const exchangeUrl = new URL("https://graph.facebook.com/v23.0/oauth/access_token")
+        const exchangeUrl = new URL("https://graph.facebook.com/v24.0/oauth/access_token")
         exchangeUrl.searchParams.append("grant_type", "fb_exchange_token")
         exchangeUrl.searchParams.append("client_id", this.config.clientId)
         exchangeUrl.searchParams.append("client_secret", this.config.clientSecret)
@@ -262,8 +261,4 @@ const oauthStateSchema = z.object({
 
 const metaTokenResponseSchema = z.object({
     access_token: z.string()
-})
-
-const metaUserSchema = z.object({
-    name: z.string()
 })

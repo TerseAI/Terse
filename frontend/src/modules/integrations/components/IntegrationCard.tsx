@@ -10,6 +10,7 @@ import GithubIntegrationCard from "./GithubIntegrationCard"
 import GmailIntegrationCard from "./GmailIntegrationCard"
 import GoogleSearchConsoleIntegrationCard from "./GoogleSearchConsoleIntegrationCard"
 import HeyReachIntegrationCard from "./HeyReachIntegrationCard"
+import HiggsfieldIntegrationCard from "./HiggsfieldIntegrationCard"
 import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard"
 import LinearIntegrationCard from "./LinearIntegrationCard"
 import MetaAdsIntegrationCard from "./MetaAdsIntegrationCard"
@@ -57,6 +58,8 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <ResendIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.APOLLO:
             return <ApolloIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.HIGGSFIELD:
+            return <HiggsfieldIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.META_ADS:
             return <MetaAdsIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:

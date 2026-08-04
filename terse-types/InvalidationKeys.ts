@@ -116,6 +116,7 @@ export const resendIntegrationsKey = (): readonly [string] => ["resendIntegratio
 
 export const apolloIntegrationsKey = (): readonly [string] => ["apolloIntegrations"] as const
 export const metaAdsIntegrationsKey = (): readonly [string] => ["metaAdsIntegrations"] as const
+export const higgsfieldIntegrationsKey = (): readonly [string] => ["higgsfieldIntegrations"] as const
 
 export const attioObjectsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {

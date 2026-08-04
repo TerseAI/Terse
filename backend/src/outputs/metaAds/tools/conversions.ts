@@ -6,7 +6,7 @@ import { z } from "zod"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
 import { metaAdsToolExecute } from "./metaAdsApi"
-import { hashEmail, hashPhone, metaGraphRequest } from "./metaAdsGraph"
+import { MetaAdsClient, hashEmail, hashPhone } from "./metaAdsClient"
 
 export const metaAdsSendConversionsTool = defineSessionTool({
     name: "meta_ads_send_conversions",
@@ -18,11 +18,8 @@ const sendEventsResponseSchema = z.object({
     fbtrace_id: z.string().optional()
 })
 
-async function executeSendConversionsRequest(request: MetaAdsSendConversionsRequest, accessToken: string): Promise<MetaAdsSendConversionsOutput> {
-    const response = await metaGraphRequest(accessToken, `/${encodeURIComponent(request.datasetId)}/events`, sendEventsResponseSchema, "conversion events", {
-        method: "POST",
-        body: { data: request.events.map(toGraphEvent) }
-    })
+async function executeSendConversionsRequest(request: MetaAdsSendConversionsRequest, client: MetaAdsClient): Promise<MetaAdsSendConversionsOutput> {
+    const response = await client.runParsed(() => client.adsPixel(request.datasetId).createEvent([], { data: request.events.map(toGraphEvent) }), sendEventsResponseSchema, "conversion events")
 
     return {
         success: true,

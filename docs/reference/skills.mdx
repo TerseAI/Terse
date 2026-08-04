@@ -153,26 +153,74 @@ skills: [Skills.gmailDraft()]
 
 ## Meta Ads
 
-Read campaign performance, sync custom audiences, and send offline conversions via the Conversions API. Optionally scope to a default ad account.
+Read ad performance, create and retire ads, sync custom audiences, and send offline conversions via the Conversions API. Optionally scope to a default ad account and Page.
 
 ```ts
 import { MetaAdsAdAccount, Skills } from "./terse.generated"
 
-skills: [Skills.metaAds({ adAccount: MetaAdsAdAccount.Primary })]
+skills: [Skills.metaAds({ adAccount: MetaAdsAdAccount.Primary, pageId: "1234567890" })]
 ```
 
-`adAccount` is optional. Omit it and the model discovers ad accounts with `meta_ads_read_campaigns`.
+Both options are optional. Omit `adAccount` and the model discovers ad accounts with `meta_ads_read_campaigns`; omit `pageId` and it discovers Pages with `meta_ads_read_pages`. Pinning both is recommended when an account has more than one of either, so the model cannot publish under the wrong brand.
 
-| Tool                             | Description                                                            | Access |
-| -------------------------------- | ---------------------------------------------------------------------- | ------ |
-| `meta_ads_read_campaigns`        | List ad accounts, campaigns, or ad sets with status and budget         | Read   |
-| `meta_ads_read_insights`         | Spend, impressions, clicks, and conversions at campaign/ad set level   | Read   |
-| `meta_ads_read_audiences`        | List custom audiences with approximate sizes                           | Read   |
-| `meta_ads_list_pixels`           | List pixels (Conversions API dataset IDs) in an ad account             | Read   |
-| `meta_ads_update_audience_users` | Add or remove people on a custom audience (emails/phones hashed)       | Write  |
-| `meta_ads_send_conversions`      | Send offline conversion events via the Conversions API                 | Write  |
+| Tool                             | Description                                                              | Access |
+| -------------------------------- | ------------------------------------------------------------------------ | ------ |
+| `meta_ads_read_campaigns`        | List ad accounts, campaigns, or ad sets with status and budget           | Read   |
+| `meta_ads_read_insights`         | Spend, impressions, clicks, and conversions at campaign/ad set/ad level   | Read   |
+| `meta_ads_read_ads`              | List ads with the creative attached to each one                          | Read   |
+| `meta_ads_read_audiences`        | List custom audiences with approximate sizes                             | Read   |
+| `meta_ads_list_pixels`           | List pixels (Conversions API dataset IDs) in an ad account               | Read   |
+| `meta_ads_read_pages`            | List the Facebook Pages the connected user manages                      | Read   |
+| `meta_ads_update_audience_users` | Add or remove people on a custom audience (emails/phones hashed)         | Write  |
+| `meta_ads_send_conversions`      | Send offline conversion events via the Conversions API                   | Write  |
+| `meta_ads_create_ad`             | Create an ad creative and the ad that uses it in an existing ad set     | Write  |
+| `meta_ads_set_status`            | Pause or resume a campaign, ad set, or ad                               | Write  |
 
-`meta_ads_read_insights` follows Graph API pagination up to 2000 rows and sets `truncated: true` in the result when more rows exist; narrow the date range or filter by campaign/ad set IDs to fetch the remainder.
+### Judging and improving creative
+
+Use `meta_ads_read_insights` with `level: "ad"` to attribute spend and results to an individual creative, optionally split by `breakdowns` such as `age` or `publisher_platform`. Campaign-level rows cannot tell one creative from another.
+
+Meta does not allow a creative to be edited, and an ad's creative cannot be swapped for a different one. Improving a creative therefore means creating a **new** ad in the same ad set and pausing the old one:
+
+```ts
+const created = await agent.run("Create the approved variant and retire the loser")
+// meta_ads_create_ad  -> new creative + new ad (PAUSED by default)
+// meta_ads_set_status -> pause the ad that underperformed
+```
+
+This is also the better outcome: insights are keyed by ad id, so a new ad keeps the losing ad's history intact instead of overwriting it.
+
+`meta_ads_create_ad` takes `pictureUrl` rather than image bytes. Meta downloads that URL once at creation time and stores its own copy in the ad account's image library, so a signed URL with a short expiry is fine, including the URLs returned by `higgsfield_generate_image`.
+
+New ads enter `PENDING_REVIEW` before reaching the status you requested, and can come back `DISAPPROVED`. Re-read `effective_status` with `meta_ads_read_ads` before treating an ad as live.
+
+`meta_ads_set_status` only pauses and resumes. There is deliberately no budget tool, so an automation cannot increase spend on its own.
+
+`meta_ads_read_insights` follows Graph API pagination up to 2000 rows and sets `truncated: true` in the result when more rows exist; narrow the date range or filter by campaign/ad set/ad IDs to fetch the remainder. Note that each breakdown multiplies the row count.
+
+### Access and rate limits
+
+Meta grants every app Standard Access automatically, which covers every tool above for users who have a role (Admin, Developer, or Tester) on your Meta app. No App Review is needed for that case. Reaching ad accounts belonging to users outside your app requires Advanced Access, App Review, and Business Verification.
+
+Standard Access also carries lower rate limits, shared across everyone using your app: roughly `300 + 40 x active ads` calls per hour for management and `600 + 400 x active ads` for insights.
+
+## Higgsfield
+
+Generate ad creative images from a text prompt.
+
+```ts
+import { Skills } from "./terse.generated"
+
+skills: [Skills.higgsfield()]
+```
+
+| Tool                        | Description                                        | Access |
+| --------------------------- | -------------------------------------------------- | ------ |
+| `higgsfield_generate_image` | Generate one or four images from a text prompt      | Write  |
+
+Generation is asynchronous and the tool waits for it to finish, so a call can take a while. Each image is copied into Terse-managed storage and returned as a signed URL valid for 24 hours. That URL can be shown to a human for approval and passed straight to `meta_ads_create_ad` as `pictureUrl`.
+
+Every call spends Higgsfield credits, so the tool is marked as a write and can be gated behind approval. Use `batchSize: 4` when you want variants to compare, and match `size` to the placement: a landscape size such as `2048x1152` for feed ads, a portrait size such as `1152x2048` for stories.
 
 ## Snowflake
 
