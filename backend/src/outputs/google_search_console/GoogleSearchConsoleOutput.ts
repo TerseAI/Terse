@@ -18,15 +18,8 @@ import {
     googleSearchConsoleListSitesTool,
     googleSearchConsoleQuerySearchAnalyticsTool,
     googleSearchConsoleSubmitSitemapTool,
-    validateGoogleSearchConsoleAddSite,
-    validateGoogleSearchConsoleDeleteSite,
-    validateGoogleSearchConsoleDeleteSitemap,
-    validateGoogleSearchConsoleGetSite,
-    validateGoogleSearchConsoleGetSitemap,
-    validateGoogleSearchConsoleInspectUrl,
-    validateGoogleSearchConsoleListSitemaps,
-    validateGoogleSearchConsoleQuerySearchAnalytics,
-    validateGoogleSearchConsoleSubmitSitemap
+    validateInspectUrlInScope,
+    validateSiteUrlInScope
 } from "./tools"
 
 export class GoogleSearchConsoleOutput extends Output<GoogleSearchConsoleConfigData> {
@@ -44,7 +37,7 @@ export class GoogleSearchConsoleOutput extends Output<GoogleSearchConsoleConfigD
                 isReadOnly: true,
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "Get property",
-                validateACL: validateGoogleSearchConsoleGetSite
+                validateACL: validateSiteUrlInScope
             },
             {
                 tool: googleSearchConsoleAddSiteTool,
@@ -52,7 +45,7 @@ export class GoogleSearchConsoleOutput extends Output<GoogleSearchConsoleConfigD
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "Add property",
                 supportsApproval: true,
-                validateACL: validateGoogleSearchConsoleAddSite
+                validateACL: validateSiteUrlInScope
             },
             {
                 tool: googleSearchConsoleDeleteSiteTool,
@@ -60,21 +53,21 @@ export class GoogleSearchConsoleOutput extends Output<GoogleSearchConsoleConfigD
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "Remove property",
                 supportsApproval: true,
-                validateACL: validateGoogleSearchConsoleDeleteSite
+                validateACL: validateSiteUrlInScope
             },
             {
                 tool: googleSearchConsoleListSitemapsTool,
                 isReadOnly: true,
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "List sitemaps",
-                validateACL: validateGoogleSearchConsoleListSitemaps
+                validateACL: validateSiteUrlInScope
             },
             {
                 tool: googleSearchConsoleGetSitemapTool,
                 isReadOnly: true,
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "Get sitemap",
-                validateACL: validateGoogleSearchConsoleGetSitemap
+                validateACL: validateSiteUrlInScope
             },
             {
                 tool: googleSearchConsoleSubmitSitemapTool,
@@ -82,7 +75,7 @@ export class GoogleSearchConsoleOutput extends Output<GoogleSearchConsoleConfigD
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "Submit sitemap",
                 supportsApproval: true,
-                validateACL: validateGoogleSearchConsoleSubmitSitemap
+                validateACL: validateSiteUrlInScope
             },
             {
                 tool: googleSearchConsoleDeleteSitemapTool,
@@ -90,21 +83,21 @@ export class GoogleSearchConsoleOutput extends Output<GoogleSearchConsoleConfigD
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "Remove sitemap",
                 supportsApproval: true,
-                validateACL: validateGoogleSearchConsoleDeleteSitemap
+                validateACL: validateSiteUrlInScope
             },
             {
                 tool: googleSearchConsoleQuerySearchAnalyticsTool,
                 isReadOnly: true,
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "Query search analytics",
-                validateACL: validateGoogleSearchConsoleQuerySearchAnalytics
+                validateACL: validateSiteUrlInScope
             },
             {
                 tool: googleSearchConsoleInspectUrlTool,
                 isReadOnly: true,
                 integration: IntegrationType.GOOGLE_SEARCH_CONSOLE,
                 displayName: "Inspect URL",
-                validateACL: validateGoogleSearchConsoleInspectUrl
+                validateACL: validateInspectUrlInScope
             }
         ])
     }

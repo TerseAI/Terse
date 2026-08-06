@@ -1,10 +1,8 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { GoogleSearchConsoleConfigData } from "terse-types"
 
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { requireSearchConsoleSiteContext, requireSiteUrlInScope, searchConsoleAction } from "./toolContext"
+import { requireSearchConsoleSiteContext, searchConsoleAction } from "./toolContext"
 
 export const googleSearchConsoleSubmitSitemapTool = defineSessionTool({
     name: "google_search_console_submit_sitemap",
@@ -27,6 +25,3 @@ export const googleSearchConsoleSubmitSitemapTool = defineSessionTool({
         }
     }
 })
-
-export const validateGoogleSearchConsoleSubmitSitemap: ToolACLValidator<"google_search_console_submit_sitemap", GoogleSearchConsoleConfigData> = ({ args, configs }) =>
-    requireSiteUrlInScope(args.integrationId, args.siteUrl, configs)

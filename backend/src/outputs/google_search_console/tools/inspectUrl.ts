@@ -1,11 +1,10 @@
 import { searchconsole_v1 } from "@googleapis/searchconsole"
 import { RunHistoryActionType } from "@prisma/client"
-import { GoogleSearchConsoleConfigData, ToolOutputByName } from "terse-types"
+import { ToolOutputByName } from "terse-types"
 
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { requireSearchConsoleSiteContext, requireUrlUnderSiteUrl, searchConsoleAction } from "./toolContext"
+import { requireSearchConsoleSiteContext, searchConsoleAction } from "./toolContext"
 
 type IndexStatus = NonNullable<ToolOutputByName["google_search_console_inspect_url"]["indexStatus"]>
 
@@ -43,9 +42,6 @@ export const googleSearchConsoleInspectUrlTool = defineSessionTool({
         }
     }
 })
-
-export const validateGoogleSearchConsoleInspectUrl: ToolACLValidator<"google_search_console_inspect_url", GoogleSearchConsoleConfigData> = ({ args, configs }) =>
-    requireUrlUnderSiteUrl(args.integrationId, args.siteUrl, args.inspectionUrl, configs)
 
 function toIndexStatus(indexStatus: searchconsole_v1.Schema$IndexStatusInspectionResult): IndexStatus {
     return {

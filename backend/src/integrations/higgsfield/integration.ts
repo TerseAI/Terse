@@ -71,14 +71,14 @@ export class HiggsfieldIntegrationManager
         }
     }
 
-    async processFormSubmission({ organizationId, formValues }: FormSubmissionInput): Promise<FormSubmissionResult> {
+    async processFormSubmission({ userId, organizationId, formValues }: FormSubmissionInput): Promise<FormSubmissionResult> {
         const credentials = formValues.credentials?.trim()
         if (!credentials) return { success: false, error: "API credentials are required", statusCode: 400 }
 
         try {
             await verifyHiggsfieldCredentials(credentials)
             const existing = await db().higgsfield_integrations.findFirst({ where: { organization_id: organizationId } })
-            const integration = existing ?? (await db().higgsfield_integrations.create({ data: { organization_id: organizationId } }))
+            const integration = existing ?? (await db().higgsfield_integrations.create({ data: { user_id: userId, organization_id: organizationId } }))
             await this.secretService.createSecrets({ type: "integration", secret: { integrationType: IntegrationType.HIGGSFIELD, recordId: integration.id, value: { credentials } } })
             return { success: true, statusCode: 200, data: { integrationId: integration.id } }
         } catch (error) {

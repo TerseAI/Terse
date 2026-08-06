@@ -1,9 +1,13 @@
 const DOMAIN_PROPERTY_PREFIX = "sc-domain:"
 
 /**
- * Search Console treats property identifiers as exact strings, so a request that
- * differs only by casing or a missing trailing slash would be denied by our ACL
- * before Google ever sees it. Normalize both sides of every comparison.
+ * Two rules make property matching more than string equality, and both are load-bearing
+ * for the ACL:
+ *
+ * 1. Google matches identifiers exactly, so "https://Example.com" and "https://example.com/"
+ *    are one property to a user but two strings to us. Normalize both sides of a comparison.
+ * 2. A Domain property ("sc-domain:example.com") legitimately grants its subdomains, in
+ *    either property form, so containment cannot be an equality check.
  */
 export function normalizeSiteUrl(siteUrl: string): string {
     const trimmed = siteUrl.trim()

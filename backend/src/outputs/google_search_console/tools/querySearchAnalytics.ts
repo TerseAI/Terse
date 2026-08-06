@@ -1,11 +1,10 @@
 import { searchconsole_v1 } from "@googleapis/searchconsole"
 import { RunHistoryActionType } from "@prisma/client"
-import { GoogleSearchConsoleConfigData, ToolInputByName, ToolOutputByName } from "terse-types"
+import { ToolInputByName, ToolOutputByName } from "terse-types"
 
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { requireSearchConsoleSiteContext, requireSiteUrlInScope, searchConsoleAction } from "./toolContext"
+import { requireSearchConsoleSiteContext, searchConsoleAction } from "./toolContext"
 
 type QueryInput = ToolInputByName["google_search_console_query_search_analytics"]
 type QueryRow = ToolOutputByName["google_search_console_query_search_analytics"]["rows"][number]
@@ -41,9 +40,6 @@ export const googleSearchConsoleQuerySearchAnalyticsTool = defineSessionTool({
         }
     }
 })
-
-export const validateGoogleSearchConsoleQuerySearchAnalytics: ToolACLValidator<"google_search_console_query_search_analytics", GoogleSearchConsoleConfigData> = ({ args, configs }) =>
-    requireSiteUrlInScope(args.integrationId, args.siteUrl, configs)
 
 /** Unset optional fields are omitted so Google's own defaults apply. */
 function buildRequestBody(input: QueryInput, dimensions: readonly Dimension[]): searchconsole_v1.Schema$SearchAnalyticsQueryRequest {

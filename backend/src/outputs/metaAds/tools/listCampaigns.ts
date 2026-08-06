@@ -1,10 +1,9 @@
-import { MetaAdsOutputConfigData, metaAdsCampaignSchema } from "terse-types"
+import { metaAdsCampaignSchema } from "terse-types"
 
 import { toActPath } from "../../../integrations/metaAds/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { metaAdsListWindow, metaAdsReadAction, requireAdAccountInScope, requireMetaAdsClient, withEffectiveStatuses } from "./toolContext"
+import { metaAdsListWindow, metaAdsReadAction, requireMetaAdsClient, withEffectiveStatuses } from "./toolContext"
 
 const CAMPAIGN_FIELDS = ["id", "name", "status", "effective_status", "objective", "daily_budget", "lifetime_budget", "start_time", "stop_time"]
 
@@ -25,6 +24,3 @@ export const metaAdsListCampaignsTool = defineSessionTool({
         }
     }
 })
-
-export const validateMetaAdsListCampaigns: ToolACLValidator<"meta_ads_list_campaigns", MetaAdsOutputConfigData> = ({ args, configs }) =>
-    requireAdAccountInScope(args.integrationId, args.adAccountId, configs)

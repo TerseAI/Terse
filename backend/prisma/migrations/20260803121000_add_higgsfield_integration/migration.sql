@@ -7,6 +7,7 @@ ALTER TYPE "OutputConfigType" ADD VALUE 'HIGGSFIELD';
 -- CreateTable
 CREATE TABLE "higgsfield_integrations" (
     "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
     "organization_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,

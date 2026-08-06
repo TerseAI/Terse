@@ -1,10 +1,8 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { GoogleSearchConsoleConfigData } from "terse-types"
 
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { requireSearchConsoleSiteContext, requireSiteUrlInScope, searchConsoleAction } from "./toolContext"
+import { requireSearchConsoleSiteContext, searchConsoleAction } from "./toolContext"
 
 export const googleSearchConsoleDeleteSitemapTool = defineSessionTool({
     name: "google_search_console_delete_sitemap",
@@ -27,6 +25,3 @@ export const googleSearchConsoleDeleteSitemapTool = defineSessionTool({
         }
     }
 })
-
-export const validateGoogleSearchConsoleDeleteSitemap: ToolACLValidator<"google_search_console_delete_sitemap", GoogleSearchConsoleConfigData> = ({ args, configs }) =>
-    requireSiteUrlInScope(args.integrationId, args.siteUrl, configs)

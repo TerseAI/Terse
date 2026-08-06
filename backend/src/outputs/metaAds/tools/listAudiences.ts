@@ -1,10 +1,9 @@
-import { MetaAdsOutputConfigData, metaAdsCustomAudienceSchema } from "terse-types"
+import { metaAdsCustomAudienceSchema } from "terse-types"
 
 import { toActPath } from "../../../integrations/metaAds/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { metaAdsListWindow, metaAdsReadAction, requireAdAccountInScope, requireMetaAdsClient } from "./toolContext"
+import { metaAdsListWindow, metaAdsReadAction, requireMetaAdsClient } from "./toolContext"
 
 const CUSTOM_AUDIENCE_FIELDS = ["id", "name", "subtype", "approximate_count_lower_bound", "approximate_count_upper_bound", "delivery_status"]
 
@@ -29,6 +28,3 @@ export const metaAdsListAudiencesTool = defineSessionTool({
         }
     }
 })
-
-export const validateMetaAdsListAudiences: ToolACLValidator<"meta_ads_list_audiences", MetaAdsOutputConfigData> = ({ args, configs }) =>
-    requireAdAccountInScope(args.integrationId, args.adAccountId, configs)

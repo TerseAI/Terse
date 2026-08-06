@@ -1,12 +1,11 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { MetaAdsCarouselCard, MetaAdsOutputConfigData } from "terse-types"
+import { MetaAdsCarouselCard } from "terse-types"
 import type { ToolInputByName } from "terse-types"
 
 import { MetaAdsClient, toActPath, uploadMetaAdsImageHash, uploadMetaAdsVideo } from "../../../integrations/metaAds/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { metaAdsAction, requireAdAccountInScope, requireMetaAdsClient, requirePageInScope } from "./toolContext"
+import { metaAdsAction, requireMetaAdsClient } from "./toolContext"
 
 // Creative content is immutable in Meta, and an ad's creative cannot be swapped,
 // so every creative revision is a fresh creative plus a fresh ad.
@@ -52,11 +51,6 @@ export const metaAdsCreateAdTool = defineSessionTool({
         }
     }
 })
-
-export const validateMetaAdsCreateAd: ToolACLValidator<"meta_ads_create_ad", MetaAdsOutputConfigData> = ({ args, configs }) => {
-    const adAccountCheck = requireAdAccountInScope(args.integrationId, args.adAccountId, configs)
-    return adAccountCheck.ok ? requirePageInScope(args.integrationId, args.pageId, configs) : adAccountCheck
-}
 
 /**
  * Videos always need an upload to become a video_id, and dynamic creative needs

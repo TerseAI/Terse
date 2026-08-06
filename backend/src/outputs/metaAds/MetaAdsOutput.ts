@@ -20,30 +20,25 @@ import {
     metaAdsRemoveAudienceUsersTool,
     metaAdsSendConversionsTool,
     metaAdsSetStatusTool,
-    validateMetaAdsCreateAd,
-    validateMetaAdsListAdSets,
-    validateMetaAdsListAds,
-    validateMetaAdsListAudiences,
-    validateMetaAdsListCampaigns,
-    validateMetaAdsListPixels,
-    validateMetaAdsReadInsights
+    validateAdAccountInScope,
+    validateCreateAdInScope
 } from "./tools"
 
 export class MetaAdsOutput extends Output<MetaAdsOutputConfigData> {
     constructor() {
         super(OutputConfigType.META_ADS, [
             { tool: metaAdsListAdAccountsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List ad accounts", validateACL: unrestricted },
-            { tool: metaAdsListCampaignsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List campaigns", validateACL: validateMetaAdsListCampaigns },
-            { tool: metaAdsListAdSetsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List ad sets", validateACL: validateMetaAdsListAdSets },
-            { tool: metaAdsListAdsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List ads", validateACL: validateMetaAdsListAds },
-            { tool: metaAdsListAudiencesTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List audiences", validateACL: validateMetaAdsListAudiences },
-            { tool: metaAdsListPixelsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List pixels", validateACL: validateMetaAdsListPixels },
+            { tool: metaAdsListCampaignsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List campaigns", validateACL: validateAdAccountInScope },
+            { tool: metaAdsListAdSetsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List ad sets", validateACL: validateAdAccountInScope },
+            { tool: metaAdsListAdsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List ads", validateACL: validateAdAccountInScope },
+            { tool: metaAdsListAudiencesTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List audiences", validateACL: validateAdAccountInScope },
+            { tool: metaAdsListPixelsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List pixels", validateACL: validateAdAccountInScope },
             { tool: metaAdsListPagesTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "List Pages", validateACL: unrestricted },
-            { tool: metaAdsReadInsightsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "Read insights", validateACL: validateMetaAdsReadInsights },
+            { tool: metaAdsReadInsightsTool, isReadOnly: true, integration: IntegrationType.META_ADS, displayName: "Read insights", validateACL: validateAdAccountInScope },
             { tool: metaAdsAddAudienceUsersTool, isReadOnly: false, integration: IntegrationType.META_ADS, displayName: "Add audience users", validateACL: unrestricted },
             { tool: metaAdsRemoveAudienceUsersTool, isReadOnly: false, integration: IntegrationType.META_ADS, displayName: "Remove audience users", validateACL: unrestricted },
             { tool: metaAdsSendConversionsTool, isReadOnly: false, integration: IntegrationType.META_ADS, displayName: "Send conversions", validateACL: unrestricted },
-            { tool: metaAdsCreateAdTool, isReadOnly: false, integration: IntegrationType.META_ADS, displayName: "Create ad", validateACL: validateMetaAdsCreateAd },
+            { tool: metaAdsCreateAdTool, isReadOnly: false, integration: IntegrationType.META_ADS, displayName: "Create ad", validateACL: validateCreateAdInScope },
             { tool: metaAdsSetStatusTool, isReadOnly: false, integration: IntegrationType.META_ADS, displayName: "Set status", validateACL: unrestricted }
         ])
     }

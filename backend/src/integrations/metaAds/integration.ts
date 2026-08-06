@@ -15,10 +15,12 @@ import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
 
-import { fetchMetaAdsAdAccounts, fetchMetaAdsUserName } from "./apiClient"
+import { MetaAdsAuthError, fetchMetaAdsAdAccounts, fetchMetaAdsConnectionName } from "./apiClient"
 
-const META_OAUTH_DIALOG_URL = "https://www.facebook.com/v24.0/dialog/oauth"
-const META_OAUTH_SCOPES = "ads_read,ads_management,business_management,pages_show_list"
+const META_GRAPH_VERSION = "v24.0"
+const META_OAUTH_DIALOG_URL = `https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`
+const META_TOKEN_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`
+const META_DEBUG_TOKEN_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}/debug_token`
 
 export class MetaAdsIntegrationManager
     extends Integration<MetaAdsIntegration, never, typeof MetaAdsIntegrationMetadata, MetaAdsAdAccount>
@@ -126,8 +128,11 @@ export class MetaAdsIntegrationManager
         const authUrl = new URL(META_OAUTH_DIALOG_URL)
         authUrl.searchParams.append("client_id", this.config.clientId)
         authUrl.searchParams.append("redirect_uri", this.config.redirectUri)
+        authUrl.searchParams.append("config_id", this.config.configId)
         authUrl.searchParams.append("response_type", "code")
-        authUrl.searchParams.append("scope", META_OAUTH_SCOPES)
+        // Required alongside response_type when a config_id is present, or Meta serves its
+        // configured default type instead and hands back a token where we expect a code.
+        authUrl.searchParams.append("override_default_response_type", "true")
         authUrl.searchParams.append("state", state)
 
         return { oauthUrl: authUrl.toString() }
@@ -155,7 +160,7 @@ export class MetaAdsIntegrationManager
                 return
             }
 
-            const accessToken = await this.exchangeCodeForLongLivedToken(code)
+            const accessToken = await this.exchangeCodeForSystemUserToken(code)
             const integrationId = await this.persistInstallation(decoded.data.userId, decoded.data.organizationId, accessToken)
 
             logger.info("Meta Ads OAuth completed for user", { userId: decoded.data.userId, integrationId })
@@ -172,9 +177,47 @@ export class MetaAdsIntegrationManager
         await this.secretService.deleteSecrets({ type: "integration", secret: { integrationType: IntegrationType.META_ADS, recordId: integrationId } })
     }
 
-    async refreshToken(_integrationId: string): Promise<boolean> {
-        // Long-lived Meta user tokens (~60 days) cannot be refreshed server-side; users reconnect when they expire.
-        return false
+    /**
+     * System user tokens have no expiry to extend, so the only thing worth doing on the
+     * maintenance pass is asking Meta whether the token still works. A client revoking our
+     * app in Business settings is the one way it dies, and that has to be visible.
+     */
+    async refreshToken(integrationId: string): Promise<boolean> {
+        const accessToken = await this.getAccessToken(integrationId)
+        if (!accessToken) {
+            throw new MetaAdsAuthError(`Meta Ads integration ${integrationId} has no stored access token`)
+        }
+
+        const status = await this.inspectToken(accessToken)
+        if (!status.isValid) {
+            throw new MetaAdsAuthError(`Meta Ads token for integration ${integrationId} is no longer valid: ${status.error ?? "revoked or expired"}`)
+        }
+
+        if (status.expiresAt !== null) {
+            logger.warn("Meta Ads token has an expiry, so the configuration is not issuing system user tokens", { integrationId, expiresAt: status.expiresAt })
+        }
+        return true
+    }
+
+    private async inspectToken(accessToken: string): Promise<MetaAdsTokenStatus> {
+        const url = new URL(META_DEBUG_TOKEN_URL)
+        url.searchParams.append("input_token", accessToken)
+        url.searchParams.append("access_token", `${this.config.clientId}|${this.config.clientSecret}`)
+
+        const response = await fetch(url)
+        const payload: unknown = await response.json()
+        const parsed = debugTokenResponseSchema.safeParse(payload)
+        if (!parsed.success) {
+            throw new MetaAdsAuthError(`Meta Ads token inspection returned an unexpected payload (status ${response.status})`)
+        }
+
+        const { is_valid, expires_at, error } = parsed.data.data
+        return {
+            isValid: is_valid,
+            // Meta reports a never-expiring token as 0 rather than omitting the field.
+            expiresAt: expires_at && expires_at > 0 ? new Date(expires_at * 1000) : null,
+            error: error?.message ?? null
+        }
     }
 
     async getAccessToken(integrationId: string): Promise<string | null> {
@@ -202,20 +245,17 @@ export class MetaAdsIntegrationManager
         }
     }
 
-    private async exchangeCodeForLongLivedToken(code: string): Promise<string> {
-        const tokenUrl = new URL("https://graph.facebook.com/v24.0/oauth/access_token")
+    /**
+     * The configuration issues a business integration system user token, which defaults to
+     * never expiring, so there is no short-lived hop to trade up from.
+     */
+    private async exchangeCodeForSystemUserToken(code: string): Promise<string> {
+        const tokenUrl = new URL(META_TOKEN_URL)
         tokenUrl.searchParams.append("client_id", this.config.clientId)
         tokenUrl.searchParams.append("client_secret", this.config.clientSecret)
         tokenUrl.searchParams.append("redirect_uri", this.config.redirectUri)
         tokenUrl.searchParams.append("code", code)
-        const shortLived = await this.fetchAccessToken(tokenUrl, "code exchange")
-
-        const exchangeUrl = new URL("https://graph.facebook.com/v24.0/oauth/access_token")
-        exchangeUrl.searchParams.append("grant_type", "fb_exchange_token")
-        exchangeUrl.searchParams.append("client_id", this.config.clientId)
-        exchangeUrl.searchParams.append("client_secret", this.config.clientSecret)
-        exchangeUrl.searchParams.append("fb_exchange_token", shortLived)
-        return this.fetchAccessToken(exchangeUrl, "long-lived token exchange")
+        return this.fetchAccessToken(tokenUrl, "code exchange")
     }
 
     private async fetchAccessToken(url: URL, what: string): Promise<string> {
@@ -258,9 +298,9 @@ function toInstance(row: { id: string; account_name: string | null }): MetaAdsIn
 
 async function fetchAccountName(accessToken: string): Promise<string | null> {
     try {
-        return await fetchMetaAdsUserName(accessToken)
+        return await fetchMetaAdsConnectionName(accessToken)
     } catch (fetchError) {
-        logger.warn("Failed to fetch Meta user profile", { error: fetchError })
+        logger.warn("Failed to name the Meta Ads connection", { error: fetchError })
         return null
     }
 }
@@ -273,3 +313,17 @@ const oauthStateSchema = z.object({
 const metaTokenResponseSchema = z.object({
     access_token: z.string()
 })
+
+const debugTokenResponseSchema = z.object({
+    data: z.object({
+        is_valid: z.boolean(),
+        expires_at: z.number().optional(),
+        error: z.object({ message: z.string() }).optional()
+    })
+})
+
+interface MetaAdsTokenStatus {
+    isValid: boolean
+    expiresAt: Date | null
+    error: string | null
+}

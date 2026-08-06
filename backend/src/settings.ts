@@ -154,11 +154,13 @@ export const settings = {
         redirectUri: requireEnv("ATTIO_REDIRECT_URI")
     })),
 
-    // Meta Ads OAuth — opt-in
-    metaAds: optionalIntegrationSettings(["META_ADS_CLIENT_ID", "META_ADS_CLIENT_SECRET", "META_ADS_REDIRECT_URI"], () => ({
+    // Meta Ads OAuth — opt-in. Facebook Login for Business drives the consent screen, so the
+    // requested permissions live in the dashboard configuration rather than in a scope string.
+    metaAds: optionalIntegrationSettings(["META_ADS_CLIENT_ID", "META_ADS_CLIENT_SECRET", "META_ADS_REDIRECT_URI", "META_ADS_CONFIG_ID"], () => ({
         clientId: requireEnv("META_ADS_CLIENT_ID"),
         clientSecret: requireEnv("META_ADS_CLIENT_SECRET"),
-        redirectUri: requireEnv("META_ADS_REDIRECT_URI")
+        redirectUri: requireEnv("META_ADS_REDIRECT_URI"),
+        configId: requireEnv("META_ADS_CONFIG_ID")
     })),
 
     // Google Cloud Platform — opt-in. Powers GoogleSecretManagerClient, Cloud Scheduler, GCS uploads.

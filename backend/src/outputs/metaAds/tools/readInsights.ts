@@ -1,11 +1,10 @@
-import { MetaAdsOutputConfigData, metaAdsInsightsRowSchema } from "terse-types"
+import { metaAdsInsightsRowSchema } from "terse-types"
 import type { ToolInputByName } from "terse-types"
 
 import { toActPath } from "../../../integrations/metaAds/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { metaAdsReadAction, requireAdAccountInScope, requireMetaAdsClient } from "./toolContext"
+import { metaAdsReadAction, requireMetaAdsClient } from "./toolContext"
 
 const INSIGHT_METRIC_FIELDS = ["spend", "impressions", "clicks", "ctr", "cpc", "reach", "actions"]
 const MAX_INSIGHT_ROWS = 2000
@@ -36,9 +35,6 @@ export const metaAdsReadInsightsTool = defineSessionTool({
         }
     }
 })
-
-export const validateMetaAdsReadInsights: ToolACLValidator<"meta_ads_read_insights", MetaAdsOutputConfigData> = ({ args, configs }) =>
-    requireAdAccountInScope(args.integrationId, args.adAccountId, configs)
 
 function entityFieldsForLevel(level: MetaAdsReadInsightsInput["level"]): string[] {
     switch (level) {

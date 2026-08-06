@@ -7,7 +7,7 @@ import { MetaAdsAuthError, MetaAdsClient, toActPath } from "../../../integration
 import { MetaAdsIntegrationManager } from "../../../integrations/metaAds/integration"
 import { db } from "../../../loaders/prisma"
 import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
-import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
+import { ToolACLValidationResult, ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
 
 const META_ADS_DEFAULT_LIMIT = 100
 
@@ -59,7 +59,16 @@ export function withIdFilters(params: Record<string, unknown>, filters: Array<{ 
     return filtering.length ? { ...params, filtering } : params
 }
 
-export function requireAdAccountInScope(integrationId: string, adAccountId: string, configs: MetaAdsOutputConfigData[]): ToolACLValidationResult {
+/** Every ad-account-scoped tool takes the same `adAccountId`, so they all share one validator. */
+export const validateAdAccountInScope: ToolACLValidator<AdAccountScopedToolName, MetaAdsOutputConfigData> = ({ args, configs }) =>
+    requireAdAccountInScope(args.integrationId, args.adAccountId, configs)
+
+export const validateCreateAdInScope: ToolACLValidator<"meta_ads_create_ad", MetaAdsOutputConfigData> = ({ args, configs }) => {
+    const adAccountCheck = requireAdAccountInScope(args.integrationId, args.adAccountId, configs)
+    return adAccountCheck.ok ? requirePageInScope(args.integrationId, args.pageId, configs) : adAccountCheck
+}
+
+function requireAdAccountInScope(integrationId: string, adAccountId: string, configs: MetaAdsOutputConfigData[]): ToolACLValidationResult {
     return requireMetaAdsIdInScope(
         adAccountId,
         allowedIdsFor(integrationId, configs, config => config.adAccountId),
@@ -69,7 +78,7 @@ export function requireAdAccountInScope(integrationId: string, adAccountId: stri
     )
 }
 
-export function requirePageInScope(integrationId: string, pageId: string, configs: MetaAdsOutputConfigData[]): ToolACLValidationResult {
+function requirePageInScope(integrationId: string, pageId: string, configs: MetaAdsOutputConfigData[]): ToolACLValidationResult {
     return requireMetaAdsIdInScope(
         pageId,
         allowedIdsFor(integrationId, configs, config => config.pageId),
@@ -119,3 +128,5 @@ async function getMetaAdsClientForOrganization(integrationId: string, organizati
 
     return new MetaAdsClient(accessToken)
 }
+
+type AdAccountScopedToolName = "meta_ads_list_campaigns" | "meta_ads_list_adsets" | "meta_ads_list_ads" | "meta_ads_list_audiences" | "meta_ads_list_pixels" | "meta_ads_read_insights"

@@ -4289,7 +4289,8 @@ export const higgsfieldGenerateVideoTool = defineTool({
 })
 export const higgsfieldListMotionsTool = defineTool({
     name: "higgsfield_list_motions",
-    description: "List Higgsfield motion presets with their IDs, for use as motionId in higgsfield_generate_video.",
+    description:
+        "List Higgsfield motion presets with their IDs. A motion is a named camera move (a dolly, an orbit, a zoom) that Higgsfield applies on top of the prompt when animating a still image. Pass one as motionId to higgsfield_generate_video, scaled by motionStrength. The IDs are opaque, so call this first rather than guessing one.",
     inputSchema: higgsfieldListMotionsInputSchema,
     outputSchema: higgsfieldListMotionsOutputSchema
 })

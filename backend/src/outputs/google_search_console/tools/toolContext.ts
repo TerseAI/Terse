@@ -5,7 +5,7 @@ import { Session } from "../../../express"
 import { SearchConsoleClient, getSearchConsoleClientForOrganization } from "../../../integrations/googlesearchconsole/apiClient"
 import { isSiteUrlAllowed, isUrlUnderProperty, normalizeSiteUrl } from "../../../integrations/googlesearchconsole/siteScope"
 import { SessionWithTracking } from "../../../modules/agents/AgentRunner/BaseAgentRunner"
-import { ToolACLValidationResult, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
+import { ToolACLValidationResult, ToolACLValidator, denyToolACL, findConfigsByIntegrationId } from "../../abstract/acl"
 
 export async function requireSearchConsoleClient(integrationId: string, runContext: RunContext<SessionWithTracking<Session>> | undefined): Promise<SearchConsoleClient> {
     if (!runContext?.context) {
@@ -38,7 +38,13 @@ export function searchConsoleAction(args: { action: string; siteUrl: string; det
     }
 }
 
-export function requireSiteUrlInScope(integrationId: string, siteUrl: string, configs: GoogleSearchConsoleConfigData[]): ToolACLValidationResult {
+/** Every site-scoped tool takes the same `siteUrl`, so they all share one validator. */
+export const validateSiteUrlInScope: ToolACLValidator<SiteScopedToolName, GoogleSearchConsoleConfigData> = ({ args, configs }) => requireSiteUrlInScope(args.integrationId, args.siteUrl, configs)
+
+export const validateInspectUrlInScope: ToolACLValidator<"google_search_console_inspect_url", GoogleSearchConsoleConfigData> = ({ args, configs }) =>
+    requireUrlUnderSiteUrl(args.integrationId, args.siteUrl, args.inspectionUrl, configs)
+
+function requireSiteUrlInScope(integrationId: string, siteUrl: string, configs: GoogleSearchConsoleConfigData[]): ToolACLValidationResult {
     const allowed = allowedSiteUrlsFor(integrationId, configs)
     if (isSiteUrlAllowed(siteUrl, allowed)) {
         return { ok: true }
@@ -48,7 +54,7 @@ export function requireSiteUrlInScope(integrationId: string, siteUrl: string, co
     )
 }
 
-export function requireUrlUnderSiteUrl(integrationId: string, siteUrl: string, inspectionUrl: string, configs: GoogleSearchConsoleConfigData[]): ToolACLValidationResult {
+function requireUrlUnderSiteUrl(integrationId: string, siteUrl: string, inspectionUrl: string, configs: GoogleSearchConsoleConfigData[]): ToolACLValidationResult {
     const siteCheck = requireSiteUrlInScope(integrationId, siteUrl, configs)
     if (!siteCheck.ok) return siteCheck
 
@@ -58,6 +64,16 @@ export function requireUrlUnderSiteUrl(integrationId: string, siteUrl: string, i
     return denyToolACL(`URL "${inspectionUrl}" is not under the Search Console property "${siteUrl}".`)
 }
 
-export function allowedSiteUrlsFor(integrationId: string, configs: GoogleSearchConsoleConfigData[]): string[] {
+function allowedSiteUrlsFor(integrationId: string, configs: GoogleSearchConsoleConfigData[]): string[] {
     return Array.from(new Set(findConfigsByIntegrationId(integrationId, configs).flatMap(config => config.siteUrls ?? [])))
 }
+
+type SiteScopedToolName =
+    | "google_search_console_get_site"
+    | "google_search_console_add_site"
+    | "google_search_console_delete_site"
+    | "google_search_console_list_sitemaps"
+    | "google_search_console_get_sitemap"
+    | "google_search_console_submit_sitemap"
+    | "google_search_console_delete_sitemap"
+    | "google_search_console_query_search_analytics"

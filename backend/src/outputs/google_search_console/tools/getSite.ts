@@ -1,11 +1,9 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { GoogleSearchConsoleConfigData } from "terse-types"
 
 import { toPermissionLevel } from "../../../integrations/googlesearchconsole/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { requireSearchConsoleSiteContext, requireSiteUrlInScope, searchConsoleAction } from "./toolContext"
+import { requireSearchConsoleSiteContext, searchConsoleAction } from "./toolContext"
 
 export const googleSearchConsoleGetSiteTool = defineSessionTool({
     name: "google_search_console_get_site",
@@ -31,6 +29,3 @@ export const googleSearchConsoleGetSiteTool = defineSessionTool({
         }
     }
 })
-
-export const validateGoogleSearchConsoleGetSite: ToolACLValidator<"google_search_console_get_site", GoogleSearchConsoleConfigData> = ({ args, configs }) =>
-    requireSiteUrlInScope(args.integrationId, args.siteUrl, configs)

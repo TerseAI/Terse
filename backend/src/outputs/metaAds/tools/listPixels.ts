@@ -1,10 +1,9 @@
-import { MetaAdsOutputConfigData, metaAdsPixelSchema } from "terse-types"
+import { metaAdsPixelSchema } from "terse-types"
 
 import { toActPath } from "../../../integrations/metaAds/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
-import { ToolACLValidator } from "../../abstract/acl"
 
-import { metaAdsListWindow, metaAdsReadAction, requireAdAccountInScope, requireMetaAdsClient } from "./toolContext"
+import { metaAdsListWindow, metaAdsReadAction, requireMetaAdsClient } from "./toolContext"
 
 const PIXEL_FIELDS = ["id", "name", "last_fired_time"]
 
@@ -24,6 +23,3 @@ export const metaAdsListPixelsTool = defineSessionTool({
         }
     }
 })
-
-export const validateMetaAdsListPixels: ToolACLValidator<"meta_ads_list_pixels", MetaAdsOutputConfigData> = ({ args, configs }) =>
-    requireAdAccountInScope(args.integrationId, args.adAccountId, configs)

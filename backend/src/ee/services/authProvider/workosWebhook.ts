@@ -166,6 +166,8 @@ async function cleanupIdentity(workosUserId: string): Promise<void> {
             prisma.datadog_integrations.deleteMany({ where: { user_id: workosUserId } }),
             prisma.github_app_tokens.deleteMany({ where: { user_id: workosUserId } }),
             prisma.gmail_integrations.deleteMany({ where: { user_id: workosUserId } }),
+            prisma.google_search_console_integrations.deleteMany({ where: { user_id: workosUserId } }),
+            prisma.higgsfield_integrations.deleteMany({ where: { user_id: workosUserId } }),
             prisma.launchdarkly_integrations.deleteMany({ where: { user_id: workosUserId } }),
             prisma.linear_integrations.deleteMany({ where: { user_id: workosUserId } }),
             prisma.meta_ads_integrations.deleteMany({ where: { user_id: workosUserId } }),

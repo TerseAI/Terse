@@ -252,6 +252,16 @@ Meta grants every app Standard Access automatically, which covers every tool abo
 
 Standard Access also carries lower rate limits, shared across everyone using your app: roughly `300 + 40 x active ads` calls per hour for management and `600 + 400 x active ads` for insights.
 
+### Connecting, and why it stays connected
+
+Terse connects through **Facebook Login for Business** using a configuration you create in the Meta App Dashboard. The configuration, not Terse, decides which permissions and assets are requested, and it is set to issue a **business integration system user token**.
+
+That choice is what keeps an automation alive. A classic Facebook user token lasts about 60 days and cannot be renewed without the person logging in again, so a scheduled job would silently stop working roughly two months after setup. A system user token defaults to never expiring, so the connection survives without anyone touching it.
+
+The token dies in exactly one way: the client removes your app under Business settings, Connected apps. Terse checks each connection against Meta on its maintenance pass and reports a revoked token rather than discovering it mid-run.
+
+To connect, open Integrations, choose Meta Ads, and approve the business and assets Meta lists. Testing the flow requires a role on the app **and** full control of the client business.
+
 ## Higgsfield
 
 Generate ad creative images from a text prompt, then animate them into video.
@@ -266,7 +276,7 @@ skills: [Skills.higgsfield()]
 | --------------------------- | ------------------------------------------------------------ | ------ |
 | `higgsfield_generate_image` | Generate one or four images from a text prompt                | Write  |
 | `higgsfield_generate_video` | Animate a still image into a video                            | Write  |
-| `higgsfield_list_motions`   | List motion presets with their IDs, for `motionId`            | Read   |
+| `higgsfield_list_motions`   | List named camera-move presets and their IDs, for `motionId`  | Read   |
 
 Generation is asynchronous and the tools wait for it to finish, so a call can take a while. Each asset is copied into Terse-managed storage and returned as a signed URL valid for 24 hours. That URL can be shown to a human for approval and passed straight to `meta_ads_create_ad` as an `imageUrl` or `videoUrl`.
 
@@ -288,7 +298,13 @@ const { videos } = await toolbox.higgsfield.generateVideo({
 })
 ```
 
-`model` picks cost against quality: `dop-lite`, `dop-turbo` (default), `dop-standard`. Pass a `motionId` from `higgsfield_list_motions` to apply a named camera move on top of the prompt, with `motionStrength` between 0 and 1.
+`model` picks cost against quality: `dop-lite`, `dop-turbo` (default), `dop-standard`.
+
+### Motions
+
+A motion is a named camera move that Higgsfield applies on top of your prompt: a dolly, an orbit, a zoom, and so on. It controls how the camera behaves during the animation, where the prompt controls what happens in the frame. Reach for one when you want a specific, repeatable camera language across a set of ads instead of whatever the prompt happens to produce.
+
+Motion IDs are opaque strings you cannot guess, so `higgsfield_list_motions` exists to discover them. Pass one as `motionId` on `higgsfield_generate_video`, and scale it with `motionStrength` between 0 and 1 (defaults to 1). Omit `motionId` entirely and the prompt alone drives the movement, which is usually fine for a single ad.
 
 ### Getting credentials
 
@@ -451,6 +467,14 @@ Property and data notes:
 - Search Analytics dates are inclusive `YYYY-MM-DD` in PST and the data lags by roughly 2-3 days, so the most recent days come back empty rather than as zero traffic.
 - Query-grouped results omit anonymized queries, so their clicks will not sum to the property total.
 - Submitting a sitemap only queues it. Check the outcome later with `google_search_console_get_sitemap`.
+
+### Connecting
+
+Open Integrations, choose Google Search Console, and sign in with the Google account that owns or is delegated on the properties. Property access follows that Google account, not your Terse organization, so connect the account that actually appears in Search Console.
+
+<Note>
+    Search Console uses the `webmasters` scope, which Google classes as sensitive. While the OAuth client is still in Testing status, only Google accounts added to its test-user list can connect, capped at 100. If a connection attempt fails with an access-blocked error, that list is the first place to look.
+</Note>
 
 ## Web (built-in)
 

@@ -1,5 +1,5 @@
 import crypto from "crypto"
-import { Ad, AdAccount, AdSet, AdVideo, AdsPixel, Campaign, CustomAudience, FacebookAdsApi, User } from "facebook-nodejs-business-sdk"
+import { Ad, AdAccount, AdSet, AdVideo, AdsPixel, Business, Campaign, CustomAudience, FacebookAdsApi, User } from "facebook-nodejs-business-sdk"
 import { metaAdsAdAccountEntitySchema, metaAdsPageSchema } from "terse-types"
 import type { MetaAdsAdAccountEntity, MetaAdsPage as MetaAdsPageEntity } from "terse-types"
 import { z } from "zod"
@@ -17,6 +17,10 @@ export class MetaAdsClient {
 
     me(): User {
         return new User("me", {}, null, this.api)
+    }
+
+    business(businessId: string): Business {
+        return new Business(businessId, {}, null, this.api)
     }
 
     campaign(campaignId: string): Campaign {
@@ -232,13 +236,26 @@ export async function fetchMetaAdsPages(accessToken: string): Promise<MetaAdsPag
     return client.collect(() => client.me().getAccounts(META_ADS_PAGE_FIELDS, { limit: 200 }), metaAdsPageSchema, "pages")
 }
 
-export async function fetchMetaAdsUserName(accessToken: string): Promise<string | null> {
+/**
+ * A system user token resolves `/me` to the system user rather than a person, and Meta
+ * returns `client_business_id` there instead of a usable name, so fall back to naming the
+ * client business.
+ */
+export async function fetchMetaAdsConnectionName(accessToken: string): Promise<string | null> {
     const client = new MetaAdsClient(accessToken)
-    const me = await client.runParsed(() => client.me().get(["name"]), metaUserSchema, "user profile")
-    return me.name ?? null
+    const me = await client.runParsed(() => client.me().get(["name", "client_business_id"]), metaMeSchema, "token owner")
+    if (me.name) {
+        return me.name
+    }
+    if (!me.client_business_id) {
+        return null
+    }
+    const business = await client.runParsed(() => client.business(me.client_business_id!).get(["name"]), metaBusinessSchema, "client business")
+    return business.name ?? null
 }
 
-const metaUserSchema = z.object({ name: z.string().nullable().optional() })
+const metaMeSchema = z.object({ name: z.string().nullable().optional(), client_business_id: z.string().nullable().optional() })
+const metaBusinessSchema = z.object({ name: z.string().nullable().optional() })
 
 export function toActPath(adAccountId: string): string {
     return adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`
