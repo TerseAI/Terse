@@ -1,3 +1,4 @@
+import { createServer } from "node:http"
 import { createJob, generateText, jobStep, slack, sleep, step, waitForInput } from "terse-sdk"
 import { z } from "zod"
 
@@ -159,6 +160,34 @@ createJob({
         const todo2 = await step(fetchTodo(2))
 
         const todo3 = await step(fetchTodo(3))
+    }
+})
+
+async function serveTunnelPreview(port: number, holdMs: number) {
+    const server = createServer((_req, res) => {
+        res.writeHead(200, { "Content-Type": "text/html" })
+        res.end(`<h1>Hello from the sandbox</h1><p>Listening on port ${port}</p>`)
+    })
+    await new Promise<void>(resolve => server.listen(port, () => resolve()))
+    console.log(`serving on port ${port}`)
+
+    await new Promise(resolve => setTimeout(resolve, holdMs))
+    await new Promise<void>(resolve => server.close(() => resolve()))
+    console.log("server closed")
+    return `served on port ${port} for ${holdMs}ms`
+}
+
+createJob({
+    name: "Tunnel Test - serve a web app from the sandbox",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    durable: true,
+    onTrigger: async (event, state, ctx) => {
+        await toolbox.slack.sendMessage({
+            channelId: SlackChannel.AllTerseInc.channelId,
+            message: `Sandbox web app is live for 30 seconds: ${ctx.tunnelUrl}`
+        })
+
+        await step(serveTunnelPreview(ctx.tunnelPort, 30 * 1000))
     }
 })
 

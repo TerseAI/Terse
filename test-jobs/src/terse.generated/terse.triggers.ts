@@ -6,6 +6,7 @@ import {
     InferStructuredOutput,
     SDKTrigger,
     TimeTriggerConfig,
+    Timezone,
     TypedTrigger,
     WebMonitorConfig,
     WebhookInputConfig,
@@ -59,9 +60,9 @@ export interface WebMonitorTriggerPayload<TStructured = unknown> {
 export type WebMonitorTrigger<TStructured = unknown> = SDKTrigger<WebMonitorTriggerPayload<TStructured>>
 
 export const scheduleTriggers = {
-    /** Run on a cron schedule (5-field cron expression, evaluated in UTC) */
-    cron(opts: { expression: string }): TypedTrigger<CronTrigger> {
-        return new TimeTriggerConfig(opts.expression)
+    /** Run on a cron schedule (5-field cron expression, evaluated as wall-clock time in `timezone` — an IANA name like "America/New_York", DST-aware — defaulting to UTC) */
+    cron(opts: { expression: string; timezone?: Timezone }): TypedTrigger<CronTrigger> {
+        return new TimeTriggerConfig(opts.expression, opts.timezone)
     },
 }
 

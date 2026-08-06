@@ -9,6 +9,7 @@ export interface RunHistoryAction {
         | "github"
         | "hey_reach"
         | "resend"
+        | "apollo"
         | "gmail"
         | "linear"
         | "slack"
@@ -57,5 +58,6 @@ export interface RunHistoryAction {
             | "webmonitor"
             | "hey_reach_input"
             | "resend_output"
+            | "apollo_output"
     }[]
 }
