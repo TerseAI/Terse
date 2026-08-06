@@ -278,7 +278,7 @@ export const ResendOutputConfigMetadata = {
 export const HiggsfieldOutputConfigMetadata = {
     configType: ConfigType.HIGGSFIELD_OUTPUT,
     name: "Higgsfield",
-    description: "Generate ad creative images from a text prompt using Higgsfield",
+    description: "Generate ad creative images and animate them into video with Higgsfield",
     integrationType: IntegrationType.HIGGSFIELD,
     isInput: false,
     isOutput: true
@@ -287,7 +287,7 @@ export const HiggsfieldOutputConfigMetadata = {
 export const MetaAdsOutputConfigMetadata = {
     configType: ConfigType.META_ADS_OUTPUT,
     name: "Meta Ads",
-    description: "Read campaign performance, sync custom audiences, and send offline conversions to Meta Ads",
+    description: "Read ad performance, sync custom audiences, and send offline conversions to Meta Ads",
     integrationType: IntegrationType.META_ADS,
     isInput: false,
     isOutput: true
@@ -305,7 +305,7 @@ export const ApolloOutputConfigMetadata = {
 export const GoogleSearchConsoleOutputConfigMetadata = {
     configType: ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT,
     name: "Google Search Console",
-    description: "Manage Google Search Console",
+    description: "Read Search Analytics and manage sites and sitemaps",
     integrationType: IntegrationType.GOOGLE_SEARCH_CONSOLE,
     isInput: false,
     isOutput: true

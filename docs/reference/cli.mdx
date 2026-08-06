@@ -221,7 +221,7 @@ The available fields per trigger type match what your handler receives at runtim
 
 The prompt-facing text returned by `event.formatForAgentRunner()` and the log line returned by `event.debugLog()` are derived from the fixture exactly the way production derives them from a live event. To test a custom rendering, add a top-level `formattedContent` or `debugLog` string to the fixture and it overrides the derived value.
 
-`event.triggeredAt` defaults to the time you run the test. Add a top-level `triggeredAt` ISO 8601 timestamp (for example `"2026-07-01T09:00:00.000Z"`) to pin it, so a job that derives date windows from the trigger time produces the same window on every run.
+`event.triggeredAt` defaults to the time you run the test. Add a top-level `triggeredAt` ISO 8601 timestamp (for example `"2026-07-01T09:00:00.000Z"`) to pin it, so date windows derived from it stay the same on every run.
 
 `terse test show <id> --json` prints any stored sample event in this shape, so a recorded event is always a valid starting point for a hand-edited fixture.
 

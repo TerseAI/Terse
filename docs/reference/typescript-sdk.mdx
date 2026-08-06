@@ -65,28 +65,15 @@ Your `onTrigger` and `filter` callbacks receive these enriched objects, so you c
 
 ### Trigger time
 
-`event.triggeredAt` is the run's clock. It is stamped once when the trigger arrives, travels with the event, and is therefore identical on every read: after queue delay, after a retry, and on every durable replay of the same run. Anchor date math to it instead of `Date.now()` or `new Date()`, both of which drift between the moment the trigger fired and the moment your code reads them.
+`event.triggeredAt` is stamped once when the trigger arrives, so it reads the same after queue delay, retries, and durable replays. Anchor date math to it rather than `Date.now()` or `new Date()`, which drift.
 
 ```typescript
-createJob({
-    name: "Weekly search performance report",
-    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
-    onTrigger: async event => {
-        const DAY_MS = 24 * 60 * 60 * 1000
-        // Search Console data lags ~3 days.
-        const end = new Date(event.triggeredAt.getTime() - 3 * DAY_MS)
-        const start = new Date(end.getTime() - 6 * DAY_MS)
-
-        const startDate = start.toISOString().slice(0, 10)
-        const endDate = end.toISOString().slice(0, 10)
-
-        // Query the reporting window with the toolbox or an agent skill.
-        console.log(`Reporting window: ${startDate} to ${endDate}`)
-    }
-})
+const DAY_MS = 24 * 60 * 60 * 1000
+const end = new Date(event.triggeredAt.getTime() - 3 * DAY_MS)
+const start = new Date(end.getTime() - 6 * DAY_MS)
 ```
 
-To exercise window logic against a fixed date, add a top-level `triggeredAt` (an ISO 8601 timestamp) to an event fixture passed to `terse test`; it overrides the trigger time the same way `formattedContent` overrides the derived prompt text.
+To test window logic against a fixed date, add a top-level `triggeredAt` ISO 8601 timestamp to an event fixture passed to `terse test`.
 
 ## `createJob(...)`
 

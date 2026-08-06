@@ -405,14 +405,7 @@ switch (classification.severity) {
 
 **No nested try/catch.** When a `catch` body needs its own error handling, extract the catch body into a helper function and call it from the `catch`.
 
-**Time comes from the event.** `event.triggeredAt` is a `Date` fixed to the moment Terse received the trigger. Derive every date, window, and cutoff from it; never `Date.now()` or `new Date()`, which drift with queue delay, retries, and durable replays. Window math is plain synchronous code — computing it does not need a step, a helper, or an `async` function.
-
-```typescript
-const DAY_MS = 24 * 60 * 60 * 1000
-// Search Console data lags ~3 days.
-const end = new Date(event.triggeredAt.getTime() - LAG_DAYS * DAY_MS)
-const start = new Date(end.getTime() - (WINDOW_DAYS - 1) * DAY_MS)
-```
+**Time comes from the event.** Derive dates and windows from `event.triggeredAt`, never `Date.now()` or `new Date()`, which drift across queue delay, retries, and replays. Window math is plain synchronous code; it needs no step or helper.
 
 **Functional iteration.** Prefer `map`/`filter`/`reduce` for transforms and `forEach` for synchronous side effects; reach for `for` loops sparingly. When the loop body awaits, use `Promise.all(items.map(...))` for parallel work or `for...of` for sequential awaits — never pass an async callback to `forEach`, which fires without awaiting and swallows rejections.
 

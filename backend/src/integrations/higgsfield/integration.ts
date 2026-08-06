@@ -53,7 +53,7 @@ export class HiggsfieldIntegrationManager
                 label: "Key ID and Key Secret",
                 placeholder: "KEY_ID:KEY_SECRET",
                 required: true,
-                hint: "Higgsfield issues two values. Paste them as one string joined by a colon, with no spaces: the Key ID, then ':', then the Key Secret."
+                hint: "Higgsfield issues two values. Paste them joined by a colon, with no spaces."
             }
         ]
     }
@@ -63,10 +63,9 @@ export class HiggsfieldIntegrationManager
             title: "Human action required: create Higgsfield API credentials",
             url: "https://cloud.higgsfield.ai",
             instructions: [
-                "Sign in at cloud.higgsfield.ai. ",
-                "Click on API Keys and Create API Key.",
-                "Enter an API Key Name and click Create.",
-                'Copy the Key ID and Key Secret and paste them here as a single colon-joined string: "KEY_ID:KEY_SECRET".'
+                "In Higgsfield, create a key under API Keys > Create API Key.",
+                "Copy both values it issues: the Key ID and the Key Secret.",
+                'Paste them here joined by a colon: "KEY_ID:KEY_SECRET".'
             ]
         }
     }

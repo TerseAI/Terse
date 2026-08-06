@@ -63,7 +63,7 @@ export const GmailIntegrationMetadata = {
 export const GoogleSearchConsoleIntegrationMetadata = {
     type: IntegrationType.GOOGLE_SEARCH_CONSOLE,
     name: "Google Search Console",
-    description: "Read Search Analytics data and manage connected Sites",
+    description: "Read Search Analytics and manage sites and sitemaps",
     isInput: false,
     isOutput: true
 } as const satisfies IntegrationDetails
@@ -191,7 +191,7 @@ export const HeyReachIntegrationMetadata = {
 export const MetaAdsIntegrationMetadata = {
     type: IntegrationType.META_ADS,
     name: "Meta Ads",
-    description: "Read Meta ad campaign performance, sync custom audiences, and send offline conversions",
+    description: "Read ad performance, sync custom audiences, and send offline conversions to Meta Ads",
     isInput: false,
     isOutput: true
 } as const satisfies IntegrationDetails
@@ -207,7 +207,7 @@ export const ResendIntegrationMetadata = {
 export const HiggsfieldIntegrationMetadata = {
     type: IntegrationType.HIGGSFIELD,
     name: "Higgsfield",
-    description: "Generate ad creative images from a text prompt using Higgsfield",
+    description: "Generate ad creative images and animate them into video with Higgsfield",
     isInput: false,
     isOutput: true
 } as const satisfies IntegrationDetails
