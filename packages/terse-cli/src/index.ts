@@ -613,11 +613,13 @@ if (isCliRunCommandEnabled()) {
         .argument("[job-name]", "Name of the job to run (auto-selects if only one exists)")
         .option("--event <json>", "Trigger event fixture JSON string")
         .option("--event-file <path>", "Path to a JSON file containing the trigger event fixture")
+        .option("--tunnel-url <url>", "Public URL tunneled into this sandbox, passed through to onTrigger")
+        .option("--tunnel-port <port>", "Port inside the sandbox the tunnel forwards to")
         .option("-v, --verbose", "Show job stream output (use --no-verbose to silence)", true)
         .option("--no-verbose", "Hide job stream output")
         .option(...ENTRY_FILE_OPTION)
-        .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
-            await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile, opts?.verbose)
+        .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; tunnelUrl?: string; tunnelPort?: string; verbose?: boolean; entryFile?: string }) => {
+            await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile, opts?.verbose, opts?.tunnelUrl, opts?.tunnelPort ? Number(opts.tunnelPort) : undefined)
         })
 }
 

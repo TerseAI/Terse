@@ -1,6 +1,7 @@
 import chalk from "chalk"
 import { __buildJobStateAccessor, createSDKTrigger } from "terse-sdk"
 import { runWithJobContext } from "terse-sdk/dist/runIdentity/jobContextStore.js"
+import { SDK_SANDBOX_TUNNEL_PORT } from "terse-types"
 
 import { readApiKeyOrBail } from "../../../api.js"
 import { CliError } from "../../../cliError.js"
@@ -15,6 +16,8 @@ export const directJobRuntime: JobRuntime = {
         const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
         const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
         const inputEvent = createSDKTrigger(event)
+        const tunnelPort = opts?.tunnelPort ?? SDK_SANDBOX_TUNNEL_PORT
+        const tunnelUrl = opts?.tunnelUrl ?? `http://localhost:${tunnelPort}`
 
         try {
             await withSession(
@@ -22,14 +25,14 @@ export const directJobRuntime: JobRuntime = {
                 isVerbose,
                 pauseUiAround,
                 async sessionId => {
-                    await runWithJobContext({ sessionId, runId, apiBaseUrl: BACKEND_URL, projectId: opts?.projectId, jobName: job.name }, async () => {
+                    await runWithJobContext({ sessionId, runId, apiBaseUrl: BACKEND_URL, projectId: opts?.projectId, jobName: job.name, tunnelUrl, tunnelPort }, async () => {
                         const state = __buildJobStateAccessor(job.states ?? [])
                         if (job.filter && !(await job.filter(inputEvent, state))) {
                             if (isVerbose) console.log(chalk.dim(`\n  Job "${job.name}" skipped (filter returned false).\n`))
                             return
                         }
                         if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
-                        await job.onTrigger(inputEvent, state)
+                        await job.onTrigger(inputEvent, state, { tunnelUrl, tunnelPort })
                     })
                 },
                 opts?.onSessionEvent

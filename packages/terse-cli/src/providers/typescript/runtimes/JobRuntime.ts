@@ -5,6 +5,8 @@ export type RunJobOptions = {
     verbose?: boolean
     entryFile?: string
     projectId?: string
+    tunnelUrl?: string
+    tunnelPort?: number
     onSessionEvent?: (event: SessionStreamEvent) => void
     pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
 }

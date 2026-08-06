@@ -1,4 +1,5 @@
 import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams } from "modal"
+import { SDK_SANDBOX_TUNNEL_PORT } from "terse-types"
 
 import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
@@ -7,7 +8,8 @@ import { Sandbox, SandboxService } from "./SandboxService"
 
 export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     idleTimeoutMs: 5 * 60 * 1000,
-    timeoutMs: 24 * 60 * 60 * 1000
+    timeoutMs: 24 * 60 * 60 * 1000,
+    encryptedPorts: [SDK_SANDBOX_TUNNEL_PORT]
 }
 
 const CREATE_MAX_ATTEMPTS = 6
@@ -52,6 +54,15 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
     async restoreDirectory(sandbox: ModalSandbox, path: string, imageId: string): Promise<void> {
         const image = await this.modal.images.fromId(imageId)
         await sandbox.mountImage(path, image)
+    }
+
+    async getTunnelUrl(sandbox: ModalSandbox, port: number): Promise<string> {
+        const tunnels = await sandbox.tunnels()
+        const tunnel = tunnels[port]
+        if (!tunnel) {
+            throw new Error(`Modal sandbox: no tunnel reserved for port ${port}`)
+        }
+        return tunnel.url
     }
 
     async getOrCreateApp(name: string): Promise<ModalApp> {

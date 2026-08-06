@@ -41,6 +41,8 @@ export interface LanguageProvider {
             verbose?: boolean
             entryFile?: string
             projectId?: string
+            tunnelUrl?: string
+            tunnelPort?: number
             onSessionEvent?: (event: SessionStreamEvent) => void
             /**
              * Wraps interactive prompts (e.g. tool-approval confirms) so the

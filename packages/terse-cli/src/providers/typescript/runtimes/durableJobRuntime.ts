@@ -1,5 +1,6 @@
 import chalk from "chalk"
 import path from "node:path"
+import { SDK_SANDBOX_TUNNEL_PORT } from "terse-types"
 
 import { readApiKeyOrBail } from "../../../api.js"
 import { CliError } from "../../../cliError.js"
@@ -16,6 +17,8 @@ export const durableJobRuntime: JobRuntime = {
         const isVerbose = opts?.verbose ?? true
         const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
         const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
+        const tunnelPort = opts?.tunnelPort ?? SDK_SANDBOX_TUNNEL_PORT
+        const tunnelUrl = opts?.tunnelUrl ?? `http://localhost:${tunnelPort}`
 
         try {
             await withSession(
@@ -26,7 +29,7 @@ export const durableJobRuntime: JobRuntime = {
                     if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
                     const rt = await getDurableRuntime(process.cwd())
                     await rt.start()
-                    const dispatched = await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
+                    const dispatched = await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL, tunnelUrl, tunnelPort }, event)
 
                     // We can't await in the Modal Sandbox. This polls, and a blocked run will never exit.
                     if (!isCliRunCommandEnabled()) await dispatched.awaitResult()

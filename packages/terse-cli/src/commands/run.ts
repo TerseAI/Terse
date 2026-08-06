@@ -13,7 +13,16 @@ import { resolveProvider } from "../providers/resolveProvider.js"
 import { remoteDispatchNotice, runLocalTestJob } from "../runLocalTestJob.js"
 import { parseSerializedEventJson } from "../serializedEvent.js"
 
-export async function run(jobName?: string, eventJson?: string, eventFile?: string, provider: LanguageProvider = resolveProvider(), entryFile?: string, verbose?: boolean): Promise<void> {
+export async function run(
+    jobName?: string,
+    eventJson?: string,
+    eventFile?: string,
+    provider: LanguageProvider = resolveProvider(),
+    entryFile?: string,
+    verbose?: boolean,
+    tunnelUrl?: string,
+    tunnelPort?: number
+): Promise<void> {
     const hoistMarker = getLocalHoistMarker()
     if (hoistMarker) {
         console.log(`[terse] running locally-hoisted packages: ${hoistMarker}`)
@@ -53,7 +62,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
     }
 
     if (runId) {
-        await provider.executeJob(job, runId, parsedEvent, { entryFile, verbose, projectId: readProjectConfig()?.projectId })
+        await provider.executeJob(job, runId, parsedEvent, { entryFile, verbose, projectId: readProjectConfig()?.projectId, tunnelUrl, tunnelPort })
         return
     }
 
