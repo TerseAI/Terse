@@ -114,7 +114,6 @@ export default function HiggsfieldIntegrationCard({ className, isActive = true, 
                                 </div>
                             }
                             title="Higgsfield"
-                            description="Image generation for ad creative"
                         />
                     ) : (
                         <p className="py-8 text-center text-sm text-muted-foreground">No Higgsfield integration connected</p>

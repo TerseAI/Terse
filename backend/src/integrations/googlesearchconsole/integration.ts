@@ -74,9 +74,31 @@ export class GoogleSearchConsoleIntegrationManager
     }
 
     async deleteInstallation(integrationId: string): Promise<void> {
+        await this.revokeAuthorization(integrationId)
+
         await db().google_search_console_integrations.delete({
             where: { id: integrationId }
         })
+
+        await this.secretService.deleteSecrets({
+            type: "integration",
+            secret: { integrationType: IntegrationType.GOOGLE_SEARCH_CONSOLE, recordId: integrationId }
+        })
+    }
+
+    private async revokeAuthorization(integrationId: string): Promise<void> {
+        const secrets = await this.secretService.tryGetSecrets({
+            type: "integration",
+            secret: { integrationType: IntegrationType.GOOGLE_SEARCH_CONSOLE, recordId: integrationId }
+        })
+        if (!secrets) return
+
+        try {
+            await getSearchConsoleOAuth2Client().revokeToken(secrets.refreshToken)
+            logger.info("Revoked Google Search Console OAuth token", { integrationId })
+        } catch (error) {
+            logger.warn("Failed to revoke Google Search Console OAuth token on disconnect", { error, integrationId })
+        }
     }
 
     async getInstallationUrl(

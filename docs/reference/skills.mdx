@@ -153,7 +153,7 @@ skills: [Skills.gmailDraft()]
 
 ## Meta Ads
 
-Read ad performance, create and retire ads, sync custom audiences, and send offline conversions via the Conversions API. Optionally scope to a default ad account and Page.
+Read ad performance, create and retire ads, sync custom audiences, and send offline conversions via the Conversions API.
 
 ```ts
 import { MetaAdsAdAccount, Skills } from "./terse.generated"
@@ -161,20 +161,36 @@ import { MetaAdsAdAccount, Skills } from "./terse.generated"
 skills: [Skills.metaAds({ adAccount: MetaAdsAdAccount.Primary, pageId: "1234567890" })]
 ```
 
-Both options are optional. Omit `adAccount` and the model discovers ad accounts with `meta_ads_read_campaigns`; omit `pageId` and it discovers Pages with `meta_ads_read_pages`. Pinning both is recommended when an account has more than one of either, so the model cannot publish under the wrong brand.
+### Scoping an automation to one ad account
 
-| Tool                             | Description                                                              | Access |
-| -------------------------------- | ------------------------------------------------------------------------ | ------ |
-| `meta_ads_read_campaigns`        | List ad accounts, campaigns, or ad sets with status and budget           | Read   |
-| `meta_ads_read_insights`         | Spend, impressions, clicks, and conversions at campaign/ad set/ad level   | Read   |
-| `meta_ads_read_ads`              | List ads with the creative attached to each one                          | Read   |
-| `meta_ads_read_audiences`        | List custom audiences with approximate sizes                             | Read   |
-| `meta_ads_list_pixels`           | List pixels (Conversions API dataset IDs) in an ad account               | Read   |
-| `meta_ads_read_pages`            | List the Facebook Pages the connected user manages                      | Read   |
-| `meta_ads_update_audience_users` | Add or remove people on a custom audience (emails/phones hashed)         | Write  |
-| `meta_ads_send_conversions`      | Send offline conversion events via the Conversions API                   | Write  |
-| `meta_ads_create_ad`             | Create an ad creative and the ad that uses it in an existing ad set     | Write  |
-| `meta_ads_set_status`            | Pause or resume a campaign, ad set, or ad                               | Write  |
+`adAccountId` is required on every tool that takes one, so a call always says out loud which account it touches. Use the generated `MetaAdsAdAccount` values rather than raw strings.
+
+`Skills.metaAds({ adAccount, pageId })` restricts what that automation's agent may touch: a tool call naming a different ad account or Page is denied. Omit both and the agent may use anything the connected login can reach.
+
+| Tool                             | Description                                                            | Access |
+| -------------------------------- | ---------------------------------------------------------------------- | ------ |
+| `meta_ads_list_ad_accounts`      | List the ad accounts the connected login can reach                     | Read   |
+| `meta_ads_list_campaigns`        | List campaigns with status, objective, and budget                      | Read   |
+| `meta_ads_list_adsets`           | List ad sets, optionally narrowed to one campaign                      | Read   |
+| `meta_ads_list_ads`              | List ads with the creative attached to each one                        | Read   |
+| `meta_ads_list_audiences`        | List custom audiences with approximate sizes                           | Read   |
+| `meta_ads_list_pixels`           | List pixels (Conversions API dataset IDs) in an ad account             | Read   |
+| `meta_ads_list_pages`            | List the Facebook Pages the connected user manages                     | Read   |
+| `meta_ads_read_insights`         | Spend, impressions, clicks, and conversions at campaign/ad set/ad level | Read   |
+| `meta_ads_add_audience_users`    | Add people to a custom audience (emails/phones hashed)                 | Write  |
+| `meta_ads_remove_audience_users` | Remove people from a custom audience (emails/phones hashed)            | Write  |
+| `meta_ads_send_conversions`      | Send offline conversion events via the Conversions API                 | Write  |
+| `meta_ads_create_ad`             | Create an ad: single image, single video, carousel, or dynamic creative | Write  |
+| `meta_ads_set_status`            | Pause or resume a campaign, ad set, or ad                              | Write  |
+
+Every list tool returns its own collection, a `count`, and `truncated`. There is one function per object type, so a result never carries optional arrays you have to narrow:
+
+```ts
+const adAccountId = MetaAdsAdAccount.Primary.accountId
+
+const { campaigns } = await toolbox.metaAds.listCampaigns({ adAccountId })
+const { adsets } = await toolbox.metaAds.listAdSets({ adAccountId, campaignId: campaigns[0].id })
+```
 
 ### Judging and improving creative
 
@@ -190,9 +206,41 @@ const created = await agent.run("Create the approved variant and retire the lose
 
 This is also the better outcome: insights are keyed by ad id, so a new ad keeps the losing ad's history intact instead of overwriting it.
 
-`meta_ads_create_ad` takes `pictureUrl` rather than image bytes. Meta downloads that URL once at creation time and stores its own copy in the ad account's image library, so a signed URL with a short expiry is fine, including the URLs returned by `higgsfield_generate_image`.
+### Creative formats
 
-New ads enter `PENDING_REVIEW` before reaching the status you requested, and can come back `DISAPPROVED`. Re-read `effective_status` with `meta_ads_read_ads` before treating an ad as live.
+`meta_ads_create_ad` takes a `creative` object discriminated by `format`, so only the fields that belong to the chosen format are in scope and both TypeScript and the model narrow to exactly one shape.
+
+| `format`          | Media                                 | Text                                           | Meta `ad_format`   |
+| ----------------- | ------------------------------------- | ---------------------------------------------- | ------------------ |
+| `single_image`    | `imageUrl`                            | `message`, `headline?`, `description?`         | —                  |
+| `single_video`    | `videoUrl`, `thumbnailUrl?`           | `message`, `headline?`, `description?`         | —                  |
+| `carousel`        | 2-10 `cards`, each image **xor** video | `message` + per-card `headline`                | —                  |
+| `dynamic_image`   | `imageUrls[]` (1-10)                  | `messages[]`, `headlines[]`, `descriptions[]?` | `SINGLE_IMAGE`     |
+| `dynamic_video`   | `videoUrls[]` (1-10)                  | `messages[]`, `headlines[]`, `descriptions[]?` | `SINGLE_VIDEO`     |
+| `dynamic_mixed`   | `imageUrls[]` + `videoUrls[]`         | `messages[]`, `headlines[]`, `descriptions[]?` | `AUTOMATIC_FORMAT` |
+
+Each carousel card is itself discriminated, on `media`:
+
+```ts
+cards: [
+    { media: "image", imageUrl, headline, description?, linkUrl? },
+    { media: "video", videoUrl, headline, description?, linkUrl? }
+]
+```
+
+Meta does not support video cards on Instagram placements, so a carousel containing one is Facebook-only.
+
+Meta allows exactly one `ad_format` per asset feed, which is why the dynamic formats are three separate variants rather than one variant with two optional media arrays: the media kind determines the `ad_format`, so it cannot be optional. Dynamic creative is also capped at **30 assets in total** across media and text variants (the `ad_format` and `link_url` each count as one), enforced before anything is uploaded.
+
+Shared across formats: `linkUrl`, `callToAction`, `instagramActorId`, `urlTags`, `status`.
+
+Terse sends Meta only the fields you supply. Omit `callToAction` and no `call_to_action` is sent, so Meta renders its own default button; omit `showEndCard` and no `multi_share_end_card` is sent. The one exception is `status`, which defaults to `PAUSED` rather than Meta's `ACTIVE`, so a generated ad never starts spending without someone turning it on. The dynamic formats require `callToActions` because Meta rejects an asset feed with no `call_to_action_types`.
+
+Images are fetched by Meta from the URL you supply. Videos are uploaded to the ad account and polled until Meta finishes encoding, and dynamic-creative images are uploaded to obtain the hash `asset_feed_spec` requires — so short-lived signed URLs are fine everywhere, including the ones `higgsfield_generate_image` and `higgsfield_generate_video` return. The result reports `videoIds` and `imageHashes` for whatever was uploaded.
+
+`dynamic` only works on an ad set that already has dynamic creative enabled, and Terse has no ad-set write tools, so that setup happens in Ads Manager. When in doubt, ship separate single-format ads and compare them on ad-level insights instead.
+
+New ads enter `PENDING_REVIEW` before reaching the status you requested, and can come back `DISAPPROVED`. Re-read `effective_status` with `meta_ads_list_ads` before treating an ad as live.
 
 `meta_ads_set_status` only pauses and resumes. There is deliberately no budget tool, so an automation cannot increase spend on its own.
 
@@ -206,7 +254,7 @@ Standard Access also carries lower rate limits, shared across everyone using you
 
 ## Higgsfield
 
-Generate ad creative images from a text prompt.
+Generate ad creative images from a text prompt, then animate them into video.
 
 ```ts
 import { Skills } from "./terse.generated"
@@ -214,13 +262,33 @@ import { Skills } from "./terse.generated"
 skills: [Skills.higgsfield()]
 ```
 
-| Tool                        | Description                                        | Access |
-| --------------------------- | -------------------------------------------------- | ------ |
-| `higgsfield_generate_image` | Generate one or four images from a text prompt      | Write  |
+| Tool                        | Description                                                  | Access |
+| --------------------------- | ------------------------------------------------------------ | ------ |
+| `higgsfield_generate_image` | Generate one or four images from a text prompt                | Write  |
+| `higgsfield_generate_video` | Animate a still image into a video                            | Write  |
+| `higgsfield_list_motions`   | List motion presets with their IDs, for `motionId`            | Read   |
 
-Generation is asynchronous and the tool waits for it to finish, so a call can take a while. Each image is copied into Terse-managed storage and returned as a signed URL valid for 24 hours. That URL can be shown to a human for approval and passed straight to `meta_ads_create_ad` as `pictureUrl`.
+Generation is asynchronous and the tools wait for it to finish, so a call can take a while. Each asset is copied into Terse-managed storage and returned as a signed URL valid for 24 hours. That URL can be shown to a human for approval and passed straight to `meta_ads_create_ad` as an `imageUrl` or `videoUrl`.
 
-Every call spends Higgsfield credits, so the tool is marked as a write and can be gated behind approval. Use `batchSize: 4` when you want variants to compare, and match `size` to the placement: a landscape size such as `2048x1152` for feed ads, a portrait size such as `1152x2048` for stories.
+Every call spends Higgsfield credits, so both generators are marked as writes and can be gated behind approval. Use `batchSize: 4` when you want variants to compare, and match `size` to the placement: a landscape size such as `2048x1152` for feed ads, a portrait size such as `1152x2048` for stories.
+
+### Video is image-to-video
+
+Higgsfield animates an existing still; there is no text-to-video path. So a video ad is always two calls:
+
+```ts
+const { images } = await toolbox.higgsfield.generateImage({
+    prompt: "A coffee tin on concrete, soft daylight, editorial styling",
+    size: "1152x2048"
+})
+const { videos } = await toolbox.higgsfield.generateVideo({
+    imageUrl: images[0].url,
+    prompt: "Slow push in, steam rising, shallow depth of field",
+    model: "dop-turbo"
+})
+```
+
+`model` picks cost against quality: `dop-lite`, `dop-turbo` (default), `dop-standard`. Pass a `motionId` from `higgsfield_list_motions` to apply a named camera move on top of the prompt, with `motionStrength` between 0 and 1.
 
 ### Getting credentials
 

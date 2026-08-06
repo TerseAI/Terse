@@ -109,7 +109,8 @@
     "META_ADS": {
         "INTEGRATIONS": "/meta-ads/integrations",
         "OAUTH_CALLBACK": "/meta-ads/oauth/callback",
-        "AD_ACCOUNTS": "/meta-ads/integrations/:integrationId/adaccounts"
+        "AD_ACCOUNTS": "/meta-ads/integrations/:integrationId/adaccounts",
+        "PAGES": "/meta-ads/integrations/:integrationId/pages"
     },
     "APOLLO": {
         "INTEGRATIONS": "/apollo/integrations"

@@ -1,7 +1,7 @@
 import crypto from "crypto"
-import { Ad, AdAccount, AdSet, AdsPixel, Campaign, CustomAudience, FacebookAdsApi, User } from "facebook-nodejs-business-sdk"
-import { metaAdsAdAccountEntitySchema } from "terse-types"
-import type { MetaAdsAdAccountEntity } from "terse-types"
+import { Ad, AdAccount, AdSet, AdVideo, AdsPixel, Campaign, CustomAudience, FacebookAdsApi, User } from "facebook-nodejs-business-sdk"
+import { metaAdsAdAccountEntitySchema, metaAdsPageSchema } from "terse-types"
+import type { MetaAdsAdAccountEntity, MetaAdsPage as MetaAdsPageEntity } from "terse-types"
 import { z } from "zod"
 
 export class MetaAdsClient {
@@ -39,6 +39,10 @@ export class MetaAdsClient {
         return new AdsPixel(datasetId, {}, null, this.api)
     }
 
+    adVideo(videoId: string): AdVideo {
+        return new AdVideo(videoId, {}, null, this.api)
+    }
+
     // Reads one page of an edge. Meta caps `limit` per edge, so callers wanting
     // everything should use collectPaged instead.
     async collect<T>(fetchEdge: EdgeFetch, itemSchema: z.ZodType<T>, what: string): Promise<T[]> {
@@ -67,13 +71,22 @@ export class MetaAdsClient {
         }
     }
 
-    // Writes return the created node; only its id is guaranteed to be populated.
-    async createdId(create: () => Promise<{ id: string }>, what: string): Promise<string> {
+    /**
+     * The SDK hands back an AbstractCrudObject whose fields sit behind defined
+     * properties, and which of them are populated depends on what Meta echoed, so
+     * the id is read from the exported payload as well as the property. The payload
+     * goes into the error because a bare "no id" tells you nothing about the cause.
+     */
+    async createdId(create: () => Promise<unknown>, what: string): Promise<string> {
         const created = await runGraph(create, what)
-        if (!created.id) {
-            throw new MetaAdsPayloadError(what, "Meta did not return an id for the created object.")
+        const exported = toPlainNode(created)
+        const parsed = createdNodeSchema.safeParse(exported)
+        const id = parsed.success ? (parsed.data.id ?? parsed.data.post_id ?? parsed.data.creative_id) : undefined
+
+        if (!id) {
+            throw new MetaAdsPayloadError(what, `Meta did not return an id for the created object. It responded with: ${JSON.stringify(exported)}`)
         }
-        return created.id
+        return id
     }
 
     async mutate(update: () => Promise<unknown>, what: string): Promise<void> {
@@ -140,12 +153,83 @@ function isFacebookRequestError(value: unknown): value is FacebookRequestErrorSh
     return typeof candidate.status === "number" && typeof candidate.response === "object" && candidate.response !== null
 }
 
+const VIDEO_READY_TIMEOUT_MS = 5 * 60 * 1000
+const VIDEO_POLL_INTERVAL_MS = 5000
+
+/**
+ * Meta encodes an uploaded video asynchronously and rejects a creative that points
+ * at one still processing, so the upload is not done until the status says ready.
+ */
+export async function uploadMetaAdsVideo(client: MetaAdsClient, adAccountId: string, videoUrl: string, now: () => number = Date.now): Promise<string> {
+    const videoId = await client.createdId(() => client.adAccount(adAccountId).createAdVideo([], { file_url: videoUrl }), "ad video")
+    const deadline = now() + VIDEO_READY_TIMEOUT_MS
+
+    for (;;) {
+        const { status } = await client.runParsed(() => client.adVideo(videoId).read(["status"]), metaVideoStatusSchema, "ad video status")
+        const videoStatus = status?.video_status
+        if (videoStatus === "ready") {
+            return videoId
+        }
+        if (videoStatus === "error") {
+            throw new MetaAdsPayloadError("ad video status", `Meta failed to process the video at ${videoUrl}.`)
+        }
+        if (now() >= deadline) {
+            throw new MetaAdsPayloadError("ad video status", `Meta was still processing the video at ${videoUrl} after 5 minutes. Retry once encoding finishes.`)
+        }
+        await delay(VIDEO_POLL_INTERVAL_MS)
+    }
+}
+
+/**
+ * asset_feed_spec identifies images by hash rather than URL, and /adimages takes
+ * bytes rather than a URL, so the image has to travel through us.
+ */
+export async function uploadMetaAdsImageHash(client: MetaAdsClient, adAccountId: string, imageUrl: string): Promise<string> {
+    const response = await fetch(imageUrl)
+    if (!response.ok) {
+        throw new MetaAdsPayloadError("ad image upload", `Could not download the image at ${imageUrl} (HTTP ${response.status}).`)
+    }
+    const bytes = Buffer.from(await response.arrayBuffer()).toString("base64")
+    const created = await client.runParsed(() => client.adAccount(adAccountId).createAdImage(["hash"], { bytes }), metaAdImageSchema, "ad image upload")
+
+    const hash = created.hash ?? Object.values(created.images ?? {})[0]?.hash
+    if (!hash) {
+        throw new MetaAdsPayloadError("ad image upload", `Meta did not return an image hash for ${imageUrl}.`)
+    }
+    return hash
+}
+
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+const createdNodeSchema = z.object({
+    id: z.string().optional(),
+    post_id: z.string().optional(),
+    creative_id: z.string().optional()
+})
+
+const metaVideoStatusSchema = z.object({
+    status: z.object({ video_status: z.string().optional() }).optional()
+})
+
+const metaAdImageSchema = z.object({
+    hash: z.string().optional(),
+    images: z.record(z.string(), z.object({ hash: z.string() })).optional()
+})
+
 export const META_ADS_AD_ACCOUNT_FIELDS = ["id", "account_id", "name", "currency", "account_status"]
+const META_ADS_PAGE_FIELDS = ["id", "name", "category"]
 
 // Used by both the OAuth install flow and the agent-facing list_ad_accounts action.
 export async function fetchMetaAdsAdAccounts(accessToken: string): Promise<MetaAdsAdAccountEntity[]> {
     const client = new MetaAdsClient(accessToken)
     return client.collect(() => client.me().getAdAccounts(META_ADS_AD_ACCOUNT_FIELDS, { limit: 200 }), metaAdsAdAccountEntitySchema, "ad accounts")
+}
+
+export async function fetchMetaAdsPages(accessToken: string): Promise<MetaAdsPageEntity[]> {
+    const client = new MetaAdsClient(accessToken)
+    return client.collect(() => client.me().getAccounts(META_ADS_PAGE_FIELDS, { limit: 200 }), metaAdsPageSchema, "pages")
 }
 
 export async function fetchMetaAdsUserName(accessToken: string): Promise<string | null> {
@@ -170,6 +254,13 @@ export function hashPhone(phone: string): string {
 
 function sha256(value: string): string {
     return crypto.createHash("sha256").update(value).digest("hex")
+}
+
+export class MetaAdsAuthError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "MetaAdsAuthError"
+    }
 }
 
 export class MetaAdsApiError extends Error {

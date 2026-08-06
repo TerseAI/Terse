@@ -71,7 +71,7 @@ function GoogleSearchConsoleCardContent({ integrations, isLoading }: { integrati
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
-                <IntegrationItem key={integration.id} icon={<Search className="w-4 h-4" />} title={integration.email} description="Google account" />
+                <IntegrationItem key={integration.id} icon={<Search className="w-4 h-4" />} title={integration.email} />
             ))}
         </div>
     )

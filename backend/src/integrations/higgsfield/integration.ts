@@ -63,12 +63,10 @@ export class HiggsfieldIntegrationManager
             title: "Human action required: create Higgsfield API credentials",
             url: "https://cloud.higgsfield.ai",
             instructions: [
-                "Sign in at cloud.higgsfield.ai (email, Google, Apple, or Microsoft). This is the dashboard; platform.higgsfield.ai is the API endpoint and has no sign-up.",
-                "Open the API keys section of the dashboard and generate a new key.",
-                "Higgsfield gives you two separate values: a Key ID and a Key Secret. Copy both before leaving the page.",
-                'Enter them here as a single colon-joined string: "KEY_ID:KEY_SECRET". Do not include the word "Key", quotes, or spaces.',
-                "Image generation spends Higgsfield credits, so make sure the account has credits available or every generation will fail with a not-enough-credits error.",
-                "Terse verifies the credentials immediately by making one authenticated read, so a wrong paste is rejected here rather than at run time."
+                "Sign in at cloud.higgsfield.ai. ",
+                "Click on API Keys and Create API Key.",
+                "Enter an API Key Name and click Create.",
+                'Copy the Key ID and Key Secret and paste them here as a single colon-joined string: "KEY_ID:KEY_SECRET".'
             ]
         }
     }

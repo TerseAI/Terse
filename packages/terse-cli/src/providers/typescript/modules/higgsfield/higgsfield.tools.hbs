@@ -6,7 +6,7 @@
 {{/if}}
 {{sectionHeader "Higgsfield skill"}}
 
-/** Higgsfield — generate ad creative images from a text prompt. Results are cached by Terse and returned as signed URLs. */
+/** Higgsfield — generate ad creative images from a text prompt, then animate them into video. Results are cached by Terse and returned as signed URLs. */
 export function higgsfieldSkill(): TypedSkill<{{{section.skillToolType}}}> {
     return new HiggsfieldOutputConfig("{{escape section.id}}")
 }

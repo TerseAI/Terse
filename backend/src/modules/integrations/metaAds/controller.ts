@@ -1,8 +1,9 @@
 import { Request, Response } from "express"
+import { MetaAdsAdAccount, MetaAdsPage } from "terse-types"
 
 import logger from "../../../common/logger"
+import { MetaAdsApiError, fetchMetaAdsAdAccounts, fetchMetaAdsPages } from "../../../integrations/metaAds/apiClient"
 import { MetaAdsIntegrationManager } from "../../../integrations/metaAds/integration"
-import { MetaAdsApiError, fetchMetaAdsAdAccounts } from "../../../outputs/metaAds/tools/metaAdsClient"
 
 export async function getMetaAdsIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -21,6 +22,33 @@ export async function getMetaAdsIntegrations(req: Request, res: Response) {
 }
 
 export async function getMetaAdsAdAccounts(req: Request, res: Response) {
+    await respondWithConnectionResources(req, res, "ad accounts", async accessToken => {
+        const adAccounts = await fetchMetaAdsAdAccounts(accessToken)
+        return adAccounts.map(
+            (account): MetaAdsAdAccount => ({
+                id: account.id,
+                accountId: account.account_id,
+                name: account.name,
+                currency: account.currency,
+                accountStatus: account.account_status
+            })
+        )
+    })
+}
+
+export async function getMetaAdsPages(req: Request, res: Response) {
+    await respondWithConnectionResources(req, res, "Pages", async accessToken => {
+        const pages = await fetchMetaAdsPages(accessToken)
+        return pages.map((page): MetaAdsPage => ({ id: page.id, name: page.name, category: page.category }))
+    })
+}
+
+export async function metaAdsOAuthCallback(req: Request, res: Response) {
+    const manager = new MetaAdsIntegrationManager()
+    await manager.processInstallationCallback(req, res)
+}
+
+async function respondWithConnectionResources<T>(req: Request, res: Response, what: string, fetchResources: (accessToken: string) => Promise<T[]>) {
     if (!req.session?.user) {
         res.status(401).json({ error: "Unauthorized" })
         return
@@ -34,8 +62,8 @@ export async function getMetaAdsAdAccounts(req: Request, res: Response) {
 
     try {
         const manager = new MetaAdsIntegrationManager()
-        const orgIntegrations = await manager.getInstancesForOrganization(req.session.user.organizationId)
-        if (!orgIntegrations.some(i => i.id === integrationId)) {
+        const integration = await manager.getInstance(integrationId, req.session.user.organizationId)
+        if (!integration) {
             res.status(404).json({ error: "Meta Ads integration not found" })
             return
         }
@@ -46,24 +74,10 @@ export async function getMetaAdsAdAccounts(req: Request, res: Response) {
             return
         }
 
-        const adAccounts = await fetchMetaAdsAdAccounts(accessToken)
-        res.status(200).json(
-            adAccounts.map(account => ({
-                id: account.id,
-                accountId: account.account_id,
-                name: account.name,
-                currency: account.currency,
-                accountStatus: account.account_status
-            }))
-        )
+        res.status(200).json(await fetchResources(accessToken))
     } catch (error) {
-        logger.error("Error fetching Meta Ads ad accounts", { error, integrationId })
+        logger.error(`Error fetching Meta Ads ${what}`, { error, integrationId })
         const status = error instanceof MetaAdsApiError && error.status === 401 ? 401 : 500
-        res.status(status).json({ error: "Failed to fetch Meta Ads ad accounts" })
+        res.status(status).json({ error: `Failed to fetch Meta Ads ${what}` })
     }
-}
-
-export async function metaAdsOAuthCallback(req: Request, res: Response) {
-    const manager = new MetaAdsIntegrationManager()
-    await manager.processInstallationCallback(req, res)
 }

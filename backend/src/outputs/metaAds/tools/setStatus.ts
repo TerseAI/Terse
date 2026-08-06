@@ -1,50 +1,48 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
-import type { MetaAdsSetStatusRequest, ToolOutputByName } from "terse-types"
+import type { ToolInputByName } from "terse-types"
 
+import { MetaAdsClient } from "../../../integrations/metaAds/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
-import { metaAdsToolExecute } from "./metaAdsApi"
-import { MetaAdsClient } from "./metaAdsClient"
+import { metaAdsAction, requireMetaAdsClient } from "./toolContext"
 
 export const metaAdsSetStatusTool = defineSessionTool({
     name: "meta_ads_set_status",
-    execute: metaAdsToolExecute("meta_ads_set_status", executeSetStatusRequest)
+    execute: async ({ integrationId, entityType, entityId, status }, runContext) => {
+        const client = await requireMetaAdsClient(integrationId, runContext)
+        const entity = resolveEntity(client, entityType, entityId)
+        await client.mutate(() => entity.update([], { status }), `${entityType} status`)
+
+        const verb = status === "PAUSED" ? "Paused" : "Resumed"
+        return {
+            success: true,
+            entityType,
+            entityId,
+            status,
+            actions: [
+                metaAdsAction({
+                    action: `${verb} ${entityType}`,
+                    target: entityId,
+                    details: `Set ${entityType} ${entityId} to ${status}`,
+                    type: RunHistoryActionType.update,
+                    isReadOnly: false
+                })
+            ]
+        }
+    }
 })
 
-async function executeSetStatusRequest(request: MetaAdsSetStatusRequest, client: MetaAdsClient): Promise<MetaAdsSetStatusOutput> {
-    const entity = resolveEntity(request, client)
-    await client.mutate(() => entity.update([], { status: request.status }), `${request.entityType} status`)
-
-    const verb = request.status === "PAUSED" ? "Paused" : "Resumed"
-    return {
-        success: true,
-        entityType: request.entityType,
-        entityId: request.entityId,
-        status: request.status,
-        actions: [
-            {
-                action: `${verb} ${request.entityType}`,
-                integration: IntegrationType.META_ADS,
-                target: request.entityId,
-                details: `Set ${request.entityType} ${request.entityId} to ${request.status}`,
-                type: RunHistoryActionType.update
-            }
-        ]
-    }
-}
-
-function resolveEntity(request: MetaAdsSetStatusRequest, client: MetaAdsClient) {
-    switch (request.entityType) {
+function resolveEntity(client: MetaAdsClient, entityType: MetaAdsSetStatusInput["entityType"], entityId: string) {
+    switch (entityType) {
         case "campaign":
-            return client.campaign(request.entityId)
+            return client.campaign(entityId)
         case "adset":
-            return client.adSet(request.entityId)
+            return client.adSet(entityId)
         case "ad":
-            return client.ad(request.entityId)
+            return client.ad(entityId)
         default:
-            throw request.entityType satisfies never
+            throw entityType satisfies never
     }
 }
 
-type MetaAdsSetStatusOutput = ToolOutputByName["meta_ads_set_status"]
+type MetaAdsSetStatusInput = ToolInputByName["meta_ads_set_status"]

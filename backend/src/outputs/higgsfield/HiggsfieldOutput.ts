@@ -7,11 +7,15 @@ import { Output } from "../abstract/Output"
 import { unrestricted } from "../abstract/acl"
 
 import { higgsfieldGenerateImageTool } from "./tools/generateImage"
+import { higgsfieldGenerateVideoTool } from "./tools/generateVideo"
+import { higgsfieldListMotionsTool } from "./tools/listMotions"
 
 export class HiggsfieldOutput extends Output<HiggsfieldOutputConfig> {
     constructor() {
         super(OutputConfigType.HIGGSFIELD, [
-            { tool: higgsfieldGenerateImageTool, isReadOnly: false, integration: IntegrationType.HIGGSFIELD, displayName: "Generate image", validateACL: unrestricted }
+            { tool: higgsfieldGenerateImageTool, isReadOnly: false, integration: IntegrationType.HIGGSFIELD, displayName: "Generate image", validateACL: unrestricted },
+            { tool: higgsfieldGenerateVideoTool, isReadOnly: false, integration: IntegrationType.HIGGSFIELD, displayName: "Generate video", validateACL: unrestricted },
+            { tool: higgsfieldListMotionsTool, isReadOnly: true, integration: IntegrationType.HIGGSFIELD, displayName: "List motions", validateACL: unrestricted }
         ])
     }
 
@@ -32,14 +36,17 @@ export class HiggsfieldOutput extends Output<HiggsfieldOutputConfig> {
             throw new Error("No Higgsfield configs provided")
         }
 
-        const sections: string[] = []
-        sections.push("=== HIGGSFIELD SKILL ===")
-        sections.push("Available configurations:")
+        const sections: string[] = ["=== HIGGSFIELD SKILL ===", "Available configurations:"]
         configs.forEach(config => sections.push(`  • Integration ID: ${config.integrationId}`))
-        sections.push("\nUse higgsfield_generate_image to produce ad creative from a text prompt. Include integrationId from a configured entry.")
-        sections.push("Each generation costs Higgsfield credits, so do not regenerate speculatively. Set batchSize to 4 only when the user wants options to compare.")
+        sections.push("\nUse higgsfield_generate_image to produce still ad creative from a text prompt. Include integrationId from a configured entry.")
         sections.push(
-            "Returned URLs are Terse-hosted and signed for 24 hours. They are safe to show a human for approval and to pass to meta_ads_create_ad as pictureUrl. If a URL has gone stale, generate again rather than editing the URL."
+            "Higgsfield is image-to-video, not text-to-video: to make a video, generate or choose a still first, then call higgsfield_generate_video with that image URL. Describe camera and subject motion in the prompt, and call higgsfield_list_motions first if you want a named motion preset."
+        )
+        sections.push(
+            "Every generation costs Higgsfield credits, so do not regenerate speculatively. Set batchSize to 4 only when the user wants options to compare, and prefer dop-turbo over dop-standard unless quality is the point."
+        )
+        sections.push(
+            "Returned URLs are Terse-hosted and signed for 24 hours. They are safe to show a human for approval and to pass to meta_ads_create_ad as an imageUrl or videoUrl. If a URL has gone stale, generate again rather than editing the URL."
         )
         sections.push("Pick a size that matches the placement: a landscape size such as 2048x1152 for feed ads, a portrait size such as 1152x2048 for stories and reels.")
 

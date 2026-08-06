@@ -10,7 +10,7 @@
 {{/if}}
 {{sectionHeader "Meta Ads skill"}}
 
-/** Meta Ads — read performance, create and pause ads, sync audiences, send conversions. Optionally scope to a default ad account and Page. */
+/** Meta Ads — read performance, create and pause ads, sync audiences, send conversions. Restricts this automation to one ad account and Page; a call naming another is denied. */
 export function metaAdsSkill(opts?: { adAccount?: MetaAdsAdAccount; pageId?: string }): TypedSkill<{{{section.skillToolType}}}> {
     return new MetaAdsOutputConfig("{{escape section.id}}", opts?.adAccount?.accountId ?? null, opts?.pageId ?? null)
 }

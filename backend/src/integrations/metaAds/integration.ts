@@ -9,12 +9,13 @@ import { trackIntegrationAdded } from "../../common/analytics"
 import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
-import { fetchMetaAdsAdAccounts, fetchMetaAdsUserName } from "../../outputs/metaAds/tools/metaAdsClient"
 import { SecretNotFoundError } from "../../services/SecretService"
 import { urls } from "../../settings"
 import { AgentTriggerWithConfigs } from "../../types/prisma"
 import { FetchResourcesOptions } from "../abstract/FetchResourcesOptions"
 import { Integration, IntegrationWithResources, OAuthIntegrationInstallation, createConnectedCliDisplayState, createNotConnectedCliDisplayState } from "../abstract/Integration"
+
+import { fetchMetaAdsAdAccounts, fetchMetaAdsUserName } from "./apiClient"
 
 const META_OAUTH_DIALOG_URL = "https://www.facebook.com/v24.0/dialog/oauth"
 const META_OAUTH_SCOPES = "ads_read,ads_management,business_management,pages_show_list"
@@ -36,9 +37,9 @@ export class MetaAdsIntegrationManager
     async getInstancesForOrganization(organizationId: string): Promise<MetaAdsIntegration[]> {
         const integrations = await db().meta_ads_integrations.findMany({
             where: { organization_id: organizationId },
-            select: { id: true }
+            select: META_ADS_INSTANCE_SELECT
         })
-        return Promise.all(integrations.map(i => this.buildInstance(i.id)))
+        return integrations.map(toInstance)
     }
 
     async getCliDisplayStateForOrganization(organizationId: string) {
@@ -59,8 +60,16 @@ export class MetaAdsIntegrationManager
     }
 
     async getAllActiveInstances(): Promise<MetaAdsIntegration[]> {
-        const integrations = await db().meta_ads_integrations.findMany({ select: { id: true } })
-        return Promise.all(integrations.map(i => this.buildInstance(i.id)))
+        const integrations = await db().meta_ads_integrations.findMany({ select: META_ADS_INSTANCE_SELECT })
+        return integrations.map(toInstance)
+    }
+
+    async getInstance(integrationId: string, organizationId: string): Promise<MetaAdsIntegration | null> {
+        const integration = await db().meta_ads_integrations.findUnique({
+            where: { id: integrationId, organization_id: organizationId },
+            select: META_ADS_INSTANCE_SELECT
+        })
+        return integration ? toInstance(integration) : null
     }
 
     async fetchResourcesForOrganization(organizationId: string, query?: string, _options?: FetchResourcesOptions): Promise<IntegrationWithResources<MetaAdsIntegration, MetaAdsAdAccount>[]> {
@@ -193,26 +202,6 @@ export class MetaAdsIntegrationManager
         }
     }
 
-    private async buildInstance(integrationId: string): Promise<MetaAdsIntegration> {
-        const secrets = await this.secretService.tryGetSecrets({
-            type: "integration",
-            secret: { integrationType: IntegrationType.META_ADS, recordId: integrationId }
-        })
-        return {
-            id: integrationId,
-            accountName: secrets ? await this.fetchAccountName(secrets.accessToken) : undefined
-        }
-    }
-
-    private async fetchAccountName(accessToken: string): Promise<string | undefined> {
-        try {
-            return (await fetchMetaAdsUserName(accessToken)) ?? undefined
-        } catch (fetchError) {
-            logger.warn("Failed to fetch Meta user profile", { error: fetchError })
-            return undefined
-        }
-    }
-
     private async exchangeCodeForLongLivedToken(code: string): Promise<string> {
         const tokenUrl = new URL("https://graph.facebook.com/v24.0/oauth/access_token")
         tokenUrl.searchParams.append("client_id", this.config.clientId)
@@ -250,7 +239,29 @@ export class MetaAdsIntegrationManager
             type: "integration",
             secret: { integrationType: IntegrationType.META_ADS, recordId: integration.id, value: { accessToken } }
         })
+        await db().meta_ads_integrations.update({
+            where: { id: integration.id },
+            data: { account_name: await fetchAccountName(accessToken) }
+        })
         return integration.id
+    }
+}
+
+const META_ADS_INSTANCE_SELECT = { id: true, account_name: true } as const
+
+function toInstance(row: { id: string; account_name: string | null }): MetaAdsIntegration {
+    return {
+        id: row.id,
+        accountName: row.account_name ?? undefined
+    }
+}
+
+async function fetchAccountName(accessToken: string): Promise<string | null> {
+    try {
+        return await fetchMetaAdsUserName(accessToken)
+    } catch (fetchError) {
+        logger.warn("Failed to fetch Meta user profile", { error: fetchError })
+        return null
     }
 }
 

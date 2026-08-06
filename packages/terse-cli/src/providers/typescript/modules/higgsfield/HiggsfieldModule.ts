@@ -20,7 +20,7 @@ export class HiggsfieldModule extends IntegrationModule<HiggsfieldInstanceData, 
     }
 
     protected get skillsAggregateLines(): readonly string[] {
-        return ["    /** Higgsfield — generate ad creative images from a text prompt */", "    higgsfield: higgsfieldSkill,"]
+        return ["    /** Higgsfield — generate ad creative images and animate them into video */", "    higgsfield: higgsfieldSkill,"]
     }
 
     protected prepareSection(input: ModuleRenderInput<HiggsfieldInstanceData>): HiggsfieldSectionContext {

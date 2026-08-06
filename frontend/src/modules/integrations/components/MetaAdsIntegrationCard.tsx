@@ -1,5 +1,5 @@
 import { Megaphone } from "lucide-react"
-import { IntegrationType } from "terse-types/Integrations"
+import { IntegrationType, MetaAdsIntegration } from "terse-types/Integrations"
 import { metaAdsIntegrationsKey } from "terse-types/InvalidationKeys"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -39,7 +39,7 @@ function MetaAdsIntegrationCard({ className, isActive = true, stateToken, compac
     )
 }
 
-function MetaAdsCardContent({ integrations, isLoading }: { integrations: Array<{ id: string; accountName?: string }>; isLoading: boolean }) {
+function MetaAdsCardContent({ integrations, isLoading }: { integrations: MetaAdsIntegration[]; isLoading: boolean }) {
     if (isLoading && integrations.length === 0) {
         return (
             <div className="space-y-3">
@@ -62,12 +62,7 @@ function MetaAdsCardContent({ integrations, isLoading }: { integrations: Array<{
     return (
         <div className="space-y-2">
             {integrations.map(integration => (
-                <IntegrationItem
-                    key={integration.id}
-                    icon={<Megaphone className="w-4 h-4" />}
-                    title={integration.accountName || "Meta account"}
-                    description={<span className="text-xs text-muted-foreground">Read campaign performance, sync audiences, send conversions</span>}
-                />
+                <IntegrationItem key={integration.id} icon={<Megaphone className="w-4 h-4" />} title={integration.accountName || "Meta account"} />
             ))}
         </div>
     )

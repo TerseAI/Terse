@@ -3684,13 +3684,16 @@ export const googleSearchConsoleInspectUrlTool = defineTool({
     })
 })
 
-const metaAdsToolInput = <T extends z.ZodType>(request: T) =>
-    z.object({
-        integrationId: z.string().describe("The integration ID of the Meta Ads connection to use."),
-        request: request.describe("The operation to perform and its arguments.")
-    })
+const metaAdsIntegrationIdField = z.string().describe("The integration ID of the Meta Ads connection to use.")
 
 const metaAdsAdAccountIdField = z.string().describe("The Meta ad account ID, with or without the 'act_' prefix (e.g. 'act_1234567890').")
+
+const metaAdsCollectionFields = {
+    count: z.number(),
+    truncated: z.boolean().describe("True when more results exist than were returned. Narrow the filters and fetch again.")
+}
+
+const metaAdsLimitField = (what: string, max: number) => z.number().int().min(1).max(max).nullable().optional().describe(`Maximum number of ${what} to return (default 100).`)
 
 export const metaAdsAdAccountEntitySchema = z.object({
     id: z.string(),
@@ -3768,28 +3771,25 @@ export const metaAdsCustomAudienceSchema = z.object({
 })
 export type MetaAdsCustomAudience = z.infer<typeof metaAdsCustomAudienceSchema>
 
-export const metaAdsListAdAccountsRequestSchema = z.object({
-    action: z.literal("list_ad_accounts").describe("List the ad accounts accessible to the connected Meta user.")
+export const metaAdsListAdAccountsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    limit: metaAdsLimitField("ad accounts", 500)
 })
-export const metaAdsListCampaignsRequestSchema = z.object({
-    action: z.literal("list_campaigns").describe("List campaigns in an ad account with status and budget."),
+
+export const metaAdsListCampaignsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     adAccountId: metaAdsAdAccountIdField,
     effectiveStatuses: z.array(z.string()).nullable().optional().describe("Only campaigns whose effective status is in this list (e.g. ACTIVE, PAUSED)."),
-    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of campaigns to return (default 100).")
+    limit: metaAdsLimitField("campaigns", 500)
 })
-export const metaAdsListAdSetsRequestSchema = z.object({
-    action: z.literal("list_adsets").describe("List ad sets in an ad account with status and budget."),
+
+export const metaAdsListAdSetsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     adAccountId: metaAdsAdAccountIdField,
     campaignId: z.string().nullable().optional().describe("Only ad sets belonging to this campaign."),
     effectiveStatuses: z.array(z.string()).nullable().optional().describe("Only ad sets whose effective status is in this list (e.g. ACTIVE, PAUSED)."),
-    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of ad sets to return (default 100).")
+    limit: metaAdsLimitField("ad sets", 500)
 })
-export const metaAdsReadCampaignsRequestSchema = z.discriminatedUnion("action", [metaAdsListAdAccountsRequestSchema, metaAdsListCampaignsRequestSchema, metaAdsListAdSetsRequestSchema])
-
-export type MetaAdsListAdAccountsRequest = z.infer<typeof metaAdsListAdAccountsRequestSchema>
-export type MetaAdsListCampaignsRequest = z.infer<typeof metaAdsListCampaignsRequestSchema>
-export type MetaAdsListAdSetsRequest = z.infer<typeof metaAdsListAdSetsRequestSchema>
-export type MetaAdsReadCampaignsRequest = z.infer<typeof metaAdsReadCampaignsRequestSchema>
 
 export const metaAdsDatePresetSchema = z.enum(["today", "yesterday", "last_7d", "last_14d", "last_28d", "last_30d", "last_90d", "this_month", "last_month", "this_quarter", "maximum"])
 export type MetaAdsDatePreset = z.infer<typeof metaAdsDatePresetSchema>
@@ -3797,7 +3797,8 @@ export type MetaAdsDatePreset = z.infer<typeof metaAdsDatePresetSchema>
 export const metaAdsBreakdownSchema = z.enum(["age", "gender", "country", "publisher_platform", "platform_position", "impression_device"])
 export type MetaAdsBreakdown = z.infer<typeof metaAdsBreakdownSchema>
 
-export const metaAdsReadInsightsRequestSchema = z.object({
+export const metaAdsReadInsightsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     adAccountId: metaAdsAdAccountIdField,
     level: z.enum(["campaign", "adset", "ad"]).describe("Aggregation level for insight rows. Use 'ad' to compare individual creatives against each other."),
     datePreset: metaAdsDatePresetSchema.nullable().optional().describe("Relative date range. Use either datePreset or since/until, not both."),
@@ -3813,7 +3814,6 @@ export const metaAdsReadInsightsRequestSchema = z.object({
         .describe("Split each row by these dimensions. Every breakdown multiplies the row count, so combine at most two and expect truncation."),
     timeIncrement: z.number().int().min(1).max(90).nullable().optional().describe("Split rows into N-day windows (1 = daily). Omit for a single aggregate row per entity.")
 })
-export type MetaAdsReadInsightsRequest = z.infer<typeof metaAdsReadInsightsRequestSchema>
 
 export const metaAdsPixelSchema = z.object({
     id: z.string(),
@@ -3822,17 +3822,17 @@ export const metaAdsPixelSchema = z.object({
 })
 export type MetaAdsPixel = z.infer<typeof metaAdsPixelSchema>
 
-export const metaAdsListPixelsRequestSchema = z.object({
+export const metaAdsListPixelsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     adAccountId: metaAdsAdAccountIdField,
-    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of pixels to return (default 100).")
+    limit: metaAdsLimitField("pixels", 500)
 })
-export type MetaAdsListPixelsRequest = z.infer<typeof metaAdsListPixelsRequestSchema>
 
-export const metaAdsReadAudiencesRequestSchema = z.object({
+export const metaAdsListAudiencesInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     adAccountId: metaAdsAdAccountIdField,
-    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of audiences to return (default 100).")
+    limit: metaAdsLimitField("audiences", 500)
 })
-export type MetaAdsReadAudiencesRequest = z.infer<typeof metaAdsReadAudiencesRequestSchema>
 
 const metaAdsAudienceUserSchema = z.object({
     email: z.string().nullable().optional().describe("Email address. Normalized and SHA-256 hashed before upload; never sent in plain text."),
@@ -3842,22 +3842,13 @@ const metaAdsAudienceUserSchema = z.object({
 export type MetaAdsAudienceUser = z.infer<typeof metaAdsAudienceUserSchema>
 
 const metaAdsAudienceUsersFields = {
+    integrationId: metaAdsIntegrationIdField,
     audienceId: z.string().describe("The custom audience ID."),
     users: z.array(metaAdsAudienceUserSchema).min(1).max(500).describe("Users to match. Each entry needs at least one of email, phone, or externalId.")
 }
-export const metaAdsAddAudienceUsersRequestSchema = z.object({
-    action: z.literal("add").describe("Add users to the custom audience."),
-    ...metaAdsAudienceUsersFields
-})
-export const metaAdsRemoveAudienceUsersRequestSchema = z.object({
-    action: z.literal("remove").describe("Remove users from the custom audience."),
-    ...metaAdsAudienceUsersFields
-})
-export const metaAdsUpdateAudienceUsersRequestSchema = z.discriminatedUnion("action", [metaAdsAddAudienceUsersRequestSchema, metaAdsRemoveAudienceUsersRequestSchema])
 
-export type MetaAdsAddAudienceUsersRequest = z.infer<typeof metaAdsAddAudienceUsersRequestSchema>
-export type MetaAdsRemoveAudienceUsersRequest = z.infer<typeof metaAdsRemoveAudienceUsersRequestSchema>
-export type MetaAdsUpdateAudienceUsersRequest = z.infer<typeof metaAdsUpdateAudienceUsersRequestSchema>
+export const metaAdsAddAudienceUsersInputSchema = z.object(metaAdsAudienceUsersFields)
+export const metaAdsRemoveAudienceUsersInputSchema = z.object(metaAdsAudienceUsersFields)
 
 export const metaAdsConversionEventSchema = z.object({
     eventName: z.string().describe("Event name, e.g. 'Purchase', 'Lead', or a custom event name."),
@@ -3878,11 +3869,11 @@ export const metaAdsConversionEventSchema = z.object({
 })
 export type MetaAdsConversionEvent = z.infer<typeof metaAdsConversionEventSchema>
 
-export const metaAdsSendConversionsRequestSchema = z.object({
+export const metaAdsSendConversionsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     datasetId: z.string().describe("The dataset (pixel) ID that receives Conversions API events."),
     events: z.array(metaAdsConversionEventSchema).min(1).max(1000).describe("Conversion events to send.")
 })
-export type MetaAdsSendConversionsRequest = z.infer<typeof metaAdsSendConversionsRequestSchema>
 
 export const metaAdsPageSchema = z.object({
     id: z.string(),
@@ -3891,10 +3882,10 @@ export const metaAdsPageSchema = z.object({
 })
 export type MetaAdsPage = z.infer<typeof metaAdsPageSchema>
 
-export const metaAdsReadPagesRequestSchema = z.object({
-    limit: z.number().int().min(1).max(200).nullable().optional().describe("Maximum number of pages to return (default 100).")
+export const metaAdsListPagesInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    limit: metaAdsLimitField("Pages", 200)
 })
-export type MetaAdsReadPagesRequest = z.infer<typeof metaAdsReadPagesRequestSchema>
 
 export const metaAdsAdCreativeSchema = z.object({
     id: z.string(),
@@ -3919,79 +3910,191 @@ export const metaAdsAdSchema = z.object({
 })
 export type MetaAdsAd = z.infer<typeof metaAdsAdSchema>
 
-export const metaAdsReadAdsRequestSchema = z.object({
+export const metaAdsListAdsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     adAccountId: metaAdsAdAccountIdField,
     adsetId: z.string().nullable().optional().describe("Only ads belonging to this ad set."),
-    campaignId: z.string().nullable().optional().describe("Only ads belonging to this campaign. Ignored when adsetId is set."),
+    campaignId: z.string().nullable().optional().describe("Only ads belonging to this campaign."),
     effectiveStatuses: z.array(z.string()).nullable().optional().describe("Only ads whose effective status is in this list (e.g. ACTIVE, PAUSED, PENDING_REVIEW, DISAPPROVED)."),
-    limit: z.number().int().min(1).max(500).nullable().optional().describe("Maximum number of ads to return (default 100).")
+    limit: metaAdsLimitField("ads", 500)
 })
-export type MetaAdsReadAdsRequest = z.infer<typeof metaAdsReadAdsRequestSchema>
 
 export const metaAdsCallToActionSchema = z.enum(["LEARN_MORE", "SHOP_NOW", "SIGN_UP", "SUBSCRIBE", "BOOK_TRAVEL", "DOWNLOAD", "GET_OFFER", "GET_QUOTE", "CONTACT_US", "APPLY_NOW", "NO_BUTTON"])
 export type MetaAdsCallToAction = z.infer<typeof metaAdsCallToActionSchema>
 
-export const metaAdsCreateAdRequestSchema = z.object({
+const metaAdsHeadlineField = z.string().nullable().optional().describe("Headline shown under the media.")
+const metaAdsDescriptionField = z.string().nullable().optional().describe("Link description shown under the headline.")
+const metaAdsMessageField = z.string().describe("Primary text shown above the creative.")
+
+const metaAdsCarouselCardFields = {
+    headline: z.string().describe("Headline shown on this card. Facebook placements only; Instagram ignores it."),
+    description: metaAdsDescriptionField,
+    linkUrl: z.string().nullable().optional().describe("Per-card destination URL. Defaults to the ad's linkUrl.")
+}
+
+export const metaAdsCarouselCardSchema = z.discriminatedUnion("media", [
+    z.object({
+        media: z.literal("image").describe("This card shows an image."),
+        imageUrl: z.string().describe("Publicly reachable image for this card."),
+        ...metaAdsCarouselCardFields
+    }),
+    z.object({
+        media: z.literal("video").describe("This card shows a video. Meta does not support video cards on Instagram placements, so a carousel with one is Facebook-only."),
+        videoUrl: z.string().describe("Publicly reachable video for this card, uploaded and encoded before the ad is created."),
+        ...metaAdsCarouselCardFields
+    })
+])
+export type MetaAdsCarouselCard = z.infer<typeof metaAdsCarouselCardSchema>
+
+export const metaAdsSingleImageCreativeSchema = z.object({
+    format: z.literal("single_image").describe("One still image with one headline. The standard feed ad."),
+    imageUrl: z.string().describe("Publicly reachable image URL. Meta fetches it once at creation and copies it into the ad account's image library."),
+    message: metaAdsMessageField,
+    headline: metaAdsHeadlineField,
+    description: metaAdsDescriptionField
+})
+
+export const metaAdsSingleVideoCreativeSchema = z.object({
+    format: z.literal("single_video").describe("One video with one headline."),
+    videoUrl: z.string().describe("Publicly reachable video file. Terse uploads it to the ad account and waits for Meta to finish encoding before creating the ad, so this can take a while."),
+    thumbnailUrl: z.string().nullable().optional().describe("Poster frame shown before playback. Meta picks a frame when omitted."),
+    message: metaAdsMessageField,
+    headline: metaAdsHeadlineField,
+    description: metaAdsDescriptionField
+})
+
+export const metaAdsCarouselCreativeSchema = z.object({
+    format: z.literal("carousel").describe("Two to ten swipeable cards, each its own image or video with its own headline and destination."),
+    message: metaAdsMessageField,
+    // Bounds live in the executor: a min above 1 makes the printer expand the array
+    // into a union of tuple shapes, which buries the generated type.
+    cards: z.array(metaAdsCarouselCardSchema).describe("Two to ten cards in display order."),
+    optimizeCardOrder: z.boolean().nullable().optional().describe("Let Meta reorder cards by predicted performance instead of keeping the given order."),
+    showEndCard: z.boolean().nullable().optional().describe("Append a final card showing the Page profile image and the destination link. Omit to use Meta's own default.")
+})
+
+/**
+ * Meta allows exactly one ad_format per asset feed, and SINGLE_IMAGE needs images
+ * while SINGLE_VIDEO needs videos, so the media kind is part of the format rather
+ * than two optional arrays that could disagree with it.
+ */
+const metaAdsDynamicTextFields = {
+    messages: z.array(z.string()).min(1).max(5).describe("Primary text variants, up to 5."),
+    headlines: z.array(z.string()).min(1).max(5).describe("Headline variants, up to 5."),
+    descriptions: z.array(z.string()).max(5).nullable().optional().describe("Link description variants, up to 5."),
+    callToActions: z.array(metaAdsCallToActionSchema).min(1).max(5).describe("Button label variants, up to 5. Required: Meta rejects an asset feed with no call_to_action_types.")
+}
+
+const METAADS_DYNAMIC_PRECONDITION = "The ad set must already have dynamic creative enabled; Meta rejects the ad otherwise. Assets are capped at 30 in total across media and text."
+
+export const metaAdsDynamicImageCreativeSchema = z.object({
+    format: z.literal("dynamic_image").describe(`Several images plus several text variants, which Meta recombines per viewer as a single-image ad. ${METAADS_DYNAMIC_PRECONDITION}`),
+    imageUrls: z.array(z.string()).min(1).max(10).describe("Image variants, up to 10. Terse uploads each one to the ad account to get the hash Meta requires here."),
+    ...metaAdsDynamicTextFields
+})
+
+export const metaAdsDynamicVideoCreativeSchema = z.object({
+    format: z.literal("dynamic_video").describe(`Several videos plus several text variants, which Meta recombines per viewer as a single-video ad. ${METAADS_DYNAMIC_PRECONDITION}`),
+    videoUrls: z.array(z.string()).min(1).max(10).describe("Video variants, up to 10. Each is uploaded and encoded before the ad is created."),
+    ...metaAdsDynamicTextFields
+})
+
+export const metaAdsDynamicMixedCreativeSchema = z.object({
+    format: z
+        .literal("dynamic_mixed")
+        .describe(`Images and videos together, letting Meta pick the format per placement (AUTOMATIC_FORMAT) as well as the text combination. ${METAADS_DYNAMIC_PRECONDITION}`),
+    imageUrls: z.array(z.string()).min(1).max(10).describe("Image variants, up to 10."),
+    videoUrls: z.array(z.string()).min(1).max(10).describe("Video variants, up to 10."),
+    ...metaAdsDynamicTextFields
+})
+
+export const metaAdsCreativeSchema = z
+    .discriminatedUnion("format", [
+        metaAdsSingleImageCreativeSchema,
+        metaAdsSingleVideoCreativeSchema,
+        metaAdsCarouselCreativeSchema,
+        metaAdsDynamicImageCreativeSchema,
+        metaAdsDynamicVideoCreativeSchema,
+        metaAdsDynamicMixedCreativeSchema
+    ])
+    .describe("The creative to build, discriminated by format.")
+
+export type MetaAdsCreative = z.infer<typeof metaAdsCreativeSchema>
+
+export const metaAdsCreateAdInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     adAccountId: metaAdsAdAccountIdField,
     adsetId: z.string().describe("The ad set the new ad belongs to. Ad sets own targeting and budget, so the new ad inherits both."),
-    pageId: z.string().describe("The Facebook Page the ad is published as. Discover candidates with meta_ads_read_pages."),
+    pageId: z.string().describe("The Facebook Page the ad is published as. Discover candidates with meta_ads_list_pages."),
     name: z.string().describe("Internal name for the new ad, e.g. 'Spring promo - variant C'."),
-    message: z.string().describe("Primary text shown above the creative."),
     linkUrl: z.string().describe("Destination URL for the click-through."),
-    pictureUrl: z.string().describe("Publicly reachable image URL. Meta fetches it once at creation and copies it into the ad account's image library."),
-    headline: z.string().nullable().optional().describe("Headline shown under the image."),
-    description: z.string().nullable().optional().describe("Link description shown under the headline."),
-    callToAction: metaAdsCallToActionSchema.nullable().optional().describe("Button label. Defaults to LEARN_MORE."),
+    creative: metaAdsCreativeSchema,
+    callToAction: metaAdsCallToActionSchema
+        .nullable()
+        .optional()
+        .describe("Button label. Omit to let Meta pick its own default button. Ignored by the dynamic formats, which take callToActions instead."),
+    instagramActorId: z.string().nullable().optional().describe("Instagram account to publish as when the ad set includes Instagram placements. Meta falls back to the Page when omitted."),
+    urlTags: z.string().nullable().optional().describe("Query string appended to every click URL for attribution, e.g. 'utm_source=meta&utm_campaign=spring'."),
     status: z.enum(["ACTIVE", "PAUSED"]).nullable().optional().describe("Status to request after Meta's review completes. Defaults to PAUSED so a human can switch it on.")
 })
-export type MetaAdsCreateAdRequest = z.infer<typeof metaAdsCreateAdRequestSchema>
 
-export const metaAdsSetStatusRequestSchema = z.object({
+export const metaAdsSetStatusInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
     entityType: z.enum(["campaign", "adset", "ad"]).describe("Which kind of object to update."),
     entityId: z.string().describe("The ID of the campaign, ad set, or ad."),
     status: z.enum(["ACTIVE", "PAUSED"]).describe("PAUSED stops delivery and spend; ACTIVE resumes it.")
 })
-export type MetaAdsSetStatusRequest = z.infer<typeof metaAdsSetStatusRequestSchema>
 
-export const metaAdsReadCampaignsInputSchema = metaAdsToolInput(metaAdsReadCampaignsRequestSchema)
-export const metaAdsReadInsightsInputSchema = metaAdsToolInput(metaAdsReadInsightsRequestSchema)
-export const metaAdsListPixelsInputSchema = metaAdsToolInput(metaAdsListPixelsRequestSchema)
-export const metaAdsReadAudiencesInputSchema = metaAdsToolInput(metaAdsReadAudiencesRequestSchema)
-export const metaAdsUpdateAudienceUsersInputSchema = metaAdsToolInput(metaAdsUpdateAudienceUsersRequestSchema)
-export const metaAdsSendConversionsInputSchema = metaAdsToolInput(metaAdsSendConversionsRequestSchema)
-export const metaAdsReadPagesInputSchema = metaAdsToolInput(metaAdsReadPagesRequestSchema)
-export const metaAdsReadAdsInputSchema = metaAdsToolInput(metaAdsReadAdsRequestSchema)
-export const metaAdsCreateAdInputSchema = metaAdsToolInput(metaAdsCreateAdRequestSchema)
-export const metaAdsSetStatusInputSchema = metaAdsToolInput(metaAdsSetStatusRequestSchema)
-
-export const metaAdsReadCampaignsOutputSchema = toolOutputBaseSchema.extend({
-    adAccounts: z.array(metaAdsAdAccountEntitySchema).optional(),
-    campaigns: z.array(metaAdsCampaignSchema).optional(),
-    adsets: z.array(metaAdsAdSetSchema).optional(),
-    count: z.number()
+export const metaAdsListAdAccountsOutputSchema = toolOutputBaseSchema.extend({
+    adAccounts: z.array(metaAdsAdAccountEntitySchema),
+    count: z.number(),
+    truncated: z.boolean().describe("True when more ad accounts exist than were returned.")
 })
 
-export const metaAdsReadInsightsOutputSchema = toolOutputBaseSchema.extend({
-    rows: z.array(metaAdsInsightsRowSchema),
-    count: z.number(),
-    truncated: z.boolean()
+export const metaAdsListCampaignsOutputSchema = toolOutputBaseSchema.extend({
+    campaigns: z.array(metaAdsCampaignSchema),
+    ...metaAdsCollectionFields
+})
+
+export const metaAdsListAdSetsOutputSchema = toolOutputBaseSchema.extend({
+    adsets: z.array(metaAdsAdSetSchema),
+    ...metaAdsCollectionFields
+})
+
+export const metaAdsListAdsOutputSchema = toolOutputBaseSchema.extend({
+    ads: z.array(metaAdsAdSchema),
+    ...metaAdsCollectionFields
+})
+
+export const metaAdsListAudiencesOutputSchema = toolOutputBaseSchema.extend({
+    audiences: z.array(metaAdsCustomAudienceSchema),
+    ...metaAdsCollectionFields
 })
 
 export const metaAdsListPixelsOutputSchema = toolOutputBaseSchema.extend({
     pixels: z.array(metaAdsPixelSchema),
-    count: z.number()
+    ...metaAdsCollectionFields
 })
 
-export const metaAdsReadAudiencesOutputSchema = toolOutputBaseSchema.extend({
-    audiences: z.array(metaAdsCustomAudienceSchema),
-    count: z.number()
+export const metaAdsListPagesOutputSchema = toolOutputBaseSchema.extend({
+    pages: z.array(metaAdsPageSchema),
+    count: z.number(),
+    truncated: z.boolean().describe("True when more Pages exist than were returned.")
 })
 
-export const metaAdsUpdateAudienceUsersOutputSchema = toolOutputBaseSchema.extend({
+export const metaAdsReadInsightsOutputSchema = toolOutputBaseSchema.extend({
+    rows: z.array(metaAdsInsightsRowSchema),
+    ...metaAdsCollectionFields
+})
+
+const metaAdsAudienceUsersOutputFields = {
     audienceId: z.string(),
     numReceived: z.number(),
     numInvalidEntries: z.number()
-})
+}
+
+export const metaAdsAddAudienceUsersOutputSchema = toolOutputBaseSchema.extend(metaAdsAudienceUsersOutputFields)
+export const metaAdsRemoveAudienceUsersOutputSchema = toolOutputBaseSchema.extend(metaAdsAudienceUsersOutputFields)
 
 export const metaAdsSendConversionsOutputSchema = toolOutputBaseSchema.extend({
     datasetId: z.string(),
@@ -3999,21 +4102,15 @@ export const metaAdsSendConversionsOutputSchema = toolOutputBaseSchema.extend({
     fbtraceId: z.string().optional()
 })
 
-export const metaAdsReadPagesOutputSchema = toolOutputBaseSchema.extend({
-    pages: z.array(metaAdsPageSchema),
-    count: z.number()
-})
-
-export const metaAdsReadAdsOutputSchema = toolOutputBaseSchema.extend({
-    ads: z.array(metaAdsAdSchema),
-    count: z.number()
-})
-
 export const metaAdsCreateAdOutputSchema = toolOutputBaseSchema.extend({
     adId: z.string(),
     creativeId: z.string(),
     adsetId: z.string(),
-    requestedStatus: z.enum(["ACTIVE", "PAUSED"])
+    pageId: z.string(),
+    format: z.enum(["single_image", "single_video", "carousel", "dynamic_image", "dynamic_video", "dynamic_mixed"]),
+    requestedStatus: z.enum(["ACTIVE", "PAUSED"]),
+    videoIds: z.array(z.string()).describe("Meta video IDs created for this ad, in the order the videos were supplied."),
+    imageHashes: z.array(z.string()).describe("Meta image hashes created for this ad, in the order the images were supplied.")
 })
 
 export const metaAdsSetStatusOutputSchema = toolOutputBaseSchema.extend({
@@ -4022,11 +4119,49 @@ export const metaAdsSetStatusOutputSchema = toolOutputBaseSchema.extend({
     status: z.enum(["ACTIVE", "PAUSED"])
 })
 
-export const metaAdsReadCampaignsTool = defineTool({
-    name: "meta_ads_read_campaigns",
-    description: "Read Meta Ads account structure: list ad accounts, or list campaigns / ad sets with status and budget.",
-    inputSchema: metaAdsReadCampaignsInputSchema,
-    outputSchema: metaAdsReadCampaignsOutputSchema
+export const metaAdsListAdAccountsTool = defineTool({
+    name: "meta_ads_list_ad_accounts",
+    description: "List the Meta ad accounts the connected user can access, with currency and account status. Use this to discover an adAccountId.",
+    inputSchema: metaAdsListAdAccountsInputSchema,
+    outputSchema: metaAdsListAdAccountsOutputSchema
+})
+export const metaAdsListCampaignsTool = defineTool({
+    name: "meta_ads_list_campaigns",
+    description: "List campaigns in a Meta ad account with status, objective, and budget.",
+    inputSchema: metaAdsListCampaignsInputSchema,
+    outputSchema: metaAdsListCampaignsOutputSchema
+})
+export const metaAdsListAdSetsTool = defineTool({
+    name: "meta_ads_list_adsets",
+    description:
+        "List ad sets in a Meta ad account with status, optimization goal, and budget. Pass campaignId to narrow to one campaign. Ad sets own targeting and budget, so a new ad inherits both from the ad set it joins.",
+    inputSchema: metaAdsListAdSetsInputSchema,
+    outputSchema: metaAdsListAdSetsOutputSchema
+})
+export const metaAdsListAdsTool = defineTool({
+    name: "meta_ads_list_ads",
+    description:
+        "List ads with the creative attached to each one (primary text, headline, image). Pair with meta_ads_read_insights at level='ad' to attribute performance to a specific creative, and check effective_status for PENDING_REVIEW or DISAPPROVED.",
+    inputSchema: metaAdsListAdsInputSchema,
+    outputSchema: metaAdsListAdsOutputSchema
+})
+export const metaAdsListAudiencesTool = defineTool({
+    name: "meta_ads_list_audiences",
+    description: "List the custom audiences in a Meta ad account, with approximate sizes and delivery status.",
+    inputSchema: metaAdsListAudiencesInputSchema,
+    outputSchema: metaAdsListAudiencesOutputSchema
+})
+export const metaAdsListPixelsTool = defineTool({
+    name: "meta_ads_list_pixels",
+    description: "List the Meta pixels (Conversions API datasets) in an ad account. Use a pixel ID as the datasetId for meta_ads_send_conversions.",
+    inputSchema: metaAdsListPixelsInputSchema,
+    outputSchema: metaAdsListPixelsOutputSchema
+})
+export const metaAdsListPagesTool = defineTool({
+    name: "meta_ads_list_pages",
+    description: "List the Facebook Pages the connected user manages. Every ad creative is published as a Page, so meta_ads_create_ad needs a pageId from here.",
+    inputSchema: metaAdsListPagesInputSchema,
+    outputSchema: metaAdsListPagesOutputSchema
 })
 export const metaAdsReadInsightsTool = defineTool({
     name: "meta_ads_read_insights",
@@ -4035,23 +4170,17 @@ export const metaAdsReadInsightsTool = defineTool({
     inputSchema: metaAdsReadInsightsInputSchema,
     outputSchema: metaAdsReadInsightsOutputSchema
 })
-export const metaAdsListPixelsTool = defineTool({
-    name: "meta_ads_list_pixels",
-    description: "List the Meta pixels (Conversions API datasets) in an ad account. Use a pixel ID as the datasetId for meta_ads_send_conversions.",
-    inputSchema: metaAdsListPixelsInputSchema,
-    outputSchema: metaAdsListPixelsOutputSchema
+export const metaAdsAddAudienceUsersTool = defineTool({
+    name: "meta_ads_add_audience_users",
+    description: "Add people to a Meta custom audience. Emails and phone numbers are normalized and SHA-256 hashed before upload, so pass raw values.",
+    inputSchema: metaAdsAddAudienceUsersInputSchema,
+    outputSchema: metaAdsAddAudienceUsersOutputSchema
 })
-export const metaAdsReadAudiencesTool = defineTool({
-    name: "meta_ads_read_audiences",
-    description: "List the custom audiences in a Meta ad account, with approximate sizes and delivery status.",
-    inputSchema: metaAdsReadAudiencesInputSchema,
-    outputSchema: metaAdsReadAudiencesOutputSchema
-})
-export const metaAdsUpdateAudienceUsersTool = defineTool({
-    name: "meta_ads_update_audience_users",
-    description: "Add or remove people on a Meta custom audience. Emails and phone numbers are normalized and SHA-256 hashed before upload.",
-    inputSchema: metaAdsUpdateAudienceUsersInputSchema,
-    outputSchema: metaAdsUpdateAudienceUsersOutputSchema
+export const metaAdsRemoveAudienceUsersTool = defineTool({
+    name: "meta_ads_remove_audience_users",
+    description: "Remove people from a Meta custom audience. Emails and phone numbers are normalized and SHA-256 hashed before upload, so pass raw values.",
+    inputSchema: metaAdsRemoveAudienceUsersInputSchema,
+    outputSchema: metaAdsRemoveAudienceUsersOutputSchema
 })
 export const metaAdsSendConversionsTool = defineTool({
     name: "meta_ads_send_conversions",
@@ -4102,31 +4231,73 @@ export const higgsfieldGenerateImageOutputSchema = toolOutputBaseSchema.extend({
     count: z.number()
 })
 
+export const higgsfieldVideoModelSchema = z.enum(["dop-lite", "dop-turbo", "dop-standard"])
+export type HiggsfieldVideoModel = z.infer<typeof higgsfieldVideoModelSchema>
+
+export const higgsfieldGeneratedVideoSchema = z.object({
+    jobId: z.string().describe("Higgsfield job that produced this video."),
+    url: z.string().describe("Signed Terse-hosted URL for the video. Valid for 24 hours; pass it straight to meta_ads_create_ad as a videoUrl."),
+    thumbnailUrl: z.string().nullable().describe("Signed URL for a poster frame, when Higgsfield returned one.")
+})
+export type HiggsfieldGeneratedVideo = z.infer<typeof higgsfieldGeneratedVideoSchema>
+
+export const higgsfieldGenerateVideoInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Higgsfield connection to use."),
+    imageUrl: z.string().describe("Publicly reachable still image to animate. A Terse-hosted URL from higgsfield_generate_image works directly."),
+    prompt: z.string().min(1).describe("The motion to apply: camera movement, subject action, pacing."),
+    model: higgsfieldVideoModelSchema.nullable().optional().describe("dop-lite is cheapest, dop-turbo is the default, dop-standard is the highest quality."),
+    motionId: z.string().nullable().optional().describe("Motion preset ID from higgsfield_list_motions, applied on top of the prompt."),
+    motionStrength: z.number().min(0).max(1).nullable().optional().describe("How strongly to apply motionId, 0 to 1. Defaults to 1."),
+    seed: z.number().int().min(0).max(1000000).nullable().optional().describe("Fixed seed for a reproducible result.")
+})
+
+export const higgsfieldGenerateVideoOutputSchema = toolOutputBaseSchema.extend({
+    videos: z.array(higgsfieldGeneratedVideoSchema),
+    count: z.number()
+})
+
+export const higgsfieldMotionSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().nullable(),
+    previewUrl: z.string().nullable()
+})
+export type HiggsfieldMotion = z.infer<typeof higgsfieldMotionSchema>
+
+export const higgsfieldListMotionsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Higgsfield connection to use.")
+})
+
+export const higgsfieldListMotionsOutputSchema = toolOutputBaseSchema.extend({
+    motions: z.array(higgsfieldMotionSchema),
+    count: z.number()
+})
+
 export const higgsfieldGenerateImageTool = defineTool({
     name: "higgsfield_generate_image",
     description:
-        "Generate ad creative images from a text prompt with Higgsfield. Each result is cached by Terse and returned as a signed URL valid for 24 hours, which can be shown to a human for approval and then handed to meta_ads_create_ad as pictureUrl. Generation is asynchronous and this waits for it to finish, so expect it to take a while.",
+        "Generate ad creative images from a text prompt with Higgsfield. Each result is cached by Terse and returned as a signed URL valid for 24 hours, which can be shown to a human for approval and then handed to meta_ads_create_ad as an imageUrl. Generation is asynchronous and this waits for it to finish, so expect it to take a while.",
     inputSchema: higgsfieldGenerateImageInputSchema,
     outputSchema: higgsfieldGenerateImageOutputSchema
 })
-
-export const metaAdsReadPagesTool = defineTool({
-    name: "meta_ads_read_pages",
-    description: "List the Facebook Pages the connected user manages. Every ad creative is published as a Page, so a pageId from here is required by meta_ads_create_ad.",
-    inputSchema: metaAdsReadPagesInputSchema,
-    outputSchema: metaAdsReadPagesOutputSchema
-})
-export const metaAdsReadAdsTool = defineTool({
-    name: "meta_ads_read_ads",
+export const higgsfieldGenerateVideoTool = defineTool({
+    name: "higgsfield_generate_video",
     description:
-        "List ads with the creative attached to each one (primary text, headline, image). Pair with meta_ads_read_insights at level='ad' to attribute performance to a specific creative, and check effective_status for PENDING_REVIEW or DISAPPROVED.",
-    inputSchema: metaAdsReadAdsInputSchema,
-    outputSchema: metaAdsReadAdsOutputSchema
+        "Animate a still image into an ad video with Higgsfield. Higgsfield is image-to-video, so generate or pick an image first, then animate it here. The result is cached by Terse and returned as a signed URL valid for 24 hours, which can be shown to a human for approval and then handed to meta_ads_create_ad as a videoUrl. Generation is asynchronous and this waits for it to finish, so expect it to take a while.",
+    inputSchema: higgsfieldGenerateVideoInputSchema,
+    outputSchema: higgsfieldGenerateVideoOutputSchema
 })
+export const higgsfieldListMotionsTool = defineTool({
+    name: "higgsfield_list_motions",
+    description: "List Higgsfield motion presets with their IDs, for use as motionId in higgsfield_generate_video.",
+    inputSchema: higgsfieldListMotionsInputSchema,
+    outputSchema: higgsfieldListMotionsOutputSchema
+})
+
 export const metaAdsCreateAdTool = defineTool({
     name: "meta_ads_create_ad",
     description:
-        "Create a new ad creative and the ad that uses it inside an existing ad set. Meta fetches pictureUrl once at creation and stores its own copy, so a temporary signed URL is fine. Ad creatives are immutable, so improving a creative means creating a new ad here and pausing the old one with meta_ads_set_status. New ads enter PENDING_REVIEW before reaching the requested status.",
+        "Create an ad creative and the ad that uses it inside an existing ad set. Pick a creative.format: single_image, single_video, carousel (2-10 cards, each card an image or a video), or dynamic_image / dynamic_video / dynamic_mixed (several media assets plus several text variants that Meta recombines per viewer, which requires an ad set with dynamic creative enabled). Images are fetched by Meta and videos are uploaded and encoded before the ad is created, so temporary signed URLs are fine. Ad creatives are immutable, so improving a creative means creating a new ad here and pausing the old one with meta_ads_set_status. New ads enter PENDING_REVIEW before reaching the requested status.",
     inputSchema: metaAdsCreateAdInputSchema,
     outputSchema: metaAdsCreateAdOutputSchema
 })
@@ -4235,17 +4406,22 @@ export const ToolDefinitions = {
     [googleSearchConsoleDeleteSitemapTool.name]: googleSearchConsoleDeleteSitemapTool,
     [googleSearchConsoleQuerySearchAnalyticsTool.name]: googleSearchConsoleQuerySearchAnalyticsTool,
     [googleSearchConsoleInspectUrlTool.name]: googleSearchConsoleInspectUrlTool,
-    [metaAdsReadCampaignsTool.name]: metaAdsReadCampaignsTool,
-    [metaAdsReadInsightsTool.name]: metaAdsReadInsightsTool,
+    [metaAdsListAdAccountsTool.name]: metaAdsListAdAccountsTool,
+    [metaAdsListCampaignsTool.name]: metaAdsListCampaignsTool,
+    [metaAdsListAdSetsTool.name]: metaAdsListAdSetsTool,
+    [metaAdsListAdsTool.name]: metaAdsListAdsTool,
+    [metaAdsListAudiencesTool.name]: metaAdsListAudiencesTool,
     [metaAdsListPixelsTool.name]: metaAdsListPixelsTool,
-    [metaAdsReadAudiencesTool.name]: metaAdsReadAudiencesTool,
-    [metaAdsUpdateAudienceUsersTool.name]: metaAdsUpdateAudienceUsersTool,
+    [metaAdsListPagesTool.name]: metaAdsListPagesTool,
+    [metaAdsReadInsightsTool.name]: metaAdsReadInsightsTool,
+    [metaAdsAddAudienceUsersTool.name]: metaAdsAddAudienceUsersTool,
+    [metaAdsRemoveAudienceUsersTool.name]: metaAdsRemoveAudienceUsersTool,
     [metaAdsSendConversionsTool.name]: metaAdsSendConversionsTool,
-    [metaAdsReadPagesTool.name]: metaAdsReadPagesTool,
-    [metaAdsReadAdsTool.name]: metaAdsReadAdsTool,
     [metaAdsCreateAdTool.name]: metaAdsCreateAdTool,
     [metaAdsSetStatusTool.name]: metaAdsSetStatusTool,
-    [higgsfieldGenerateImageTool.name]: higgsfieldGenerateImageTool
+    [higgsfieldGenerateImageTool.name]: higgsfieldGenerateImageTool,
+    [higgsfieldGenerateVideoTool.name]: higgsfieldGenerateVideoTool,
+    [higgsfieldListMotionsTool.name]: higgsfieldListMotionsTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

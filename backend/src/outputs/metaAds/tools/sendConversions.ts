@@ -1,42 +1,40 @@
 import { RunHistoryActionType } from "@prisma/client"
-import { IntegrationType } from "terse-types"
-import type { MetaAdsConversionEvent, MetaAdsSendConversionsRequest, ToolOutputByName } from "terse-types"
+import type { MetaAdsConversionEvent } from "terse-types"
 import { z } from "zod"
 
+import { hashEmail, hashPhone } from "../../../integrations/metaAds/apiClient"
 import { defineSessionTool } from "../../../tools/toolUtils"
 
-import { metaAdsToolExecute } from "./metaAdsApi"
-import { MetaAdsClient, hashEmail, hashPhone } from "./metaAdsClient"
+import { metaAdsAction, requireMetaAdsClient } from "./toolContext"
 
 export const metaAdsSendConversionsTool = defineSessionTool({
     name: "meta_ads_send_conversions",
-    execute: metaAdsToolExecute("meta_ads_send_conversions", executeSendConversionsRequest)
+    execute: async ({ integrationId, datasetId, events }, runContext) => {
+        const client = await requireMetaAdsClient(integrationId, runContext)
+        const response = await client.runParsed(() => client.adsPixel(datasetId).createEvent([], { data: events.map(toGraphEvent) }), sendEventsResponseSchema, "conversion events")
+
+        return {
+            success: true,
+            datasetId,
+            eventsReceived: response.events_received,
+            fbtraceId: response.fbtrace_id,
+            actions: [
+                metaAdsAction({
+                    action: "Sent conversion events",
+                    target: datasetId,
+                    details: `Sent ${events.length} event(s); Meta received ${response.events_received}`,
+                    type: RunHistoryActionType.create,
+                    isReadOnly: false
+                })
+            ]
+        }
+    }
 })
 
 const sendEventsResponseSchema = z.object({
     events_received: z.number(),
     fbtrace_id: z.string().optional()
 })
-
-async function executeSendConversionsRequest(request: MetaAdsSendConversionsRequest, client: MetaAdsClient): Promise<MetaAdsSendConversionsOutput> {
-    const response = await client.runParsed(() => client.adsPixel(request.datasetId).createEvent([], { data: request.events.map(toGraphEvent) }), sendEventsResponseSchema, "conversion events")
-
-    return {
-        success: true,
-        datasetId: request.datasetId,
-        eventsReceived: response.events_received,
-        fbtraceId: response.fbtrace_id,
-        actions: [
-            {
-                action: "Sent conversion events",
-                integration: IntegrationType.META_ADS,
-                target: request.datasetId,
-                details: `Sent ${request.events.length} event(s); Meta received ${response.events_received}`,
-                type: RunHistoryActionType.create
-            }
-        ]
-    }
-}
 
 function toGraphEvent(event: MetaAdsConversionEvent): Record<string, unknown> {
     const userData = buildUserData(event)
@@ -67,5 +65,3 @@ function buildUserData(event: MetaAdsConversionEvent): Record<string, unknown> {
     if (event.userData.browserId) userData.fbp = event.userData.browserId
     return userData
 }
-
-type MetaAdsSendConversionsOutput = ToolOutputByName["meta_ads_send_conversions"]

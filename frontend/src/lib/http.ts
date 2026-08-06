@@ -1,6 +1,6 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
-import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
+import type { MetaAdsPage, SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
 import {
     BillingCatalogResponse,
     BillingChangeResponse,
@@ -28,6 +28,7 @@ import {
     IntegrationWithStatus,
     LaunchDarklyIntegration,
     LinearIntegration,
+    MetaAdsAdAccount,
     MetaAdsIntegration,
     NotionIntegration,
     PosthogIntegration,
@@ -249,6 +250,16 @@ interface BackendService {
      * Gets all Meta Ads integrations for the current user
      */
     getMetaAdsIntegrations(): Promise<MetaAdsIntegration[]>
+
+    /**
+     * Gets the ad accounts a Meta Ads connection can reach
+     */
+    getMetaAdsAdAccounts(integrationId: string): Promise<MetaAdsAdAccount[]>
+
+    /**
+     * Gets the Facebook Pages a Meta Ads connection can publish as
+     */
+    getMetaAdsPages(integrationId: string): Promise<MetaAdsPage[]>
 
     /**
      * Gets available Attio objects for a specific integration
@@ -749,6 +760,16 @@ export const BackendProvider: BackendService = {
 
     getMetaAdsIntegrations: () => {
         return axios.get<MetaAdsIntegration[]>(`${backendBaseUrl}${ApiRoutes.META_ADS.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getMetaAdsAdAccounts: (integrationId: string) => {
+        const url = buildRoute(ApiRoutes.META_ADS.AD_ACCOUNTS, { integrationId })
+        return axios.get<MetaAdsAdAccount[]>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getMetaAdsPages: (integrationId: string) => {
+        const url = buildRoute(ApiRoutes.META_ADS.PAGES, { integrationId })
+        return axios.get<MetaAdsPage[]>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getAttioObjects: (integrationId: string) => {

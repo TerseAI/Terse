@@ -96,6 +96,7 @@ export {
     GoogleSearchConsoleOutputConfig,
     HeyReachEventType,
     HeyReachInputConfig,
+    HiggsfieldOutputConfig,
     ImageEditConfig,
     LaunchDarklyConfig,
     LinearEventType,
