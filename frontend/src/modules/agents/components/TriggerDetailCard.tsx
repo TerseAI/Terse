@@ -431,6 +431,7 @@ function formatGitHubEvent(type: string): string {
     if (type === "pull_request.merged") return "PR merged"
     if (type === "pull_request.closed") return "PR closed"
     if (type === "pull_request.synchronize") return "PR updated"
+    if (type === "pull_request.comment.created") return "PR comment"
     if (type === "issue_comment.created") return "Issue comment"
     return type
 }

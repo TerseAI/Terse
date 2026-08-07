@@ -392,7 +392,8 @@ export class GithubIntegrationManager
         const wantsPush = requestedTypes.includes(GitHubEventType.PUSH)
 
         const wantsIssueComment = requestedTypes.includes(GitHubEventType.ISSUE_COMMENT_CREATED)
-        const requestedPRTypes = requestedTypes.filter(t => t.startsWith("pull_request."))
+        const wantsPRComment = requestedTypes.includes(GitHubEventType.PR_COMMENT_CREATED)
+        const requestedPRTypes = requestedTypes.filter(t => t.startsWith("pull_request.") && t !== GitHubEventType.PR_COMMENT_CREATED)
         const wantsPR = requestedPRTypes.length > 0
         const prApiState = derivePRApiState(requestedPRTypes)
 
@@ -420,6 +421,15 @@ export class GithubIntegrationManager
                 for (const comment of comments) {
                     const eventData = createIssueCommentEventData(comment, repo, installationIdNum)
                     if (eventData) events.push(new GithubTriggerRuntime(eventData, []))
+                }
+            }
+            if (wantsPRComment) {
+                const comments = await fetchRecentIssueCommentsForSample(accessToken, repo.owner, repo.name, 5)
+                for (const comment of comments) {
+                    const eventData = createIssueCommentEventData(comment, repo, installationIdNum)
+                    if (eventData?.eventType === GitHubEventType.ISSUE_COMMENT_CREATED && eventData.issue.isPullRequest) {
+                        events.push(new GithubTriggerRuntime(eventData, []))
+                    }
                 }
             }
             if (events.length >= maxEvents) break
@@ -485,8 +495,12 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
             return false
         }
 
-        // Check if the eventType is included in the eventTypes configured for the channel
-        return !githubConfig.event_types || githubConfig.event_types.length === 0 || githubConfig.event_types.includes(this.data.eventType)
+        const configuredEventTypes = githubConfig.event_types
+        if (!configuredEventTypes || configuredEventTypes.length === 0 || configuredEventTypes.includes(this.data.eventType)) {
+            return true
+        }
+
+        return this.data.eventType === GitHubEventType.ISSUE_COMMENT_CREATED && this.data.issue.isPullRequest && configuredEventTypes.includes(GitHubEventType.PR_COMMENT_CREATED)
     }
 
     createTriggerMetadata(): RunHistoryTrigger {

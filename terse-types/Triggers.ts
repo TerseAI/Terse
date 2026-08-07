@@ -247,6 +247,15 @@ export const GithubIssueCommentCreatedTriggerSchema = GithubTriggerBaseSchema.ex
 })
 export type GithubIssueCommentCreatedTrigger = z.infer<typeof GithubIssueCommentCreatedTriggerSchema>
 
+const pullRequestCommentTargetSchema = issueCommentTargetSchema.extend({ isPullRequest: z.literal(true) })
+
+export const GithubPRCommentCreatedTriggerSchema = GithubTriggerBaseSchema.extend({
+    eventType: z.literal(GitHubEventType.ISSUE_COMMENT_CREATED),
+    issue: pullRequestCommentTargetSchema,
+    comment: issueCommentSchema
+})
+export type GithubPRCommentCreatedTrigger = z.infer<typeof GithubPRCommentCreatedTriggerSchema>
+
 export const GithubPRTriggerSchema = z.discriminatedUnion("eventType", [GithubPROpenedTriggerSchema, GithubPRSynchronizedTriggerSchema, GithubPRClosedTriggerSchema, GithubPRMergedTriggerSchema])
 export type GithubPRTrigger = z.infer<typeof GithubPRTriggerSchema>
 
@@ -1207,6 +1216,12 @@ export const TriggerDefinitions = {
         integration: IntegrationType.GITHUB,
         schema: GithubIssueCommentCreatedTriggerSchema,
         eventTypes: [GitHubEventType.ISSUE_COMMENT_CREATED],
+        presenter: githubPresenter
+    }),
+    GithubPRCommentCreatedTrigger: defineTrigger({
+        integration: IntegrationType.GITHUB,
+        schema: GithubPRCommentCreatedTriggerSchema,
+        eventTypes: [GitHubEventType.PR_COMMENT_CREATED],
         presenter: githubPresenter
     }),
     GithubPRTrigger: defineTriggerUnion({

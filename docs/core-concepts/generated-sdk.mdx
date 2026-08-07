@@ -133,6 +133,10 @@ export const Triggers = {
         /** Trigger when a comment is created on an issue or pull request */
         onIssueComment(opts: { repo: Repos }): TypedTrigger<GithubIssueCommentCreatedTrigger> {
             /* … */
+        },
+        /** Trigger when a comment is created on a pull request */
+        onPRComment(opts: { repo: Repos }): TypedTrigger<GithubPRCommentCreatedTrigger> {
+            /* … */
         }
     },
     attio: {
