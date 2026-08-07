@@ -274,15 +274,15 @@
 }
 
 .sidebar-project-ornament--active .sidebar-project-ornament__cube--top {
-    animation: sidebar-cube-build 900ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    animation: sidebar-cube-build 900ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 .sidebar-project-ornament--active .sidebar-project-ornament__cube--left {
-    animation: sidebar-cube-build 900ms 100ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    animation: sidebar-cube-build 900ms 100ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 .sidebar-project-ornament--active .sidebar-project-ornament__cube--right {
-    animation: sidebar-cube-build 900ms 200ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    animation: sidebar-cube-build 900ms 200ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 .sidebar-project-ornament--success {
@@ -304,16 +304,12 @@
 @keyframes sidebar-cube-build {
     0%,
     100% {
-        opacity: 0.68;
+        opacity: 0.72;
         transform: translateY(0);
     }
-    38% {
+    50% {
         opacity: 1;
-        transform: translateY(-0.8px);
-    }
-    68% {
-        opacity: 0.9;
-        transform: translateY(0);
+        transform: translateY(-1px);
     }
 }
 

@@ -170,14 +170,3 @@ createJob({
         console.log("sleep in durable job completed")
     }
 })
-
-createJob({
-    name: "Basic Tegst - Success. sleep in durable job works",
-    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
-    durable: true,
-    onTrigger: async event => {
-        console.log("trying to sleep in durable job")
-        await sleep("2m")
-        console.log("sleep in durable job completed")
-    }
-})
