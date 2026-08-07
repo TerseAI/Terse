@@ -78,8 +78,12 @@ export function ProjectStatusOrnament({ status }: { status?: ProjectDeployStatus
             <svg className={cn("sidebar-project-ornament", `sidebar-project-ornament--${phase}`)} viewBox="0 0 20 20" fill="none">
                 <motion.g
                     initial={false}
-                    animate={successActive ? { opacity: 0, scale: shouldReduceMotion ? 1 : 0.86, rotate: shouldReduceMotion ? 0 : -3 } : { opacity: 1, scale: 1, rotate: 0 }}
-                    transition={shouldReduceMotion ? { duration: 0.12 } : successActive ? { duration: 0.24, ease: [0.4, 0, 1, 1] } : { delay: 0.18, duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+                    animate={
+                        successActive
+                            ? { opacity: 0, scale: shouldReduceMotion ? 1 : 0.46, rotate: shouldReduceMotion ? 0 : -5, x: shouldReduceMotion ? 0 : -4, y: shouldReduceMotion ? 0 : 0.2 }
+                            : { opacity: 1, scale: 1, rotate: 0, x: 0, y: 0 }
+                    }
+                    transition={shouldReduceMotion ? { duration: 0.12 } : successActive ? { duration: 0.24, ease: [0.4, 0, 1, 1] } : { delay: 0.2, duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
                     style={{ transformOrigin: "10px 10px" }}
                 >
                     {CUBES.map(cube => (
@@ -96,10 +100,19 @@ export function ProjectStatusOrnament({ status }: { status?: ProjectDeployStatus
                         <motion.g
                             key="success"
                             className="sidebar-project-ornament__success-check"
-                            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.72, rotate: -8, y: 0.8 }}
-                            animate={shouldReduceMotion ? { opacity: 1 } : { opacity: [0, 1, 1, 1], scale: [0.72, 1.08, 0.97, 1], rotate: [-8, 2, -0.5, 0], y: [0.8, -0.35, 0, 0] }}
+                            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.72, rotate: -7, y: 1.2 }}
+                            animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
                             exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: -0.8 }}
-                            transition={shouldReduceMotion ? { duration: 0.12 } : { delay: 0.12, duration: 0.7, times: [0, 0.48, 0.76, 1], ease: [0.16, 1, 0.3, 1] }}
+                            transition={
+                                shouldReduceMotion
+                                    ? { duration: 0.12 }
+                                    : {
+                                          opacity: { delay: 0.1, duration: 0.14, ease: "easeOut" },
+                                          scale: { delay: 0.12, type: "spring", stiffness: 440, damping: 15, mass: 0.55 },
+                                          rotate: { delay: 0.12, type: "spring", stiffness: 420, damping: 17, mass: 0.55 },
+                                          y: { delay: 0.12, type: "spring", stiffness: 440, damping: 15, mass: 0.55 }
+                                      }
+                            }
                             style={{ transformOrigin: "10px 10px" }}
                         >
                             <motion.path
@@ -108,6 +121,15 @@ export function ProjectStatusOrnament({ status }: { status?: ProjectDeployStatus
                                 animate={{ pathLength: 1, opacity: 1 }}
                                 transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.16, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                             />
+                            {!shouldReduceMotion && (
+                                <motion.path
+                                    className="sidebar-project-ornament__success-highlight"
+                                    d="m3.7 10.2 4.15 4.15L16.4 5.8"
+                                    initial={{ pathLength: 0.16, pathOffset: 0, opacity: 0 }}
+                                    animate={{ pathOffset: [0, 0.84], opacity: [0, 0.9, 0.9, 0] }}
+                                    transition={{ delay: 0.48, duration: 0.42, times: [0, 0.18, 0.72, 1], ease: [0.25, 1, 0.5, 1] }}
+                                />
+                            )}
                         </motion.g>
                     )}
                 </AnimatePresence>

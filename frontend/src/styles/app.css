@@ -256,6 +256,11 @@
     transform-origin: center;
 }
 
+.sidebar-project-ornament__success-highlight {
+    stroke: color-mix(in oklch, var(--success) 58%, var(--sidebar-primary));
+    stroke-width: 1.25;
+}
+
 .sidebar-project-ornament__cross {
     stroke-width: 2;
     stroke-dasharray: none;
