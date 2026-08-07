@@ -221,6 +221,8 @@ The available fields per trigger type match what your handler receives at runtim
 
 The prompt-facing text returned by `event.formatForAgentRunner()` and the log line returned by `event.debugLog()` are derived from the fixture exactly the way production derives them from a live event. To test a custom rendering, add a top-level `formattedContent` or `debugLog` string to the fixture and it overrides the derived value.
 
+`event.triggeredAt` defaults to the time you run the test. Add a top-level `triggeredAt` ISO 8601 timestamp (for example `"2026-07-01T09:00:00.000Z"`) to pin it, so date windows derived from it stay the same on every run.
+
 `terse test show <id> --json` prints any stored sample event in this shape, so a recorded event is always a valid starting point for a hand-edited fixture.
 
 ### `terse deploy`
@@ -276,9 +278,9 @@ The interactive flow fetches your current integrations, shows provider-specific 
 
 Connection types:
 
-| Type  | Flow                                                                       | Integrations                                                |
-| ----- | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| OAuth | Opens a browser for authorization and waits for the connection to complete | GitHub, Slack, Gmail, Linear, Notion, Attio                 |
+| Type  | Flow                                                                       | Integrations                                                        |
+| ----- | -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| OAuth | Opens a browser for authorization and waits for the connection to complete | GitHub, Slack, Gmail, Google Search Console, Linear, Notion, Attio  |
 | Form  | Prompts for credentials or account details in the terminal                 | Datadog, PostHog, Snowflake, LaunchDarkly, WorkOS, HeyReach, Apollo |
 
 #### `terse integrate list`

@@ -19,7 +19,10 @@ export enum IntegrationType {
     ATTIO = "attio",
     SNOWFLAKE = "snowflake",
     WEBHOOK = "webhook",
-    WEBMONITOR = "webmonitor"
+    WEBMONITOR = "webmonitor",
+    GOOGLE_SEARCH_CONSOLE = "google_search_console",
+    META_ADS = "meta_ads",
+    HIGGSFIELD = "higgsfield"
 }
 export const integrationTypeEnum = z.enum(IntegrationType)
 
@@ -55,6 +58,14 @@ export const GmailIntegrationMetadata = {
     description: "Monitor incoming emails",
     isInput: true,
     isOutput: false
+} as const satisfies IntegrationDetails
+
+export const GoogleSearchConsoleIntegrationMetadata = {
+    type: IntegrationType.GOOGLE_SEARCH_CONSOLE,
+    name: "Google Search Console",
+    description: "Read Search Analytics and manage sites and sitemaps",
+    isInput: false,
+    isOutput: true
 } as const satisfies IntegrationDetails
 
 export const NotionIntegrationMetadata = {
@@ -177,10 +188,26 @@ export const HeyReachIntegrationMetadata = {
     isOutput: false
 } as const satisfies IntegrationDetails
 
+export const MetaAdsIntegrationMetadata = {
+    type: IntegrationType.META_ADS,
+    name: "Meta Ads",
+    description: "Read ad performance, sync custom audiences, and send offline conversions to Meta Ads",
+    isInput: false,
+    isOutput: true
+} as const satisfies IntegrationDetails
+
 export const ResendIntegrationMetadata = {
     type: IntegrationType.RESEND,
     name: "Resend",
     description: "Send transactional email using published Resend templates",
+    isInput: false,
+    isOutput: true
+} as const satisfies IntegrationDetails
+
+export const HiggsfieldIntegrationMetadata = {
+    type: IntegrationType.HIGGSFIELD,
+    name: "Higgsfield",
+    description: "Generate ad creative images and animate them into video with Higgsfield",
     isInput: false,
     isOutput: true
 } as const satisfies IntegrationDetails
@@ -197,6 +224,7 @@ export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails>
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.GMAIL]: GmailIntegrationMetadata,
+    [IntegrationType.GOOGLE_SEARCH_CONSOLE]: GoogleSearchConsoleIntegrationMetadata,
     [IntegrationType.NOTION]: NotionIntegrationMetadata,
     [IntegrationType.LINEAR]: LinearIntegrationMetadata,
     [IntegrationType.SLACK]: SlackIntegrationMetadata,
@@ -213,7 +241,9 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.WEBMONITOR]: WebMonitorIntegrationMetadata,
     [IntegrationType.HEY_REACH]: HeyReachIntegrationMetadata,
     [IntegrationType.RESEND]: ResendIntegrationMetadata,
-    [IntegrationType.APOLLO]: ApolloIntegrationMetadata
+    [IntegrationType.APOLLO]: ApolloIntegrationMetadata,
+    [IntegrationType.META_ADS]: MetaAdsIntegrationMetadata,
+    [IntegrationType.HIGGSFIELD]: HiggsfieldIntegrationMetadata
 } as const satisfies IntegrationMetadataMap
 
 // MARK: Integration Details
@@ -239,6 +269,7 @@ export type AdditionalStateParams = Record<string, string>
 export const InstallationOptionsSchemas = {
     [IntegrationType.SLACK]: SlackInstallationOptionsSchema,
     [IntegrationType.GMAIL]: NoInstallationOptionsSchema,
+    [IntegrationType.GOOGLE_SEARCH_CONSOLE]: NoInstallationOptionsSchema,
     [IntegrationType.NOTION]: NoInstallationOptionsSchema,
     [IntegrationType.LINEAR]: NoInstallationOptionsSchema,
     [IntegrationType.GITHUB]: NoInstallationOptionsSchema,
@@ -254,7 +285,9 @@ export const InstallationOptionsSchemas = {
     [IntegrationType.WEBMONITOR]: NoInstallationOptionsSchema,
     [IntegrationType.HEY_REACH]: NoInstallationOptionsSchema,
     [IntegrationType.RESEND]: NoInstallationOptionsSchema,
-    [IntegrationType.APOLLO]: NoInstallationOptionsSchema
+    [IntegrationType.APOLLO]: NoInstallationOptionsSchema,
+    [IntegrationType.META_ADS]: NoInstallationOptionsSchema,
+    [IntegrationType.HIGGSFIELD]: NoInstallationOptionsSchema
 } as const satisfies Record<IntegrationType, z.ZodTypeAny>
 
 export type InstallationOptionsFor<T extends IntegrationType> = z.infer<(typeof InstallationOptionsSchemas)[T]>
@@ -272,6 +305,25 @@ export const GmailIntegrationSchema = IntegrationInstanceSchema.extend({
     watchExpiration: z.date().optional()
 })
 export type GmailIntegration = z.infer<typeof GmailIntegrationSchema>
+
+export const GoogleSearchConsoleIntegrationSchema = IntegrationInstanceSchema.extend({
+    email: z.email(),
+    googleAccountId: z.string()
+})
+export type GoogleSearchConsoleIntegration = z.infer<typeof GoogleSearchConsoleIntegrationSchema>
+
+export const googleSearchConsolePermissionLevelSchema = z.enum(["siteFullUser", "siteOwner", "siteRestrictedUser", "siteUnverifiedUser"])
+
+export const googleSearchConsoleSiteSchema = z.object({
+    siteUrl: z.string(),
+    permissionLevel: googleSearchConsolePermissionLevelSchema
+})
+export type GoogleSearchConsoleSite = z.infer<typeof googleSearchConsoleSiteSchema>
+
+export const googleSearchConsoleSitesResponseSchema = z.object({
+    sites: z.array(googleSearchConsoleSiteSchema)
+})
+export type GoogleSearchConsoleSitesResponse = z.infer<typeof googleSearchConsoleSitesResponseSchema>
 
 export const NotionIntegrationSchema = IntegrationInstanceSchema.extend({
     workspaceId: z.string().optional(),
@@ -301,6 +353,9 @@ export type HeyReachIntegration = z.infer<typeof HeyReachIntegrationSchema>
 
 export const ResendIntegrationSchema = IntegrationInstanceSchema
 export type ResendIntegration = z.infer<typeof ResendIntegrationSchema>
+
+export const HiggsfieldIntegrationSchema = IntegrationInstanceSchema
+export type HiggsfieldIntegration = z.infer<typeof HiggsfieldIntegrationSchema>
 
 export const ApolloIntegrationSchema = IntegrationInstanceSchema
 export type ApolloIntegration = z.infer<typeof ApolloIntegrationSchema>
@@ -351,6 +406,20 @@ export const SnowflakeIntegrationSchema = IntegrationInstanceSchema.extend({
     schemaName: z.string().optional()
 })
 export type SnowflakeIntegration = z.infer<typeof SnowflakeIntegrationSchema>
+
+export const MetaAdsIntegrationSchema = IntegrationInstanceSchema.extend({
+    accountName: z.string().optional()
+})
+export type MetaAdsIntegration = z.infer<typeof MetaAdsIntegrationSchema>
+
+export const MetaAdsAdAccountSchema = z.object({
+    id: z.string(),
+    accountId: z.string(),
+    name: z.string(),
+    currency: z.string().optional(),
+    accountStatus: z.number().optional()
+})
+export type MetaAdsAdAccount = z.infer<typeof MetaAdsAdAccountSchema>
 
 export const CliIntegrationDisplayStateSchema = z.discriminatedUnion("status", [
     z.object({

@@ -151,6 +151,130 @@ skills: [Skills.gmailDraft()]
 | -------------------- | ------------------------------------ | ------ |
 | `gmail_create_draft` | Create draft emails for human review | Write  |
 
+## Meta Ads
+
+Read ad performance and manage ads, audiences, and offline conversions.
+
+```ts
+import { MetaAdsAdAccount, Skills } from "./terse.generated"
+
+skills: [Skills.metaAds({ adAccount: MetaAdsAdAccount.Primary, pageId: "1234567890" })]
+```
+
+`adAccount` and `pageId` scope the agent: a tool call naming a different ad account or Page is denied. Omit both and the agent may use anything the connected login can reach. `adAccountId` is required on every tool that takes one; use the generated `MetaAdsAdAccount` values rather than raw strings.
+
+| Tool                             | Description                                                             | Access |
+| -------------------------------- | ----------------------------------------------------------------------- | ------ |
+| `meta_ads_list_ad_accounts`      | List the ad accounts the connected login can reach                      | Read   |
+| `meta_ads_list_campaigns`        | List campaigns with status, objective, and budget                       | Read   |
+| `meta_ads_list_adsets`           | List ad sets, optionally narrowed to one campaign                       | Read   |
+| `meta_ads_list_ads`              | List ads with the creative attached to each one                         | Read   |
+| `meta_ads_list_audiences`        | List custom audiences with approximate sizes                            | Read   |
+| `meta_ads_list_pixels`           | List pixels (Conversions API dataset IDs) in an ad account              | Read   |
+| `meta_ads_list_pages`            | List the Facebook Pages the connected user manages                      | Read   |
+| `meta_ads_read_insights`         | Spend, impressions, clicks, and conversions at campaign/ad set/ad level | Read   |
+| `meta_ads_add_audience_users`    | Add people to a custom audience (emails/phones hashed)                  | Write  |
+| `meta_ads_remove_audience_users` | Remove people from a custom audience (emails/phones hashed)             | Write  |
+| `meta_ads_send_conversions`      | Send offline conversion events via the Conversions API                  | Write  |
+| `meta_ads_create_ad`             | Create an ad: single image, single video, carousel, or dynamic creative | Write  |
+| `meta_ads_set_status`            | Pause or resume a campaign, ad set, or ad                               | Write  |
+
+Notes:
+
+- Each list tool returns its own collection, a `count`, and `truncated`.
+- Insights need `level: "ad"` to attribute results to an individual creative, optionally split by `breakdowns` such as `age` or `publisher_platform`. `meta_ads_read_insights` pages up to 2000 rows and sets `truncated: true` beyond that; each breakdown multiplies the row count.
+- Meta cannot edit a creative or swap the one on an ad. Improve one by creating a new ad in the same ad set and pausing the old one; each ad keeps its own insights.
+- New ads enter `PENDING_REVIEW` and can come back `DISAPPROVED`. Re-read `effective_status` with `meta_ads_list_ads` before treating an ad as live.
+- `meta_ads_set_status` only pauses and resumes. There is no budget tool, so an automation cannot increase spend.
+
+### Creative formats
+
+`meta_ads_create_ad` takes a `creative` object discriminated by `format`, so only the fields belonging to the chosen format are in scope.
+
+| `format`        | Media                                  | Text                                           | Meta `ad_format`   |
+| --------------- | -------------------------------------- | ---------------------------------------------- | ------------------ |
+| `single_image`  | `imageUrl`                             | `message`, `headline?`, `description?`         | —                  |
+| `single_video`  | `videoUrl`, `thumbnailUrl?`            | `message`, `headline?`, `description?`         | —                  |
+| `carousel`      | 2-10 `cards`, each image **xor** video | `message` + per-card `headline`                | —                  |
+| `dynamic_image` | `imageUrls[]` (1-10)                   | `messages[]`, `headlines[]`, `descriptions[]?` | `SINGLE_IMAGE`     |
+| `dynamic_video` | `videoUrls[]` (1-10)                   | `messages[]`, `headlines[]`, `descriptions[]?` | `SINGLE_VIDEO`     |
+| `dynamic_mixed` | `imageUrls[]` + `videoUrls[]`          | `messages[]`, `headlines[]`, `descriptions[]?` | `AUTOMATIC_FORMAT` |
+
+Each carousel card is itself discriminated, on `media`:
+
+```ts
+cards: [
+    { media: "image", imageUrl, headline, description?, linkUrl? },
+    { media: "video", videoUrl, headline, description?, linkUrl? }
+]
+```
+
+Shared across formats: `linkUrl`, `callToAction`, `instagramActorId`, `urlTags`, `status`.
+
+Format notes:
+
+- Only the fields you supply are sent, so an omitted `callToAction` leaves Meta's default button. `status` is the exception: it defaults to `PAUSED`, not Meta's `ACTIVE`.
+- Carousels containing a video card are Facebook-only: Meta does not support them on Instagram placements.
+- Dynamic creative is capped at 30 assets across media and text (`ad_format` and `link_url` each count as one), requires `callToActions`, and only works on an ad set with dynamic creative already enabled in Ads Manager.
+- Images are fetched by Meta from the URL you supply; videos and dynamic-creative images are uploaded first, so short-lived signed URLs work everywhere, including the ones Higgsfield returns. The result reports `videoIds` and `imageHashes`.
+
+### Connecting
+
+Open Integrations, choose Meta Ads, and approve the business and assets Meta lists.
+
+Terse uses Facebook Login for Business, which issues a business integration system user token. Unlike a 60-day user token, it does not expire, so scheduled jobs keep running. It is revoked only when the client removes your app under Business settings, Connected apps. Terse checks connections on its maintenance pass and reports a revoked token instead of failing mid-run.
+
+Standard Access, granted automatically, covers every tool above for users with a role on your Meta app. Reaching ad accounts outside your app requires Advanced Access, App Review, and Business Verification. Standard Access rate limits are roughly `300 + 40 x active ads` calls per hour for management and `600 + 400 x active ads` for insights.
+
+## Higgsfield
+
+Generate ad creative images from a text prompt, then animate them into video.
+
+```ts
+import { Skills } from "./terse.generated"
+
+skills: [Skills.higgsfield()]
+```
+
+| Tool                        | Description                                                  | Access |
+| --------------------------- | ------------------------------------------------------------ | ------ |
+| `higgsfield_generate_image` | Generate one or four images from a text prompt               | Write  |
+| `higgsfield_generate_video` | Animate a still image into a video                           | Write  |
+| `higgsfield_list_motions`   | List named camera-move presets and their IDs, for `motionId` | Read   |
+
+Notes:
+
+- The tools block until generation finishes. Each asset is copied into Terse storage and returned as a signed URL valid for 24 hours, ready to pass to `meta_ads_create_ad` as an `imageUrl` or `videoUrl`.
+- Every call spends Higgsfield credits, so both generators are writes and can be gated behind approval. Use `batchSize: 4` for variants to compare, and match `size` to the placement (`2048x1152` for feed, `1152x2048` for stories).
+- `model` trades cost against quality: `dop-lite`, `dop-turbo` (default), `dop-standard`.
+- A motion is a named camera move applied on top of your prompt. IDs are opaque, so discover them with `higgsfield_list_motions`, pass one as `motionId`, and scale it with `motionStrength` (0-1, defaults to 1).
+
+There is no text-to-video path, so a video ad is always two calls:
+
+```ts
+const { images } = await toolbox.higgsfield.generateImage({
+    prompt: "A coffee tin on concrete, soft daylight, editorial styling",
+    size: "1152x2048"
+})
+const { videos } = await toolbox.higgsfield.generateVideo({
+    imageUrl: images[0].url,
+    prompt: "Slow push in, steam rising, shallow depth of field",
+    model: "dop-turbo"
+})
+```
+
+### Connecting
+
+Generate a key in the API keys section of [cloud.higgsfield.ai](https://cloud.higgsfield.ai). (`platform.higgsfield.ai` is the API host, not a sign-up page.) Higgsfield issues a **Key ID** and a **Key Secret**: copy both, and make sure the account has credits.
+
+Paste them as a single colon-joined string, `KEY_ID:KEY_SECRET`, with no spaces, quotes, or the literal `Key` prefix from Higgsfield's header examples. Use the Higgsfield card in the console, or stdin from the CLI so the secret stays out of your shell history:
+
+```bash
+terse integrate connect higgsfield --fields-stdin <<<'{"credentials":"KEY_ID:KEY_SECRET"}'
+```
+
+Terse validates the pair against Higgsfield at connect time and stores it write-only. Rotate it in the Higgsfield dashboard and reconnect if you suspect it leaked.
+
 ## Snowflake
 
 Read-only SQL query execution.
@@ -240,13 +364,13 @@ Lead and company enrichment plus prospect search via [Apollo.io](https://www.apo
 skills: [Skills.apollo()]
 ```
 
-| Tool                       | Description                                               | Access |
-| -------------------------- | --------------------------------------------------------- | ------ |
-| `apolloEnrichPerson`       | Enrich a person by Apollo ID, email, or name + domain     | Read   |
-| `apolloBulkEnrichPeople`   | Enrich up to 10 people in one call                        | Read   |
-| `apolloEnrichOrganization` | Enrich a company by domain (firmographics)                | Read   |
-| `apolloSearchPeople`       | Search for people by title, seniority, location, company  | Read   |
-| `apollo_list_job_postings` | List a company's active job postings as a hiring signal   | Read   |
+| Tool                       | Description                                              | Access |
+| -------------------------- | -------------------------------------------------------- | ------ |
+| `apolloEnrichPerson`       | Enrich a person by Apollo ID, email, or name + domain    | Read   |
+| `apolloBulkEnrichPeople`   | Enrich up to 10 people in one call                       | Read   |
+| `apolloEnrichOrganization` | Enrich a company by domain (firmographics)               | Read   |
+| `apolloSearchPeople`       | Search for people by title, seniority, location, company | Read   |
+| `apollo_list_job_postings` | List a company's active job postings as a hiring signal  | Read   |
 
 Credit and key notes:
 
@@ -254,6 +378,43 @@ Credit and key notes:
 - `apolloSearchPeople` consumes no credits but requires the connected key to be an Apollo **master API key**, and its results never include emails — pass result `id`s to `apolloBulkEnrichPeople` to unlock contact data.
 - `apollo_list_job_postings` works with any Apollo key but consumes credits **per page returned** — fetch one large page (up to 500 postings) instead of paging in small steps. Postings carry title/URL/location/date metadata only, no descriptions.
 - Personal emails are only returned when `revealPersonalEmails` is set, and Apollo suppresses them for people in GDPR regions.
+
+## Google Search Console
+
+Read Search Analytics and manage the properties and sitemaps of a connected Google account.
+
+```ts
+skills: [Skills.googleSearchConsole({ sites: [GoogleSearchConsoleSite.DomainAcmeCom] })]
+```
+
+`terse generate` writes one `GoogleSearchConsoleSite` static per property the connected account can access, so you reference properties by name instead of pasting identifiers.
+
+| Tool                                           | Description                                               | Access |
+| ---------------------------------------------- | --------------------------------------------------------- | ------ |
+| `google_search_console_list_sites`             | List every property the connected account can access      | Read   |
+| `google_search_console_get_site`               | Get one property and the account's permission level on it | Read   |
+| `google_search_console_add_site`               | Add a property to the connected account                   | Write  |
+| `google_search_console_delete_site`            | Remove a property from the connected account              | Write  |
+| `google_search_console_list_sitemaps`          | List the sitemaps Google knows about for a property       | Read   |
+| `google_search_console_get_sitemap`            | Get one sitemap's processing state, errors, and warnings  | Read   |
+| `google_search_console_submit_sitemap`         | Submit a sitemap for crawling                             | Write  |
+| `google_search_console_delete_sitemap`         | Remove a sitemap submission                               | Write  |
+| `google_search_console_query_search_analytics` | Query clicks, impressions, CTR, and position by dimension | Read   |
+| `google_search_console_inspect_url`            | Inspect Google's index status for one URL                 | Read   |
+
+Property and data notes:
+
+- A property is either a **URL-prefix** property (`https://example.com/`, trailing slash included) or a **Domain** property (`sc-domain:example.com`).
+- The properties you pass to the skill are the only ones the agent may act on, except `google_search_console_list_sites`, which lists everything the account can see. A Domain property also covers its subdomains.
+- Search Analytics dates are inclusive `YYYY-MM-DD` in PST and the data lags by roughly 2-3 days, so the most recent days come back empty rather than as zero traffic.
+- Query-grouped results omit anonymized queries, so their clicks will not sum to the property total.
+- Submitting a sitemap only queues it. Check the outcome later with `google_search_console_get_sitemap`.
+- Property access follows the connected Google account, not your Terse organization, so connect the account that actually appears in Search Console.
+
+<Note>
+    Search Console uses the sensitive `webmasters` scope. While the OAuth client is in Testing status, only Google accounts on its test-user list can connect, capped at 100. An access-blocked error is
+    usually that list.
+</Note>
 
 ## Web (built-in)
 

@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { googleSearchConsoleSiteSchema } from "./Integrations"
 import { runHistoryActionBaseSchema } from "./RunHistoryTypes"
 import { LinearStateName } from "./TicketSystem"
 
@@ -3452,6 +3453,945 @@ export const apolloListJobPostingsTool = defineTool({
     })
 })
 
+const SITE_URL_DESCRIPTION =
+    'The Search Console property to operate on. Either a URL-prefix property including the trailing slash ("https://example.com/") or a Domain property ("sc-domain:example.com"). Must be within the properties this agent is allowed to use.'
+
+export const googleSearchConsoleIntegrationIdSchema = z.string().describe("The integration ID of the Google Search Console connection to use.")
+
+export const googleSearchConsoleListSitesTool = defineTool({
+    name: "google_search_console_list_sites",
+    description:
+        "List every Search Console property the connected Google account can access, with the account's permission level on each. Use this to discover the exact property identifier (URL-prefix or sc-domain form) to pass to the other Search Console tools. Note that the account may be able to see properties this agent is not allowed to act on.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        sites: z.array(googleSearchConsoleSiteSchema)
+    })
+})
+
+export const googleSearchConsoleGetSiteTool = defineTool({
+    name: "google_search_console_get_site",
+    description: "Retrieve one Search Console property and the connected account's permission level on it. Fails if the account has no access to the property.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION)
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        site: googleSearchConsoleSiteSchema
+    })
+})
+
+export const googleSearchConsoleAddSiteTool = defineTool({
+    name: "google_search_console_add_site",
+    description:
+        "Add a property to the connected Google account's Search Console. The property starts unverified and returns no Search Analytics data until ownership is verified out of band. Adding a property is a real change to the user's Google account, so only do it when explicitly asked.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION)
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        siteUrl: z.string()
+    })
+})
+
+export const googleSearchConsoleDeleteSiteTool = defineTool({
+    name: "google_search_console_delete_site",
+    description:
+        "Remove a property from the connected Google account's Search Console. This unlinks the account from the property and its historical Search Analytics data becomes inaccessible to this account. Destructive: confirm the exact property before calling.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION)
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        siteUrl: z.string()
+    })
+})
+
+export const googleSearchConsoleSitemapContentSchema = z.object({
+    type: z.string().nullable().describe('Content type of the URLs counted here: "web", "image", "video", "news", "mobile", "pattern", "androidApp", or "iosApp".'),
+    submitted: z.number().nullable().describe("How many URLs of this content type the sitemap declares.")
+})
+
+export const googleSearchConsoleSitemapSchema = z.object({
+    path: z.string().nullable(),
+    type: z.string().nullable().describe('Sitemap format: "sitemap", "urlList", "rssFeed", "atomFeed", "patternSitemap", or "notSitemap".'),
+    isPending: z.boolean().nullable(),
+    isSitemapsIndex: z.boolean().nullable(),
+    lastSubmitted: z.string().nullable(),
+    lastDownloaded: z.string().nullable(),
+    errors: z.number().nullable(),
+    warnings: z.number().nullable(),
+    contents: z.array(googleSearchConsoleSitemapContentSchema)
+})
+
+export const googleSearchConsoleListSitemapsTool = defineTool({
+    name: "google_search_console_list_sitemaps",
+    description:
+        "List the sitemaps Google knows about for a property, including submission time, last download time, and error and warning counts. Use this to check whether a sitemap was picked up and processed.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        sitemapIndex: z
+            .string()
+            .nullable()
+            .optional()
+            .describe('Full URL of a sitemap index file. When set, only the sitemaps contained in that index are returned, e.g. "https://example.com/sitemap_index.xml".')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        sitemaps: z.array(googleSearchConsoleSitemapSchema)
+    })
+})
+
+export const googleSearchConsoleGetSitemapTool = defineTool({
+    name: "google_search_console_get_sitemap",
+    description: "Retrieve the processing details of a single sitemap: pending state, error and warning counts, and per-content-type URL counts.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        feedpath: z.string().describe('Full URL of the sitemap, e.g. "https://example.com/sitemap.xml".')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        sitemap: googleSearchConsoleSitemapSchema
+    })
+})
+
+export const googleSearchConsoleSubmitSitemapTool = defineTool({
+    name: "google_search_console_submit_sitemap",
+    description:
+        "Submit a sitemap to Google for a property. Submission only queues the sitemap for crawling; processing results appear later via google_search_console_get_sitemap. The property must be verified and the account needs full or owner permission.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        feedpath: z.string().describe('Full URL of the sitemap to submit, e.g. "https://example.com/sitemap.xml". Must be hosted under the property.')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        feedpath: z.string()
+    })
+})
+
+export const googleSearchConsoleDeleteSitemapTool = defineTool({
+    name: "google_search_console_delete_sitemap",
+    description:
+        "Remove a sitemap submission from a property. Google stops tracking the sitemap; already-indexed URLs are not removed from the index. Destructive: confirm the exact sitemap before calling.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        feedpath: z.string().describe('Full URL of the sitemap to remove, e.g. "https://example.com/sitemap.xml".')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        feedpath: z.string()
+    })
+})
+
+export const googleSearchConsoleDimensionSchema = z.enum(["country", "device", "page", "query", "searchAppearance", "date", "hour"])
+
+export const googleSearchConsoleFilterDimensionSchema = z.enum(["country", "device", "page", "query", "searchAppearance"])
+
+export const googleSearchConsoleDimensionFilterSchema = z.object({
+    dimension: googleSearchConsoleFilterDimensionSchema.describe(
+        "The dimension to filter on. You do not have to group by a dimension to filter on it. Narrow by date with startDate and endDate instead, which are not filterable dimensions."
+    ),
+    operator: z
+        .enum(["contains", "equals", "notContains", "notEquals", "includingRegex", "excludingRegex"])
+        .nullable()
+        .optional()
+        .describe('How to compare. Defaults to "equals". Regex operators use RE2 syntax.'),
+    expression: z.string().describe("The value to compare against. Comparisons are not case sensitive.")
+})
+
+export const googleSearchConsoleDimensionFilterGroupSchema = z.object({
+    groupType: z.enum(["and"]).nullable().optional().describe('How filters inside this group combine. Google currently only supports "and".'),
+    filters: z.array(googleSearchConsoleDimensionFilterSchema)
+})
+
+export const googleSearchConsoleSearchAnalyticsRowSchema = z.object({
+    dimensions: z.partialRecord(googleSearchConsoleDimensionSchema, z.string()).describe("The requested dimensions, keyed by dimension name. Empty when no dimensions were requested."),
+    clicks: z.number(),
+    impressions: z.number(),
+    ctr: z.number(),
+    position: z.number()
+})
+
+export const googleSearchConsoleQuerySearchAnalyticsTool = defineTool({
+    name: "google_search_console_query_search_analytics",
+    description: `Query Search Analytics for a property: clicks, impressions, CTR, and average position, optionally grouped and filtered by dimension.
+
+WHEN TO USE THIS TOOL:
+- Top queries or top pages for a date range
+- Comparing performance between two periods (run one query per period)
+- Drilling into one page, country, or device using dimensionFilterGroups
+
+IMPORTANT NOTES:
+- Dates are inclusive, YYYY-MM-DD, in Pacific Time. Search Console data lags by roughly 2-3 days, so a range ending today usually returns nothing for the most recent days.
+- Results are grouped in the order the dimensions are supplied, and each row's dimension values come back in the "dimensions" object keyed by dimension name.
+- Grouping or filtering by page forbids aggregationType "byProperty".
+- "searchAppearance" must be the only dimension when grouping by it. To combine it with other dimensions, run one query per appearance type using a searchAppearance filter instead.
+- "hour" is only available with dataState "hourly_all", and only over the last 10 days.
+- Google caps the result set at 25000 rows per request; page through larger result sets with startRow.
+- Anonymized queries are omitted from query-grouped results, so summing clicks across query rows will not match the property total.`,
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        startDate: z.string().describe("First day of the range, inclusive, as YYYY-MM-DD in Pacific Time."),
+        endDate: z.string().describe("Last day of the range, inclusive, as YYYY-MM-DD in Pacific Time. Must be on or after startDate."),
+        dimensions: z
+            .array(googleSearchConsoleDimensionSchema)
+            .nullable()
+            .optional()
+            .describe("Dimensions to group by, applied in the order given. Omit for a single totals row covering the whole range."),
+        dimensionFilterGroups: z.array(googleSearchConsoleDimensionFilterGroupSchema).nullable().optional().describe("Filters to apply. All groups must pass for a row to be returned."),
+        type: z.enum(["web", "image", "video", "news", "discover", "googleNews"]).nullable().optional().describe('Report type to query. Defaults to "web".'),
+        aggregationType: z
+            .enum(["auto", "byPage", "byProperty", "byNewsShowcasePanel"])
+            .nullable()
+            .optional()
+            .describe('How data is aggregated. Defaults to "auto". Use "auto" whenever grouping or filtering by page.'),
+        rowLimit: z.number().int().min(1).max(25000).nullable().optional().describe("Maximum rows to return, 1 to 25000. Defaults to 1000."),
+        startRow: z.number().int().min(0).nullable().optional().describe("Zero-based index of the first row to return. Use with rowLimit to page through large result sets."),
+        dataState: z
+            .enum(["final", "all", "hourly_all"])
+            .nullable()
+            .optional()
+            .describe('Whether to include incomplete recent data. "final" (the default) excludes it; "all" includes partial days; "hourly_all" is required to group by the "hour" dimension.')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        rows: z.array(googleSearchConsoleSearchAnalyticsRowSchema),
+        responseAggregationType: z.string().nullable().describe('How Google actually aggregated the data: "auto", "byPage", "byProperty", or "byNewsShowcasePanel".'),
+        firstIncompleteDate: z
+            .string()
+            .nullable()
+            .describe(
+                'First date whose data is still being collected, so values from it onward may change. Only populated when dataState is "all", the results are grouped by date, and the requested range actually contains incomplete data.'
+            )
+    })
+})
+
+export const googleSearchConsoleIndexStatusSchema = z.object({
+    verdict: z.string().nullable().describe('Overall index status: "PASS", "PARTIAL", "FAIL", "NEUTRAL", or "VERDICT_UNSPECIFIED".'),
+    coverageState: z.string().nullable().describe('Human-readable indexing summary, e.g. "Submitted and indexed" or "Crawled - currently not indexed".'),
+    robotsTxtState: z.string().nullable().describe('Whether robots.txt allows crawling: "ALLOWED", "DISALLOWED", or "ROBOTS_TXT_STATE_UNSPECIFIED".'),
+    indexingState: z
+        .string()
+        .nullable()
+        .describe('Whether indexing is blocked by the page itself: "INDEXING_ALLOWED", "BLOCKED_BY_META_TAG", "BLOCKED_BY_HTTP_HEADER", "BLOCKED_BY_ROBOTS_TXT", or "INDEXING_STATE_UNSPECIFIED".'),
+    pageFetchState: z
+        .string()
+        .nullable()
+        .describe(
+            'Result of Google\'s last fetch: "SUCCESSFUL", "SOFT_404", "BLOCKED_ROBOTS_TXT", "NOT_FOUND", "ACCESS_DENIED", "SERVER_ERROR", "REDIRECT_ERROR", "ACCESS_FORBIDDEN", "BLOCKED_4XX", "INTERNAL_CRAWL_ERROR", "INVALID_URL", or "PAGE_FETCH_STATE_UNSPECIFIED".'
+        ),
+    lastCrawlTime: z.string().nullable().describe("When Google last crawled the URL, RFC3339. Absent if the URL was never crawled."),
+    crawledAs: z.string().nullable().describe('Which crawler fetched it: "DESKTOP", "MOBILE", or "CRAWLING_USER_AGENT_UNSPECIFIED".'),
+    googleCanonical: z.string().nullable().describe("The canonical URL Google selected. Absent if Google has not indexed the page."),
+    userCanonical: z.string().nullable().describe("The canonical URL the page declares. Absent if the page declares none."),
+    referringUrls: z.array(z.string()),
+    sitemap: z.array(z.string())
+})
+
+export const googleSearchConsoleInspectUrlTool = defineTool({
+    name: "google_search_console_inspect_url",
+    description:
+        "Inspect Google's index status for one URL under a property: whether it is indexed, the canonical Google picked, robots.txt and fetch state, last crawl time, and which sitemaps reference it. Use this to diagnose why a specific page is not appearing in search. The URL must sit under the property being inspected. Google caps this at 2000 calls per day and 600 per minute per property, so inspect specific suspect URLs rather than looping over a whole site.",
+    inputSchema: z.object({
+        integrationId: googleSearchConsoleIntegrationIdSchema,
+        siteUrl: z.string().describe(SITE_URL_DESCRIPTION),
+        inspectionUrl: z.string().describe("The fully-qualified URL to inspect. Must be under the property given in siteUrl."),
+        languageCode: z.string().nullable().optional().describe('BCP-47 language code for issue messages, e.g. "en-US". Defaults to "en-US".')
+    }),
+    outputSchema: toolOutputBaseSchema.extend({
+        inspectionResultLink: z.string().nullable().describe("Link to the same inspection in the Search Console UI."),
+        indexStatus: googleSearchConsoleIndexStatusSchema.nullable(),
+        mobileUsabilityVerdict: z.string().nullable().describe('Deprecated by Google and may stop being returned. "PASS", "PARTIAL", "FAIL", "NEUTRAL", or "VERDICT_UNSPECIFIED".'),
+        richResultsVerdict: z.string().nullable().describe('"PASS", "PARTIAL", "FAIL", "NEUTRAL", or "VERDICT_UNSPECIFIED". Absent when the page has no detected rich results.'),
+        ampVerdict: z.string().nullable().describe('"PASS", "PARTIAL", "FAIL", "NEUTRAL", or "VERDICT_UNSPECIFIED". Absent when the page has no AMP version.')
+    })
+})
+
+const metaAdsIntegrationIdField = z.string().describe("The integration ID of the Meta Ads connection to use.")
+
+const metaAdsAdAccountIdField = z.string().describe("The Meta ad account ID, with or without the 'act_' prefix (e.g. 'act_1234567890').")
+
+const metaAdsCollectionFields = {
+    count: z.number(),
+    truncated: z.boolean().describe("True when more results exist than were returned. Narrow the filters and fetch again.")
+}
+
+const metaAdsLimitField = (what: string, max: number) => z.number().int().min(1).max(max).nullable().optional().describe(`Maximum number of ${what} to return (default 100).`)
+
+export const metaAdsAdAccountEntitySchema = z.object({
+    id: z.string(),
+    account_id: z.string(),
+    name: z.string(),
+    currency: z.string().optional(),
+    account_status: z.number().optional()
+})
+export type MetaAdsAdAccountEntity = z.infer<typeof metaAdsAdAccountEntitySchema>
+
+const BUDGET_MINOR_UNITS_DESCRIPTION = 'Minor units of the ad account currency, as a string. "5000" in USD is $50.00.'
+
+export const metaAdsCampaignEffectiveStatusSchema = z.enum(["ACTIVE", "PAUSED", "DELETED", "ARCHIVED", "IN_PROCESS", "WITH_ISSUES"])
+export type MetaAdsCampaignEffectiveStatus = z.infer<typeof metaAdsCampaignEffectiveStatusSchema>
+
+export const metaAdsAdSetEffectiveStatusSchema = z.enum(["ACTIVE", "PAUSED", "DELETED", "ARCHIVED", "IN_PROCESS", "WITH_ISSUES", "CAMPAIGN_PAUSED"])
+export type MetaAdsAdSetEffectiveStatus = z.infer<typeof metaAdsAdSetEffectiveStatusSchema>
+
+export const metaAdsAdEffectiveStatusSchema = z.enum([
+    "ACTIVE",
+    "PAUSED",
+    "DELETED",
+    "ARCHIVED",
+    "IN_PROCESS",
+    "WITH_ISSUES",
+    "CAMPAIGN_PAUSED",
+    "ADSET_PAUSED",
+    "PENDING_REVIEW",
+    "DISAPPROVED",
+    "PREAPPROVED",
+    "PENDING_BILLING_INFO"
+])
+export type MetaAdsAdEffectiveStatus = z.infer<typeof metaAdsAdEffectiveStatusSchema>
+
+export const metaAdsCampaignSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.string(),
+    effective_status: z.string().optional(),
+    objective: z.string().optional(),
+    daily_budget: z.string().optional().describe(BUDGET_MINOR_UNITS_DESCRIPTION),
+    lifetime_budget: z.string().optional().describe(BUDGET_MINOR_UNITS_DESCRIPTION),
+    start_time: z.string().optional(),
+    stop_time: z.string().optional()
+})
+export type MetaAdsCampaign = z.infer<typeof metaAdsCampaignSchema>
+
+export const metaAdsAdSetSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.string(),
+    effective_status: z.string().optional(),
+    campaign_id: z.string().optional(),
+    daily_budget: z.string().optional().describe(BUDGET_MINOR_UNITS_DESCRIPTION),
+    lifetime_budget: z.string().optional().describe(BUDGET_MINOR_UNITS_DESCRIPTION),
+    optimization_goal: z.string().optional(),
+    start_time: z.string().optional(),
+    end_time: z.string().optional()
+})
+export type MetaAdsAdSet = z.infer<typeof metaAdsAdSetSchema>
+
+export const metaAdsInsightsRowSchema = z.object({
+    date_start: z.string().optional(),
+    date_stop: z.string().optional(),
+    campaign_id: z.string().optional(),
+    campaign_name: z.string().optional(),
+    adset_id: z.string().optional(),
+    adset_name: z.string().optional(),
+    ad_id: z.string().optional(),
+    ad_name: z.string().optional(),
+    age: z.string().optional(),
+    gender: z.string().optional(),
+    country: z.string().optional(),
+    publisher_platform: z.string().optional(),
+    platform_position: z.string().optional(),
+    impression_device: z.string().optional(),
+    spend: z.string().optional(),
+    impressions: z.string().optional(),
+    clicks: z.string().optional(),
+    ctr: z.string().optional(),
+    cpc: z.string().optional(),
+    reach: z.string().optional(),
+    actions: z.array(z.object({ action_type: z.string(), value: z.string() })).optional()
+})
+export type MetaAdsInsightsRow = z.infer<typeof metaAdsInsightsRowSchema>
+
+export const metaAdsCustomAudienceSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    subtype: z.string().optional(),
+    approximate_count_lower_bound: z.number().optional(),
+    approximate_count_upper_bound: z.number().optional(),
+    delivery_status: z
+        .object({
+            code: z.number().optional(),
+            description: z.string().optional()
+        })
+        .optional()
+})
+export type MetaAdsCustomAudience = z.infer<typeof metaAdsCustomAudienceSchema>
+
+export const metaAdsListAdAccountsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    limit: metaAdsLimitField("ad accounts", 500)
+})
+
+export const metaAdsListCampaignsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    adAccountId: metaAdsAdAccountIdField,
+    effectiveStatuses: z.array(metaAdsCampaignEffectiveStatusSchema).nullable().optional().describe("Only campaigns whose effective status is in this list."),
+    limit: metaAdsLimitField("campaigns", 500)
+})
+
+export const metaAdsListAdSetsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    adAccountId: metaAdsAdAccountIdField,
+    campaignId: z.string().nullable().optional().describe("Only ad sets belonging to this campaign."),
+    effectiveStatuses: z.array(metaAdsAdSetEffectiveStatusSchema).nullable().optional().describe("Only ad sets whose effective status is in this list."),
+    limit: metaAdsLimitField("ad sets", 500)
+})
+
+export const metaAdsDatePresetSchema = z.enum([
+    "today",
+    "yesterday",
+    "last_3d",
+    "last_7d",
+    "last_14d",
+    "last_28d",
+    "last_30d",
+    "last_90d",
+    "last_week_mon_sun",
+    "last_week_sun_sat",
+    "this_week_mon_today",
+    "this_week_sun_today",
+    "this_month",
+    "last_month",
+    "this_quarter",
+    "last_quarter",
+    "this_year",
+    "last_year",
+    "maximum",
+    "data_maximum"
+])
+export type MetaAdsDatePreset = z.infer<typeof metaAdsDatePresetSchema>
+
+export const metaAdsBreakdownSchema = z.enum(["age", "gender", "country", "publisher_platform", "platform_position", "impression_device"])
+export type MetaAdsBreakdown = z.infer<typeof metaAdsBreakdownSchema>
+
+export const metaAdsReadInsightsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    adAccountId: metaAdsAdAccountIdField,
+    level: z.enum(["account", "campaign", "adset", "ad"]).describe("Aggregation level for insight rows. Use 'ad' to compare individual creatives against each other."),
+    datePreset: metaAdsDatePresetSchema.nullable().optional().describe("Relative date range. Ignored when since/until are supplied."),
+    since: z.string().nullable().optional().describe("Start date (YYYY-MM-DD). Use together with until instead of datePreset."),
+    until: z.string().nullable().optional().describe("End date (YYYY-MM-DD), inclusive."),
+    campaignIds: z.array(z.string()).nullable().optional().describe("Restrict results to these campaign IDs."),
+    adsetIds: z.array(z.string()).nullable().optional().describe("Restrict results to these ad set IDs."),
+    adIds: z.array(z.string()).nullable().optional().describe("Restrict results to these ad IDs."),
+    breakdowns: z
+        .array(metaAdsBreakdownSchema)
+        .nullable()
+        .optional()
+        .describe(
+            'Split each row by these dimensions. Meta only supports specific combinations, not arbitrary ones: "age" with "gender", or any of "publisher_platform", "platform_position", and "impression_device" together. "country" cannot be combined with the others. Every breakdown multiplies the row count, so expect truncation.'
+        ),
+    timeIncrement: z
+        .union([z.number().int().min(1).max(90), z.literal("monthly"), z.literal("all_days")])
+        .nullable()
+        .optional()
+        .describe('Split rows into N-day windows (1 = daily), or use "monthly" or "all_days". Omit for a single aggregate row per entity.')
+})
+
+export const metaAdsPixelSchema = z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    last_fired_time: z.string().optional()
+})
+export type MetaAdsPixel = z.infer<typeof metaAdsPixelSchema>
+
+export const metaAdsListPixelsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    adAccountId: metaAdsAdAccountIdField,
+    limit: metaAdsLimitField("pixels", 500)
+})
+
+export const metaAdsListAudiencesInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    adAccountId: metaAdsAdAccountIdField,
+    limit: metaAdsLimitField("audiences", 500)
+})
+
+const metaAdsAudienceUserSchema = z.object({
+    email: z.string().nullable().optional().describe("Email address. Normalized and SHA-256 hashed before upload; never sent in plain text."),
+    phone: z.string().nullable().optional().describe("Phone number including country code. Normalized and SHA-256 hashed before upload."),
+    externalId: z.string().nullable().optional().describe("Your CRM identifier for this person (sent as EXTERN_ID).")
+})
+export type MetaAdsAudienceUser = z.infer<typeof metaAdsAudienceUserSchema>
+
+const metaAdsAudienceUsersFields = {
+    integrationId: metaAdsIntegrationIdField,
+    audienceId: z.string().describe("The custom audience ID."),
+    users: z.array(metaAdsAudienceUserSchema).min(1).max(10000).describe("Users to match, up to 10000 per call. Each entry needs at least one of email, phone, or externalId.")
+}
+
+export const metaAdsAddAudienceUsersInputSchema = z.object(metaAdsAudienceUsersFields)
+export const metaAdsRemoveAudienceUsersInputSchema = z.object(metaAdsAudienceUsersFields)
+
+export const metaAdsConversionEventSchema = z.object({
+    eventName: z.string().describe("Event name, e.g. 'Purchase', 'Lead', or a custom event name."),
+    eventTime: z.number().int().describe("Unix timestamp in seconds when the conversion happened; must be within the last 7 days."),
+    actionSource: z
+        .enum(["website", "email", "phone_call", "chat", "physical_store", "system_generated", "app", "business_messaging", "other"])
+        .describe("Where the conversion happened. Use 'system_generated' for CRM-sourced conversions."),
+    userData: metaAdsAudienceUserSchema
+        .extend({
+            clickId: z.string().nullable().optional().describe("Meta click ID (fbc) captured from the original ad click, for click-through matching."),
+            browserId: z.string().nullable().optional().describe("Meta browser ID (fbp) cookie value.")
+        })
+        .describe("Match keys for the person who converted. Provide as many as available; emails and phones are hashed before upload."),
+    eventId: z.string().nullable().optional().describe("Deduplication ID shared with any pixel event for the same conversion."),
+    value: z.number().nullable().optional().describe("Monetary value of the conversion."),
+    currency: z.string().nullable().optional().describe("ISO 4217 currency code; required when value is set."),
+    eventSourceUrl: z.string().nullable().optional().describe("URL where the conversion happened. Required when actionSource is 'website'.")
+})
+export type MetaAdsConversionEvent = z.infer<typeof metaAdsConversionEventSchema>
+
+export const metaAdsSendConversionsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    datasetId: z.string().describe("The dataset (pixel) ID that receives Conversions API events."),
+    events: z.array(metaAdsConversionEventSchema).min(1).max(1000).describe("Conversion events to send.")
+})
+
+export const metaAdsPageSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    category: z.string().optional()
+})
+export type MetaAdsPage = z.infer<typeof metaAdsPageSchema>
+
+export const metaAdsListPagesInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    limit: metaAdsLimitField("Pages", 200)
+})
+
+export const metaAdsAdCreativeSchema = z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    title: z.string().optional(),
+    body: z.string().optional(),
+    image_url: z.string().optional(),
+    thumbnail_url: z.string().optional(),
+    object_story_spec: z.unknown().optional()
+})
+export type MetaAdsAdCreative = z.infer<typeof metaAdsAdCreativeSchema>
+
+export const metaAdsAdSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.string(),
+    effective_status: z.string().optional(),
+    campaign_id: z.string().optional(),
+    adset_id: z.string().optional(),
+    created_time: z.string().optional(),
+    creative: metaAdsAdCreativeSchema.optional()
+})
+export type MetaAdsAd = z.infer<typeof metaAdsAdSchema>
+
+export const metaAdsListAdsInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    adAccountId: metaAdsAdAccountIdField,
+    adsetId: z.string().nullable().optional().describe("Only ads belonging to this ad set."),
+    campaignId: z.string().nullable().optional().describe("Only ads belonging to this campaign."),
+    effectiveStatuses: z.array(metaAdsAdEffectiveStatusSchema).nullable().optional().describe("Only ads whose effective status is in this list."),
+    limit: metaAdsLimitField("ads", 500)
+})
+
+export const metaAdsCallToActionSchema = z.enum(["LEARN_MORE", "SHOP_NOW", "SIGN_UP", "SUBSCRIBE", "BOOK_TRAVEL", "DOWNLOAD", "GET_OFFER", "GET_QUOTE", "CONTACT_US", "APPLY_NOW", "NO_BUTTON"])
+export type MetaAdsCallToAction = z.infer<typeof metaAdsCallToActionSchema>
+
+const metaAdsHeadlineField = z.string().nullable().optional().describe("Headline shown under the media.")
+const metaAdsDescriptionField = z.string().nullable().optional().describe("Link description shown under the headline.")
+const metaAdsMessageField = z.string().describe("Primary text shown above the creative.")
+
+const metaAdsCarouselCardFields = {
+    headline: z.string().describe("Headline shown on this card. Facebook placements only; Instagram ignores it."),
+    description: metaAdsDescriptionField,
+    linkUrl: z.string().nullable().optional().describe("Per-card destination URL. Defaults to the ad's linkUrl.")
+}
+
+export const metaAdsCarouselCardSchema = z.discriminatedUnion("media", [
+    z.object({
+        media: z.literal("image").describe("This card shows an image."),
+        imageUrl: z.string().describe("Publicly reachable image for this card."),
+        ...metaAdsCarouselCardFields
+    }),
+    z.object({
+        media: z.literal("video").describe("This card shows a video. Meta does not support video cards on Instagram placements, so a carousel with one is Facebook-only."),
+        videoUrl: z.string().describe("Publicly reachable video for this card, uploaded and encoded before the ad is created."),
+        ...metaAdsCarouselCardFields
+    })
+])
+export type MetaAdsCarouselCard = z.infer<typeof metaAdsCarouselCardSchema>
+
+export const metaAdsSingleImageCreativeSchema = z.object({
+    format: z.literal("single_image").describe("One still image with one headline. The standard feed ad."),
+    imageUrl: z.string().describe("Publicly reachable image URL. Meta fetches it once at creation and copies it into the ad account's image library."),
+    message: metaAdsMessageField,
+    headline: metaAdsHeadlineField,
+    description: metaAdsDescriptionField
+})
+
+export const metaAdsSingleVideoCreativeSchema = z.object({
+    format: z.literal("single_video").describe("One video with one headline."),
+    videoUrl: z.string().describe("Publicly reachable video file. Terse uploads it to the ad account and waits for Meta to finish encoding before creating the ad, so this can take a while."),
+    thumbnailUrl: z.string().nullable().optional().describe("Poster frame shown before playback. Meta picks a frame when omitted."),
+    message: metaAdsMessageField,
+    headline: metaAdsHeadlineField,
+    description: metaAdsDescriptionField
+})
+
+export const metaAdsCarouselCreativeSchema = z.object({
+    format: z.literal("carousel").describe("Two to five swipeable cards, each its own image or video with its own headline and destination. Up to ten with optimizeCardOrder."),
+    message: metaAdsMessageField,
+    // Bounds live in the executor: a min above 1 makes the printer expand the array
+    // into a union of tuple shapes, which buries the generated type.
+    cards: z.array(metaAdsCarouselCardSchema).min(2).max(10).describe("Cards in display order. Two to five, or up to ten when optimizeCardOrder is set."),
+    optimizeCardOrder: z.boolean().nullable().optional().describe("Let Meta reorder cards by predicted performance instead of keeping the given order. Required to use more than five cards."),
+    showEndCard: z.boolean().nullable().optional().describe("Append a final card showing the Page profile image and the destination link. Omit to use Meta's own default.")
+})
+
+/**
+ * Meta allows exactly one ad_format per asset feed, and SINGLE_IMAGE needs images
+ * while SINGLE_VIDEO needs videos, so the media kind is part of the format rather
+ * than two optional arrays that could disagree with it.
+ */
+const metaAdsDynamicTextFields = {
+    messages: z.array(z.string()).min(1).max(5).describe("Primary text variants, up to 5."),
+    headlines: z.array(z.string()).min(1).max(5).describe("Headline variants, up to 5."),
+    descriptions: z.array(z.string()).max(5).nullable().optional().describe("Link description variants, up to 5."),
+    callToActions: z.array(metaAdsCallToActionSchema).min(1).max(5).describe("Button label variants, up to 5. Required: Meta rejects an asset feed with no call_to_action_types.")
+}
+
+const METAADS_DYNAMIC_PRECONDITION = "The ad set must already have dynamic creative enabled; Meta rejects the ad otherwise. Assets are capped at 30 in total across media and text."
+
+export const metaAdsDynamicImageCreativeSchema = z.object({
+    format: z.literal("dynamic_image").describe(`Several images plus several text variants, which Meta recombines per viewer as a single-image ad. ${METAADS_DYNAMIC_PRECONDITION}`),
+    imageUrls: z.array(z.string()).min(1).max(10).describe("Image variants, up to 10. Terse uploads each one to the ad account to get the hash Meta requires here."),
+    ...metaAdsDynamicTextFields
+})
+
+export const metaAdsDynamicVideoCreativeSchema = z.object({
+    format: z.literal("dynamic_video").describe(`Several videos plus several text variants, which Meta recombines per viewer as a single-video ad. ${METAADS_DYNAMIC_PRECONDITION}`),
+    videoUrls: z.array(z.string()).min(1).max(10).describe("Video variants, up to 10. Each is uploaded and encoded before the ad is created."),
+    ...metaAdsDynamicTextFields
+})
+
+export const metaAdsDynamicMixedCreativeSchema = z.object({
+    format: z
+        .literal("dynamic_mixed")
+        .describe(`Images and videos together, letting Meta pick the format per placement (AUTOMATIC_FORMAT) as well as the text combination. ${METAADS_DYNAMIC_PRECONDITION}`),
+    imageUrls: z.array(z.string()).min(1).max(10).describe("Image variants, up to 10."),
+    videoUrls: z.array(z.string()).min(1).max(10).describe("Video variants, up to 10."),
+    ...metaAdsDynamicTextFields
+})
+
+export const metaAdsCreativeSchema = z
+    .discriminatedUnion("format", [
+        metaAdsSingleImageCreativeSchema,
+        metaAdsSingleVideoCreativeSchema,
+        metaAdsCarouselCreativeSchema,
+        metaAdsDynamicImageCreativeSchema,
+        metaAdsDynamicVideoCreativeSchema,
+        metaAdsDynamicMixedCreativeSchema
+    ])
+    .describe("The creative to build, discriminated by format.")
+
+export type MetaAdsCreative = z.infer<typeof metaAdsCreativeSchema>
+
+export const metaAdsCreateAdInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    adAccountId: metaAdsAdAccountIdField,
+    adsetId: z.string().describe("The ad set the new ad belongs to. Ad sets own targeting and budget, so the new ad inherits both."),
+    pageId: z.string().describe("The Facebook Page the ad is published as. Discover candidates with meta_ads_list_pages."),
+    name: z.string().describe("Internal name for the new ad, e.g. 'Spring promo - variant C'."),
+    linkUrl: z.string().describe("Destination URL for the click-through."),
+    creative: metaAdsCreativeSchema,
+    callToAction: metaAdsCallToActionSchema
+        .nullable()
+        .optional()
+        .describe(
+            "Button label. Omit to let Meta pick its own default button, except on single_video where omitting it sends NO_BUTTON because the button is the only carrier for linkUrl. Ignored by the dynamic formats, which take callToActions instead."
+        ),
+    instagramUserId: z.string().nullable().optional().describe("Instagram account to publish as when the ad set includes Instagram placements. Meta falls back to the Page when omitted."),
+    urlTags: z.string().nullable().optional().describe("Query string appended to every click URL for attribution, e.g. 'utm_source=meta&utm_campaign=spring'."),
+    status: z
+        .enum(["ACTIVE", "PAUSED"])
+        .nullable()
+        .optional()
+        .describe(
+            "Status the ad is created with. Defaults to PAUSED so a human can switch it on. Meta reviews new ads regardless, reporting PENDING_REVIEW as the effective status until review finishes."
+        )
+})
+
+export const metaAdsSetStatusInputSchema = z.object({
+    integrationId: metaAdsIntegrationIdField,
+    entityType: z.enum(["campaign", "adset", "ad"]).describe("Which kind of object to update."),
+    entityId: z.string().describe("The ID of the campaign, ad set, or ad."),
+    status: z.enum(["ACTIVE", "PAUSED"]).describe("PAUSED stops delivery and spend; ACTIVE resumes it.")
+})
+
+export const metaAdsListAdAccountsOutputSchema = toolOutputBaseSchema.extend({
+    adAccounts: z.array(metaAdsAdAccountEntitySchema),
+    count: z.number(),
+    truncated: z.boolean().describe("True when more ad accounts exist than were returned.")
+})
+
+export const metaAdsListCampaignsOutputSchema = toolOutputBaseSchema.extend({
+    campaigns: z.array(metaAdsCampaignSchema),
+    ...metaAdsCollectionFields
+})
+
+export const metaAdsListAdSetsOutputSchema = toolOutputBaseSchema.extend({
+    adsets: z.array(metaAdsAdSetSchema),
+    ...metaAdsCollectionFields
+})
+
+export const metaAdsListAdsOutputSchema = toolOutputBaseSchema.extend({
+    ads: z.array(metaAdsAdSchema),
+    ...metaAdsCollectionFields
+})
+
+export const metaAdsListAudiencesOutputSchema = toolOutputBaseSchema.extend({
+    audiences: z.array(metaAdsCustomAudienceSchema),
+    ...metaAdsCollectionFields
+})
+
+export const metaAdsListPixelsOutputSchema = toolOutputBaseSchema.extend({
+    pixels: z.array(metaAdsPixelSchema),
+    ...metaAdsCollectionFields
+})
+
+export const metaAdsListPagesOutputSchema = toolOutputBaseSchema.extend({
+    pages: z.array(metaAdsPageSchema),
+    count: z.number(),
+    truncated: z.boolean().describe("True when more Pages exist than were returned.")
+})
+
+export const metaAdsReadInsightsOutputSchema = toolOutputBaseSchema.extend({
+    rows: z.array(metaAdsInsightsRowSchema),
+    ...metaAdsCollectionFields
+})
+
+const metaAdsAudienceUsersOutputFields = {
+    audienceId: z.string(),
+    numReceived: z.number(),
+    numInvalidEntries: z.number()
+}
+
+export const metaAdsAddAudienceUsersOutputSchema = toolOutputBaseSchema.extend(metaAdsAudienceUsersOutputFields)
+export const metaAdsRemoveAudienceUsersOutputSchema = toolOutputBaseSchema.extend(metaAdsAudienceUsersOutputFields)
+
+export const metaAdsSendConversionsOutputSchema = toolOutputBaseSchema.extend({
+    datasetId: z.string(),
+    eventsReceived: z.number(),
+    fbtraceId: z.string().optional()
+})
+
+export const metaAdsCreateAdOutputSchema = toolOutputBaseSchema.extend({
+    adId: z.string(),
+    creativeId: z.string(),
+    adsetId: z.string(),
+    pageId: z.string(),
+    format: z.enum(["single_image", "single_video", "carousel", "dynamic_image", "dynamic_video", "dynamic_mixed"]),
+    requestedStatus: z.enum(["ACTIVE", "PAUSED"]),
+    videoIds: z.array(z.string()).describe("Meta video IDs created for this ad, in the order the videos were supplied."),
+    imageHashes: z.array(z.string()).describe("Meta image hashes created for this ad, in the order the images were supplied.")
+})
+
+export const metaAdsSetStatusOutputSchema = toolOutputBaseSchema.extend({
+    entityType: z.enum(["campaign", "adset", "ad"]),
+    entityId: z.string(),
+    status: z.enum(["ACTIVE", "PAUSED"])
+})
+
+export const metaAdsListAdAccountsTool = defineTool({
+    name: "meta_ads_list_ad_accounts",
+    description: "List the Meta ad accounts the connected user can access, with currency and account status. Use this to discover an adAccountId.",
+    inputSchema: metaAdsListAdAccountsInputSchema,
+    outputSchema: metaAdsListAdAccountsOutputSchema
+})
+export const metaAdsListCampaignsTool = defineTool({
+    name: "meta_ads_list_campaigns",
+    description: "List campaigns in a Meta ad account with status, objective, and budget.",
+    inputSchema: metaAdsListCampaignsInputSchema,
+    outputSchema: metaAdsListCampaignsOutputSchema
+})
+export const metaAdsListAdSetsTool = defineTool({
+    name: "meta_ads_list_adsets",
+    description:
+        "List ad sets in a Meta ad account with status, optimization goal, and budget. Pass campaignId to narrow to one campaign. Ad sets own targeting and budget, so a new ad inherits both from the ad set it joins.",
+    inputSchema: metaAdsListAdSetsInputSchema,
+    outputSchema: metaAdsListAdSetsOutputSchema
+})
+export const metaAdsListAdsTool = defineTool({
+    name: "meta_ads_list_ads",
+    description:
+        "List ads with the creative attached to each one (primary text, headline, image). Pair with meta_ads_read_insights at level='ad' to attribute performance to a specific creative, and check effective_status for PENDING_REVIEW or DISAPPROVED.",
+    inputSchema: metaAdsListAdsInputSchema,
+    outputSchema: metaAdsListAdsOutputSchema
+})
+export const metaAdsListAudiencesTool = defineTool({
+    name: "meta_ads_list_audiences",
+    description: "List the custom audiences in a Meta ad account, with approximate sizes and delivery status.",
+    inputSchema: metaAdsListAudiencesInputSchema,
+    outputSchema: metaAdsListAudiencesOutputSchema
+})
+export const metaAdsListPixelsTool = defineTool({
+    name: "meta_ads_list_pixels",
+    description: "List the Meta pixels (Conversions API datasets) in an ad account. Use a pixel ID as the datasetId for meta_ads_send_conversions.",
+    inputSchema: metaAdsListPixelsInputSchema,
+    outputSchema: metaAdsListPixelsOutputSchema
+})
+export const metaAdsListPagesTool = defineTool({
+    name: "meta_ads_list_pages",
+    description: "List the Facebook Pages the connected user manages. Every ad creative is published as a Page, so meta_ads_create_ad needs a pageId from here.",
+    inputSchema: metaAdsListPagesInputSchema,
+    outputSchema: metaAdsListPagesOutputSchema
+})
+export const metaAdsReadInsightsTool = defineTool({
+    name: "meta_ads_read_insights",
+    description:
+        "Read Meta Ads performance insights (spend, impressions, clicks, conversions) at campaign, ad set, or ad level for a date range, optionally split by breakdowns. Use level='ad' to judge individual creatives. Follows pagination up to 2000 rows; the result sets truncated=true when more rows exist, so narrow the date range or filter by campaign/ad set/ad IDs to fetch the rest.",
+    inputSchema: metaAdsReadInsightsInputSchema,
+    outputSchema: metaAdsReadInsightsOutputSchema
+})
+export const metaAdsAddAudienceUsersTool = defineTool({
+    name: "meta_ads_add_audience_users",
+    description: "Add people to a Meta custom audience. Emails and phone numbers are normalized and SHA-256 hashed before upload, so pass raw values.",
+    inputSchema: metaAdsAddAudienceUsersInputSchema,
+    outputSchema: metaAdsAddAudienceUsersOutputSchema
+})
+export const metaAdsRemoveAudienceUsersTool = defineTool({
+    name: "meta_ads_remove_audience_users",
+    description: "Remove people from a Meta custom audience. Emails and phone numbers are normalized and SHA-256 hashed before upload, so pass raw values.",
+    inputSchema: metaAdsRemoveAudienceUsersInputSchema,
+    outputSchema: metaAdsRemoveAudienceUsersOutputSchema
+})
+export const metaAdsSendConversionsTool = defineTool({
+    name: "meta_ads_send_conversions",
+    description: "Send offline conversion events to Meta via the Conversions API so campaign delivery can optimize on downstream outcomes (e.g. deals won).",
+    inputSchema: metaAdsSendConversionsInputSchema,
+    outputSchema: metaAdsSendConversionsOutputSchema
+})
+export const higgsfieldImageSizeSchema = z.enum([
+    "2048x1152",
+    "2048x1536",
+    "2016x1344",
+    "1696x960",
+    "1632x1088",
+    "1152x2048",
+    "1536x2048",
+    "1344x2016",
+    "960x1696",
+    "1088x1632",
+    "1536x1536",
+    "1536x1152",
+    "1152x1536"
+])
+export type HiggsfieldImageSize = z.infer<typeof higgsfieldImageSizeSchema>
+
+export const higgsfieldGeneratedImageSchema = z.object({
+    jobId: z.string().describe("Higgsfield job that produced this image."),
+    url: z.string().describe("Signed Terse-hosted URL for the full-quality image. Valid for 24 hours; pass it straight to meta_ads_create_ad as pictureUrl."),
+    thumbnailUrl: z.string().nullable().describe("Signed URL for a smaller preview of the same image, when Higgsfield returned one.")
+})
+export type HiggsfieldGeneratedImage = z.infer<typeof higgsfieldGeneratedImageSchema>
+
+export const higgsfieldGenerateImageInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Higgsfield connection to use."),
+    prompt: z.string().min(1).describe("What to generate. Describe the subject, setting, mood, and any on-image text."),
+    size: higgsfieldImageSizeSchema.nullable().optional().describe("Output resolution and aspect ratio. Defaults to 1536x1536. Use a landscape size for feed ads."),
+    quality: z.enum(["720p", "1080p"]).nullable().optional().describe("Render quality. Defaults to 1080p."),
+    batchSize: z
+        .union([z.literal(1), z.literal(4)])
+        .nullable()
+        .optional()
+        .describe("Generate 1 or 4 variants in one call. Defaults to 1; use 4 when you want options to compare."),
+    styleId: z.string().nullable().optional().describe("Optional Higgsfield style preset ID."),
+    referenceImageUrl: z.string().nullable().optional().describe("A single publicly reachable reference image that steers style and subject consistency.")
+})
+
+export const higgsfieldGenerateImageOutputSchema = toolOutputBaseSchema.extend({
+    images: z.array(higgsfieldGeneratedImageSchema),
+    count: z.number()
+})
+
+export const higgsfieldVideoModelSchema = z.enum(["dop-lite", "dop-turbo", "dop-standard"])
+export type HiggsfieldVideoModel = z.infer<typeof higgsfieldVideoModelSchema>
+
+export const higgsfieldGeneratedVideoSchema = z.object({
+    jobId: z.string().describe("Higgsfield job that produced this video."),
+    url: z.string().describe("Signed Terse-hosted URL for the video. Valid for 24 hours; pass it straight to meta_ads_create_ad as a videoUrl."),
+    thumbnailUrl: z.string().nullable().describe("Signed URL for a poster frame, when Higgsfield returned one.")
+})
+export type HiggsfieldGeneratedVideo = z.infer<typeof higgsfieldGeneratedVideoSchema>
+
+export const higgsfieldGenerateVideoInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Higgsfield connection to use."),
+    imageUrl: z.string().describe("Publicly reachable still image to animate. A Terse-hosted URL from higgsfield_generate_image works directly."),
+    prompt: z.string().min(1).describe("The motion to apply: camera movement, subject action, pacing."),
+    model: higgsfieldVideoModelSchema.nullable().optional().describe("dop-lite is cheapest, dop-turbo is the default, dop-standard is the highest quality."),
+    motionId: z.string().nullable().optional().describe("Motion preset ID from higgsfield_list_motions, applied on top of the prompt."),
+    motionStrength: z.number().min(0).max(1).nullable().optional().describe("How strongly to apply motionId, 0 to 1. Defaults to 1. Ignored unless motionId is set."),
+    seed: z.number().int().min(0).max(1000000).nullable().optional().describe("Fixed seed for a reproducible result.")
+})
+
+export const higgsfieldGenerateVideoOutputSchema = toolOutputBaseSchema.extend({
+    videos: z.array(higgsfieldGeneratedVideoSchema),
+    count: z.number()
+})
+
+export const higgsfieldMotionSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().nullable(),
+    previewUrl: z.string().nullable()
+})
+export type HiggsfieldMotion = z.infer<typeof higgsfieldMotionSchema>
+
+export const higgsfieldListMotionsInputSchema = z.object({
+    integrationId: z.string().describe("The integration ID of the Higgsfield connection to use.")
+})
+
+export const higgsfieldListMotionsOutputSchema = toolOutputBaseSchema.extend({
+    motions: z.array(higgsfieldMotionSchema),
+    count: z.number()
+})
+
+export const higgsfieldGenerateImageTool = defineTool({
+    name: "higgsfield_generate_image",
+    description:
+        "Generate ad creative images from a text prompt with Higgsfield. Each result is cached by Terse and returned as a signed URL valid for 24 hours, which can be shown to a human for approval and then handed to meta_ads_create_ad as an imageUrl. Generation is asynchronous and this waits for it to finish, so expect it to take a while.",
+    inputSchema: higgsfieldGenerateImageInputSchema,
+    outputSchema: higgsfieldGenerateImageOutputSchema
+})
+export const higgsfieldGenerateVideoTool = defineTool({
+    name: "higgsfield_generate_video",
+    description:
+        "Animate a still image into an ad video with Higgsfield. This tool is image-to-video, so generate or pick an image first, then animate it here. The result is cached by Terse and returned as a signed URL valid for 24 hours, which can be shown to a human for approval and then handed to meta_ads_create_ad as a videoUrl. Generation is asynchronous and this waits for it to finish, so expect it to take a while.",
+    inputSchema: higgsfieldGenerateVideoInputSchema,
+    outputSchema: higgsfieldGenerateVideoOutputSchema
+})
+export const higgsfieldListMotionsTool = defineTool({
+    name: "higgsfield_list_motions",
+    description:
+        "List Higgsfield motion presets with their IDs. A motion is a named camera move (a dolly, an orbit, a zoom) that Higgsfield applies on top of the prompt when animating a still image. Pass one as motionId to higgsfield_generate_video, scaled by motionStrength. The IDs are opaque, so call this first rather than guessing one.",
+    inputSchema: higgsfieldListMotionsInputSchema,
+    outputSchema: higgsfieldListMotionsOutputSchema
+})
+
+export const metaAdsCreateAdTool = defineTool({
+    name: "meta_ads_create_ad",
+    description:
+        "Create an ad creative and the ad that uses it inside an existing ad set. Pick a creative.format: single_image, single_video, carousel (2-10 cards, each card an image or a video), or dynamic_image / dynamic_video / dynamic_mixed (several media assets plus several text variants that Meta recombines per viewer, which requires an ad set with dynamic creative enabled). Images are fetched by Meta and videos are uploaded and encoded before the ad is created, so temporary signed URLs are fine. Ad creatives are immutable, so improving a creative means creating a new ad here and pausing the old one with meta_ads_set_status. New ads enter PENDING_REVIEW before reaching the requested status.",
+    inputSchema: metaAdsCreateAdInputSchema,
+    outputSchema: metaAdsCreateAdOutputSchema
+})
+export const metaAdsSetStatusTool = defineTool({
+    name: "meta_ads_set_status",
+    description: "Pause or resume a campaign, ad set, or ad. PAUSED stops delivery and spend immediately and is reversible.",
+    inputSchema: metaAdsSetStatusInputSchema,
+    outputSchema: metaAdsSetStatusOutputSchema
+})
+
 export const ToolDefinitions = {
     [linearCreateTicketTool.name]: linearCreateTicketTool,
     [linearUpdateTicketTool.name]: linearUpdateTicketTool,
@@ -3539,7 +4479,33 @@ export const ToolDefinitions = {
     [apolloBulkEnrichPeopleTool.name]: apolloBulkEnrichPeopleTool,
     [apolloEnrichOrganizationTool.name]: apolloEnrichOrganizationTool,
     [apolloSearchPeopleTool.name]: apolloSearchPeopleTool,
-    [apolloListJobPostingsTool.name]: apolloListJobPostingsTool
+    [apolloListJobPostingsTool.name]: apolloListJobPostingsTool,
+    [googleSearchConsoleListSitesTool.name]: googleSearchConsoleListSitesTool,
+    [googleSearchConsoleGetSiteTool.name]: googleSearchConsoleGetSiteTool,
+    [googleSearchConsoleAddSiteTool.name]: googleSearchConsoleAddSiteTool,
+    [googleSearchConsoleDeleteSiteTool.name]: googleSearchConsoleDeleteSiteTool,
+    [googleSearchConsoleListSitemapsTool.name]: googleSearchConsoleListSitemapsTool,
+    [googleSearchConsoleGetSitemapTool.name]: googleSearchConsoleGetSitemapTool,
+    [googleSearchConsoleSubmitSitemapTool.name]: googleSearchConsoleSubmitSitemapTool,
+    [googleSearchConsoleDeleteSitemapTool.name]: googleSearchConsoleDeleteSitemapTool,
+    [googleSearchConsoleQuerySearchAnalyticsTool.name]: googleSearchConsoleQuerySearchAnalyticsTool,
+    [googleSearchConsoleInspectUrlTool.name]: googleSearchConsoleInspectUrlTool,
+    [metaAdsListAdAccountsTool.name]: metaAdsListAdAccountsTool,
+    [metaAdsListCampaignsTool.name]: metaAdsListCampaignsTool,
+    [metaAdsListAdSetsTool.name]: metaAdsListAdSetsTool,
+    [metaAdsListAdsTool.name]: metaAdsListAdsTool,
+    [metaAdsListAudiencesTool.name]: metaAdsListAudiencesTool,
+    [metaAdsListPixelsTool.name]: metaAdsListPixelsTool,
+    [metaAdsListPagesTool.name]: metaAdsListPagesTool,
+    [metaAdsReadInsightsTool.name]: metaAdsReadInsightsTool,
+    [metaAdsAddAudienceUsersTool.name]: metaAdsAddAudienceUsersTool,
+    [metaAdsRemoveAudienceUsersTool.name]: metaAdsRemoveAudienceUsersTool,
+    [metaAdsSendConversionsTool.name]: metaAdsSendConversionsTool,
+    [metaAdsCreateAdTool.name]: metaAdsCreateAdTool,
+    [metaAdsSetStatusTool.name]: metaAdsSetStatusTool,
+    [higgsfieldGenerateImageTool.name]: higgsfieldGenerateImageTool,
+    [higgsfieldGenerateVideoTool.name]: higgsfieldGenerateVideoTool,
+    [higgsfieldListMotionsTool.name]: higgsfieldListMotionsTool
 } as const
 
 export type ToolName = keyof typeof ToolDefinitions

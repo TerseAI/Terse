@@ -8,6 +8,8 @@ Triggers define the event that starts your workflow. Each trigger is tied to an 
 
 In TypeScript, `terse generate` exports a `Triggers` object from `src/terse.generated.ts`, with each integration's trigger factories and payload types declared in `src/terse.generated/<integration>.triggers.ts`. Import everything from `"./terse.generated"` and call the nested helper for your event (for example `Triggers.github.onPROpened(...)`); the event types in the tables below are importable from the same place. Each integration and system trigger has its own section below.
 
+Every event, whatever its trigger, carries `triggeredAt`: a `Date` fixed to the moment Terse received the trigger. Use it instead of `Date.now()` for any date math the run depends on. See [trigger time](/reference/typescript-sdk#trigger-time).
+
 ## Integration triggers
 
 ### GitHub

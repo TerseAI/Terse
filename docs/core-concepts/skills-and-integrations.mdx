@@ -12,10 +12,10 @@ An integration is a connection to an external service. When you run `terse integ
 
 Terse supports two connection types:
 
-| Type      | Flow                                                        | Examples                                            |
-| --------- | ----------------------------------------------------------- | --------------------------------------------------- |
-| **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Linear, Notion, Attio         |
-| **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, WorkOS, Apollo |
+| Type      | Flow                                                        | Examples                                                                     |
+| --------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **OAuth** | Opens your browser for authorization                        | GitHub, Slack, Gmail, Google Search Console, Linear, Notion, Attio, Meta Ads |
+| **Form**  | Prompts for API keys or account credentials in the terminal | Datadog, PostHog, Snowflake, LaunchDarkly, WorkOS, Apollo, Higgsfield        |
 
 After connecting, run `terse generate` to turn your active integrations into typed code.
 
@@ -29,26 +29,26 @@ See the [Generated SDK](/core-concepts/generated-sdk) page for more detail.
 
 This is the key distinction:
 
-|                   | Skills (model access)                                | Deterministic tools (code access)               |
-| ----------------- | ---------------------------------------------------- | ----------------------------------------------- |
-| **Who decides**   | The model chooses which tools to call                | Your code calls tools directly                  |
-| **Controlled by** | `skills` array on `generateText` (or `TerseAgent.create()`) | `toolbox.*` (unfiltered)                  |
-| **Scope**         | Only integrations declared as skills                 | `toolbox.*` covers any connected integration    |
-| **Token cost**    | Tokens consumed per call                             | Zero LLM tokens                                 |
+|                   | Skills (model access)                                       | Deterministic tools (code access)            |
+| ----------------- | ----------------------------------------------------------- | -------------------------------------------- |
+| **Who decides**   | The model chooses which tools to call                       | Your code calls tools directly               |
+| **Controlled by** | `skills` array on `generateText` (or `TerseAgent.create()`) | `toolbox.*` (unfiltered)                     |
+| **Scope**         | Only integrations declared as skills                        | `toolbox.*` covers any connected integration |
+| **Token cost**    | Tokens consumed per call                                    | Zero LLM tokens                              |
 
 `agent.tools.*` mirrors the `skills` allowlist: only integrations declared as skills appear on the agent's typed tool object. For unfiltered programmatic access to every connected integration, import `toolbox` from `./terse.generated` and call it directly, no agent needed.
 
 This means you can be precise about the model's reach for a given job, while still calling any connected integration from your handler code through `toolbox`:
 
 ```ts
-import { generateText, createJob } from "terse-sdk"
+import { createJob, generateText } from "terse-sdk"
 
 import { AttioObject, Skills, SlackChannel, Triggers, toolbox } from "./terse.generated"
 
 createJob({
     name: "weekly-digest",
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
-    onTrigger: async (event) => {
+    onTrigger: async event => {
         // Agentic: model can only use Attio (the declared skill)
         const summary = await generateText({
             prompt: "Summarize this week's pipeline activity.",
@@ -68,15 +68,17 @@ createJob({
 
 Some skills accept configuration that scopes what the model sees or where it acts:
 
-| Skill                | Configuration | Effect                                                 |
-| -------------------- | ------------- | ------------------------------------------------------ |
-| `Skills.attio()`     | `object`      | Scopes record reads and writes to one Attio object     |
-| `Skills.slack()`     | `channel`     | Targets a specific channel for messaging               |
-| `Skills.github()`    | `repos`       | Scopes code access to specific repositories            |
+| Skill                | Configuration     | Effect                                             |
+| -------------------- | ----------------- | -------------------------------------------------- |
+| `Skills.attio()`     | `object`          | Scopes record reads and writes to one Attio object |
+| `Skills.slack()`     | `channel`         | Targets a specific channel for messaging           |
+| `Skills.github()`    | `repos`           | Scopes code access to specific repositories        |
 | `Skills.linear()`    | `team`, `project` | Optionally scopes to a team and/or project         |
-| `Skills.snowflake()` | None          | Read-only SQL queries against your warehouse           |
-| `Skills.apollo()`    | None          | People/company enrichment and prospect search          |
-| `Skills.web()`       | None          | Built-in web search, page extraction, and research     |
+| `Skills.metaAds()`   | `adAccount`, `pageId` | Restricts this automation to one ad account and Page |
+| `Skills.higgsfield()` | None             | Generate ad creative images from a text prompt     |
+| `Skills.snowflake()` | None              | Read-only SQL queries against your warehouse       |
+| `Skills.apollo()`    | None              | People/company enrichment and prospect search      |
+| `Skills.web()`       | None              | Built-in web search, page extraction, and research |
 
 Skills without configuration give the model access to the full integration surface.
 

@@ -9,6 +9,9 @@ export abstract class TriggerRuntime<TEvent extends Trigger = Trigger> {
     abstract readonly integrationType: TEvent["integrationType"]
     abstract readonly data: TEvent
 
+    // Stamped once per runtime so every serialization of the same event reports one trigger time.
+    readonly triggeredAt: string = new Date().toISOString()
+
     get eventType(): TEvent["eventType"] {
         return this.data.eventType
     }
@@ -48,6 +51,7 @@ export abstract class TriggerRuntime<TEvent extends Trigger = Trigger> {
             eventType: this.eventType,
             formattedContent: this.formatForAgentRunner(),
             debugLog: this.debugLog(),
+            triggeredAt: this.triggeredAt,
             display: displayTrigger(this.data),
             data: this.data
         }

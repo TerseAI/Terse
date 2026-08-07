@@ -7,9 +7,12 @@ import { AttioModule } from "./attio/AttioModule.js"
 import { DatadogModule } from "./datadog/DatadogModule.js"
 import { GithubModule } from "./github/GithubModule.js"
 import { GmailModule } from "./gmail/GmailModule.js"
+import { GoogleSearchConsoleModule } from "./google_search_console/GoogleSearchConsoleModule.js"
 import { HeyReachModule } from "./hey_reach/HeyReachModule.js"
+import { HiggsfieldModule } from "./higgsfield/HiggsfieldModule.js"
 import { LaunchDarklyModule } from "./launchdarkly/LaunchDarklyModule.js"
 import { LinearModule } from "./linear/LinearModule.js"
+import { MetaAdsModule } from "./meta_ads/MetaAdsModule.js"
 import { NotionModule } from "./notion/NotionModule.js"
 import { PosthogModule } from "./posthog/PosthogModule.js"
 import { ResendModule } from "./resend/ResendModule.js"
@@ -37,7 +40,10 @@ export const integrationModuleRegistry: Record<ExternalIntegrationType, Integrat
     [IntegrationType.WORKOS]: new WorkOSModule(),
     [IntegrationType.ATTIO]: new AttioModule(),
     [IntegrationType.SNOWFLAKE]: new SnowflakeModule(),
-    [IntegrationType.APOLLO]: new ApolloModule()
+    [IntegrationType.APOLLO]: new ApolloModule(),
+    [IntegrationType.GOOGLE_SEARCH_CONSOLE]: new GoogleSearchConsoleModule(),
+    [IntegrationType.META_ADS]: new MetaAdsModule(),
+    [IntegrationType.HIGGSFIELD]: new HiggsfieldModule()
 }
 
 export const terseModule = new TerseModule()

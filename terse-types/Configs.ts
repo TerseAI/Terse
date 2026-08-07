@@ -29,7 +29,10 @@ export enum ConfigType {
     WEBMONITOR = "webmonitor",
     HEY_REACH_INPUT = "hey_reach_input",
     RESEND_OUTPUT = "resend_output",
-    APOLLO_OUTPUT = "apollo_output"
+    APOLLO_OUTPUT = "apollo_output",
+    GOOGLE_SEARCH_CONSOLE_OUTPUT = "google_search_console_output",
+    META_ADS_OUTPUT = "meta_ads_output",
+    HIGGSFIELD_OUTPUT = "higgsfield_output"
 }
 
 export const configTypeEnum = z.enum(ConfigType)
@@ -272,11 +275,38 @@ export const ResendOutputConfigMetadata = {
     isOutput: true
 } as const satisfies ConfigDetails
 
+export const HiggsfieldOutputConfigMetadata = {
+    configType: ConfigType.HIGGSFIELD_OUTPUT,
+    name: "Higgsfield",
+    description: "Generate ad creative images and animate them into video with Higgsfield",
+    integrationType: IntegrationType.HIGGSFIELD,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
+export const MetaAdsOutputConfigMetadata = {
+    configType: ConfigType.META_ADS_OUTPUT,
+    name: "Meta Ads",
+    description: "Read ad performance, sync custom audiences, and send offline conversions to Meta Ads",
+    integrationType: IntegrationType.META_ADS,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
 export const ApolloOutputConfigMetadata = {
     configType: ConfigType.APOLLO_OUTPUT,
     name: "Apollo",
     description: "Enrich people and companies and search for prospects using Apollo.io",
     integrationType: IntegrationType.APOLLO,
+    isInput: false,
+    isOutput: true
+} as const satisfies ConfigDetails
+
+export const GoogleSearchConsoleOutputConfigMetadata = {
+    configType: ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT,
+    name: "Google Search Console",
+    description: "Read Search Analytics and manage sites and sitemaps",
+    integrationType: IntegrationType.GOOGLE_SEARCH_CONSOLE,
     isInput: false,
     isOutput: true
 } as const satisfies ConfigDetails
@@ -309,7 +339,10 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata,
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata,
-    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfigMetadata
+    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfigMetadata,
+    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfigMetadata,
+    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfigMetadata,
+    [ConfigType.HIGGSFIELD_OUTPUT]: HiggsfieldOutputConfigMetadata
 } as const satisfies ConfigDetailsMap
 
 // MARK: Event Types — specific events within each integration trigger
@@ -641,6 +674,31 @@ export class NotionConfig extends BaseConfigInstance<IntegrationType.NOTION, Con
             parts.push(`Pages: ${pageIds.map((id, i) => pageNames[i] || id).join(", ")}`)
         }
         return parts.join("\n")
+    }
+}
+
+export const GoogleSearchConsoleConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.GOOGLE_SEARCH_CONSOLE),
+    configType: z.literal(ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT),
+    siteUrls: z.array(z.string()).default([])
+})
+export type GoogleSearchConsoleConfigData = z.infer<typeof GoogleSearchConsoleConfigSchema>
+export type GoogleSearchConsoleConfigInstance = GoogleSearchConsoleConfigData & ConfigBehavior
+
+export class GoogleSearchConsoleOutputConfig extends BaseConfigInstance<IntegrationType.GOOGLE_SEARCH_CONSOLE, ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT> implements GoogleSearchConsoleConfigInstance {
+    constructor(
+        integrationId: string,
+        public siteUrls: string[] = []
+    ) {
+        super(integrationId, IntegrationType.GOOGLE_SEARCH_CONSOLE, ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return (this.siteUrls?.length ?? 0) > 0
+    }
+
+    formatForAgent(): string {
+        return `Type: Google Search Console\nIntegration ID: ${this.integrationId}\nAllowed properties: ${this.siteUrls.join(", ")}`
     }
 }
 
@@ -1166,6 +1224,61 @@ export class ResendOutputConfig extends BaseConfigInstance<IntegrationType.RESEN
     }
 }
 
+export const HiggsfieldOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.HIGGSFIELD),
+    configType: z.literal(ConfigType.HIGGSFIELD_OUTPUT)
+})
+export type HiggsfieldOutputConfigData = z.infer<typeof HiggsfieldOutputConfigSchema>
+export type HiggsfieldOutputConfigInstance = HiggsfieldOutputConfigData & ConfigBehavior
+
+export class HiggsfieldOutputConfig extends BaseConfigInstance<IntegrationType.HIGGSFIELD, ConfigType.HIGGSFIELD_OUTPUT> implements HiggsfieldOutputConfigInstance {
+    constructor(integrationId: string) {
+        super(integrationId, IntegrationType.HIGGSFIELD, ConfigType.HIGGSFIELD_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        return `Type: Higgsfield Output\nIntegration ID: ${this.integrationId}`
+    }
+}
+
+export const MetaAdsOutputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.META_ADS),
+    configType: z.literal(ConfigType.META_ADS_OUTPUT),
+    adAccountId: z.string().nullable(),
+    pageId: z.string().nullable()
+})
+export type MetaAdsOutputConfigData = z.infer<typeof MetaAdsOutputConfigSchema>
+export type MetaAdsOutputConfigInstance = MetaAdsOutputConfigData & ConfigBehavior
+
+export class MetaAdsOutputConfig extends BaseConfigInstance<IntegrationType.META_ADS, ConfigType.META_ADS_OUTPUT> implements MetaAdsOutputConfigInstance {
+    constructor(
+        integrationId: string,
+        public adAccountId: string | null = null,
+        public pageId: string | null = null
+    ) {
+        super(integrationId, IntegrationType.META_ADS, ConfigType.META_ADS_OUTPUT)
+    }
+
+    isComplete(): boolean {
+        return !!this.integrationId
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Meta Ads Output`, `Integration ID: ${this.integrationId}`]
+        if (this.adAccountId) {
+            parts.push(`Ad Account: ${this.adAccountId}`)
+        }
+        if (this.pageId) {
+            parts.push(`Page: ${this.pageId}`)
+        }
+        return parts.join("\n")
+    }
+}
+
 export const ApolloOutputConfigSchema = ConfigInstanceSchema.extend({
     integrationType: z.literal(IntegrationType.APOLLO),
     configType: z.literal(ConfigType.APOLLO_OUTPUT)
@@ -1327,7 +1440,10 @@ export const configDataSchema = z.union([
     WebMonitorConfigSchema,
     HeyReachInputConfigSchema,
     ResendOutputConfigSchema,
-    ApolloOutputConfigSchema
+    ApolloOutputConfigSchema,
+    GoogleSearchConsoleConfigSchema,
+    MetaAdsOutputConfigSchema,
+    HiggsfieldOutputConfigSchema
 ])
 export type ConfigData = z.infer<typeof configDataSchema>
 
@@ -1364,7 +1480,9 @@ export const skillConfigDataSchema = z.union([
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
     ResendOutputConfigSchema,
-    ApolloOutputConfigSchema
+    ApolloOutputConfigSchema,
+    GoogleSearchConsoleConfigSchema,
+    MetaAdsOutputConfigSchema
 ])
 export type SkillConfigData = z.infer<typeof skillConfigDataSchema>
 
@@ -1390,12 +1508,16 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
             return !!(config.channelId || (config.userIds?.length ?? 0) > 0 || config.listenToUserDms)
         case ConfigType.NOTION:
             return (config.databaseIds?.length ?? 0) > 0 || (config.pageIds?.length ?? 0) > 0
+        case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
+            return (config.siteUrls?.length ?? 0) > 0
         case ConfigType.LINEAR_OUTPUT:
         case ConfigType.DATADOG:
         case ConfigType.WORKOS_OUTPUT:
         case ConfigType.SNOWFLAKE_OUTPUT:
         case ConfigType.RESEND_OUTPUT:
         case ConfigType.APOLLO_OUTPUT:
+        case ConfigType.META_ADS_OUTPUT:
+        case ConfigType.HIGGSFIELD_OUTPUT:
             return !!config.integrationId
         case ConfigType.GITHUB:
             return (config.repositoryIds?.length ?? 0) > 0
@@ -1448,6 +1570,8 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Gmail Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.GMAIL_DRAFT_OUTPUT:
             return `Type: Gmail Draft Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT:
+            return `Type: Google Search Console\nIntegration ID: ${config.integrationId}\nAllowed properties: ${config.siteUrls.join(", ")}`
         case ConfigType.NOTION: {
             const parts = [`Type: Notion`, `Integration ID: ${config.integrationId}`]
             const dbIds = config.databaseIds ?? []
@@ -1544,6 +1668,14 @@ export function formatConfigForAgent(config: ConfigData): string {
             return `Type: Resend Output\nIntegration ID: ${config.integrationId}`
         case ConfigType.APOLLO_OUTPUT:
             return `Type: Apollo Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.HIGGSFIELD_OUTPUT:
+            return `Type: Higgsfield Output\nIntegration ID: ${config.integrationId}`
+        case ConfigType.META_ADS_OUTPUT: {
+            const parts = [`Type: Meta Ads Output`, `Integration ID: ${config.integrationId}`]
+            if (config.adAccountId) parts.push(`Ad Account: ${config.adAccountId}`)
+            if (config.pageId) parts.push(`Page: ${config.pageId}`)
+            return parts.join("\n")
+        }
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
         case ConfigType.WEBMONITOR: {
@@ -1589,6 +1721,9 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.HEY_REACH_INPUT]: typeof HeyReachInputConfig
     [ConfigType.RESEND_OUTPUT]: typeof ResendOutputConfig
     [ConfigType.APOLLO_OUTPUT]: typeof ApolloOutputConfig
+    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: typeof GoogleSearchConsoleOutputConfig
+    [ConfigType.META_ADS_OUTPUT]: typeof MetaAdsOutputConfig
+    [ConfigType.HIGGSFIELD_OUTPUT]: typeof HiggsfieldOutputConfig
 }>
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -1617,5 +1752,8 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.WEBMONITOR]: WebMonitorConfig,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig,
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfig,
-    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfig
+    [ConfigType.APOLLO_OUTPUT]: ApolloOutputConfig,
+    [ConfigType.GOOGLE_SEARCH_CONSOLE_OUTPUT]: GoogleSearchConsoleOutputConfig,
+    [ConfigType.META_ADS_OUTPUT]: MetaAdsOutputConfig,
+    [ConfigType.HIGGSFIELD_OUTPUT]: HiggsfieldOutputConfig
 } as const satisfies ConfigMetadataMap

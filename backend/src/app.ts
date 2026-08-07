@@ -28,11 +28,14 @@ import { githubAppCallbackIntegrate, githubAppUnifiedEvent } from "./modules/int
 import githubVendorRouter from "./modules/integrations/github/routes"
 import { handleGmailWebhook } from "./modules/integrations/gmail/controller"
 import gmailRouter from "./modules/integrations/gmail/routes"
+import googleSearchConsoleRouter from "./modules/integrations/googlesearchconsole/routes"
 import { handleHeyReachWebhook } from "./modules/integrations/heyreach/controller"
 import heyreachRouter from "./modules/integrations/heyreach/routes"
+import higgsfieldRouter from "./modules/integrations/higgsfield/routes"
 import launchdarklyRouter from "./modules/integrations/launchdarkly/routes"
 import { handleLinearWebhook } from "./modules/integrations/linear/controller"
 import linearRouter from "./modules/integrations/linear/routes"
+import metaAdsRouter from "./modules/integrations/metaAds/routes"
 import notionRouter from "./modules/integrations/notion/routes"
 import posthogRouter from "./modules/integrations/posthog/routes"
 import resendRouter from "./modules/integrations/resend/routes"
@@ -233,12 +236,15 @@ export function createApp(options: CreateAppOptions) {
     if (isIntegrationAvailable(IntegrationType.DATADOG)) app.use("/datadog", datadogRouter)
     if (isIntegrationAvailable(IntegrationType.GITHUB)) app.use("/github", githubVendorRouter)
     if (isIntegrationAvailable(IntegrationType.GMAIL)) app.use("/gmail", gmailRouter)
+    if (isIntegrationAvailable(IntegrationType.GOOGLE_SEARCH_CONSOLE)) app.use("/google-search-console", googleSearchConsoleRouter)
     if (isIntegrationAvailable(IntegrationType.HEY_REACH)) app.use("/heyreach", heyreachRouter)
     if (isIntegrationAvailable(IntegrationType.LAUNCHDARKLY)) app.use("/launchdarkly", launchdarklyRouter)
     if (isIntegrationAvailable(IntegrationType.LINEAR)) app.use("/linear", linearRouter)
+    if (isIntegrationAvailable(IntegrationType.META_ADS)) app.use("/meta-ads", metaAdsRouter)
     if (isIntegrationAvailable(IntegrationType.NOTION)) app.use("/notion", notionRouter)
     if (isIntegrationAvailable(IntegrationType.POSTHOG)) app.use("/posthog", posthogRouter)
     if (isIntegrationAvailable(IntegrationType.RESEND)) app.use("/resend", resendRouter)
+    if (isIntegrationAvailable(IntegrationType.HIGGSFIELD)) app.use("/higgsfield", higgsfieldRouter)
     if (isIntegrationAvailable(IntegrationType.SLACK)) app.use("/slack", slackVendorRouter)
     if (isIntegrationAvailable(IntegrationType.SNOWFLAKE)) app.use("/snowflake", snowflakeRouter)
     if (isIntegrationAvailable(IntegrationType.WORKOS)) app.use("/workos-integration", workosIntegrationRouter)

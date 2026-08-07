@@ -9,6 +9,10 @@
 //     `filter` returns boolean to decide whether the run proceeds.
 //   Every trigger event has event.formatForAgentRunner(): string — the
 //     canonical way to inline the triggering event into an agent prompt.
+//   Every trigger event has event.triggeredAt: Date — when Terse received the
+//     trigger. Derive every date/window from it (never Date.now()/new Date()):
+//     it is fixed for the run, so retries, queue delay, and durable replays all
+//     compute the same window.
 //
 // Agentic execution:
 //   generateText({ prompt, skills: [...], toolApprovals?, outputSchema? })
@@ -36,6 +40,8 @@
 //                               Suspends until a human answers; resolves to
 //                               { choice, text?, respondent }. `options` is
 //                               [{ id, label, description?, freeText? }].
+//                               Optional `media: [{ kind: "image" | "video", url,
+//                               altText? }]` shows creatives inline for review.
 //
 // Secrets:
 //   Write with `terse secrets add`; read in job code via process.env.MY_SECRET.

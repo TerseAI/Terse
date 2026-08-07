@@ -106,6 +106,17 @@ export const settings = {
         pubsubServiceAccountEmail: optionalEnv("GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL")
     })),
 
+    // Google Search Console OAuth — opt-in. Shares the Gmail OAuth client credentials, so it needs
+    // its own redirect URI registered on that same client to land on the Search Console callback.
+    // Keyed on GOOGLE_SEARCH_CONSOLE_REDIRECT_URI alone: the Gmail variables belong to the Gmail
+    // integration, so listing them here would make merely configuring Gmail demand a Search Console
+    // redirect URI and abort startup.
+    googleSearchConsole: optionalIntegrationSettings(["GOOGLE_SEARCH_CONSOLE_REDIRECT_URI"], () => ({
+        clientId: requireEnv("GMAIL_CLIENT_ID"),
+        clientSecret: requireEnv("GMAIL_CLIENT_SECRET"),
+        redirectUri: requireEnv("GOOGLE_SEARCH_CONSOLE_REDIRECT_URI")
+    })),
+
     // GitHub App (for repository integration and OAuth) — opt-in
     githubApp: optionalIntegrationSettings(["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "GITHUB_APP_CALLBACK_URL", "GITHUB_APP_NAME"], () => ({
         clientId: requireEnv("GITHUB_CLIENT_ID"),
@@ -144,6 +155,15 @@ export const settings = {
         clientId: requireEnv("ATTIO_CLIENT_ID"),
         clientSecret: requireEnv("ATTIO_CLIENT_SECRET"),
         redirectUri: requireEnv("ATTIO_REDIRECT_URI")
+    })),
+
+    // Meta Ads OAuth — opt-in. Facebook Login for Business drives the consent screen, so the
+    // requested permissions live in the dashboard configuration rather than in a scope string.
+    metaAds: optionalIntegrationSettings(["META_ADS_CLIENT_ID", "META_ADS_CLIENT_SECRET", "META_ADS_REDIRECT_URI", "META_ADS_CONFIG_ID"], () => ({
+        clientId: requireEnv("META_ADS_CLIENT_ID"),
+        clientSecret: requireEnv("META_ADS_CLIENT_SECRET"),
+        redirectUri: requireEnv("META_ADS_REDIRECT_URI"),
+        configId: requireEnv("META_ADS_CONFIG_ID")
     })),
 
     // Google Cloud Platform — opt-in. Powers GoogleSecretManagerClient, Cloud Scheduler, GCS uploads.
@@ -227,7 +247,7 @@ if (settings.billing.enabled && (!settings.billing.url || !settings.billing.jwtS
 }
 
 // Export individual always-on settings for convenience. Opt-in integration blocks
-// (gmail, githubApp, notion, slack, linear, attio, parallel) must be
+// (gmail, githubApp, notion, slack, linear, attio, metaAds, parallel) must be
 // accessed via `settings.<name>` so the `T | undefined` type forces narrowing.
 export const { jwt, gemini, urls, gcs, optional, redis, pgboss } = settings
 

@@ -1,0 +1,16 @@
+{{sectionHeader "Google Search Console properties"}}
+
+{{> resource-class section.siteClass}}
+
+{{#if toolFile}}
+{{sectionHeader "Google Search Console tools"}}
+
+{{> tools-slice toolFile}}
+
+{{/if}}
+{{sectionHeader "Google Search Console skill"}}
+
+/** Google Search Console — read Search Analytics and manage the given properties. A Domain property also covers its subdomains. */
+export function googleSearchConsoleSkill(opts: { sites: GoogleSearchConsoleSite[] }): TypedSkill<{{{section.skillToolType}}}> {
+    return new GoogleSearchConsoleOutputConfig("{{escape section.id}}", opts.sites.map(s => s.siteUrl))
+}

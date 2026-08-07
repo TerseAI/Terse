@@ -463,6 +463,8 @@ switch (classification.severity) {
 
 **No nested try/catch.** When a `catch` body needs its own error handling, extract the catch body into a helper function and call it from the `catch`.
 
+**Time comes from the event.** Derive dates and windows from `event.triggeredAt`, never `Date.now()` or `new Date()`, which drift across queue delay, retries, and replays. Window math is plain synchronous code; it needs no step or helper.
+
 **Functional iteration.** Prefer `map`/`filter`/`reduce` for transforms and `forEach` for synchronous side effects; reach for `for` loops sparingly. When the loop body awaits, use `Promise.all(items.map(...))` for parallel work or `for...of` for sequential awaits — never pass an async callback to `forEach`, which fires without awaiting and swallows rejections.
 
 **Async/await over `.then`.** Use `async`/`await` and the Promise combinators (`Promise.all`, `Promise.allSettled`, `Promise.race`) instead of `.then()` chains.

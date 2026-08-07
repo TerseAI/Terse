@@ -1,6 +1,6 @@
 import axios from "axios"
 import { ApiRoutes, buildRoute } from "terse-types"
-import type { SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
+import type { MetaAdsPage, SdkSampleEventRef as SampleEventRef, SerializedEvent } from "terse-types"
 import {
     BillingCatalogResponse,
     BillingChangeResponse,
@@ -20,12 +20,16 @@ import {
     DatadogIntegration,
     GithubIntegration,
     GmailIntegration,
+    GoogleSearchConsoleIntegration,
     HeyReachIntegration,
+    HiggsfieldIntegration,
     InstallationOptionsFor,
     IntegrationType,
     IntegrationWithStatus,
     LaunchDarklyIntegration,
     LinearIntegration,
+    MetaAdsAdAccount,
+    MetaAdsIntegration,
     NotionIntegration,
     PosthogIntegration,
     ResendIntegration,
@@ -164,6 +168,11 @@ interface BackendService {
     getGmailIntegrations(): Promise<GmailIntegration[]>
 
     /**
+     * Gets all Google Search Console integrations for the current user
+     */
+    getGoogleSearchConsoleIntegrations(): Promise<GoogleSearchConsoleIntegration[]>
+
+    /**
      * Gets all GitHub integrations for the current user
      */
     getGithubIntegrations(): Promise<GithubIntegration[]>
@@ -238,6 +247,21 @@ interface BackendService {
     getAttioIntegrations(): Promise<AttioIntegration[]>
 
     /**
+     * Gets all Meta Ads integrations for the current user
+     */
+    getMetaAdsIntegrations(): Promise<MetaAdsIntegration[]>
+
+    /**
+     * Gets the ad accounts a Meta Ads connection can reach
+     */
+    getMetaAdsAdAccounts(integrationId: string): Promise<MetaAdsAdAccount[]>
+
+    /**
+     * Gets the Facebook Pages a Meta Ads connection can publish as
+     */
+    getMetaAdsPages(integrationId: string): Promise<MetaAdsPage[]>
+
+    /**
      * Gets available Attio objects for a specific integration
      */
     getAttioObjects(integrationId: string): Promise<AttioObjectWithAttributes[]>
@@ -292,6 +316,8 @@ interface BackendService {
      */
     createOrUpdateHeyReachIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
 
+    getHiggsfieldIntegrations(): Promise<HiggsfieldIntegration[]>
+    createOrUpdateHiggsfieldIntegration(credentials: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
     getResendIntegrations(): Promise<ResendIntegration[]>
     createOrUpdateResendIntegration(apiKey: string, stateToken?: string): Promise<{ success: boolean; integrationId: string }>
 
@@ -694,6 +720,10 @@ export const BackendProvider: BackendService = {
         return axios.get<GmailIntegration[]>(`${backendBaseUrl}${ApiRoutes.GMAIL.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
 
+    getGoogleSearchConsoleIntegrations: () => {
+        return axios.get<GoogleSearchConsoleIntegration[]>(`${backendBaseUrl}${ApiRoutes.GOOGLE_SEARCH_CONSOLE.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
     getGithubIntegrations: () => {
         return axios.get<GithubIntegration[]>(`${backendBaseUrl}${ApiRoutes.GITHUB.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
     },
@@ -726,6 +756,20 @@ export const BackendProvider: BackendService = {
 
     getAttioIntegrations: () => {
         return axios.get<AttioIntegration[]>(`${backendBaseUrl}${ApiRoutes.ATTIO.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getMetaAdsIntegrations: () => {
+        return axios.get<MetaAdsIntegration[]>(`${backendBaseUrl}${ApiRoutes.META_ADS.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getMetaAdsAdAccounts: (integrationId: string) => {
+        const url = buildRoute(ApiRoutes.META_ADS.AD_ACCOUNTS, { integrationId })
+        return axios.get<MetaAdsAdAccount[]>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    getMetaAdsPages: (integrationId: string) => {
+        const url = buildRoute(ApiRoutes.META_ADS.PAGES, { integrationId })
+        return axios.get<MetaAdsPage[]>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
     },
 
     getAttioObjects: (integrationId: string) => {
@@ -836,6 +880,16 @@ export const BackendProvider: BackendService = {
             body.state = stateToken
         }
         return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.HEY_REACH.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
+    },
+
+    getHiggsfieldIntegrations: () => {
+        return axios.get<HiggsfieldIntegration[]>(`${backendBaseUrl}${ApiRoutes.HIGGSFIELD.INTEGRATIONS}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    createOrUpdateHiggsfieldIntegration: (credentials: string, stateToken?: string) => {
+        const body: Record<string, string> = { credentials }
+        if (stateToken) body.state = stateToken
+        return axios.post<{ success: boolean; integrationId: string }>(`${backendBaseUrl}${ApiRoutes.HIGGSFIELD.INTEGRATIONS}`, body, { withCredentials: true }).then(response => response.data)
     },
 
     getResendIntegrations: () => {

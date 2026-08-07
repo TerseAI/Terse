@@ -1030,7 +1030,179 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             if (total !== undefined) return `Found ${total} job posting${total !== 1 ? "s" : ""}`
             return "Job postings loaded"
         }
+    },
+    // Meta Ads Tools
+    // ===================
+    meta_ads_list_ad_accounts: {
+        preparing: "Loading ad accounts",
+        executing: () => "Loading ad accounts",
+        complete: (_params, result) => metaAdsCountLabel(result, "ad account", "Ad accounts loaded")
+    },
+    meta_ads_list_campaigns: {
+        preparing: "Loading campaigns",
+        executing: () => "Loading campaigns",
+        complete: (_params, result) => metaAdsCountLabel(result, "campaign", "Campaigns loaded")
+    },
+    meta_ads_list_adsets: {
+        preparing: "Loading ad sets",
+        executing: () => "Loading ad sets",
+        complete: (_params, result) => metaAdsCountLabel(result, "ad set", "Ad sets loaded")
+    },
+    meta_ads_read_insights: {
+        preparing: "Loading ad performance",
+        executing: () => "Loading Meta Ads insights",
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            return count !== undefined ? `Loaded ${count} insight row${count !== 1 ? "s" : ""}` : "Insights loaded"
+        }
+    },
+    meta_ads_list_pixels: {
+        preparing: "Loading pixels",
+        executing: () => "Loading Meta pixels",
+        complete: (_params, result) => metaAdsCountLabel(result, "pixel", "Pixels loaded")
+    },
+    meta_ads_list_audiences: {
+        preparing: "Loading custom audiences",
+        executing: () => "Loading custom audiences",
+        complete: (_params, result) => metaAdsCountLabel(result, "audience", "Audiences loaded")
+    },
+    meta_ads_add_audience_users: {
+        preparing: "Getting audience update ready",
+        executing: params => metaAdsAudienceUsersLabel(params, "Adding"),
+        complete: params => metaAdsAudienceUsersLabel(params, "Added"),
+        approval: params => `${metaAdsAudienceUsersLabel(params, "Add")} to this custom audience?`
+    },
+    meta_ads_remove_audience_users: {
+        preparing: "Getting audience update ready",
+        executing: params => metaAdsAudienceUsersLabel(params, "Removing"),
+        complete: params => metaAdsAudienceUsersLabel(params, "Removed"),
+        approval: params => `${metaAdsAudienceUsersLabel(params, "Remove")} from this custom audience?`
+    },
+    meta_ads_send_conversions: {
+        preparing: "Getting conversion events ready",
+        executing: params => {
+            const count = metaAdsEventCount(params)
+            return count !== undefined ? `Sending ${count} conversion event${count !== 1 ? "s" : ""}` : "Sending conversion events"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const received = parsed?.eventsReceived as number | undefined
+            return received !== undefined ? `Meta received ${received} event${received !== 1 ? "s" : ""}` : "Conversion events sent"
+        },
+        approval: params => {
+            const count = metaAdsEventCount(params) ?? 0
+            return `Send ${count} conversion event${count !== 1 ? "s" : ""} to Meta?`
+        }
+    },
+    higgsfield_generate_image: {
+        preparing: "Getting image generation ready",
+        executing: params => {
+            const batchSize = params?.batchSize as number | undefined
+            return batchSize && batchSize > 1 ? `Generating ${batchSize} creative variants` : "Generating creative"
+        },
+        complete: (_params, result) => {
+            const parsed = safeParseResult(result)
+            const count = parsed?.count as number | undefined
+            return count !== undefined ? `Generated ${count} image${count !== 1 ? "s" : ""}` : "Image generation complete"
+        },
+        approval: params => {
+            const prompt = params?.prompt as string | undefined
+            return prompt ? `Generate creative for "${truncate(prompt)}" via Higgsfield (uses credits)?` : "Generate creative via Higgsfield (uses credits)?"
+        }
+    },
+    meta_ads_list_pages: {
+        preparing: "Loading Facebook Pages",
+        executing: () => "Loading Facebook Pages",
+        complete: (_params, result) => metaAdsCountLabel(result, "Page", "Pages loaded")
+    },
+    meta_ads_list_ads: {
+        preparing: "Loading ads and creatives",
+        executing: () => "Loading ads",
+        complete: (_params, result) => metaAdsCountLabel(result, "ad", "Ads loaded")
+    },
+    higgsfield_generate_video: {
+        preparing: "Getting video generation ready",
+        executing: () => "Animating creative into video",
+        complete: (_params, result) => {
+            const count = safeParseResult(result)?.count as number | undefined
+            return count !== undefined ? `Generated ${count} video${count !== 1 ? "s" : ""}` : "Video generation complete"
+        },
+        approval: params => {
+            const prompt = params?.prompt as string | undefined
+            return prompt ? `Animate this image with "${truncate(prompt)}" via Higgsfield (uses credits)?` : "Animate this image via Higgsfield (uses credits)?"
+        }
+    },
+    higgsfield_list_motions: {
+        preparing: "Loading motion presets",
+        executing: () => "Loading Higgsfield motions",
+        complete: (_params, result) => metaAdsCountLabel(result, "motion", "Motions loaded")
+    },
+    meta_ads_create_ad: {
+        preparing: "Getting the new ad ready",
+        executing: params => {
+            const name = params?.name as string | undefined
+            const format = metaAdsCreativeFormat(params)
+            const label = name ? `Creating ${format} ad ${truncate(name)}` : `Creating ${format} ad`
+            return label
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const adId = parsed?.adId as string | undefined
+            const name = params?.name as string | undefined
+            if (name) return `Created ad ${truncate(name)}`
+            return adId ? `Created ad ${adId}` : "Ad created"
+        },
+        approval: params => {
+            const name = params?.name as string | undefined
+            const label = name ? truncate(name) : "a new ad"
+            return `Create ${metaAdsCreativeFormat(params)} ad ${label} in this ad set${params?.status === "ACTIVE" ? " and start delivery" : " (paused)"}?`
+        }
+    },
+    meta_ads_set_status: {
+        preparing: "Getting the status change ready",
+        executing: params => `${metaAdsStatusVerb(params, "ing")} ${(params?.entityType as string | undefined) ?? "entity"}`,
+        complete: params => `${metaAdsStatusVerb(params, "ed")} ${(params?.entityType as string | undefined) ?? "entity"}`,
+        approval: params => {
+            const entityId = params?.entityId as string | undefined
+            return `${metaAdsStatusVerb(params, "")} ${(params?.entityType as string | undefined) ?? "entity"} ${entityId ?? ""}?`.replace(/\s+\?$/, "?")
+        }
     }
+}
+
+function metaAdsCreativeFormat(params: Record<string, unknown> | undefined): string {
+    const format = (params?.creative as { format?: string } | undefined)?.format
+    switch (format) {
+        case "single_video":
+            return "video"
+        case "carousel":
+            return "carousel"
+        case "dynamic_image":
+        case "dynamic_video":
+        case "dynamic_mixed":
+            return "dynamic"
+        default:
+            return "image"
+    }
+}
+
+function metaAdsCountLabel(result: string | undefined, noun: string, fallback: string): string {
+    const count = safeParseResult(result)?.count as number | undefined
+    return count !== undefined ? `Found ${count} ${noun}${count !== 1 ? "s" : ""}` : fallback
+}
+
+function metaAdsAudienceUsersLabel(params: Record<string, unknown> | undefined, verb: string): string {
+    const count = (params?.users as unknown[] | undefined)?.length
+    return count !== undefined ? `${verb} ${count} user${count !== 1 ? "s" : ""}` : `${verb} audience users`
+}
+
+function metaAdsEventCount(params: Record<string, unknown> | undefined): number | undefined {
+    return (params?.events as unknown[] | undefined)?.length
+}
+
+function metaAdsStatusVerb(params: Record<string, unknown> | undefined, suffix: "ing" | "ed" | ""): string {
+    if (params?.status === "PAUSED") return suffix === "ing" ? "Pausing" : suffix === "ed" ? "Paused" : "Pause"
+    return suffix === "ing" ? "Resuming" : suffix === "ed" ? "Resumed" : "Resume"
 }
 
 /**

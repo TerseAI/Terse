@@ -81,6 +81,14 @@ export function AttioIcon() {
     return <img src="/Attio.svg" alt="Attio" className="w-full h-full object-contain dark:invert" />
 }
 
+export function HiggsfieldIcon() {
+    return <img src="/higgsfieldIcon.png" alt="Higgsfield" className="w-full h-full object-contain" />
+}
+
+export function MetaAdsIcon() {
+    return <img src="/metaLogo.png" alt="Meta Ads" className="w-full h-full object-contain" />
+}
+
 export function SnowflakeIcon() {
     return <img src="/snowflake.png" alt="Snowflake" className="w-full h-full object-contain" />
 }
@@ -114,4 +122,8 @@ export function ResendIcon() {
 
 export function ApolloIcon() {
     return <img src="/apollo.jpeg" alt="Apollo" className="w-full h-full object-contain" />
+}
+
+export function GoogleSearchConsoleIcon() {
+    return <img src="/googleSearchConsoleLogo.png" alt="Google Search Console" className="w-full h-full object-contain" />
 }

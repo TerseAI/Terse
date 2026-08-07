@@ -55,12 +55,25 @@ The API token list in the app shows **user** tokens only. Short-lived project to
 
 ## Trigger payloads
 
-Trigger types exported from `./terse.generated` extend the canonical trigger object with two methods used everywhere Terse turns an event into prompts or logging:
+Trigger types exported from `./terse.generated` extend the canonical trigger object with the trigger time plus two methods used everywhere Terse turns an event into prompts or logging:
 
+- `triggeredAt` is a `Date`: the moment Terse received the trigger. See [trigger time](#trigger-time).
 - `formatForAgentRunner()` returns a string to include in agent prompts (matches how the platform formats the event for the model)
 - `debugLog()` returns a one-line description for logs and CLI sample lists
 
 Your `onTrigger` and `filter` callbacks receive these enriched objects, so you can call `event.formatForAgentRunner()` directly. For plain `Trigger` values (for example in tests), use `formatTriggerForAgent(event)` and `debugTrigger(event)` from `terse-sdk`.
+
+### Trigger time
+
+`event.triggeredAt` is stamped once when the trigger arrives, so it reads the same after queue delay, retries, and durable replays. Anchor date math to it rather than `Date.now()` or `new Date()`, which drift.
+
+```typescript
+const DAY_MS = 24 * 60 * 60 * 1000
+const end = new Date(event.triggeredAt.getTime() - 3 * DAY_MS)
+const start = new Date(end.getTime() - 6 * DAY_MS)
+```
+
+To test window logic against a fixed date, add a top-level `triggeredAt` ISO 8601 timestamp to an event fixture passed to `terse test`.
 
 ## `createJob(...)`
 
@@ -362,6 +375,7 @@ Posts an interactive input request and suspends until a human responds. Returns 
 | `via`     | `InputTarget`            | Where to deliver the prompt. Use `slack({ channel })` with a channel id.                 |
 | `prompt`  | `string`                 | The question shown to the respondent.                                                    |
 | `details` | `Record<string, string>` | Optional key/value pairs rendered alongside the prompt.                                  |
+| `media`   | `InputMedia[]`           | Optional attachments, max 10. Each is `{ kind: "image" \| "video", url, altText? }`; URLs must be reachable without Terse auth. |
 | `options` | `InputOption[]`          | Action buttons. Each has `id`, `label`, optional `description`, and optional `freeText`. |
 
 `result.choice` is typed to the union of your option ids. See [Durability — Waiting for human input](/core-concepts/durability#waiting-for-human-input).

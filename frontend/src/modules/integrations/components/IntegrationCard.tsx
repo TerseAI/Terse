@@ -8,9 +8,12 @@ import AttioIntegrationCard from "./AttioIntegrationCard"
 import DatadogIntegrationCard from "./DatadogIntegrationCard"
 import GithubIntegrationCard from "./GithubIntegrationCard"
 import GmailIntegrationCard from "./GmailIntegrationCard"
+import GoogleSearchConsoleIntegrationCard from "./GoogleSearchConsoleIntegrationCard"
 import HeyReachIntegrationCard from "./HeyReachIntegrationCard"
+import HiggsfieldIntegrationCard from "./HiggsfieldIntegrationCard"
 import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard"
 import LinearIntegrationCard from "./LinearIntegrationCard"
+import MetaAdsIntegrationCard from "./MetaAdsIntegrationCard"
 import NotionIntegrationCard from "./NotionIntegrationCard"
 import PosthogIntegrationCard from "./PosthogIntegrationCard"
 import ResendIntegrationCard from "./ResendIntegrationCard"
@@ -32,6 +35,8 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <GithubIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.GMAIL:
             return <GmailIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.GOOGLE_SEARCH_CONSOLE:
+            return <GoogleSearchConsoleIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.TERSE:
         case IntegrationType.CRON_JOB:
             return null
@@ -53,6 +58,10 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
             return <ResendIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.APOLLO:
             return <ApolloIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.HIGGSFIELD:
+            return <HiggsfieldIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
+        case IntegrationType.META_ADS:
+            return <MetaAdsIntegrationCard className={cardClassName} isActive={isActive} stateToken={stateToken} compact={compact} />
         case IntegrationType.WEBHOOK:
         case IntegrationType.WEBMONITOR:
             return null

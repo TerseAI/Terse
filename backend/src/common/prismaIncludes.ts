@@ -28,6 +28,9 @@ export function getOutputConfigInclude() {
         attio_config: true,
         snowflake_config: true,
         resend_config: true,
-        apollo_config: true
+        apollo_config: true,
+        google_search_console_config: true,
+        meta_ads_config: true,
+        higgsfield_config: true
     } as const
 }

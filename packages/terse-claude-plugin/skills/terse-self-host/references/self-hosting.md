@@ -78,6 +78,9 @@ Do not `grep` the backend source to "find which vars unlock it" — the table be
 | Linear | `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET_ID`, `LINEAR_OAUTH_CALLBACK_URL`, `LINEAR_WEBHOOK_SIGNING_SECRET` | — |
 | Notion | `NOTION_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_SECRET`, `NOTION_OAUTH_REDIRECT_URI` | — |
 | Attio | `ATTIO_CLIENT_ID`, `ATTIO_CLIENT_SECRET`, `ATTIO_REDIRECT_URI` | — |
+| Meta Ads | `META_ADS_CLIENT_ID`, `META_ADS_CLIENT_SECRET`, `META_ADS_REDIRECT_URI`, `META_ADS_CONFIG_ID` | — |
+| Google Search Console | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GOOGLE_SEARCH_CONSOLE_REDIRECT_URI` | — |
+| Higgsfield | none (per-organization API key pasted in the console) | — |
 | Web monitors (Parallel) | `PARALLEL_API_KEY`, `PARALLEL_WEBHOOK_SECRET` | — |
 
 

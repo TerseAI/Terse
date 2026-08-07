@@ -90,6 +90,9 @@ OAuth integrations are gated by env vars. Every required var below must be set a
 | Linear | `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET_ID`, `LINEAR_OAUTH_CALLBACK_URL`, `LINEAR_WEBHOOK_SIGNING_SECRET` | — |
 | Notion | `NOTION_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_SECRET`, `NOTION_OAUTH_REDIRECT_URI` | — |
 | Attio | `ATTIO_CLIENT_ID`, `ATTIO_CLIENT_SECRET`, `ATTIO_REDIRECT_URI` | — |
+| Meta Ads | `META_ADS_CLIENT_ID`, `META_ADS_CLIENT_SECRET`, `META_ADS_REDIRECT_URI`, `META_ADS_CONFIG_ID` | — |
+| Google Search Console | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GOOGLE_SEARCH_CONSOLE_REDIRECT_URI` | — |
+| Higgsfield | none (per-organization API key pasted in the console) | — |
 | Web monitors (Parallel) | `PARALLEL_API_KEY`, `PARALLEL_WEBHOOK_SECRET` | — |
 
 Callback URLs must be reachable from the browser. For a default local install: `http://localhost:3001/<provider>/callback` on the backend side, `http://localhost:5173/` (or your `FRONTEND_URL`) on the frontend side. If the OAuth provider rejects `localhost` (Google does for several Gmail scopes, Slack does for distributed apps), expose the backend through a tunnel (ngrok, Cloudflare Tunnel) and point the callback URLs at the public hostname.

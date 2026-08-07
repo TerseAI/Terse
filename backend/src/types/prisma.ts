@@ -6,6 +6,7 @@ import type {
     automation_prompts,
     automations,
     gmail_integrations,
+    google_search_console_integrations,
     project_deploys,
     user_notification_destinations,
     user_notification_settings,
@@ -22,6 +23,7 @@ export type UserSlackIntegrationWithSlack = Prisma.user_slack_integrationsGetPay
 }>
 
 export type GmailIntegration = gmail_integrations
+export type GoogleSearchConsoleIntegration = google_search_console_integrations
 
 export type Agent = automations // Alias for rebranding (formerly Channel)
 
@@ -69,6 +71,9 @@ type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
         snowflake_config: true
         resend_config: true
         apollo_config: true
+        google_search_console_config: true
+        meta_ads_config: true
+        higgsfield_config: true
     }
 }>
 export type AgentOutputWithConfigs = AutomationOutputWithConfigs // Alias for rebranding (formerly ChannelOutputWithConfigs)
@@ -111,6 +116,9 @@ type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
                 snowflake_config: true
                 resend_config: true
                 apollo_config: true
+                google_search_console_config: true
+                meta_ads_config: true
+                higgsfield_config: true
             }
         }
     }

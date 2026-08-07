@@ -113,6 +113,19 @@ model processed_gmail_messages {
   @@index([processed_at])
 }
 
+model google_search_console_integrations {
+  id                String   @id @default(cuid())
+  user_id           String
+  organization_id   String
+  email             String
+  google_account_id String
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([organization_id, google_account_id])
+}
+
 model processed_slack_events {
   id                   String   @id @default(cuid())
   slack_integration_id String
@@ -164,6 +177,28 @@ model hey_reach_integrations {
 
 model resend_integrations {
   id              String   @id @default(cuid())
+  organization_id String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([organization_id])
+}
+
+model meta_ads_integrations {
+  id              String   @id @default(cuid())
+  user_id         String
+  organization_id String
+  account_name    String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([organization_id])
+}
+
+model higgsfield_integrations {
+  id              String   @id @default(cuid())
+  user_id         String
   organization_id String
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -443,6 +478,10 @@ model automation_outputs {
   snowflake_config     automation_snowflake_configs?
   resend_config        automation_resend_output_configs?
   apollo_config        automation_apollo_output_configs?
+  meta_ads_config      automation_meta_ads_configs?
+  higgsfield_config    automation_higgsfield_configs?
+
+  google_search_console_config automation_google_search_console_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -597,6 +636,19 @@ model automation_gmail_configs {
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
+// Google Search Console Configuration
+model automation_google_search_console_configs {
+  id                   String @id @default(cuid())
+  automation_output_id String @unique // FK to automation_outputs (unique constraint)
+
+  site_urls String[] @default([]) // Allowed Search Console properties, URL-prefix or sc-domain form
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+}
+
 // Attio Configuration
 model automation_attio_configs {
   id                   String  @id @default(cuid())
@@ -725,6 +777,26 @@ model automation_apollo_output_configs {
   automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
+model automation_higgsfield_configs {
+  id                   String   @id @default(cuid())
+  automation_output_id String   @unique
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+}
+
+model automation_meta_ads_configs {
+  id                   String   @id @default(cuid())
+  automation_output_id String   @unique
+  ad_account_id        String?
+  page_id              String?
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  automation_output automation_outputs @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+}
+
 // GitHub Event Types
 enum GitHubEventType {
   PUSH
@@ -755,6 +827,9 @@ enum IntegrationType {
   HEY_REACH
   RESEND
   APOLLO
+  GOOGLE_SEARCH_CONSOLE
+  META_ADS
+  HIGGSFIELD
 }
 
 enum InputConfigType {
@@ -791,6 +866,9 @@ enum OutputConfigType {
   SNOWFLAKE
   RESEND
   APOLLO
+  GOOGLE_SEARCH_CONSOLE
+  META_ADS
+  HIGGSFIELD
 }
 
 enum KnowledgeBaseConfigType {
