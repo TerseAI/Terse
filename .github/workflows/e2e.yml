@@ -32,9 +32,14 @@ jobs:
               env:
                   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
                   PR_NUMBER: ${{ github.event.pull_request.number }}
+                  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
                   SERVICE_DISPLAY_NAME: Terse
                   TIMEOUT_SECONDS: "900" # 15 min; job-level safety net is 20 min
                   POLL_SECONDS: "15"
+                  # A deploy for an older commit may still be the newest one Render knows about when
+                  # this job starts. Ignore terminal statuses on those until the grace period is up,
+                  # so a previous run's failure can't fail this run before our deploy even exists.
+                  STALE_GRACE_SECONDS: "180"
               run: |
                   set -euo pipefail
 
@@ -45,12 +50,12 @@ jobs:
 
                   preview_name="${SERVICE_DISPLAY_NAME} PR #${PR_NUMBER}"
                   start=$(date +%s)
-                  echo "Waiting for Render preview service '${preview_name}' to reach status=live..."
+                  echo "Waiting for Render preview service '${preview_name}' to deploy ${HEAD_SHA} and reach status=live..."
 
                   while :; do
                       elapsed=$(( $(date +%s) - start ))
                       if (( elapsed > TIMEOUT_SECONDS )); then
-                          echo "::error::Timed out after ${elapsed}s waiting for '${preview_name}' to deploy"
+                          echo "::error::Timed out after ${elapsed}s waiting for '${preview_name}' to deploy ${HEAD_SHA}"
                           exit 1
                       fi
 
@@ -71,27 +76,43 @@ jobs:
                           continue
                       fi
 
-                      # Check the latest deploy's status.
                       deploys=$(curl -sS -G \
-                          --data-urlencode "limit=1" \
+                          --data-urlencode "limit=20" \
                           -H "Authorization: Bearer ${RENDER_API_KEY}" \
                           -H "Accept: application/json" \
                           "https://api.render.com/v1/services/${service_id}/deploys")
 
-                      status=$(echo "$deploys" | jq -r '.[0].deploy.status // empty')
+                      # Prefer the deploy built from this run's commit; only fall back to the newest
+                      # deploy once the grace period has passed, and never let a stale failure decide.
+                      deploy=$(echo "$deploys" | jq -c --arg sha "$HEAD_SHA" 'map(.deploy) | map(select(.commit.id == $sha)) | .[0] // empty')
+                      matched_sha=true
+                      if [[ -z "$deploy" ]]; then
+                          matched_sha=false
+                          deploy=$(echo "$deploys" | jq -c 'map(.deploy) | .[0] // empty')
+                      fi
+
+                      status=$(echo "${deploy:-}" | jq -r '.status // empty')
+                      deploy_id=$(echo "${deploy:-}" | jq -r '.id // empty')
+                      deploy_sha=$(echo "${deploy:-}" | jq -r '.commit.id // "unknown"')
+
+                      if [[ "$matched_sha" == "false" ]] && (( elapsed < STALE_GRACE_SECONDS )); then
+                          echo "[${elapsed}s] No deploy for ${HEAD_SHA} yet (newest is ${deploy_sha:0:8}, status=${status:-unknown}), sleeping ${POLL_SECONDS}s..."
+                          sleep "$POLL_SECONDS"
+                          continue
+                      fi
 
                       case "$status" in
                           live)
-                              echo "Preview is live at ${service_url}"
+                              echo "Preview is live at ${service_url} (deploy ${deploy_id}, commit ${deploy_sha:0:8})"
                               echo "backend_url=${service_url}" >> "$GITHUB_OUTPUT"
                               exit 0
                               ;;
                           build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
-                              echo "::error::Preview deploy ended with status=${status}"
+                              echo "::error::Preview deploy ${deploy_id} (commit ${deploy_sha:0:8}) ended with status=${status}. Logs: https://dashboard.render.com/web/${service_id}/deploys/${deploy_id}"
                               exit 1
                               ;;
                           *)
-                              echo "[${elapsed}s] status=${status:-unknown}, sleeping ${POLL_SECONDS}s..."
+                              echo "[${elapsed}s] deploy ${deploy_id} (commit ${deploy_sha:0:8}) status=${status:-unknown}, sleeping ${POLL_SECONDS}s..."
                               sleep "$POLL_SECONDS"
                               ;;
                       esac
