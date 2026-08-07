@@ -375,6 +375,7 @@ Posts an interactive input request and suspends until a human responds. Returns 
 | `via`     | `InputTarget`            | Where to deliver the prompt. Use `slack({ channel })` with a channel id.                 |
 | `prompt`  | `string`                 | The question shown to the respondent.                                                    |
 | `details` | `Record<string, string>` | Optional key/value pairs rendered alongside the prompt.                                  |
+| `media`   | `InputMedia[]`           | Optional attachments, max 10. Each is `{ kind: "image" \| "video", url, altText? }`; URLs must be reachable without Terse auth. |
 | `options` | `InputOption[]`          | Action buttons. Each has `id`, `label`, optional `description`, and optional `freeText`. |
 
 `result.choice` is typed to the union of your option ids. See [Durability — Waiting for human input](/core-concepts/durability#waiting-for-human-input).

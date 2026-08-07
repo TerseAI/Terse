@@ -265,8 +265,10 @@ export function hashEmail(email: string): string {
     return sha256(email.trim().toLowerCase())
 }
 
+// Meta matches on country code with no leading zeros, so a trunk prefix like 0044 or
+// a national leading 0 has to go before hashing or the number silently fails to match.
 export function hashPhone(phone: string): string {
-    return sha256(phone.replace(/[^0-9]/g, ""))
+    return sha256(phone.replace(/[^0-9]/g, "").replace(/^0+/, ""))
 }
 
 function sha256(value: string): string {

@@ -44,6 +44,9 @@ function toGraphEvent(event: MetaAdsConversionEvent): Record<string, unknown> {
     if (event.value !== null && event.value !== undefined && !event.currency) {
         throw new Error(`Event "${event.eventName}" sets a value but no currency; currency is required when value is set.`)
     }
+    if (event.actionSource === "website" && !event.eventSourceUrl) {
+        throw new Error(`Event "${event.eventName}" has actionSource "website" but no eventSourceUrl; Meta requires it for website events.`)
+    }
 
     return {
         event_name: event.eventName,

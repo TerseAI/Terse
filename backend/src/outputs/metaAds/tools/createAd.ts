@@ -67,9 +67,7 @@ async function uploadCreativeMedia(client: MetaAdsClient, input: MetaAdsCreateAd
         case "single_video":
             return { videoIds: [await uploadMetaAdsVideo(client, adAccountId, creative.videoUrl)], imageHashes: [] }
         case "carousel": {
-            if (creative.cards.length < 2 || creative.cards.length > 10) {
-                throw new Error(`A carousel needs between 2 and 10 cards; got ${creative.cards.length}.`)
-            }
+            assertCarouselCardBudget(creative.cards.length, !!creative.optimizeCardOrder)
             const cardVideoIds = await Promise.all(creative.cards.map(card => (card.media === "video" ? uploadMetaAdsVideo(client, adAccountId, card.videoUrl) : Promise.resolve(null))))
             return { videoIds: cardVideoIds.filter((id): id is string => !!id), imageHashes: [], cardVideoIds }
         }
@@ -126,7 +124,7 @@ function buildFormatParams(input: MetaAdsCreateAdInput, media: UploadedMedia): R
                         ...(creative.thumbnailUrl ? { image_url: creative.thumbnailUrl } : {}),
                         ...(creative.headline ? { title: creative.headline } : {}),
                         ...(creative.description ? { link_description: creative.description } : {}),
-                        ...callToAction(input)
+                        ...videoCallToAction(input)
                     }
                 }
             }
@@ -155,6 +153,16 @@ function buildFormatParams(input: MetaAdsCreateAdInput, media: UploadedMedia): R
     }
 }
 
+// Meta allows more than 5 cards only when it is free to reorder them.
+function assertCarouselCardBudget(cardCount: number, optimizeCardOrder: boolean): void {
+    const maxCards = optimizeCardOrder ? MAX_OPTIMIZED_CAROUSEL_CARDS : MAX_CAROUSEL_CARDS
+    if (cardCount < MIN_CAROUSEL_CARDS || cardCount > maxCards) {
+        throw new Error(
+            `A carousel needs between ${MIN_CAROUSEL_CARDS} and ${maxCards} cards; got ${cardCount}.${optimizeCardOrder ? "" : ` Set optimizeCardOrder to allow up to ${MAX_OPTIMIZED_CAROUSEL_CARDS}.`}`
+        )
+    }
+}
+
 /**
  * Meta caps an asset feed at 30 assets in total, counting the ad_format and the
  * single link_url alongside the media and text variants.
@@ -166,9 +174,11 @@ function assertDynamicAssetBudget(creative: MetaAdsDynamicCreative, mediaCount: 
     }
 }
 
+// AdCreative has no top-level page_id, so the Page actor rides in object_story_spec
+// even for dynamic creative, alongside rather than instead of asset_feed_spec.
 function buildAssetFeedParams(input: MetaAdsCreateAdInput, creative: MetaAdsDynamicCreative, media: UploadedMedia, adFormat: string): Record<string, unknown> {
     return {
-        ...pageActors(input),
+        object_story_spec: pageActors(input),
         asset_feed_spec: {
             ...(media.imageHashes.length ? { images: media.imageHashes.map(hash => ({ hash })) } : {}),
             ...(media.videoIds.length ? { videos: media.videoIds.map(video_id => ({ video_id })) } : {}),
@@ -204,7 +214,7 @@ function buildChildAttachment(card: MetaAdsCarouselCard, index: number, input: M
 function pageActors(input: MetaAdsCreateAdInput): Record<string, unknown> {
     return {
         page_id: input.pageId,
-        ...(input.instagramActorId ? { instagram_actor_id: input.instagramActorId } : {})
+        ...(input.instagramUserId ? { instagram_user_id: input.instagramUserId } : {})
     }
 }
 
@@ -217,6 +227,15 @@ function callToAction(input: MetaAdsCreateAdInput): Record<string, unknown> {
     return { call_to_action: { type: input.callToAction, value: { link: input.linkUrl } } }
 }
 
+// video_data has no `link` of its own, so the call_to_action is the only carrier for
+// the destination. NO_BUTTON keeps Meta's chrome unchanged while still routing clicks.
+function videoCallToAction(input: MetaAdsCreateAdInput): Record<string, unknown> {
+    return { call_to_action: { type: input.callToAction ?? "NO_BUTTON", value: { link: input.linkUrl } } }
+}
+
+const MIN_CAROUSEL_CARDS = 2
+const MAX_CAROUSEL_CARDS = 5
+const MAX_OPTIMIZED_CAROUSEL_CARDS = 10
 const MAX_ASSET_FEED_ASSETS = 30
 // The ad_format and the single link_url each count against the asset budget.
 const LINK_URL_AND_FORMAT_ASSETS = 2

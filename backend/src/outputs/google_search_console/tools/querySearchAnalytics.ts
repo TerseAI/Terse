@@ -51,7 +51,7 @@ function buildRequestBody(input: QueryInput, dimensions: readonly Dimension[]): 
         ...(input.type ? { type: input.type } : {}),
         ...(input.aggregationType ? { aggregationType: input.aggregationType } : {}),
         ...(input.rowLimit ? { rowLimit: input.rowLimit } : {}),
-        ...(input.startRow ? { startRow: input.startRow } : {}),
+        ...(input.startRow != null ? { startRow: input.startRow } : {}),
         ...(input.dataState ? { dataState: input.dataState } : {})
     }
 }

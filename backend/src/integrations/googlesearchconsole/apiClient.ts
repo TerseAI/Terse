@@ -1,7 +1,8 @@
 import { searchconsole, searchconsole_v1 } from "@googleapis/searchconsole"
 import { OAuth2Client } from "google-auth-library"
-import { GoogleSearchConsoleSite } from "terse-types"
+import { GoogleSearchConsoleSite, googleSearchConsolePermissionLevelSchema } from "terse-types"
 
+import logger from "../../common/logger"
 import { db } from "../../loaders/prisma"
 
 import { GoogleSearchConsoleIntegrationManager } from "./integration"
@@ -37,14 +38,12 @@ export async function listSearchConsoleSites(client: SearchConsoleClient): Promi
 }
 
 export function toPermissionLevel(permissionLevel: string | null | undefined): GoogleSearchConsoleSite["permissionLevel"] {
-    switch (permissionLevel) {
-        case "siteFullUser":
-        case "siteOwner":
-        case "siteRestrictedUser":
-            return permissionLevel
-        default:
-            return "siteUnverifiedUser"
+    const parsed = googleSearchConsolePermissionLevelSchema.safeParse(permissionLevel)
+    if (parsed.success) {
+        return parsed.data
     }
+    logger.warn("Unrecognized Google Search Console permission level, treating the property as unverified", { permissionLevel })
+    return "siteUnverifiedUser"
 }
 
 export type SearchConsoleClient = searchconsole_v1.Searchconsole

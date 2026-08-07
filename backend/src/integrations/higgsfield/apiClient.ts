@@ -6,10 +6,13 @@ const DEFAULT_VIDEO_MODEL: HiggsfieldVideoModel = "dop-turbo"
 const SOUL_TEXT_TO_IMAGE_ENDPOINT = "/v1/text2image/soul"
 const DOP_IMAGE_TO_VIDEO_ENDPOINT = "/v1/image2video/dop"
 
+// The SDK defaults to a 5 minute poll ceiling, which dop-standard routinely exceeds.
+const MAX_POLL_TIME_MS = 20 * 60 * 1000
+
 // Higgsfield authenticates with a "KEY_ID:KEY_SECRET" pair; the SDK takes them split.
 export function createHiggsfieldClient(credentials: string): HiggsfieldClient {
     const [apiKey, apiSecret] = splitCredentials(credentials)
-    return new HiggsfieldClient({ apiKey, apiSecret })
+    return new HiggsfieldClient({ apiKey, apiSecret, maxPollTime: MAX_POLL_TIME_MS })
 }
 
 export function splitCredentials(credentials: string): [string, string] {
@@ -34,7 +37,7 @@ export async function generateHiggsfieldImages(credentials: string, request: Hig
         quality: request.quality ?? "1080p",
         batch_size: request.batchSize ?? 1,
         ...(request.styleId ? { style_id: request.styleId } : {}),
-        ...(request.referenceImageUrls?.length ? { reference_image_urls: request.referenceImageUrls } : {})
+        ...(request.referenceImageUrl ? { image_reference: { type: "image_url" as const, image_url: request.referenceImageUrl } } : {})
     })
 
     return collectResults(jobSet, "image")
@@ -64,22 +67,26 @@ export async function listHiggsfieldMotions(credentials: string): Promise<Higgsf
     }))
 }
 
+// isNsfw/isFailed are true when *any* job in the set is, so harvest the survivors before giving up.
 function collectResults(jobSet: JobSetLike, what: string): HiggsfieldGenerationResult[] {
-    if (jobSet.isNsfw) {
-        throw new HiggsfieldGenerationError("Higgsfield rejected the prompt as NSFW. Rephrase it and try again.")
-    }
-    if (jobSet.isFailed || jobSet.isCanceled) {
-        throw new HiggsfieldGenerationError(`Higgsfield failed to generate the ${what}.`)
-    }
-
     const results = jobSet.jobs
         .filter(job => job.status === JobStatus.COMPLETED)
         .flatMap(job => (job.results?.raw?.url ? [{ jobId: job.id, url: job.results.raw.url, thumbnailUrl: job.results.min?.url ?? null }] : []))
 
     if (results.length === 0) {
-        throw new HiggsfieldGenerationError(`Higgsfield returned no ${what} for this prompt.`)
+        throw emptyResultError(jobSet, what)
     }
     return results
+}
+
+function emptyResultError(jobSet: JobSetLike, what: string): HiggsfieldGenerationError {
+    if (jobSet.isNsfw) {
+        return new HiggsfieldGenerationError("Higgsfield rejected the prompt as NSFW. Rephrase it and try again.")
+    }
+    if (jobSet.isFailed || jobSet.isCanceled) {
+        return new HiggsfieldGenerationError(`Higgsfield failed to generate the ${what}.`)
+    }
+    return new HiggsfieldGenerationError(`Higgsfield returned no ${what} for this prompt.`)
 }
 
 export class HiggsfieldCredentialsError extends Error {
@@ -102,7 +109,7 @@ export interface HiggsfieldGenerationRequest {
     readonly quality?: "720p" | "1080p" | null
     readonly batchSize?: 1 | 4 | null
     readonly styleId?: string | null
-    readonly referenceImageUrls?: string[] | null
+    readonly referenceImageUrl?: string | null
 }
 
 export interface HiggsfieldVideoRequest {

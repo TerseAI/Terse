@@ -1036,7 +1036,6 @@ export const serializedEventSchema = z.object({
     eventType: TriggerTypeSchema,
     formattedContent: z.string(),
     debugLog: z.string(),
-    // Events recorded before triggeredAt existed fall back to the time they are read.
     triggeredAt: z.iso.datetime({ offset: true }).default(() => new Date().toISOString()),
     display: serializedEventDisplaySchema.optional(),
     data: TriggerSchema

@@ -1,6 +1,6 @@
 import type {
     SdkInputRequestDelivery,
-    SdkInputRequestImage,
+    SdkInputRequestMedia,
     SdkInputRequestOption,
     SdkInputRequestRegisterBody,
     SdkInputRequestTarget,
@@ -51,12 +51,11 @@ export type WaitForInputParams<Options extends readonly InputOption[], Target ex
     via: Target
     prompt: string
     details?: Record<string, string>
-    /** Images to show alongside the prompt. URLs must be reachable by the delivery provider, which fetches them itself. */
-    images?: readonly InputImage[]
+    media?: readonly InputMedia[]
     options: Options
 }
 
-export type InputImage = { url: string; altText?: string }
+export type InputMedia = SdkInputRequestMedia
 
 export function waitForInput<const Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
@@ -127,7 +126,7 @@ async function registerInputRequest(token: string, params: WaitForInputParams<re
         token,
         prompt: params.prompt,
         details: params.details,
-        images: params.images?.map(image => ({ url: image.url, altText: image.altText })),
+        media: params.media?.map(item => ({ kind: item.kind, url: item.url, altText: item.altText })),
         options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
         via: params.via,
         transport
@@ -149,7 +148,7 @@ async function deliverInputRequestStep(request: {
     token: string
     prompt: string
     details?: Record<string, string>
-    images?: SdkInputRequestImage[]
+    media?: SdkInputRequestMedia[]
     options: SdkInputRequestOption[]
     via: InputTarget
     transport: SdkInputResponseTransport
@@ -164,7 +163,7 @@ async function deliverInputRequestStep(request: {
         runId,
         prompt: request.prompt,
         details: request.details,
-        images: request.images,
+        media: request.media,
         options: request.options,
         via: request.via,
         transport: request.transport

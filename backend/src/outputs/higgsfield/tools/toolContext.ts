@@ -24,8 +24,8 @@ export async function requireHiggsfieldCredentials(integrationId: string, runCon
 }
 
 /**
- * Higgsfield does not document how long its result URLs stay alive, and the
- * approval step can take days, so every asset is copied into our own storage
+ * Higgsfield guarantees its result URLs for a minimum of 7 days, and the
+ * approval step can take longer, so every asset is copied into our own storage
  * before anything else is allowed to depend on it.
  */
 export async function storeGeneratedAsset(result: HiggsfieldGenerationResult, organizationId: string, fallbackMimeType: string): Promise<StoredAsset> {

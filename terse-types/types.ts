@@ -810,20 +810,23 @@ export type SdkInputRequestTarget = z.infer<typeof sdkInputRequestTargetSchema>
 export const sdkInputResponseTransportSchema = z.enum(["suspend", "poll"]).default("suspend")
 export type SdkInputResponseTransport = z.infer<typeof sdkInputResponseTransportSchema>
 
-// Providers fetch these URLs themselves, so they must be reachable without our
-// auth. Slack caps image_url at 3000 characters.
-export const sdkInputRequestImageSchema = z.object({
+const inputRequestMediaFields = {
     url: z.string().min(1).max(3000),
     altText: z.string().max(2000).optional()
-})
-export type SdkInputRequestImage = z.infer<typeof sdkInputRequestImageSchema>
+}
+
+export const sdkInputRequestMediaSchema = z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("image"), ...inputRequestMediaFields }),
+    z.object({ kind: z.literal("video"), ...inputRequestMediaFields })
+])
+export type SdkInputRequestMedia = z.infer<typeof sdkInputRequestMediaSchema>
 
 export const sdkInputRequestRegisterBodySchema = z.object({
     token: z.string().min(1),
     runId: z.string().min(1),
     prompt: z.string().min(1),
     details: z.record(z.string(), z.string()).optional(),
-    images: z.array(sdkInputRequestImageSchema).max(10).optional(),
+    media: z.array(sdkInputRequestMediaSchema).max(10).optional(),
     options: z.array(sdkInputRequestOptionSchema).min(1),
     via: sdkInputRequestTargetSchema,
     transport: sdkInputResponseTransportSchema

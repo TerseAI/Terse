@@ -96,6 +96,32 @@ A common pattern is to start with approvals enabled during development and the f
 
 Tool approvals gate specific tool calls the agent makes. When you need to ask a human a custom question with your own action buttons — approve, reject, request changes — use `waitForInput()` in a [durable workflow](/core-concepts/durability). Terse posts an interactive Slack message, suspends the run, and returns the respondent's choice when they respond. During `terse test`, the same Slack message is sent (marked as a test) and the run picks up the response without suspending.
 
+### Reviewing images and video
+
+When the decision is about a creative rather than a value, attach it with `media` so the reviewer sees the asset in the same message as the buttons. Each entry is `{ kind: "image" | "video", url, altText? }`, up to ten per request:
+
+```ts
+const [video] = (await agent.tools.higgsfield.generateVideo({ prompt, imageUrl })).videos
+
+const review = await waitForInput({
+    via: slack({ channel: SlackChannel.Creative.channelId }),
+    prompt: "Ship this creative to Meta?",
+    media: [{ kind: "video", url: video.url, altText: "Spring promo, 9:16" }],
+    options: [
+        { id: "ship", label: "Ship it" },
+        { id: "revise", label: "Request changes", freeText: true }
+    ]
+})
+
+if (review.choice === "ship") {
+    await agent.tools.metaAds.createAd({ videoUrl: video.url, ... })
+}
+```
+
+Images render inline as Block Kit image blocks. Videos are uploaded into the channel just above the request, so they play natively in Slack rather than opening in a browser tab. Both URLs must be reachable without Terse authentication, since Slack fetches them itself. If an upload fails, the request still posts with a link to the video so the approval is never blocked on the attachment.
+
+<Note>Video uploads need the `files:write` Slack scope. Workspaces that connected Slack before this feature shipped must reconnect the integration from the **Integrations** page to grant it.</Note>
+
 ## Notification configuration
 
 Terse delivers approval requests through the notification settings on your Notifications page. To receive them, make sure:

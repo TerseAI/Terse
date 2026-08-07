@@ -1,5 +1,6 @@
 import { KnownBlock, WebClient } from "@slack/web-api"
-import { SdkInputRequestRegisterBody, sdkInputRequestOptionSchema, sdkInputResponseTransportSchema } from "terse-types/types"
+import axios from "axios"
+import { SdkInputRequestMedia, SdkInputRequestRegisterBody, sdkInputRequestOptionSchema, sdkInputResponseTransportSchema } from "terse-types/types"
 import { z } from "zod"
 
 import logger from "../../common/logger"
@@ -69,11 +70,16 @@ export async function deliverSlackInputRequest(params: {
         transport: body.transport
     }
 
+    // Videos are uploaded ahead of the request message so their players sit directly
+    // above the buttons: Block Kit's video block only accepts an embeddable player page
+    // on an unfurl-approved domain, which a signed asset URL is not.
+    const unplayableVideos = await uploadInputRequestVideos(client, body.via.channelId, videosIn(body.media))
+
     try {
         const result = await client.chat.postMessage({
             channel: body.via.channelId,
             text: `Input required: ${body.prompt}`,
-            blocks: buildInputRequestBlocks(jobName, body),
+            blocks: buildInputRequestBlocks(jobName, body, unplayableVideos),
             metadata: {
                 event_type: TERSE_INPUT_REQUEST_EVENT_TYPE,
                 event_payload: metadata
@@ -124,7 +130,7 @@ export async function resolveSlackDisplayName(client: WebClient, slackUserId: st
 
 // helpers
 
-function buildInputRequestBlocks(jobName: string, body: SdkInputRequestRegisterBody): KnownBlock[] {
+function buildInputRequestBlocks(jobName: string, body: SdkInputRequestRegisterBody, unplayableVideos: VideoMedia[]): KnownBlock[] {
     const blocks: KnownBlock[] = [
         {
             type: "section",
@@ -134,11 +140,20 @@ function buildInputRequestBlocks(jobName: string, body: SdkInputRequestRegisterB
 
     // Images go above the details so a reviewer sees what they are approving
     // before reading the copy that goes with it.
-    body.images?.forEach(image => {
+    imagesIn(body.media).forEach(image => {
         blocks.push({
             type: "image",
             image_url: image.url,
             alt_text: image.altText ?? "Attached image"
+        })
+    })
+
+    // A video we could not upload still has to reach the reviewer, or they are
+    // approving something they never saw.
+    unplayableVideos.forEach(video => {
+        blocks.push({
+            type: "section",
+            text: { type: "mrkdwn", text: `:movie_camera: <${video.url}|${video.altText ?? "Attached video"}>` }
         })
     })
 
@@ -169,6 +184,50 @@ function buildInputRequestBlocks(jobName: string, body: SdkInputRequestRegisterB
     return blocks
 }
 
+function imagesIn(media: SdkInputRequestMedia[] | undefined): ImageMedia[] {
+    return (media ?? []).filter(isImage)
+}
+
+function videosIn(media: SdkInputRequestMedia[] | undefined): VideoMedia[] {
+    return (media ?? []).filter(isVideo)
+}
+
+function isImage(media: SdkInputRequestMedia): media is ImageMedia {
+    return media.kind === "image"
+}
+
+function isVideo(media: SdkInputRequestMedia): media is VideoMedia {
+    return media.kind === "video"
+}
+
+// Returns the videos that did not make it into the channel, so the caller can fall
+// back to a link rather than dropping them.
+async function uploadInputRequestVideos(client: WebClient, channelId: string, videos: VideoMedia[]): Promise<VideoMedia[]> {
+    const results = await Promise.all(videos.map(async video => ({ video, uploaded: await uploadVideoToChannel(client, channelId, video) })))
+    return results.filter(result => !result.uploaded).map(result => result.video)
+}
+
+async function uploadVideoToChannel(client: WebClient, channelId: string, video: VideoMedia): Promise<boolean> {
+    try {
+        const download = await axios.get<ArrayBuffer>(video.url, { responseType: "arraybuffer" })
+        const result = await client.filesUploadV2({
+            channel_id: channelId,
+            file: Buffer.from(download.data),
+            filename: videoFilename(video.url),
+            title: video.altText ?? "Attached video"
+        })
+        return result.ok === true
+    } catch (error) {
+        logger.error("[SlackInputRequest] Failed to upload video", { error, channelId, url: video.url })
+        return false
+    }
+}
+
+function videoFilename(url: string): string {
+    const name = new URL(url).pathname.split("/").pop()
+    return name && name.includes(".") ? name : "creative.mp4"
+}
+
 async function fetchMessageBlocks(client: WebClient, channelId: string, messageTs: string): Promise<KnownBlock[] | undefined> {
     const history = await client.conversations.history({
         channel: channelId,
@@ -180,3 +239,6 @@ async function fetchMessageBlocks(client: WebClient, channelId: string, messageT
     if (!message || message.ts !== messageTs) return undefined
     return message.blocks as KnownBlock[] | undefined
 }
+
+type ImageMedia = Extract<SdkInputRequestMedia, { kind: "image" }>
+type VideoMedia = Extract<SdkInputRequestMedia, { kind: "video" }>

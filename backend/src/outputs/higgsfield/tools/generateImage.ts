@@ -13,7 +13,7 @@ export const higgsfieldGenerateImageTool = defineSessionTool({
             quality: input.quality,
             batchSize: input.batchSize,
             styleId: input.styleId,
-            referenceImageUrls: input.referenceImageUrls
+            referenceImageUrl: input.referenceImageUrl
         })
 
         const images = await Promise.all(generated.map(result => storeGeneratedAsset(result, organizationId, "image/jpeg")))

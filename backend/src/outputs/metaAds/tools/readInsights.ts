@@ -38,6 +38,8 @@ export const metaAdsReadInsightsTool = defineSessionTool({
 
 function entityFieldsForLevel(level: MetaAdsReadInsightsInput["level"]): string[] {
     switch (level) {
+        case "account":
+            return []
         case "campaign":
             return ["campaign_id", "campaign_name"]
         case "adset":
