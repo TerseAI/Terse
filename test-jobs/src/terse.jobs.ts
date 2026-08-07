@@ -1,8 +1,6 @@
 import { createJob, generateText, jobStep, slack, sleep, step, waitForInput } from "terse-sdk"
 import { z } from "zod"
 
-// Triggers, Skills, and resource constants for your workspace live here.
-// Run `terse generate` to refresh after connecting new integrations.
 import { SlackChannel, Triggers, toolbox } from "./terse.generated"
 
 // `createJob` registers a job with Terse. Each job has a name, one or more

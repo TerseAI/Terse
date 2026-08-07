@@ -213,3 +213,162 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Sidebar state ornaments -------------------------------------------------- */
+.sidebar-project-ornament-wrap {
+    position: relative;
+    display: grid;
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 1rem;
+    place-items: center;
+}
+
+.sidebar-project-ornament {
+    width: 1.125rem;
+    height: 1.125rem;
+    overflow: visible;
+    color: var(--sidebar-primary);
+    stroke: currentColor;
+    stroke-width: 1.35;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: color 140ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.sidebar-project-ornament__cube {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.sidebar-project-ornament__cross {
+    opacity: 0;
+}
+
+.sidebar-project-ornament__success-check {
+    color: var(--success);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.sidebar-project-ornament__success-highlight {
+    stroke: color-mix(in oklch, var(--success) 58%, var(--sidebar-primary));
+    stroke-width: 1.25;
+}
+
+.sidebar-project-ornament__cross {
+    stroke-width: 2;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.sidebar-project-ornament--active {
+    color: var(--warning);
+}
+
+.sidebar-project-ornament--active .sidebar-project-ornament__cube--top {
+    animation: sidebar-cube-build 900ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.sidebar-project-ornament--active .sidebar-project-ornament__cube--left {
+    animation: sidebar-cube-build 900ms 100ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.sidebar-project-ornament--active .sidebar-project-ornament__cube--right {
+    animation: sidebar-cube-build 900ms 200ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.sidebar-project-ornament--success {
+    color: var(--success);
+}
+
+.sidebar-project-ornament--failure {
+    color: var(--danger);
+}
+
+.sidebar-project-ornament--failure .sidebar-project-ornament__cube {
+    animation: sidebar-cubes-handoff 500ms linear both;
+}
+
+.sidebar-project-ornament--failure .sidebar-project-ornament__cross {
+    animation: sidebar-mark-draw 500ms linear both;
+}
+
+@keyframes sidebar-cube-build {
+    0%,
+    100% {
+        opacity: 0.72;
+        transform: translateY(0);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-1px);
+    }
+}
+
+@keyframes sidebar-cubes-handoff {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    30%,
+    68% {
+        opacity: 0;
+        transform: scale(0.88);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes sidebar-mark-draw {
+    0% {
+        opacity: 0;
+        stroke-dashoffset: 14;
+        transform: scale(0.88);
+    }
+    30% {
+        opacity: 1;
+        stroke-dashoffset: 0;
+        transform: scale(1);
+    }
+    68% {
+        opacity: 1;
+        stroke-dashoffset: 0;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        stroke-dashoffset: 0;
+        transform: scale(0.96);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar-project-ornament *,
+    .sidebar-project-ornament {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .sidebar-project-ornament--active {
+        opacity: 0.8;
+    }
+
+    .sidebar-project-ornament--failure .sidebar-project-ornament__cube {
+        opacity: 0;
+    }
+
+    .sidebar-project-ornament--failure .sidebar-project-ornament__cross {
+        opacity: 1;
+        stroke-dashoffset: 0;
+    }
+}
