@@ -108,7 +108,10 @@ export const settings = {
 
     // Google Search Console OAuth — opt-in. Shares the Gmail OAuth client credentials, so it needs
     // its own redirect URI registered on that same client to land on the Search Console callback.
-    googleSearchConsole: optionalIntegrationSettings(["GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GOOGLE_SEARCH_CONSOLE_REDIRECT_URI"], () => ({
+    // Keyed on GOOGLE_SEARCH_CONSOLE_REDIRECT_URI alone: the Gmail variables belong to the Gmail
+    // integration, so listing them here would make merely configuring Gmail demand a Search Console
+    // redirect URI and abort startup.
+    googleSearchConsole: optionalIntegrationSettings(["GOOGLE_SEARCH_CONSOLE_REDIRECT_URI"], () => ({
         clientId: requireEnv("GMAIL_CLIENT_ID"),
         clientSecret: requireEnv("GMAIL_CLIENT_SECRET"),
         redirectUri: requireEnv("GOOGLE_SEARCH_CONSOLE_REDIRECT_URI")
