@@ -319,10 +319,18 @@ function optionalIntEnv(name: string): number | undefined {
  * builder throws (e.g. a missing requireEnv), the error propagates — partial configuration is misconfig.
  */
 function optionalIntegrationSettings<T>(envNames: readonly string[], build: () => T): T | undefined {
-    const anySet = envNames.some(n => {
+    const setNames = envNames.filter(n => {
         const v = process.env[n]
         return v !== undefined && v.trim() !== ""
     })
-    if (!anySet) return undefined
-    return build()
+    if (setNames.length === 0) return undefined
+    try {
+        return build()
+    } catch (error) {
+        // Name the variable that opted this integration in. Without it the operator only sees the
+        // first missing variable, which for Search Console is a Gmail one and reads like a Gmail
+        // problem — an unhelpful message to find in a deploy log that ends in a crash loop.
+        const reason = error instanceof Error ? error.message : String(error)
+        throw new Error(`Incomplete configuration for the integration enabled by ${setNames.join(", ")}. ${reason} Unset ${envNames.join(", ")} to leave this integration disabled.`)
+    }
 }
