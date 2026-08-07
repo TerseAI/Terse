@@ -50,6 +50,8 @@
 //                               Suspends until a human answers; resolves to
 //                               { choice, text?, respondent }. `options` is
 //                               [{ id, label, description?, freeText? }].
+//                               Optional `media: [{ kind: "image" | "video", url,
+//                               altText? }]` shows creatives inline for review.
 //
 // Secrets:
 //   Write with `terse secrets add`; read in job code via process.env.MY_SECRET.
