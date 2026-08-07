@@ -1,13 +1,15 @@
 import { Link } from "react-router-dom"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible"
-import { Boxes, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import { Agent } from "terse-types/types"
 
 import { SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub } from "@/components/ui/sidebar"
+import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
 import { SdkJobListItem } from "./SdkJobListItem"
+import { ProjectStatusOrnament } from "./SidebarStatusOrnaments"
 
 const UNASSIGNED_PROJECT_KEY = "__unassigned__"
 
@@ -50,6 +52,8 @@ interface ProjectFolderProps {
 
 function ProjectFolder({ projectId, name, agents }: ProjectFolderProps) {
     const isUnassigned = projectId === UNASSIGNED_PROJECT_KEY
+    const { deploys } = useProjectDeploys(isUnassigned ? null : projectId)
+    const latestDeployStatus = deploys?.[0]?.status
 
     return (
         <Collapsible defaultOpen asChild>
@@ -57,14 +61,14 @@ function ProjectFolder({ projectId, name, agents }: ProjectFolderProps) {
                 <SidebarMenuButton asChild className="cursor-pointer pr-1">
                     {isUnassigned ? (
                         <CollapsibleTrigger className="flex w-full items-center gap-2.5">
-                            <Boxes className="size-4 shrink-0 text-primary" />
+                            <ProjectStatusOrnament />
                             <span className="truncate">{name}</span>
                             <ChevronRight className="ml-auto size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/project:rotate-90" />
                         </CollapsibleTrigger>
                     ) : (
                         <div className="flex w-full items-center gap-2.5">
                             <Link to={buildRoute(FrontendRoutes.PROJECTS.BY_ID, { id: projectId })} className="flex min-w-0 flex-1 items-center gap-2.5">
-                                <Boxes className="size-4 shrink-0 text-primary" />
+                                <ProjectStatusOrnament status={latestDeployStatus} />
                                 <span className="truncate">{name}</span>
                             </Link>
                             <CollapsibleTrigger

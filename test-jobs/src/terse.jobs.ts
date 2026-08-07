@@ -1,8 +1,6 @@
 import { createJob, generateText, jobStep, slack, sleep, step, waitForInput } from "terse-sdk"
 import { z } from "zod"
 
-// Triggers, Skills, and resource constants for your workspace live here.
-// Run `terse generate` to refresh after connecting new integrations.
 import { SlackChannel, Triggers, toolbox } from "./terse.generated"
 
 // `createJob` registers a job with Terse. Each job has a name, one or more
@@ -164,6 +162,17 @@ createJob({
 
 createJob({
     name: "Basic Test - Success. sleep in durable job works",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    durable: true,
+    onTrigger: async event => {
+        console.log("trying to sleep in durable job")
+        await sleep("2m")
+        console.log("sleep in durable job completed")
+    }
+})
+
+createJob({
+    name: "Basic Tegst - Success. sleep in durable job works",
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
     durable: true,
     onTrigger: async event => {
