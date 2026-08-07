@@ -21,6 +21,7 @@ In TypeScript, `terse generate` exports a `Triggers` object from `src/terse.gene
 | `Triggers.github.onPRSynchronized()` | `GithubPRSynchronizedTrigger` | New commits are pushed to a PR       |
 | `Triggers.github.onPR()`             | `GithubPRTrigger`             | Any pull request event               |
 | `Triggers.github.onIssueComment()`   | `GithubIssueCommentCreatedTrigger` | A comment is created on an issue or pull request |
+| `Triggers.github.onPRComment()`      | `GithubPRCommentCreatedTrigger` | A comment is created on a pull request |
 | `Triggers.github.trigger()`          | `GithubTrigger`               | Any GitHub event you select with `eventTypes` |
 
 Config: Scoped to specific repositories via `repo` parameter.
