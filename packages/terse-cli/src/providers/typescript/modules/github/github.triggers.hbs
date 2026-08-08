@@ -34,8 +34,16 @@ export const githubTriggers = {
         return new GitHubConfig("{{escape section.id}}", [opts.repo.repositoryId], [GitHubEventType.ISSUE_COMMENT_CREATED])
     },
     /** Trigger when a comment is created on a pull request */
-    onPRComment(opts: { repo: Repos }): TypedTrigger<GithubPRCommentCreatedTrigger> {
+    onPRCommentCreated(opts: { repo: Repos }): TypedTrigger<GithubPRCommentCreatedTrigger> {
         return new GitHubConfig("{{escape section.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_COMMENT_CREATED])
+    },
+    /** Trigger when a comment is edited on a pull request */
+    onPRCommentEdited(opts: { repo: Repos }): TypedTrigger<GithubPRCommentEditedTrigger> {
+        return new GitHubConfig("{{escape section.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_COMMENT_EDITED])
+    },
+    /** Trigger when a comment is created or edited on a pull request */
+    onPRComment(opts: { repo: Repos }): TypedTrigger<GithubPRCommentTrigger> {
+        return new GitHubConfig("{{escape section.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_COMMENT_CREATED, GitHubEventType.PR_COMMENT_EDITED])
     },
     /** Trigger on specific GitHub events for the given repositories */
     trigger(opts: { repos: Repos[]; eventTypes?: GitHubEventType[] }): TypedTrigger<GithubTrigger> {

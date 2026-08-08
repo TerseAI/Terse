@@ -93,7 +93,18 @@ const githubIssueCommentCreatedIngressSchema = githubUnifiedEventIngressBaseSche
     comment: issueCommentIngressSchema
 })
 
-const githubUnifiedEventIngressSchema = z.discriminatedUnion("eventType", [githubPushUnifiedEventIngressSchema, githubPullRequestUnifiedEventIngressSchema, githubIssueCommentCreatedIngressSchema])
+const githubPRCommentEditedIngressSchema = githubUnifiedEventIngressBaseSchema.extend({
+    eventType: z.literal("pull_request.comment.edited"),
+    issue: issueCommentTargetIngressSchema.extend({ isPullRequest: z.literal(true) }),
+    comment: issueCommentIngressSchema
+})
+
+const githubUnifiedEventIngressSchema = z.discriminatedUnion("eventType", [
+    githubPushUnifiedEventIngressSchema,
+    githubPullRequestUnifiedEventIngressSchema,
+    githubIssueCommentCreatedIngressSchema,
+    githubPRCommentEditedIngressSchema
+])
 
 function toOptionalString(value: string | null | undefined): string | undefined {
     return value ?? undefined
@@ -111,7 +122,7 @@ export function parseGithubUnifiedEventPayload(payload: unknown): GithubTrigger 
         }
     }
 
-    if (rawEvent.eventType === "issue_comment.created") {
+    if (rawEvent.eventType === "issue_comment.created" || rawEvent.eventType === "pull_request.comment.edited") {
         return GithubTriggerSchema.parse({
             ...baseFields,
             issue: {

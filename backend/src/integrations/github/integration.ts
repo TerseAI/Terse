@@ -392,8 +392,10 @@ export class GithubIntegrationManager
         const wantsPush = requestedTypes.includes(GitHubEventType.PUSH)
 
         const wantsIssueComment = requestedTypes.includes(GitHubEventType.ISSUE_COMMENT_CREATED)
-        const wantsPRComment = requestedTypes.includes(GitHubEventType.PR_COMMENT_CREATED)
-        const requestedPRTypes = requestedTypes.filter(t => t.startsWith("pull_request.") && t !== GitHubEventType.PR_COMMENT_CREATED)
+        const wantsPRCommentCreated = requestedTypes.includes(GitHubEventType.PR_COMMENT_CREATED)
+        const wantsPRCommentEdited = requestedTypes.includes(GitHubEventType.PR_COMMENT_EDITED)
+        const wantsPRComment = wantsPRCommentCreated || wantsPRCommentEdited
+        const requestedPRTypes = requestedTypes.filter(t => t.startsWith("pull_request.") && t !== GitHubEventType.PR_COMMENT_CREATED && t !== GitHubEventType.PR_COMMENT_EDITED)
         const wantsPR = requestedPRTypes.length > 0
         const prApiState = derivePRApiState(requestedPRTypes)
 
@@ -428,7 +430,21 @@ export class GithubIntegrationManager
                 for (const comment of comments) {
                     const eventData = createIssueCommentEventData(comment, repo, installationIdNum)
                     if (eventData?.eventType === GitHubEventType.ISSUE_COMMENT_CREATED && eventData.issue.isPullRequest) {
-                        events.push(new GithubTriggerRuntime(eventData, []))
+                        if (wantsPRCommentCreated) {
+                            events.push(new GithubTriggerRuntime(eventData, []))
+                        }
+                        if (wantsPRCommentEdited && eventData.comment.updatedAt !== eventData.comment.createdAt) {
+                            events.push(
+                                new GithubTriggerRuntime(
+                                    {
+                                        ...eventData,
+                                        eventType: GitHubEventType.PR_COMMENT_EDITED,
+                                        issue: { ...eventData.issue, isPullRequest: true }
+                                    },
+                                    []
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -470,6 +486,8 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
         if (data.eventType === GitHubEventType.ISSUE_COMMENT_CREATED) {
             const targetKind = data.issue.isPullRequest ? "pr" : "issue"
             this.entityId = `${data.installationId}:${data.repository.id}:${targetKind}/${data.issue.number}/comment/${data.comment.id}`
+        } else if (data.eventType === GitHubEventType.PR_COMMENT_EDITED) {
+            this.entityId = `${data.installationId}:${data.repository.id}:pr/${data.issue.number}/comment/${data.comment.id}/edited/${encodeURIComponent(data.comment.updatedAt)}`
         } else if (data.pullRequest) {
             this.entityId = `${data.installationId}:${data.repository.id}:pr/${data.pullRequest.number}`
         } else if (data.commits?.length) {
@@ -529,13 +547,14 @@ export function buildGithubTriggerMetadata(data: GithubTrigger): RunHistoryTrigg
         source: repositoryName
     } as const
 
-    if (data.eventType === GitHubEventType.ISSUE_COMMENT_CREATED) {
+    if (data.eventType === GitHubEventType.ISSUE_COMMENT_CREATED || data.eventType === GitHubEventType.PR_COMMENT_EDITED) {
         const snippet = data.comment.body.split("\n")[0].slice(0, 80)
         const targetKind = data.issue.isPullRequest ? "PR" : "issue"
+        const action = data.eventType === GitHubEventType.PR_COMMENT_EDITED ? "edited a comment on" : "commented on"
         return {
             ...base,
             title: `Comment on #${data.issue.number} ${data.issue.title}`.trim(),
-            subheader: `${username} commented on ${targetKind} in ${repositoryName}: ${snippet}`,
+            subheader: `${username} ${action} ${targetKind} in ${repositoryName}: ${snippet}`,
             url: data.comment.url
         }
     }
@@ -1080,7 +1099,7 @@ function createIssueCommentEventData(comment: OctokitIssueComment, repo: { id: n
 }
 
 export async function getPullRequestFiles(event: GithubTrigger, token: string, integrationId: string): Promise<StoredFile[]> {
-    if (event.eventType === GitHubEventType.ISSUE_COMMENT_CREATED || !event.pullRequest) {
+    if (event.eventType === GitHubEventType.ISSUE_COMMENT_CREATED || event.eventType === GitHubEventType.PR_COMMENT_EDITED || !event.pullRequest) {
         return []
     }
 

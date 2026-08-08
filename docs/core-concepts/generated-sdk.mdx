@@ -135,7 +135,15 @@ export const Triggers = {
             /* … */
         },
         /** Trigger when a comment is created on a pull request */
-        onPRComment(opts: { repo: Repos }): TypedTrigger<GithubPRCommentCreatedTrigger> {
+        onPRCommentCreated(opts: { repo: Repos }): TypedTrigger<GithubPRCommentCreatedTrigger> {
+            /* … */
+        },
+        /** Trigger when a comment is edited on a pull request */
+        onPRCommentEdited(opts: { repo: Repos }): TypedTrigger<GithubPRCommentEditedTrigger> {
+            /* … */
+        },
+        /** Trigger when a comment is created or edited on a pull request */
+        onPRComment(opts: { repo: Repos }): TypedTrigger<GithubPRCommentTrigger> {
             /* … */
         }
     },

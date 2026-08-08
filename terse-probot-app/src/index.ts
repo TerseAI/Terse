@@ -107,6 +107,13 @@ export default (app: Probot) => {
         await handleIssueCommentEvent(context, isPullRequest)
     })
 
+    app.on("issue_comment.edited", async context => {
+        const { payload } = context
+        if (!payload.issue.pull_request) return
+        console.log(`🔔 PR comment edited on #${payload.issue.number}`)
+        await handlePRCommentEditedEvent(context)
+    })
+
     async function handleUnifiedPullRequestEvent(context: any, eventType: string) {
         const { payload } = context
         const github = context.octokit
@@ -232,6 +239,52 @@ export default (app: Probot) => {
             })
         } catch (error) {
             console.error("Error handling issue_comment event:", safeErrorFields(error))
+        }
+    }
+
+    async function handlePRCommentEditedEvent(context: any) {
+        const { payload } = context
+        const installationId = payload.installation?.id || 0
+
+        try {
+            await VectraInterface.githubUnifiedEvent(payload.sender?.login, installationId, payload.repository.name, "pull_request.comment.edited", {
+                issue: {
+                    id: payload.issue.id,
+                    number: payload.issue.number,
+                    title: payload.issue.title,
+                    body: payload.issue.body,
+                    state: payload.issue.state,
+                    url: payload.issue.html_url,
+                    author: {
+                        login: payload.issue.user.login,
+                        email: payload.issue.user.email
+                    },
+                    isPullRequest: true
+                },
+                comment: {
+                    id: payload.comment.id,
+                    body: payload.comment.body,
+                    author: {
+                        login: payload.comment.user.login,
+                        email: payload.comment.user.email
+                    },
+                    url: payload.comment.html_url,
+                    createdAt: payload.comment.created_at,
+                    updatedAt: payload.comment.updated_at
+                },
+                repository: {
+                    id: Number(payload.repository.id),
+                    name: payload.repository.name,
+                    owner: payload.repository.owner.login,
+                    defaultBranch: payload.repository.default_branch
+                },
+                sender: {
+                    login: payload.sender?.login,
+                    email: payload.sender?.email
+                }
+            })
+        } catch (error) {
+            console.error("Error handling pull request comment edited event:", safeErrorFields(error))
         }
     }
 
