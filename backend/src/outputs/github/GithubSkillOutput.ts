@@ -8,12 +8,17 @@ import { PrismaTransaction } from "../../types/prisma"
 import { Output, RuntimeSystemInstructionsContext } from "../abstract/Output"
 
 import { createGitHubClient, getGitHubAccessToken, getRepositoryNamesByIds } from "./githubApiClient"
+import { compareGitHubCommitsTool, validateCompareGitHubCommits } from "./tools/compareCommits"
 import { grepGitHubCodeTool, validateGrepGitHubCode } from "./tools/grepCode"
 import { listGitHubCommitsTool, validateListGitHubCommits } from "./tools/listCommits"
 import { listGitHubDirectoryTool, validateListGitHubDirectory } from "./tools/listDirectory"
+import { listGitHubDiscussionsTool, validateListGitHubDiscussions } from "./tools/listDiscussions"
+import { listGitHubIssuesTool, validateListGitHubIssues } from "./tools/listIssues"
 import { listGitHubPullRequestsTool, validateListGitHubPullRequests } from "./tools/listPullRequests"
 import { readGitHubFileTool, validateReadGitHubFile } from "./tools/readFile"
+import { getGitHubRepositoryStatsTool, validateGetGitHubRepositoryStats } from "./tools/repositoryStats"
 import { searchGitHubCodeTool, validateSearchGitHubCode } from "./tools/searchCode"
+import { searchGitHubIssuesTool, validateSearchGitHubIssues } from "./tools/searchIssues"
 import { summarizeGitHubPullRequestDiffTool, validateSummarizeGitHubPullRequestDiff } from "./tools/summarizePullRequestDiff"
 
 export class GithubSkillOutput extends Output<GitHubConfig> {
@@ -25,6 +30,11 @@ export class GithubSkillOutput extends Output<GitHubConfig> {
             { tool: listGitHubDirectoryTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List directory", validateACL: validateListGitHubDirectory },
             { tool: listGitHubPullRequestsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List pull requests", validateACL: validateListGitHubPullRequests },
             { tool: listGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List commits", validateACL: validateListGitHubCommits },
+            { tool: listGitHubIssuesTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List issues", validateACL: validateListGitHubIssues },
+            { tool: searchGitHubIssuesTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Search issues", validateACL: validateSearchGitHubIssues },
+            { tool: listGitHubDiscussionsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "List discussions", validateACL: validateListGitHubDiscussions },
+            { tool: compareGitHubCommitsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Compare commits", validateACL: validateCompareGitHubCommits },
+            { tool: getGitHubRepositoryStatsTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Repository stats", validateACL: validateGetGitHubRepositoryStats },
             { tool: summarizeGitHubPullRequestDiffTool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: "Summarize PR diff", validateACL: validateSummarizeGitHubPullRequestDiff }
         ])
     }

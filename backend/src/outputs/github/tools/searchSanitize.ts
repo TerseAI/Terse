@@ -41,6 +41,13 @@ export function assertSimpleQualifierValue(value: string | null | undefined, fie
 // literal token. Strips any interior quote/backslash characters so the
 // wrapping cannot be broken.
 export function quoteGrepPattern(pattern: string): string {
-    const stripped = pattern.replace(/["\\]/g, "")
+    return quoteQualifierValue(pattern)
+}
+
+// Quote-wrap a qualifier value that may legitimately contain spaces
+// (e.g. `label:"needs triage"`). Interior quote/backslash characters are
+// stripped so the wrapping cannot be broken out of.
+export function quoteQualifierValue(value: string): string {
+    const stripped = value.replace(/["\\]/g, "")
     return `"${stripped}"`
 }

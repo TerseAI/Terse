@@ -94,10 +94,15 @@ export class GithubModule extends IntegrationModule<GitHubInstanceData, GitHubSe
             case "listGitHubPullRequests":
             case "listGitHubDirectory":
             case "listGitHubCommits":
+            case "listGitHubIssues":
+            case "listGitHubDiscussions":
+            case "compareGitHubCommits":
+            case "getGitHubRepositoryStats":
             case "summarizeGitHubPullRequestDiff":
                 return "{ ...params, repository: __normalizeGitHubRepos((params).repository) }"
             case "searchGitHubCode":
             case "grepGitHubCode":
+            case "searchGitHubIssues":
                 return "{ ...params, repositoryNames: __normalizeGitHubReposNames((params).repositoryNames) }"
             default:
                 return "params"

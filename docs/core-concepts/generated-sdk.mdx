@@ -161,7 +161,20 @@ export const Skills = {
     /** GitHub — read code and pull requests from the given repositories */
     github(opts: {
         repos: Repos[]
-    }): TypedSkill<"grepGitHubCode" | "listGitHubCommits" | "listGitHubDirectory" | "listGitHubPullRequests" | "readGitHubFile" | "searchGitHubCode" | "summarizeGitHubPullRequestDiff"> {
+    }): TypedSkill<
+        | "compareGitHubCommits"
+        | "getGitHubRepositoryStats"
+        | "grepGitHubCode"
+        | "listGitHubCommits"
+        | "listGitHubDirectory"
+        | "listGitHubDiscussions"
+        | "listGitHubIssues"
+        | "listGitHubPullRequests"
+        | "readGitHubFile"
+        | "searchGitHubCode"
+        | "searchGitHubIssues"
+        | "summarizeGitHubPullRequestDiff"
+    > {
         /* … */
     },
     /** Attio — read and write records, tasks, notes, lists and more on a CRM object */
@@ -232,7 +245,7 @@ declare module "terse-sdk" {
 Because every resource, trigger, skill, and tool is an export, your workflow code reads like a description of your business, not a scavenger hunt through admin UIs.
 
 ```ts src/index.ts
-import { generateText, createJob } from "terse-sdk"
+import { createJob, generateText } from "terse-sdk"
 
 import { Repos, Skills, SlackChannel, Triggers, toolbox } from "./terse.generated"
 

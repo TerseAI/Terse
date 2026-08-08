@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest"
+import type { RestEndpointMethodTypes } from "@octokit/rest"
 import { DateTime } from "luxon"
 import { GitHubConfig, IntegrationType } from "terse-types"
 
@@ -624,6 +625,515 @@ export async function getPullRequestDiff(
 }
 
 /**
+ * Issue information. Reaction counts are flattened out of GitHub's `reactions` rollup
+ * so callers can rank by 👍 without reaching into keys named `+1` / `-1`.
+ */
+export interface ReactionCounts {
+    total: number
+    plusOne: number
+    minusOne: number
+    laugh: number
+    hooray: number
+    confused: number
+    heart: number
+    rocket: number
+    eyes: number
+}
+
+export interface IssueInfo {
+    number: number
+    title: string
+    body: string | null
+    state: "open" | "closed"
+    author: string
+    labels: string[]
+    assignees: string[]
+    comments: number
+    reactions: ReactionCounts
+    createdAt: string
+    updatedAt: string
+    closedAt: string | null
+    htmlUrl: string
+    repositoryFullName: string
+}
+
+const EMPTY_REACTION_COUNTS: ReactionCounts = {
+    total: 0,
+    plusOne: 0,
+    minusOne: 0,
+    laugh: 0,
+    hooray: 0,
+    confused: 0,
+    heart: 0,
+    rocket: 0,
+    eyes: 0
+}
+
+type OctokitReactionRollup = RestEndpointMethodTypes["issues"]["listForRepo"]["response"]["data"][number]["reactions"]
+
+function toReactionCounts(reactions: OctokitReactionRollup): ReactionCounts {
+    if (!reactions) return EMPTY_REACTION_COUNTS
+    return {
+        total: reactions.total_count,
+        plusOne: reactions["+1"],
+        minusOne: reactions["-1"],
+        laugh: reactions.laugh,
+        hooray: reactions.hooray,
+        confused: reactions.confused,
+        heart: reactions.heart,
+        rocket: reactions.rocket,
+        eyes: reactions.eyes
+    }
+}
+
+function toLabelNames(labels: RestEndpointMethodTypes["issues"]["listForRepo"]["response"]["data"][number]["labels"]): string[] {
+    return labels.map(label => (typeof label === "string" ? label : (label.name ?? ""))).filter(Boolean)
+}
+
+/**
+ * Derive the repository full name from an issue's API url, which is always of the form
+ * `https://api.github.com/repos/{owner}/{repo}/issues/{number}`. Search results carry no
+ * repository object, so this is the only reliable source there.
+ */
+function repositoryFullNameFromIssueUrl(url: string): string {
+    const match = url.match(/\/repos\/([^/]+\/[^/]+)\//)
+    return match ? match[1] : ""
+}
+
+export interface ListIssuesOptions {
+    state?: "open" | "closed" | "all"
+    labels?: string[]
+    since?: string
+    sort?: "created" | "updated" | "comments"
+    direction?: "asc" | "desc"
+    creator?: string
+    assignee?: string
+    perPage?: number
+    page?: number
+}
+
+const ISSUES_API_PER_PAGE = 100
+// Bounds the fan-out when a repository is dense in pull requests, which the issues endpoint
+// returns alongside issues. Hitting the bound leaves `hasMore` true, so the caller can page on.
+const ISSUES_MAX_API_PAGES_PER_CALL = 5
+
+/**
+ * List issues for a repository. GitHub's issues endpoint also returns pull requests and offers
+ * no way to exclude them, so `page`/`perPage` are applied to the issues-only stream: we walk
+ * whole API pages, drop the pull requests, and hand back a full page of real issues. Without
+ * this, sorting by comment count on a PR-heavy repository returns empty pages.
+ */
+export async function listIssues(client: Octokit, owner: string, repo: string, options: ListIssuesOptions = {}): Promise<IssuePage> {
+    const { perPage = 30, page = 1 } = options
+    const skip = (page - 1) * perPage
+
+    const collected: IssueInfo[] = []
+    let skipped = 0
+    let overflowed = false
+    let apiPage = 1
+    let apiHasMore = true
+
+    while (apiHasMore && apiPage <= ISSUES_MAX_API_PAGES_PER_CALL && !overflowed) {
+        const { issues, hasMore } = await fetchIssuePage(client, owner, repo, options, apiPage)
+        for (const issue of issues) {
+            if (skipped < skip) {
+                skipped++
+            } else if (collected.length < perPage) {
+                collected.push(issue)
+            } else {
+                overflowed = true
+                break
+            }
+        }
+        apiHasMore = hasMore
+        apiPage++
+    }
+
+    return {
+        items: collected,
+        pagination: { page, perPage, hasMore: overflowed || (apiHasMore && collected.length >= perPage) }
+    }
+}
+
+async function fetchIssuePage(client: Octokit, owner: string, repo: string, options: ListIssuesOptions, apiPage: number): Promise<{ issues: IssueInfo[]; hasMore: boolean }> {
+    const { state = "open", labels, since, sort = "created", direction = "desc", creator, assignee } = options
+
+    try {
+        const { data, headers } = await client.issues.listForRepo({
+            owner,
+            repo,
+            state,
+            labels: labels?.length ? labels.join(",") : undefined,
+            since,
+            sort,
+            direction,
+            creator,
+            assignee,
+            per_page: ISSUES_API_PER_PAGE,
+            page: apiPage
+        })
+
+        return {
+            issues: data.filter(issue => !issue.pull_request).map(issue => toIssueInfo(issue, `${owner}/${repo}`)),
+            hasMore: hasNextPage(headers.link, data.length, ISSUES_API_PER_PAGE)
+        }
+    } catch (error: any) {
+        logger.error("Failed to list issues", { owner, repo, apiPage, error: error.message })
+        throw error
+    }
+}
+
+type OctokitIssueListItem = RestEndpointMethodTypes["issues"]["listForRepo"]["response"]["data"][number]
+
+function toIssueInfo(issue: OctokitIssueListItem, repositoryFullName: string): IssueInfo {
+    return {
+        number: issue.number,
+        title: issue.title,
+        body: issue.body ?? null,
+        state: issue.state as "open" | "closed",
+        author: issue.user?.login || "unknown",
+        labels: toLabelNames(issue.labels),
+        assignees: (issue.assignees ?? []).map(a => a.login),
+        comments: issue.comments,
+        reactions: toReactionCounts(issue.reactions),
+        createdAt: issue.created_at,
+        updatedAt: issue.updated_at,
+        closedAt: issue.closed_at,
+        htmlUrl: issue.html_url,
+        repositoryFullName
+    }
+}
+
+/**
+ * Search issues across repositories, ranked by the given engagement field.
+ * The repository allowlist is applied here as `repo:` qualifiers, so callers must
+ * sanitize any free-text query before it reaches this function.
+ */
+export async function searchIssues(
+    client: Octokit,
+    query: string,
+    options: {
+        sort?: "reactions-+1" | "reactions" | "comments" | "interactions" | "created" | "updated"
+        order?: "asc" | "desc"
+        perPage?: number
+        page?: number
+    } = {}
+): Promise<{ items: IssueInfo[]; totalCount: number; pagination: { page: number; perPage: number; hasMore: boolean } }> {
+    const { sort, order = "desc", perPage = 20, page = 1 } = options
+
+    try {
+        const { data, headers } = await client.search.issuesAndPullRequests({
+            q: query,
+            sort,
+            order,
+            per_page: perPage,
+            page,
+            advanced_search: "true"
+        })
+
+        const items: IssueInfo[] = data.items.map(issue => ({
+            number: issue.number,
+            title: issue.title,
+            body: issue.body ?? null,
+            state: issue.state as "open" | "closed",
+            author: issue.user?.login || "unknown",
+            labels: toLabelNames(issue.labels),
+            assignees: (issue.assignees ?? []).map(a => a.login),
+            comments: issue.comments,
+            reactions: toReactionCounts(issue.reactions),
+            createdAt: issue.created_at,
+            updatedAt: issue.updated_at,
+            closedAt: issue.closed_at,
+            htmlUrl: issue.html_url,
+            repositoryFullName: repositoryFullNameFromIssueUrl(issue.url)
+        }))
+
+        return {
+            items,
+            totalCount: data.total_count,
+            pagination: { page, perPage, hasMore: hasNextPage(headers.link, data.items.length, perPage) }
+        }
+    } catch (error: any) {
+        if (error.status === 422) {
+            logger.warn("GitHub issue search validation error", { query, error: error.message })
+            throw new Error("Search query is invalid. Try simplifying the query or removing filters.")
+        }
+        logger.error("GitHub issue search failed", { query, error: error.message })
+        throw error
+    }
+}
+
+/**
+ * Discussion information
+ */
+export interface DiscussionInfo {
+    number: number
+    title: string
+    body: string
+    author: string
+    category: string
+    upvotes: number
+    comments: number
+    isAnswered: boolean
+    createdAt: string
+    updatedAt: string
+    htmlUrl: string
+}
+
+export interface DiscussionCategoryInfo {
+    id: string
+    name: string
+    slug: string
+    isAnswerable: boolean
+}
+
+const DISCUSSIONS_QUERY = `
+query Discussions($owner: String!, $repo: String!, $first: Int!, $after: String, $categoryId: ID, $orderBy: DiscussionOrderField!, $direction: OrderDirection!) {
+    repository(owner: $owner, name: $repo) {
+        discussionCategories(first: 25) {
+            nodes { id name slug isAnswerable }
+        }
+        discussions(first: $first, after: $after, categoryId: $categoryId, orderBy: { field: $orderBy, direction: $direction }) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+                number
+                title
+                body
+                url
+                createdAt
+                updatedAt
+                upvoteCount
+                isAnswered
+                author { login }
+                category { name }
+                comments { totalCount }
+            }
+        }
+    }
+}`
+
+/**
+ * List GitHub Discussions. Discussions have no REST endpoint, so this is the one
+ * GitHub capability here that goes through GraphQL.
+ */
+export async function listDiscussions(
+    client: Octokit,
+    owner: string,
+    repo: string,
+    options: {
+        category?: string
+        orderBy?: "CREATED_AT" | "UPDATED_AT"
+        direction?: "ASC" | "DESC"
+        perPage?: number
+        cursor?: string
+    } = {}
+): Promise<{ items: DiscussionInfo[]; categories: DiscussionCategoryInfo[]; pagination: { perPage: number; hasMore: boolean; endCursor?: string } }> {
+    const { category, orderBy = "CREATED_AT", direction = "DESC", perPage = 20, cursor } = options
+
+    const categories = await listDiscussionCategories(client, owner, repo)
+    const categoryId = category ? findDiscussionCategoryId(categories, category) : undefined
+    if (category && !categoryId) {
+        throw new Error(`Discussion category "${category}" not found in ${owner}/${repo}. Available categories: ${categories.map(c => c.name).join(", ") || "(none)"}`)
+    }
+
+    const response = await runDiscussionsQuery(client, {
+        owner,
+        repo,
+        first: perPage,
+        after: cursor ?? null,
+        categoryId: categoryId ?? null,
+        orderBy,
+        direction
+    })
+
+    const discussions = response.repository?.discussions
+    if (!discussions) {
+        throw new Error(`Discussions are not enabled for ${owner}/${repo}.`)
+    }
+
+    return {
+        items: discussions.nodes.map(node => ({
+            number: node.number,
+            title: node.title,
+            body: node.body ?? "",
+            author: node.author?.login ?? "unknown",
+            category: node.category?.name ?? "",
+            upvotes: node.upvoteCount,
+            comments: node.comments.totalCount,
+            isAnswered: node.isAnswered ?? false,
+            createdAt: node.createdAt,
+            updatedAt: node.updatedAt,
+            htmlUrl: node.url
+        })),
+        categories: response.repository?.discussionCategories.nodes ?? categories,
+        pagination: {
+            perPage,
+            hasMore: discussions.pageInfo.hasNextPage,
+            endCursor: discussions.pageInfo.endCursor ?? undefined
+        }
+    }
+}
+
+async function runDiscussionsQuery(client: Octokit, variables: DiscussionsQueryVariables): Promise<DiscussionsQueryResponse> {
+    try {
+        return await client.graphql<DiscussionsQueryResponse>(DISCUSSIONS_QUERY, { ...variables })
+    } catch (error: any) {
+        logger.error("Failed to list discussions", { owner: variables.owner, repo: variables.repo, error: error.message })
+        throw error
+    }
+}
+
+async function listDiscussionCategories(client: Octokit, owner: string, repo: string): Promise<DiscussionCategoryInfo[]> {
+    const response = await runDiscussionCategoriesQuery(client, owner, repo)
+    return response.repository?.discussionCategories.nodes ?? []
+}
+
+async function runDiscussionCategoriesQuery(client: Octokit, owner: string, repo: string): Promise<DiscussionCategoriesQueryResponse> {
+    try {
+        return await client.graphql<DiscussionCategoriesQueryResponse>(
+            `query DiscussionCategories($owner: String!, $repo: String!) {
+                repository(owner: $owner, name: $repo) {
+                    discussionCategories(first: 25) { nodes { id name slug isAnswerable } }
+                }
+            }`,
+            { owner, repo }
+        )
+    } catch (error: any) {
+        logger.error("Failed to list discussion categories", { owner, repo, error: error.message })
+        throw error
+    }
+}
+
+function findDiscussionCategoryId(categories: DiscussionCategoryInfo[], category: string): string | undefined {
+    const normalized = category.trim().toLowerCase()
+    return categories.find(c => c.name.toLowerCase() === normalized || c.slug.toLowerCase() === normalized)?.id
+}
+
+/**
+ * Comparison between two refs (branches, tags, or commit SHAs)
+ */
+export interface CommitComparison {
+    status: string
+    aheadBy: number
+    behindBy: number
+    totalCommits: number
+    additions: number
+    deletions: number
+    commits: CommitInfo[]
+    files: Array<{
+        filename: string
+        status: string
+        additions: number
+        deletions: number
+        changes: number
+    }>
+    htmlUrl: string
+    pagination: { page: number; perPage: number; hasMore: boolean }
+}
+
+/**
+ * Compare two refs. `files` is only populated on the first page, because GitHub returns
+ * the full file list with every page of commits.
+ */
+export async function compareCommits(client: Octokit, owner: string, repo: string, base: string, head: string, options: { perPage?: number; page?: number } = {}): Promise<CommitComparison> {
+    const { perPage = 50, page = 1 } = options
+
+    try {
+        const { data } = await client.repos.compareCommitsWithBasehead({
+            owner,
+            repo,
+            basehead: `${base}...${head}`,
+            per_page: perPage,
+            page
+        })
+
+        const files = page === 1 ? (data.files ?? []) : []
+
+        return {
+            status: data.status,
+            aheadBy: data.ahead_by,
+            behindBy: data.behind_by,
+            totalCommits: data.total_commits,
+            additions: files.reduce((sum, file) => sum + file.additions, 0),
+            deletions: files.reduce((sum, file) => sum + file.deletions, 0),
+            commits: data.commits.map(toCommitInfo),
+            files: files.map(file => ({
+                filename: file.filename,
+                status: file.status,
+                additions: file.additions,
+                deletions: file.deletions,
+                changes: file.changes
+            })),
+            htmlUrl: data.html_url,
+            pagination: { page, perPage, hasMore: data.commits.length === perPage && page * perPage < data.total_commits }
+        }
+    } catch (error: any) {
+        if (error.status === 404) {
+            throw new Error(`Could not compare "${base}...${head}" in ${owner}/${repo}. Check that both refs exist.`)
+        }
+        logger.error("Failed to compare commits", { owner, repo, base, head, error: error.message })
+        throw error
+    }
+}
+
+/**
+ * Repository counters at a point in time
+ */
+export interface RepositoryStats {
+    id: number
+    fullName: string
+    description: string
+    stars: number
+    forks: number
+    watchers: number
+    openIssues: number
+    defaultBranch: string
+    language: string
+    topics: string[]
+    license: string
+    isPrivate: boolean
+    isArchived: boolean
+    isFork: boolean
+    createdAt: string
+    updatedAt: string
+    pushedAt: string
+    htmlUrl: string
+}
+
+export async function getRepositoryStats(client: Octokit, owner: string, repo: string): Promise<RepositoryStats> {
+    try {
+        const { data } = await client.repos.get({ owner, repo })
+        return {
+            id: data.id,
+            fullName: data.full_name,
+            description: data.description ?? "",
+            stars: data.stargazers_count,
+            forks: data.forks_count,
+            // GitHub's `watchers_count` mirrors the star count; `subscribers_count` is the real watcher total.
+            watchers: data.subscribers_count ?? 0,
+            openIssues: data.open_issues_count,
+            defaultBranch: data.default_branch,
+            language: data.language ?? "",
+            topics: data.topics ?? [],
+            license: data.license?.spdx_id ?? "",
+            isPrivate: data.private,
+            isArchived: data.archived,
+            isFork: data.fork,
+            createdAt: data.created_at ?? "",
+            updatedAt: data.updated_at ?? "",
+            pushedAt: data.pushed_at ?? "",
+            htmlUrl: data.html_url
+        }
+    } catch (error: any) {
+        if (error.status === 404) {
+            throw new Error(`Repository ${owner}/${repo} not found`)
+        }
+        logger.error("Failed to get repository stats", { owner, repo, error: error.message })
+        throw error
+    }
+}
+
+/**
  * Commit information
  */
 export interface CommitInfo {
@@ -671,18 +1181,7 @@ export async function listCommits(
             page
         })
 
-        const items: CommitInfo[] = data.map(commit => ({
-            sha: commit.sha,
-            shortSha: commit.sha.slice(0, 7),
-            message: commit.commit.message,
-            author: commit.commit.author?.name || commit.author?.login || "unknown",
-            authorEmail: commit.commit.author?.email || "",
-            date: commit.commit.author?.date || "",
-            htmlUrl: commit.html_url,
-            additions: commit.stats?.additions || 0,
-            deletions: commit.stats?.deletions || 0,
-            filesChanged: commit.files?.length || 0
-        }))
+        const items: CommitInfo[] = data.map(toCommitInfo)
 
         return {
             items,
@@ -692,4 +1191,73 @@ export async function listCommits(
         logger.error("Failed to list commits", { owner, repo, error: error.message })
         throw error
     }
+}
+
+type OctokitCommitListItem = RestEndpointMethodTypes["repos"]["listCommits"]["response"]["data"][number]
+
+function toCommitInfo(commit: OctokitCommitListItem): CommitInfo {
+    return {
+        sha: commit.sha,
+        shortSha: commit.sha.slice(0, 7),
+        message: commit.commit.message,
+        author: commit.commit.author?.name || commit.author?.login || "unknown",
+        authorEmail: commit.commit.author?.email || "",
+        date: commit.commit.author?.date || "",
+        htmlUrl: commit.html_url,
+        additions: commit.stats?.additions || 0,
+        deletions: commit.stats?.deletions || 0,
+        filesChanged: commit.files?.length || 0
+    }
+}
+
+/**
+ * GitHub only sends a `rel="next"` link when it is certain more results exist. A full page
+ * with no link header still might have more, so we report `hasMore` conservatively.
+ */
+function hasNextPage(linkHeader: string | undefined, returnedCount: number, perPage: number): boolean {
+    if (linkHeader?.includes('rel="next"')) return true
+    return returnedCount === perPage
+}
+
+export interface IssuePage {
+    items: IssueInfo[]
+    pagination: { page: number; perPage: number; hasMore: boolean }
+}
+
+type DiscussionsQueryVariables = {
+    owner: string
+    repo: string
+    first: number
+    after: string | null
+    categoryId: string | null
+    orderBy: "CREATED_AT" | "UPDATED_AT"
+    direction: "ASC" | "DESC"
+}
+
+type DiscussionCategoriesQueryResponse = {
+    repository: {
+        discussionCategories: { nodes: DiscussionCategoryInfo[] }
+    } | null
+}
+
+type DiscussionsQueryResponse = {
+    repository: {
+        discussionCategories: { nodes: DiscussionCategoryInfo[] }
+        discussions: {
+            pageInfo: { hasNextPage: boolean; endCursor: string | null }
+            nodes: Array<{
+                number: number
+                title: string
+                body: string | null
+                url: string
+                createdAt: string
+                updatedAt: string
+                upvoteCount: number
+                isAnswered: boolean | null
+                author: { login: string } | null
+                category: { name: string } | null
+                comments: { totalCount: number }
+            }>
+        }
+    } | null
 }

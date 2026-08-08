@@ -16,15 +16,26 @@ Read-only access to repositories.
 skills: [Skills.github({ repos: [Repos.MyOrg.MyRepo] })]
 ```
 
-| Tool                             | Description                              | Access |
-| -------------------------------- | ---------------------------------------- | ------ |
-| `searchGitHubCode`               | Semantic code search across repositories | Read   |
-| `grepGitHubCode`                 | Exact-match code search (grep-like)      | Read   |
-| `readGitHubFile`                 | Read file contents                       | Read   |
-| `listGitHubDirectory`            | List directory contents                  | Read   |
-| `listGitHubPullRequests`         | List pull requests                       | Read   |
-| `listGitHubCommits`              | List commits                             | Read   |
-| `summarizeGitHubPullRequestDiff` | Summarize PR changes                     | Read   |
+| Tool                             | Description                                                     | Access |
+| -------------------------------- | --------------------------------------------------------------- | ------ |
+| `searchGitHubCode`               | Semantic code search across repositories                        | Read   |
+| `grepGitHubCode`                 | Exact-match code search (grep-like)                             | Read   |
+| `readGitHubFile`                 | Read file contents                                              | Read   |
+| `listGitHubDirectory`            | List directory contents                                         | Read   |
+| `listGitHubPullRequests`         | List pull requests                                              | Read   |
+| `listGitHubCommits`              | List commits                                                    | Read   |
+| `listGitHubIssues`               | List issues in one repository, optionally sorted by discussion  | Read   |
+| `searchGitHubIssues`             | Search issues across repositories, ranked by reactions/comments | Read   |
+| `listGitHubDiscussions`          | List GitHub Discussions and their categories                    | Read   |
+| `compareGitHubCommits`           | Compare two branches, tags, or SHAs in one call                 | Read   |
+| `getGitHubRepositoryStats`       | Read stars, forks, watchers, and open-issue counts              | Read   |
+| `summarizeGitHubPullRequestDiff` | Summarize PR changes                                            | Read   |
+
+`listGitHubIssues` and `searchGitHubIssues` both exclude pull requests. Use `listGitHubIssues` for the plain backlog of a single repository; use `searchGitHubIssues` when you want engagement ranking (`sort: "reactions-+1"`, `"comments"`, or `"interactions"`) or need to span several repositories at once.
+
+`listGitHubDiscussions` uses cursor pagination rather than page numbers: pass the `endCursor` from the response back as `cursor` to fetch the next page. The response also lists the repository's discussion categories, so a first call with no `category` tells you what you can filter by.
+
+`getGitHubRepositoryStats` returns current totals only. To report growth (for example, stars gained this week), store the previous reading in your workflow's own state and compare against the new one.
 
 ## Slack
 

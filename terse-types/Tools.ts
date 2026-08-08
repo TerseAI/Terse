@@ -237,6 +237,110 @@ export const gitHubPullRequestRefSchema = z.object({
     url: z.string()
 })
 
+export const gitHubCursorPaginationSchema = z.object({
+    perPage: z.number().int(),
+    hasMore: z.boolean(),
+    endCursor: z.string().optional()
+})
+
+export const gitHubReactionCountsSchema = z.object({
+    total: z.number().int(),
+    plusOne: z.number().int(),
+    minusOne: z.number().int(),
+    laugh: z.number().int(),
+    hooray: z.number().int(),
+    confused: z.number().int(),
+    heart: z.number().int(),
+    rocket: z.number().int(),
+    eyes: z.number().int()
+})
+
+export const gitHubIssueSummarySchema = z.object({
+    number: z.number().int(),
+    title: z.string(),
+    description: z.string(),
+    author: z.string(),
+    state: z.string(),
+    labels: z.array(z.string()),
+    assignees: z.array(z.string()),
+    comments: z.number().int(),
+    reactions: gitHubReactionCountsSchema,
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    closedAt: z.string().optional(),
+    url: z.string()
+})
+
+export const gitHubIssueSearchResultSchema = gitHubIssueSummarySchema.extend({
+    repository: z.string()
+})
+
+export const gitHubIssueListSummarySchema = z.object({
+    total: z.number().int(),
+    open: z.number().int(),
+    closed: z.number().int()
+})
+
+export const gitHubDiscussionSummarySchema = z.object({
+    number: z.number().int(),
+    title: z.string(),
+    body: z.string(),
+    author: z.string(),
+    category: z.string(),
+    upvotes: z.number().int(),
+    comments: z.number().int(),
+    isAnswered: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    url: z.string()
+})
+
+export const gitHubDiscussionCategorySchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    slug: z.string(),
+    isAnswerable: z.boolean()
+})
+
+export const gitHubComparisonFileSchema = z.object({
+    filename: z.string(),
+    status: z.string(),
+    additions: z.number().int(),
+    deletions: z.number().int(),
+    changes: z.number().int()
+})
+
+export const gitHubComparisonSummarySchema = z.object({
+    status: z.string(),
+    aheadBy: z.number().int(),
+    behindBy: z.number().int(),
+    totalCommits: z.number().int(),
+    additions: z.number().int(),
+    deletions: z.number().int(),
+    filesChanged: z.number().int()
+})
+
+export const gitHubRepositoryStatsSchema = z.object({
+    id: z.number().int(),
+    fullName: z.string(),
+    description: z.string(),
+    stars: z.number().int(),
+    forks: z.number().int(),
+    watchers: z.number().int(),
+    openIssues: z.number().int(),
+    defaultBranch: z.string(),
+    language: z.string(),
+    topics: z.array(z.string()),
+    license: z.string(),
+    isPrivate: z.boolean(),
+    isArchived: z.boolean(),
+    isFork: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    pushedAt: z.string(),
+    url: z.string()
+})
+
 export const notionLooseObjectSchema = z.record(z.string(), z.unknown())
 
 export const notionUserReferenceSchema = z.object({
@@ -784,6 +888,61 @@ export const listGitHubCommitsInputSchema = z.object({
     path: z.string().nullable().optional().describe('Only include commits that affect this file or directory path (e.g., "src/components" or "package.json"). Use null for all paths.'),
     author: z.string().nullable().optional().describe("Filter commits by author (GitHub username or email). Use null for all authors."),
     perPage: z.number().int().describe("Number of results to return (default: 30, max: 100)")
+})
+
+export const listGitHubIssuesInputSchema = z.object({
+    repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    state: z.enum(["open", "closed", "all"]).describe('Filter by issue state. Use "open" for the live backlog, "closed" for resolved issues, or "all" for both.'),
+    labels: z.array(z.string()).nullable().describe('Only include issues carrying every one of these labels (e.g., ["bug", "needs-triage"]). Use null for no label filter.'),
+    since: z.string().nullable().describe('Only include issues updated on or after this timestamp (ISO date string, e.g., "2024-01-15" or "2024-01-15T00:00:00Z"). Use null for no time filter.'),
+    sort: z.enum(["created", "updated", "comments"]).describe('Sort field. Use "comments" to surface the most-discussed ("hot") issues, "updated" for recent activity, "created" for newest.'),
+    direction: z.enum(["asc", "desc"]).describe('Sort direction. Use "desc" for most recent / most commented first.'),
+    creator: z.string().nullable().describe("Only include issues opened by this GitHub username. Use null for all authors."),
+    assignee: z.string().nullable().describe('Only include issues assigned to this GitHub username. Use "none" for unassigned issues, or null for no assignee filter.'),
+    perPage: z.number().int().describe("Number of results to return (default: 30, max: 100)"),
+    page: z.number().int().min(1).nullable().describe("Page number for pagination (default: 1). Use null for page 1. Must be a positive integer >= 1.")
+})
+
+export const searchGitHubIssuesInputSchema = z.object({
+    repositoryNames: z.array(z.string()).describe("Array of repository full names (owner/repo format) to search in."),
+    query: z
+        .string()
+        .describe('Free-text search terms matched against issue titles and bodies (e.g., "memory leak streaming"). Use an empty string to match every issue and rely on the filters instead.'),
+    state: z.enum(["open", "closed", "all"]).describe("Filter by issue state."),
+    labels: z.array(z.string()).nullable().describe('Only include issues carrying every one of these labels (e.g., ["bug"]). Use null for no label filter.'),
+    since: z
+        .string()
+        .nullable()
+        .describe('Only include issues created on or after this date (YYYY-MM-DD). Use null for no time filter. Pair this with a reaction sort to find "hot" issues in a window.'),
+    until: z.string().nullable().describe("Only include issues created on or before this date (YYYY-MM-DD). Use null for no end filter."),
+    sort: z
+        .enum(["reactions-+1", "reactions", "comments", "interactions", "created", "updated"])
+        .describe('Ranking field. Use "reactions-+1" for the most upvoted issues, "comments" for the most discussed, "interactions" for overall engagement.'),
+    order: z.enum(["asc", "desc"]).describe('Sort direction. Use "desc" to put the hottest issues first.'),
+    perPage: z.number().int().describe("Number of results to return (default: 20, max: 100)"),
+    page: z.number().int().min(1).nullable().describe("Page number for pagination (default: 1). Use null for page 1. Must be a positive integer >= 1.")
+})
+
+export const listGitHubDiscussionsInputSchema = z.object({
+    repository: z.string().describe('Repository in "owner/repo" format (e.g., "modelcontextprotocol/modelcontextprotocol"). Must be one of the configured repositories.'),
+    category: z.string().nullable().describe('Only include discussions in this category, matched on the category name or slug (e.g., "Ideas", "sep-proposals"). Use null for all categories.'),
+    orderBy: z.enum(["CREATED_AT", "UPDATED_AT"]).describe("Field to order discussions by."),
+    direction: z.enum(["ASC", "DESC"]).describe('Sort direction. Use "DESC" for the newest / most recently active discussions first.'),
+    answered: z.boolean().nullable().describe("Filter by whether a discussion has an accepted answer. Use null to include both answered and unanswered discussions."),
+    perPage: z.number().int().describe("Number of discussions to return (default: 20, max: 100)"),
+    cursor: z.string().nullable().describe("Pagination cursor from a previous response (endCursor). Discussions use cursor pagination, not page numbers. Use null for the first page.")
+})
+
+export const compareGitHubCommitsInputSchema = z.object({
+    repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
+    base: z.string().describe('The starting point of the comparison: a branch, tag, or commit SHA (e.g., "v0.11.0" or "main").'),
+    head: z.string().describe('The end point of the comparison: a branch, tag, or commit SHA (e.g., "v0.12.0"). Everything reachable from head but not from base is reported.'),
+    perPage: z.number().int().describe("Number of commits to return per page (default: 50, max: 250)"),
+    page: z.number().int().min(1).nullable().describe("Page number for the commit list (default: 1). Use null for page 1. Must be a positive integer >= 1.")
+})
+
+export const getGitHubRepositoryStatsInputSchema = z.object({
+    repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.')
 })
 
 export const summarizeGitHubPullRequestDiffInputSchema = z.object({
@@ -1437,6 +1596,102 @@ The tool returns commit details including message, author, date, and SHA.`,
         commits: z.array(gitHubCommitSummarySchema),
         message: z.string(),
         tip: z.string()
+    })
+})
+
+export const listGitHubIssuesTool = defineTool({
+    name: "listGitHubIssues",
+    description: `List issues in a GitHub repository. Use this to:
+- Review the open backlog, optionally narrowed to labels, author, or assignee
+- Surface the "hottest" issues by sorting on comment count
+- Track issue activity since a given timestamp
+
+Pull requests are excluded — this returns issues only. Each issue includes its label set, comment count, and reaction breakdown (including 👍), so you can rank by engagement yourself.
+For engagement-ranked results across several repositories, or ranking by 👍 reactions, use searchGitHubIssues instead.`,
+    inputSchema: listGitHubIssuesInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        timeWindow: z.string(),
+        filters: z.string(),
+        summary: gitHubIssueListSummarySchema,
+        pagination: gitHubPaginationSchema,
+        issues: z.array(gitHubIssueSummarySchema),
+        message: z.string()
+    })
+})
+
+export const searchGitHubIssuesTool = defineTool({
+    name: "searchGitHubIssues",
+    description: `Search issues across GitHub repositories and rank them by engagement. Use this to:
+- Find the "hot" issues in a time window (sort by "reactions-+1", "comments", or "interactions")
+- Search issue titles and bodies by keyword across several repositories at once
+- Combine a free-text query with state, label, and creation-date filters
+
+Pull requests are excluded — this searches issues only. Returns each issue's repository, comment count, and reaction breakdown.
+Use listGitHubIssues when you want the plain backlog of a single repository without engagement ranking.`,
+    inputSchema: searchGitHubIssuesInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        query: z.string(),
+        repositories: z.array(z.string()),
+        totalCount: z.number().int(),
+        pagination: gitHubPaginationSchema,
+        issues: z.array(gitHubIssueSearchResultSchema),
+        message: z.string()
+    })
+})
+
+export const listGitHubDiscussionsTool = defineTool({
+    name: "listGitHubDiscussions",
+    description: `List GitHub Discussions in a repository. Use this to:
+- Follow design debate that happens in Discussions rather than Issues (proposals, RFCs, Q&A)
+- Track which discussions are unanswered and need a reply
+- Rank community interest by upvotes and comment count
+
+Discussions use cursor pagination: pass the returned endCursor back as "cursor" to fetch the next page. The response also lists the repository's discussion categories, so you can re-run with a "category" filter.`,
+    inputSchema: listGitHubDiscussionsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        category: z.string(),
+        categories: z.array(gitHubDiscussionCategorySchema),
+        pagination: gitHubCursorPaginationSchema,
+        discussions: z.array(gitHubDiscussionSummarySchema),
+        message: z.string()
+    })
+})
+
+export const compareGitHubCommitsTool = defineTool({
+    name: "compareGitHubCommits",
+    description: `Compare two points in a GitHub repository — branches, tags, or commit SHAs. Use this to:
+- Answer "what changed between two releases" in a single call (e.g. base "v0.11.0", head "v0.12.0")
+- See how far a branch is ahead of or behind another
+- Get the list of commits and the per-file change stats between two refs
+
+Returns the commits reachable from head but not from base, plus a per-file summary (filename, status, additions, deletions). File patches are not included — use summarizeGitHubPullRequestDiff or readGitHubFile for the actual code.`,
+    inputSchema: compareGitHubCommitsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        base: z.string(),
+        head: z.string(),
+        summary: gitHubComparisonSummarySchema,
+        pagination: gitHubPaginationSchema,
+        commits: z.array(gitHubCommitSummarySchema),
+        files: z.array(gitHubComparisonFileSchema),
+        message: z.string()
+    })
+})
+
+export const getGitHubRepositoryStatsTool = defineTool({
+    name: "getGitHubRepositoryStats",
+    description: `Read a GitHub repository's current metadata and counters: stars, forks, watchers, open issues, topics, license, and last-push time. Use this to:
+- Take a point-in-time reading of repository popularity
+- Compute growth over time by storing the previous reading and comparing against this one
+
+The API only reports current totals, so a delta requires you to persist the earlier count yourself between runs.`,
+    inputSchema: getGitHubRepositoryStatsInputSchema,
+    outputSchema: toolOutputBaseSchema.extend({
+        repository: z.string(),
+        stats: gitHubRepositoryStatsSchema,
+        message: z.string()
     })
 })
 
@@ -4413,6 +4668,11 @@ export const ToolDefinitions = {
     [listGitHubDirectoryTool.name]: listGitHubDirectoryTool,
     [listGitHubPullRequestsTool.name]: listGitHubPullRequestsTool,
     [listGitHubCommitsTool.name]: listGitHubCommitsTool,
+    [listGitHubIssuesTool.name]: listGitHubIssuesTool,
+    [searchGitHubIssuesTool.name]: searchGitHubIssuesTool,
+    [listGitHubDiscussionsTool.name]: listGitHubDiscussionsTool,
+    [compareGitHubCommitsTool.name]: compareGitHubCommitsTool,
+    [getGitHubRepositoryStatsTool.name]: getGitHubRepositoryStatsTool,
     [summarizeGitHubPullRequestDiffTool.name]: summarizeGitHubPullRequestDiffTool,
     [notionCreateOrUpdatePageTool.name]: notionCreateOrUpdatePageTool,
     [notionCreateOrUpdateDatabaseRowTool.name]: notionCreateOrUpdateDatabaseRowTool,

@@ -519,6 +519,88 @@ const TOOL_DISPLAY_CONFIG: Record<string, ToolDisplayConfig> = {
             return "Search complete"
         }
     },
+    listGitHubIssues: {
+        preparing: "Loading issues",
+        executing: params => {
+            const repo = params?.repository as string | undefined
+            return repo ? `Loading issues from ${repo}` : "Loading issues"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const summary = parsed?.summary as Record<string, unknown> | undefined
+            const total = summary?.total as number | undefined
+            const repo = params?.repository as string | undefined
+            if (total !== undefined && repo) return `Found ${total} issue${total !== 1 ? "s" : ""} in ${repo}`
+            if (total !== undefined) return `Found ${total} issue${total !== 1 ? "s" : ""}`
+            if (repo) return `Loaded issues from ${repo}`
+            return "Issues loaded"
+        }
+    },
+    searchGitHubIssues: {
+        preparing: "Searching issues",
+        executing: params => {
+            const query = params?.query as string | undefined
+            return query ? `Searching issues for "${truncate(query)}"` : "Searching issues"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const total = parsed?.totalCount as number | undefined
+            const query = params?.query as string | undefined
+            if (total !== undefined && query) return `Found ${total} issue${total !== 1 ? "s" : ""} for "${truncate(query, 25)}"`
+            if (total !== undefined) return `Found ${total} issue${total !== 1 ? "s" : ""}`
+            return "Issue search complete"
+        }
+    },
+    listGitHubDiscussions: {
+        preparing: "Loading discussions",
+        executing: params => {
+            const repo = params?.repository as string | undefined
+            return repo ? `Loading discussions from ${repo}` : "Loading discussions"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const discussions = parsed?.discussions as unknown[] | undefined
+            const repo = params?.repository as string | undefined
+            if (discussions && repo) return `Found ${discussions.length} discussion${discussions.length !== 1 ? "s" : ""} in ${repo}`
+            if (discussions) return `Found ${discussions.length} discussion${discussions.length !== 1 ? "s" : ""}`
+            if (repo) return `Loaded discussions from ${repo}`
+            return "Discussions loaded"
+        }
+    },
+    compareGitHubCommits: {
+        preparing: "Comparing versions",
+        executing: params => {
+            const base = params?.base as string | undefined
+            const head = params?.head as string | undefined
+            return base && head ? `Comparing ${truncate(base, 20)} to ${truncate(head, 20)}` : "Comparing versions"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const summary = parsed?.summary as Record<string, unknown> | undefined
+            const totalCommits = summary?.totalCommits as number | undefined
+            const base = params?.base as string | undefined
+            const head = params?.head as string | undefined
+            if (totalCommits !== undefined && base && head) return `${totalCommits} change${totalCommits !== 1 ? "s" : ""} between ${truncate(base, 15)} and ${truncate(head, 15)}`
+            if (totalCommits !== undefined) return `Found ${totalCommits} change${totalCommits !== 1 ? "s" : ""}`
+            return "Comparison ready"
+        }
+    },
+    getGitHubRepositoryStats: {
+        preparing: "Loading project stats",
+        executing: params => {
+            const repo = params?.repository as string | undefined
+            return repo ? `Loading stats for ${repo}` : "Loading project stats"
+        },
+        complete: (params, result) => {
+            const parsed = safeParseResult(result)
+            const stats = parsed?.stats as Record<string, unknown> | undefined
+            const stars = stats?.stars as number | undefined
+            const repo = params?.repository as string | undefined
+            if (stars !== undefined && repo) return `${repo} has ${stars} star${stars !== 1 ? "s" : ""}`
+            if (repo) return `Loaded stats for ${repo}`
+            return "Project stats loaded"
+        }
+    },
     summarizeGitHubPullRequestDiff: {
         preparing: "Reviewing changes",
         executing: params => {
