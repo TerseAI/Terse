@@ -1,6 +1,5 @@
 import { Octokit } from "@octokit/rest"
-import { GitHubEventType, IntegrationType } from "terse-types"
-import { GithubTrigger } from "terse-types"
+import { GitHubEventType, GithubTrigger, GithubTriggerSchema, IntegrationType } from "terse-types"
 
 import logger from "../../common/logger"
 import { getAppInstallationsForUser } from "../../integrations/github/integration"
@@ -101,10 +100,12 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
                 return null
             }
 
-            const commentMatch = identifier.match(/^(\d+)\/comment\/(\d+)$/)
+            const commentMatch = identifier.match(/^(\d+)\/comment\/(\d+)(?:\/edited\/(.+))?$/)
             if ((type === "pr" || type === "issue") && commentMatch) {
                 const issueNumber = parseInt(commentMatch[1], 10)
                 const commentId = parseInt(commentMatch[2], 10)
+                const isEditedPRComment = type === "pr" && commentMatch[3] !== undefined
+                const editedAt = isEditedPRComment ? decodeURIComponent(commentMatch[3]) : undefined
                 const { data: comment } = await octokit.issues.getComment({ owner, repo: name, comment_id: commentId })
                 const isPullRequest = type === "pr"
                 const target = isPullRequest
@@ -114,12 +115,12 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
                 const targetUserEmail = target.user?.email ?? undefined
                 const commentUserLogin = comment.user?.login ?? ""
                 const commentUserEmail = comment.user?.email ?? undefined
-                const eventData: GithubTrigger = {
+                const eventData = GithubTriggerSchema.parse({
                     integrationType: IntegrationType.GITHUB,
                     username: commentUserLogin,
                     installationId,
                     repositoryName: repo.full_name,
-                    eventType: GitHubEventType.ISSUE_COMMENT_CREATED,
+                    eventType: isEditedPRComment ? GitHubEventType.PR_COMMENT_EDITED : GitHubEventType.ISSUE_COMMENT_CREATED,
                     issue: {
                         id: target.id,
                         number: issueNumber,
@@ -136,7 +137,7 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
                         author: { login: commentUserLogin, email: commentUserEmail },
                         url: comment.html_url,
                         createdAt: comment.created_at,
-                        updatedAt: comment.updated_at
+                        updatedAt: editedAt ?? comment.updated_at
                     },
                     repository: {
                         id: repo.id,
@@ -145,7 +146,7 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
                         defaultBranch: repo.default_branch ?? "main"
                     },
                     sender: { login: commentUserLogin, email: commentUserEmail }
-                }
+                })
                 return new GithubTriggerRuntime(eventData, [])
             }
 

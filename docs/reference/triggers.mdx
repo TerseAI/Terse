@@ -23,7 +23,9 @@ Every event, whatever its trigger, carries `triggeredAt`: a `Date` fixed to the 
 | `Triggers.github.onPRSynchronized()` | `GithubPRSynchronizedTrigger` | New commits are pushed to a PR       |
 | `Triggers.github.onPR()`             | `GithubPRTrigger`             | Any pull request event               |
 | `Triggers.github.onIssueComment()`   | `GithubIssueCommentCreatedTrigger` | A comment is created on an issue or pull request |
-| `Triggers.github.onPRComment()`      | `GithubPRCommentCreatedTrigger` | A comment is created on a pull request |
+| `Triggers.github.onPRCommentCreated()` | `GithubPRCommentCreatedTrigger` | A comment is created on a pull request |
+| `Triggers.github.onPRCommentEdited()` | `GithubPRCommentEditedTrigger` | A comment is edited on a pull request |
+| `Triggers.github.onPRComment()`      | `GithubPRCommentTrigger` | A comment is created or edited on a pull request |
 | `Triggers.github.trigger()`          | `GithubTrigger`               | Any GitHub event you select with `eventTypes` |
 
 Config: Scoped to specific repositories via `repo` parameter.
@@ -52,7 +54,7 @@ Push events add:
 
 - `branch` - the branch that was pushed to
 
-Issue comment events add:
+Issue and PR comment events add:
 
 - `issue` - `{ id, number, title, body?, state, url, author, isPullRequest }` (the issue or PR the comment is on)
 - `comment` - `{ id, body, author, url, createdAt, updatedAt }`
