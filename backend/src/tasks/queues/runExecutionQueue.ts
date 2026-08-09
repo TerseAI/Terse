@@ -8,11 +8,17 @@ export function runExecutionJobId(runId: string): string {
 }
 
 export async function enqueueRunExecution(data: RunExecutionJobData, opts?: { delaySeconds?: number }): Promise<void> {
+    const enqueuedAtMs = Date.now()
+    const payload: RunExecutionJobData = {
+        ...data,
+        enqueuedAtMs,
+        ...(opts?.delaySeconds ? { scheduledForMs: enqueuedAtMs + opts.delaySeconds * 1000 } : {})
+    }
     const singletonKey = data.restoreImageId ? resumeExecutionJobId(data.runId, data.restoreImageId) : runExecutionJobId(data.runId)
     const delay = opts?.delaySeconds ? { startAfter: opts.delaySeconds } : {}
     await Boss.getInstance()
         .getBoss()
-        .send(QueueName.SdkRunExecution, data, { singletonKey, ...delay })
+        .send(QueueName.SdkRunExecution, payload, { singletonKey, ...delay })
 }
 
 function resumeExecutionJobId(runId: string, restoreImageId: string): string {
@@ -28,4 +34,6 @@ export interface RunExecutionJobData {
     kind: JobExecutionKind
     restoreImageId?: string
     hookResume?: HookResume
+    enqueuedAtMs?: number
+    scheduledForMs?: number
 }

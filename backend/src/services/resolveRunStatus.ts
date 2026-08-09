@@ -1,4 +1,5 @@
 import logger from "../common/logger"
+import { SandboxRuntimeTelemetry } from "../common/sandboxRuntimeTelemetry"
 import { shellQuote } from "../common/shellEscape"
 import { db } from "../loaders/prisma"
 import { markRunSuspended } from "../modules/agents/AgentRunner/runHistory"
@@ -15,8 +16,9 @@ import { SDK_SANDBOX_APP_NAME, runtimeSandboxUniqueName } from "./sdkSandboxLaye
 // the (final, since the process is dead) journal is the source of truth for which. Parked
 // runs are marked suspended here; final statuses are left to the run execution handler.
 export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<RunOutcome> {
-    const { runId, agent, result, runtimeName } = params
-    const journal = result.exitCode === 0 ? await readRunJournalState(runId, agent.project.id) : null
+    const { runId, agent, result, runtimeName, telemetry } = params
+    const journal =
+        result.exitCode === 0 ? await (telemetry ? telemetry.measure("readRunJournalMs", () => readRunJournalState(runId, agent.project.id)) : readRunJournalState(runId, agent.project.id)) : null
     const verdict = classifyRunExit(result, journal)
 
     switch (verdict) {
@@ -30,7 +32,7 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
             return { status: "failed", cause: new Error("Durable run failed; see the run output for details") }
         }
         case "parked_on_input": {
-            const imageId = await snapshotRunJournalForSuspend(runId)
+            const imageId = await snapshotRunJournalForSuspend(runId, telemetry)
             if (!imageId) {
                 logger.error("SDK sandbox: parked run could not be snapshotted", { runId, agentId: agent.id })
                 return { status: "failed", cause: new Error("Could not snapshot the parked run journal") }
@@ -55,7 +57,7 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
 
 // Snapshots a suspending run's journal directory off its live sandbox and returns the
 // resulting image id. Returns undefined when the run has no live sandbox.
-export async function snapshotRunJournalForSuspend(runId: string): Promise<string | undefined> {
+export async function snapshotRunJournalForSuspend(runId: string, telemetry?: SandboxRuntimeTelemetry): Promise<string | undefined> {
     const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
     const projectId = run?.automation?.project_id
     if (!projectId) return undefined
@@ -65,6 +67,9 @@ export async function snapshotRunJournalForSuspend(runId: string): Promise<strin
     const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
     if (!sandbox) return undefined
 
+    if (telemetry) {
+        return telemetry.measure("snapshotRunJournalMs", () => provider.snapshotDirectory(sandbox, runJournalDir(runId)))
+    }
     return provider.snapshotDirectory(sandbox, runJournalDir(runId))
 }
 
@@ -75,6 +80,7 @@ type ResolveRunStatusParams = {
     agent: AgentWithRelations
     result: SandboxCommandResult
     runtimeName: string
+    telemetry?: SandboxRuntimeTelemetry
 }
 
 export type RunVerdict = "failed_exit" | "failed_in_workflow" | "parked_on_input" | "suspended_on_timer" | "completed"

@@ -1,5 +1,6 @@
 import logger from "../../common/logger"
 import { getActiveDeployForProject } from "../../common/projectHelper"
+import { SandboxRuntimeTelemetry } from "../../common/sandboxRuntimeTelemetry"
 import { shellQuote } from "../../common/shellEscape"
 import { db } from "../../loaders/prisma"
 import { StreamEventEmitter } from "../../modules/agents/AgentRunner/StreamProcessor"
@@ -47,27 +48,43 @@ export class SandboxJobExecutor implements JobExecutor {
     }
 
     async execute(context: JobExecutionContext): Promise<RunOutcome> {
-        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume } = context
+        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, enqueuedAtMs, scheduledForMs } = context
         const executionStart = performance.now()
+        const sandboxProvider = getSandboxProvider()
+        const telemetry = new SandboxRuntimeTelemetry({
+            userId,
+            organizationId: orgId,
+            runId,
+            jobId: agent.id,
+            projectId: agent.project.id,
+            jobName,
+            mode: restoreImageId ? "resume" : "fresh",
+            provider: sandboxProvider.supportsContainerizedRunners ? "containerized" : "local",
+            enqueuedAtMs,
+            scheduledForMs
+        })
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
 
         let sandboxApiKey: string | undefined
         let sandboxTokenId: string | undefined
+        let telemetrySuccess = false
+        let telemetryError: unknown
 
         try {
-            const sourceImage = await this.resolveSourceImage({ agent, runId })
+            const sourceImage = await telemetry.measure("resolveSourceImageMs", () => this.resolveSourceImage({ agent, runId }))
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
+            telemetry.setRuntime(executor.runtime)
 
-            const { rawToken, tokenId } = await createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id })
+            const { rawToken, tokenId } = await telemetry.measure("createSandboxTokenMs", () => createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id }))
             sandboxApiKey = rawToken
             sandboxTokenId = tokenId
             logger.info("SDK sandbox: created temp API token", { runId, agentId: agent.id })
 
             const secretService = SecretService.getInstance()
-            const projectSecretValues = await secretService.getSecrets({ type: "project", secret: { projectId: agent.project.id } })
+            const projectSecretValues = await telemetry.measure("fetchProjectSecretsMs", () => secretService.getSecrets({ type: "project", secret: { projectId: agent.project.id } }))
 
-            const sandboxBackendUrl = getSandboxProvider().supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
+            const sandboxBackendUrl = sandboxProvider.supportsContainerizedRunners ? settings.urls.backend : settings.urls.internalBackend
 
             const sandboxEnv: Record<string, string> = {
                 // Make sure to keep this first as the sandbox env,
@@ -92,20 +109,25 @@ export class SandboxJobExecutor implements JobExecutor {
             const result = await this.executeWithSourceImage({
                 executor,
                 jobName,
-                sandboxService: getSandboxProvider(),
+                sandboxService: sandboxProvider,
                 runId,
                 projectId: agent.project.id,
                 agentId: agent.id,
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
                 cliVersion: sourceImage.cliVersion,
-                restoreImageId
+                restoreImageId,
+                telemetry
             })
 
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
 
-            return await resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime })
+            const outcome = await telemetry.measure("resolveRunStatusMs", () => resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime, telemetry }))
+            telemetrySuccess = outcome.status !== "failed"
+            if (outcome.status === "failed") telemetryError = outcome.cause
+            return outcome
         } catch (error) {
+            telemetryError = error
             logger.error("SDK job execution failed", {
                 error,
                 runId,
@@ -121,7 +143,8 @@ export class SandboxJobExecutor implements JobExecutor {
                     logger.warn("Failed to delete sandbox API token", { error: err, tokenId: sandboxTokenId })
                 })
             }
-            await this.terminateRunSandbox(agent.project.id, runId)
+            await telemetry.measure("terminateRunSandboxMs", () => this.terminateRunSandbox(agent.project.id, runId))
+            telemetry.capture(telemetrySuccess, telemetryError)
         }
     }
 
@@ -203,16 +226,17 @@ export class SandboxJobExecutor implements JobExecutor {
         sourceImageRecordId: string
         cliVersion: string
         restoreImageId?: string
+        telemetry: SandboxRuntimeTelemetry
     }): Promise<SandboxCommandResult> {
-        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId, telemetry } = params
 
-        const sb = await this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId)
+        const sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, telemetry))
         if (restoreImageId) {
-            await sandboxService.restoreDirectory(sb, runJournalDir(runId), restoreImageId)
+            await telemetry.measure("restoreSnapshotMs", () => sandboxService.restoreDirectory(sb, runJournalDir(runId), restoreImageId))
         }
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
-        const result = restoreImageId ? await executor.resume(executorContext) : await executor.execute(executorContext)
+        const result = await telemetry.measure("runtimeCommandMs", () => (restoreImageId ? executor.resume(executorContext) : executor.execute(executorContext)))
         return result
     }
 
@@ -260,16 +284,16 @@ export class SandboxJobExecutor implements JobExecutor {
         }
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string, runId: string): Promise<Sandbox> {
+    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string, runId: string, telemetry: SandboxRuntimeTelemetry): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
         }
 
-        const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
-        const image = await sandboxService.getImageFromId(source.imageId)
+        const app = await telemetry.measure("sandboxAppReadyMs", () => sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME))
+        const image = await telemetry.measure("sourceImageLoadMs", () => sandboxService.getImageFromId(source.imageId))
         const uniqueName = runtimeSandboxUniqueName(projectId, runId)
-        return sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+        return telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS))
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

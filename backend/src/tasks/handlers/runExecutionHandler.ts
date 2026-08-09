@@ -27,7 +27,7 @@ function loadAgentForExecution(agentId: string, orgId: string): Promise<AgentWit
 }
 
 export async function handleRunExecution(data: RunExecutionJobData): Promise<void> {
-    const { runId, agentId, orgId, userId, jobName, kind, hookResume } = data
+    const { runId, agentId, orgId, userId, jobName, kind, hookResume, enqueuedAtMs, scheduledForMs } = data
     let restoreImageId = data.restoreImageId
 
     // A delayed resume may fire after the run was cancelled while suspended; only the caller
@@ -68,7 +68,7 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
         }
 
         const executor = jobExecutorRegistry.resolve(kind)
-        const outcome = await executor.execute({ runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume })
+        const outcome = await executor.execute({ runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, enqueuedAtMs, scheduledForMs })
         switch (outcome.status) {
             case "success":
                 await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)
