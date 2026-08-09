@@ -15,6 +15,8 @@ export interface JobExecutionContext {
     readonly restoreImageId?: string
     /** Input response to inject when resuming a run parked on a workflow hook. */
     readonly hookResume?: HookResume
+    readonly enqueuedAtMs?: number
+    readonly scheduledForMs?: number
 }
 
 export type HookResume = {

@@ -16,6 +16,7 @@ import {
 import { z } from "zod"
 
 import logger from "../../../common/logger"
+import { SandboxSuspendTelemetry } from "../../../common/sandboxRuntimeTelemetry"
 import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
 import { finalizeRunFailure } from "../../../loaders/socket"
@@ -406,18 +407,26 @@ export async function handleJobSuspension(req: Request, res: Response) {
     }
 
     const { runId, delaySeconds } = parsed.data
+    const telemetry = new SandboxSuspendTelemetry({
+        userId: user.id,
+        runId,
+        suspensionKind: "timer",
+        delaySeconds
+    })
     try {
-        const imageId = await snapshotRunJournalForSuspend(runId)
+        const imageId = await telemetry.measure("snapshotRunJournalMs", () => snapshotRunJournalForSuspend(runId))
         if (!imageId) {
             throw new Error("No live sandbox to snapshot; the run cannot be suspended")
         }
-        await markRunSuspended(runId, imageId, { kind: "timer", delaySeconds })
-        await enqueueRunResumption(runId, imageId, delaySeconds)
+        await telemetry.measure("markRunSuspendedMs", () => markRunSuspended(runId, imageId, { kind: "timer", delaySeconds }))
+        await telemetry.measure("enqueueRunResumptionMs", () => enqueueRunResumption(runId, imageId, delaySeconds))
+        await telemetry.capture(true)
 
         const response: SdkJobSuspendResponseBody = { success: true }
         return res.status(200).json(response)
     } catch (error) {
         logger.error("Failed to suspend job", { error, runId })
+        await telemetry.capture(false, error)
         await rollbackSuspension(runId)
         return res.status(500).json({ success: false, error: extractErrorMessage(error) })
     }

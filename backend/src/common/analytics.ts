@@ -24,6 +24,8 @@ export enum AnalyticsEvent {
     JOB_AWAITING_APPROVAL = "job_awaiting_approval",
     JOB_RESUMED = "job_resumed",
     JOB_CANCELLED = "job_cancelled",
+    SANDBOX_RUNTIME_LATENCY = "sandbox_runtime_latency",
+    SANDBOX_SUSPEND_LATENCY = "sandbox_suspend_latency",
     API_TOKEN_CREATED = "api_token_created",
     CLI_LOGGED_IN = "cli_logged_in",
     BILLING_CHECKOUT_STARTED = "billing_checkout_started",
@@ -109,6 +111,48 @@ export interface RunEventProperties extends BaseEventProperties {
     reason?: string
 }
 
+export interface SandboxRuntimeLatencyProperties extends BaseEventProperties {
+    runId: string
+    jobId: string
+    projectId: string
+    mode: "fresh" | "resume"
+    provider: "containerized" | "local"
+    success: boolean
+    runtime?: string
+    jobName?: string
+    errorMessage?: string
+    queueWaitMs?: number
+    resumeSchedulerLagMs?: number
+    totalWorkerExecutionMs?: number
+    resolveSourceImageMs?: number
+    createSandboxTokenMs?: number
+    fetchProjectSecretsMs?: number
+    createSourceImageSandboxMs?: number
+    sandboxAppReadyMs?: number
+    sourceImageLoadMs?: number
+    sandboxReadyMs?: number
+    restoreSnapshotMs?: number
+    runtimeCommandMs?: number
+    resolveRunStatusMs?: number
+    readRunJournalMs?: number
+    snapshotRunJournalMs?: number
+    terminateRunSandboxMs?: number
+}
+
+export interface SandboxSuspendLatencyProperties extends BaseEventProperties {
+    runId: string
+    jobId?: string
+    projectId?: string
+    suspensionKind: "timer" | "input"
+    success: boolean
+    delaySeconds?: number
+    snapshotRunJournalMs?: number
+    markRunSuspendedMs?: number
+    enqueueRunResumptionMs?: number
+    totalSuspendMs?: number
+    errorMessage?: string
+}
+
 interface ApiTokenCreatedProperties extends BaseEventProperties {
     organizationId: string
     tokenName: string
@@ -139,6 +183,8 @@ type EventProperties = {
     [AnalyticsEvent.JOB_AWAITING_APPROVAL]: RunEventProperties
     [AnalyticsEvent.JOB_RESUMED]: RunEventProperties
     [AnalyticsEvent.JOB_CANCELLED]: RunEventProperties
+    [AnalyticsEvent.SANDBOX_RUNTIME_LATENCY]: SandboxRuntimeLatencyProperties
+    [AnalyticsEvent.SANDBOX_SUSPEND_LATENCY]: SandboxSuspendLatencyProperties
     [AnalyticsEvent.API_TOKEN_CREATED]: ApiTokenCreatedProperties
     [AnalyticsEvent.CLI_LOGGED_IN]: OrganizationScopedProperties
     [AnalyticsEvent.BILLING_CHECKOUT_STARTED]: OrganizationScopedProperties
