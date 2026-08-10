@@ -7,6 +7,7 @@ import { AnalyticsEvent, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
 import { getInputConfigInclude } from "../../../common/prismaIncludes"
 import { markDeployFailed, markDeploySucceeded } from "../../../common/projectDeploys"
+import { SdkDeployTelemetry } from "../../../common/sdkDeployTelemetry"
 import { extractErrorMessage } from "../../../common/strings"
 import { convertConfigTypeToInputConfigType } from "../../../common/typeConverters"
 import { UrlValidationError, validateRemoteServerUrl } from "../../../common/urlValidation"
@@ -31,6 +32,14 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const prisma = db()
 
     const { remoteServerUrl, jobs, sourceZipBase64, projectId, cliVersion } = sdkDeployRequestBodySchema.parse(req.body)
+    const telemetry = new SdkDeployTelemetry({
+        userId,
+        organizationId,
+        projectId,
+        cliVersion,
+        viaRemoteServer: !!remoteServerUrl,
+        jobsDeployed: jobs.length
+    })
 
     const sessionId = typeof req.headers["x-terse-session-id"] === "string" ? req.headers["x-terse-session-id"] : undefined
     const emitStage = (stage: SdkDeployStage) => {
@@ -41,13 +50,17 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         try {
             await validateRemoteServerUrl(remoteServerUrl)
         } catch (error) {
+            telemetry.capture(false, error)
             if (error instanceof UrlValidationError) return res.status(400).json({ success: false, error: error.message })
             throw error
         }
     }
 
     const cronError = findInvalidCronTrigger(jobs)
-    if (cronError) return res.status(400).json({ success: false, error: cronError })
+    if (cronError) {
+        telemetry.capture(false, new Error(cronError))
+        return res.status(400).json({ success: false, error: cronError })
+    }
 
     const project = await db().projects.findUnique({
         where: { id: projectId, organization_id: organizationId },
@@ -55,6 +68,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     })
 
     if (!project) {
+        telemetry.capture(false, new Error("Project not found"))
         return res.status(404).json({
             success: false,
             error: "Project not found. The project linked in terse.config.json no longer exists in this organization.",
@@ -65,28 +79,35 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const deploy = await prisma.project_deploys.create({
         data: { project_id: projectId, deployed_by_user_id: userId, status: "IN_PROGRESS" }
     })
+    telemetry.setDeployId(deploy.id)
     try {
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
 
         if (!sourceZipBase64 && !remoteServerUrl) {
+            telemetry.capture(false, new Error("sourceZipBase64 or remoteServerUrl is required"))
             return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
         } else if (sourceZipBase64 && remoteServerUrl) {
+            telemetry.capture(false, new Error("sourceZipBase64 and remoteServerUrl cannot be provided together"))
             return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
         }
 
         const results: SdkDeployResponseBody["results"] = []
 
         if (sourceZipBase64) {
-            const sourceZipBuffer = parseSourceZipBuffer(sourceZipBase64)
+            const sourceZipBuffer = telemetry.measureSync("parseSourceZipMs", () => parseSourceZipBuffer(sourceZipBase64))
+            telemetry.setSourceZipBytes(sourceZipBuffer.length)
 
-            const preparedImages = await new SdkSandboxImageService().prepareFromSourceZip({
-                zipBuffer: sourceZipBuffer,
-                organizationId,
-                cliVersion,
-                onProgress: phase => {
-                    emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
-                }
-            })
+            const preparedImages = await telemetry.measure("prepareImagesMs", () =>
+                new SdkSandboxImageService().prepareFromSourceZip({
+                    zipBuffer: sourceZipBuffer,
+                    organizationId,
+                    cliVersion,
+                    onProgress: phase => {
+                        emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
+                    },
+                    telemetry
+                })
+            )
 
             await prisma.project_deploys.update({
                 where: { id: deploy.id },
@@ -114,35 +135,41 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
         emitStage("CONFIGURING_AUTOMATIONS")
 
-        for (const job of jobs) {
-            const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
-                where: { name: job.jobName, organization_id: organizationId, project_id: projectId },
-                include: { inputs: { include: getInputConfigInclude() } }
-            })
+        const registerJobsAndTriggersStartedAt = performance.now()
+        try {
+            for (const job of jobs) {
+                const existing: AgentWithTriggerRelations | null = await prisma.automations.findFirst({
+                    where: { name: job.jobName, organization_id: organizationId, project_id: projectId },
+                    include: { inputs: { include: getInputConfigInclude() } }
+                })
 
-            const isUpdate = !!existing
-            let agent: AgentWithTriggerRelations
-            try {
-                agent = isUpdate
-                    ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId)
-                    : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, projectId)
-            } catch (error) {
-                logger.error("Failed to create or update automation", { error })
-                await markDeployFailed(prisma, deploy.id, error)
-                emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
-                analytics.capture(userId, AnalyticsEvent.PROJECT_DEPLOY_FAILED, { projectId, organizationId, deployId: deploy.id, errorMessage: extractErrorMessage(error) })
-                return res.status(500).json({ success: false, error: "Failed to create or update automation" })
+                const isUpdate = !!existing
+                let agent: AgentWithTriggerRelations
+                try {
+                    agent = isUpdate
+                        ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId)
+                        : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, projectId)
+                } catch (error) {
+                    logger.error("Failed to create or update automation", { error })
+                    await markDeployFailed(prisma, deploy.id, error)
+                    emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
+                    analytics.capture(userId, AnalyticsEvent.PROJECT_DEPLOY_FAILED, { projectId, organizationId, deployId: deploy.id, errorMessage: extractErrorMessage(error) })
+                    telemetry.capture(false, error)
+                    return res.status(500).json({ success: false, error: "Failed to create or update automation" })
+                }
+
+                await setupAgentTriggers(agent)
+
+                results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: buildDeployResultTriggers(agent) })
+
+                if (!isUpdate) {
+                    analytics.capture(userId, AnalyticsEvent.JOB_CREATED, { jobId: agent.id, jobName: job.jobName, organizationId, projectId })
+                }
+
+                logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, { automationId: agent.id, jobName: job.jobName, organizationId, triggerCount: job.triggers.length })
             }
-
-            await setupAgentTriggers(agent)
-
-            results.push({ jobName: job.jobName, automationId: agent.id, isUpdate, triggers: buildDeployResultTriggers(agent) })
-
-            if (!isUpdate) {
-                analytics.capture(userId, AnalyticsEvent.JOB_CREATED, { jobId: agent.id, jobName: job.jobName, organizationId, projectId })
-            }
-
-            logger.info(`SDK deploy ${isUpdate ? "updated" : "created"} automation`, { automationId: agent.id, jobName: job.jobName, organizationId, triggerCount: job.triggers.length })
+        } finally {
+            telemetry.setDuration("registerJobsAndTriggersMs", performance.now() - registerJobsAndTriggersStartedAt)
         }
 
         const deployedNames = new Set(jobs.map(j => j.jobName))
@@ -156,6 +183,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             jobsAdded,
             removed.length
         )
+        telemetry.setJobCounts({ jobsAdded, jobsRemoved: removed.length })
 
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
         emitCacheInvalidationWithKey(organizationId, "agents")
@@ -173,6 +201,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
             cliVersion,
             viaRemoteServer: !!remoteServerUrl
         })
+        telemetry.capture(true)
 
         const response: SdkDeployResponseBody = {
             success: true,
@@ -188,6 +217,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         await markDeployFailed(prisma, deploy.id, error)
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
         analytics.capture(userId, AnalyticsEvent.PROJECT_DEPLOY_FAILED, { projectId, organizationId, deployId: deploy.id, errorMessage: extractErrorMessage(error) })
+        telemetry.capture(false, error)
         return res.status(500).json({ success: false, error: "Deploy failed", details: extractErrorMessage(error) })
     }
 }

@@ -12,6 +12,7 @@ export enum AnalyticsEvent {
     PROJECT_DELETED = "project_deleted",
     PROJECT_DEPLOYED = "project_deployed",
     PROJECT_DEPLOY_FAILED = "project_deploy_failed",
+    SDK_DEPLOY_LATENCY = "sdk_deploy_latency",
     JOB_CREATED = "job_created",
     JOB_ENABLED = "job_enabled",
     JOB_DISABLED = "job_disabled",
@@ -82,6 +83,46 @@ interface ProjectDeployFailedProperties extends BaseEventProperties {
     organizationId: string
     deployId: string
     errorMessage: string
+}
+
+export interface SdkDeployLatencyProperties extends BaseEventProperties {
+    projectId: string
+    deployId?: string
+    cliVersion?: string
+    viaRemoteServer: boolean
+    success: boolean
+    runtime?: string
+    errorMessage?: string
+    jobsDeployed: number
+    jobsAdded?: number
+    jobsRemoved?: number
+    sourceZipBytes?: number
+    dependencyImageCacheHit?: boolean
+    sourceImageCacheHit?: boolean
+    totalDeployMs?: number
+    parseSourceZipMs?: number
+    prepareImagesMs?: number
+    registerJobsAndTriggersMs?: number
+    buildArchiveMs?: number
+    resolveRuntimeMs?: number
+    packLocalPackagesMs?: number
+    defineDependencyImageMs?: number
+    computeSourceHashMs?: number
+    dependencyImageResolveMs?: number
+    dependencyImageBuildMs?: number
+    dependencyBuildGetAppMs?: number
+    dependencyBuildSandboxReadyMs?: number
+    dependencyBuildExecutorMs?: number
+    dependencyBuildSnapshotMs?: number
+    sourceImageResolveMs?: number
+    sourceImageBuildMs?: number
+    sourceBuildGetAppMs?: number
+    sourceBuildLoadDependencyImageMs?: number
+    sourceBuildSandboxReadyMs?: number
+    sourceBuildWriteZipMs?: number
+    sourceBuildExtractZipMs?: number
+    sourceBuildPrepareMs?: number
+    sourceBuildSnapshotMs?: number
 }
 
 interface JobDefinitionProperties extends BaseEventProperties {
@@ -171,6 +212,7 @@ type EventProperties = {
     [AnalyticsEvent.PROJECT_DELETED]: ProjectProperties
     [AnalyticsEvent.PROJECT_DEPLOYED]: ProjectDeployedProperties
     [AnalyticsEvent.PROJECT_DEPLOY_FAILED]: ProjectDeployFailedProperties
+    [AnalyticsEvent.SDK_DEPLOY_LATENCY]: SdkDeployLatencyProperties
     [AnalyticsEvent.JOB_CREATED]: JobDefinitionProperties
     [AnalyticsEvent.JOB_ENABLED]: JobDefinitionProperties
     [AnalyticsEvent.JOB_DISABLED]: JobDefinitionProperties
