@@ -1,6 +1,7 @@
 import { db } from "../loaders/prisma"
 
 import { AnalyticsEvent, SandboxRuntimeLatencyProperties, analytics } from "./analytics"
+import { LatencyTelemetry } from "./latencyTelemetry"
 import logger from "./logger"
 import { extractErrorMessage } from "./strings"
 
@@ -37,34 +38,7 @@ type SandboxRuntimeTelemetryParams = {
     scheduledForMs?: number
 }
 
-abstract class SandboxTelemetry<TDurationKey extends string> {
-    private readonly startedAt = performance.now()
-
-    protected readonly durations: Partial<Record<TDurationKey, number>> = {}
-
-    setDuration(key: TDurationKey, durationMs: number): void {
-        if (Number.isFinite(durationMs)) {
-            this.durations[key] = Math.max(0, Math.round(durationMs))
-        }
-    }
-
-    async measure<T>(key: TDurationKey, fn: () => Promise<T>): Promise<T> {
-        const start = performance.now()
-        try {
-            return await fn()
-        } finally {
-            this.setDuration(key, performance.now() - start)
-        }
-    }
-
-    protected elapsedSinceStartMs(): number {
-        return performance.now() - this.startedAt
-    }
-
-    abstract capture(success: boolean, error?: unknown): void | Promise<void>
-}
-
-export class SandboxRuntimeTelemetry extends SandboxTelemetry<DurationKey> {
+export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
     private runtime: string | undefined
 
     constructor(private readonly params: SandboxRuntimeTelemetryParams) {
@@ -112,7 +86,7 @@ type SandboxSuspendTelemetryParams = {
     delaySeconds?: number
 }
 
-export class SandboxSuspendTelemetry extends SandboxTelemetry<SandboxSuspendDurationKey> {
+export class SandboxSuspendTelemetry extends LatencyTelemetry<SandboxSuspendDurationKey> {
     constructor(private readonly params: SandboxSuspendTelemetryParams) {
         super()
     }

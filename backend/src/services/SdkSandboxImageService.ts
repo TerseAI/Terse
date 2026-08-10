@@ -3,6 +3,7 @@ import AdmZip from "adm-zip"
 import crypto from "crypto"
 
 import logger from "../common/logger"
+import { SdkDeployTelemetry } from "../common/sdkDeployTelemetry"
 import { shellQuote } from "../common/shellEscape"
 import { db } from "../loaders/prisma"
 import { settings } from "../settings"
@@ -87,38 +88,72 @@ export class SdkSandboxImageService {
         organizationId: string
         cliVersion: string
         onProgress?: (phase: "dependency_image" | "source_image") => void
+        telemetry?: SdkDeployTelemetry
     }): Promise<PreparedSdkSandboxImages> {
-        const { zipBuffer, organizationId, cliVersion, onProgress } = params
-        const archive = new ZipSdkProjectArchive(zipBuffer)
-        const executor = sdkRuntimeExecutorRegistry.resolve(archive.entries)
+        const { zipBuffer, organizationId, cliVersion, onProgress, telemetry } = params
+        const archive = telemetry ? telemetry.measureSync("buildArchiveMs", () => new ZipSdkProjectArchive(zipBuffer)) : new ZipSdkProjectArchive(zipBuffer)
+        const executor = telemetry ? telemetry.measureSync("resolveRuntimeMs", () => sdkRuntimeExecutorRegistry.resolve(archive.entries)) : sdkRuntimeExecutorRegistry.resolve(archive.entries)
+        telemetry?.setRuntime(executor.runtime)
 
         // Dev-only: hoist the dev's locally-built SDK/CLI into the sandbox instead of the npm registry.
-        const localPackages = settings.devLocalPackages ? packLocalSdkPackages(settings.devLocalPackages.monorepoRoot) : undefined
+        const localPackages = settings.devLocalPackages
+            ? telemetry
+                ? telemetry.measureSync("packLocalPackagesMs", () => packLocalSdkPackages(settings.devLocalPackages!.monorepoRoot))
+                : packLocalSdkPackages(settings.devLocalPackages.monorepoRoot)
+            : undefined
 
-        const dependencyHash = executor.defineDependencyImage(archive, cliVersion, localPackages).dependencyHash
-        const sourceHash = archive.computeSourceHash()
+        const dependencyHash = (
+            telemetry
+                ? telemetry.measureSync("defineDependencyImageMs", () => executor.defineDependencyImage(archive, cliVersion, localPackages))
+                : executor.defineDependencyImage(archive, cliVersion, localPackages)
+        ).dependencyHash
+        const sourceHash = telemetry ? telemetry.measureSync("computeSourceHashMs", () => archive.computeSourceHash()) : archive.computeSourceHash()
 
         onProgress?.("dependency_image")
-        const dependencyImage = await this.ensureDependencyImage({
-            archive,
-            dependencyHash,
-            executor,
-            cliVersion,
-            localPackages
-        })
+        const dependencyImage = await (telemetry
+            ? telemetry.measure("dependencyImageResolveMs", () =>
+                  this.ensureDependencyImage({
+                      archive,
+                      dependencyHash,
+                      executor,
+                      cliVersion,
+                      localPackages,
+                      telemetry
+                  })
+              )
+            : this.ensureDependencyImage({
+                  archive,
+                  dependencyHash,
+                  executor,
+                  cliVersion,
+                  localPackages
+              }))
 
         const sourceLayerKey = computeSourceLayerKey({ organizationId, dependencyHash, sourceHash })
 
         onProgress?.("source_image")
-        const sourceImage = await this.ensureSourceImage({
-            dependencyImageId: dependencyImage.id,
-            dependencySandboxImageId: dependencyImage.image_id,
-            executor,
-            organizationId,
-            sourceHash,
-            sourceLayerKey,
-            zipBuffer
-        })
+        const sourceImage = await (telemetry
+            ? telemetry.measure("sourceImageResolveMs", () =>
+                  this.ensureSourceImage({
+                      dependencyImageId: dependencyImage.id,
+                      dependencySandboxImageId: dependencyImage.image_id,
+                      executor,
+                      organizationId,
+                      sourceHash,
+                      sourceLayerKey,
+                      zipBuffer,
+                      telemetry
+                  })
+              )
+            : this.ensureSourceImage({
+                  dependencyImageId: dependencyImage.id,
+                  dependencySandboxImageId: dependencyImage.image_id,
+                  executor,
+                  organizationId,
+                  sourceHash,
+                  sourceLayerKey,
+                  zipBuffer
+              }))
 
         return {
             runtime: executor.runtime,
@@ -197,8 +232,15 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async ensureDependencyImage(params: { archive: SdkProjectArchive; dependencyHash: string; executor: SdkRuntimeExecutor; cliVersion: string; localPackages?: LocalPackagesBundle }) {
-        const { archive, dependencyHash, executor, cliVersion, localPackages } = params
+    private async ensureDependencyImage(params: {
+        archive: SdkProjectArchive
+        dependencyHash: string
+        executor: SdkRuntimeExecutor
+        cliVersion: string
+        localPackages?: LocalPackagesBundle
+        telemetry?: SdkDeployTelemetry
+    }) {
+        const { archive, dependencyHash, executor, cliVersion, localPackages, telemetry } = params
         const prisma = db()
         const sandboxService = getSandboxProvider()
 
@@ -206,7 +248,9 @@ export class SdkSandboxImageService {
             where: { dependency_hash: dependencyHash }
         })
 
-        if (existing && (await sandboxService.imageExists(existing.image_id))) {
+        const existingImageExists = existing ? await sandboxService.imageExists(existing.image_id) : false
+        if (existing && existingImageExists) {
+            telemetry?.setDependencyImageCacheHit(true)
             logger.info("SDK image cache: reuse dependency layer", {
                 dependencyHash: dependencyHash,
                 imageId: existing.image_id
@@ -216,6 +260,7 @@ export class SdkSandboxImageService {
                 data: { last_used_at: new Date() }
             })
         }
+        telemetry?.setDependencyImageCacheHit(false)
 
         if (existing) {
             logger.warn("SDK image cache: dependency image missing, rebuilding", {
@@ -226,7 +271,9 @@ export class SdkSandboxImageService {
         }
 
         const buildStarted = performance.now()
-        const sandboxImageId = await this.buildDependencyImage(archive, executor, dependencyHash, cliVersion, localPackages)
+        const sandboxImageId = await (telemetry
+            ? telemetry.measure("dependencyImageBuildMs", () => this.buildDependencyImage(archive, executor, dependencyHash, cliVersion, localPackages, telemetry))
+            : this.buildDependencyImage(archive, executor, dependencyHash, cliVersion, localPackages))
 
         try {
             const row = await prisma.sdk_dependency_images.create({
@@ -271,8 +318,9 @@ export class SdkSandboxImageService {
         sourceHash: string
         sourceLayerKey: string
         zipBuffer: Buffer
+        telemetry?: SdkDeployTelemetry
     }) {
-        const { dependencyImageId, dependencySandboxImageId, executor, organizationId, sourceHash, sourceLayerKey, zipBuffer } = params
+        const { dependencyImageId, dependencySandboxImageId, executor, organizationId, sourceHash, sourceLayerKey, zipBuffer, telemetry } = params
         const prisma = db()
         const sandboxService = getSandboxProvider()
 
@@ -284,7 +332,9 @@ export class SdkSandboxImageService {
             }
         })
 
-        if (existing && (await sandboxService.imageExists(existing.image_id))) {
+        const existingImageExists = existing ? await sandboxService.imageExists(existing.image_id) : false
+        if (existing && existingImageExists) {
+            telemetry?.setSourceImageCacheHit(true)
             logger.info("SDK image cache: reuse source layer", {
                 sourceLayerKey: sourceLayerKey,
                 organizationId: organizationId,
@@ -295,6 +345,7 @@ export class SdkSandboxImageService {
                 data: { last_used_at: new Date() }
             })
         }
+        telemetry?.setSourceImageCacheHit(false)
 
         if (existing) {
             logger.warn("SDK image cache: source image missing, rebuilding", {
@@ -306,12 +357,22 @@ export class SdkSandboxImageService {
         }
 
         const buildStarted = performance.now()
-        const sandboxImageId = await this.buildSourceImage({
-            dependencySandboxImageId,
-            executor,
-            sourceLayerKey,
-            zipBuffer
-        })
+        const sandboxImageId = await (telemetry
+            ? telemetry.measure("sourceImageBuildMs", () =>
+                  this.buildSourceImage({
+                      dependencySandboxImageId,
+                      executor,
+                      sourceLayerKey,
+                      zipBuffer,
+                      telemetry
+                  })
+              )
+            : this.buildSourceImage({
+                  dependencySandboxImageId,
+                  executor,
+                  sourceLayerKey,
+                  zipBuffer
+              }))
 
         try {
             const created = await prisma.sdk_source_images.create({
@@ -356,13 +417,24 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async buildDependencyImage(archive: SdkProjectArchive, executor: SdkRuntimeExecutor, dependencyHash: string, cliVersion: string, localPackages?: LocalPackagesBundle): Promise<string> {
+    private async buildDependencyImage(
+        archive: SdkProjectArchive,
+        executor: SdkRuntimeExecutor,
+        dependencyHash: string,
+        cliVersion: string,
+        localPackages?: LocalPackagesBundle,
+        telemetry?: SdkDeployTelemetry
+    ): Promise<string> {
         const sandboxService = getSandboxProvider()
-        const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
+        const app = await (telemetry
+            ? telemetry.measure("dependencyBuildGetAppMs", () => sandboxService.getOrCreateApp("terse-sdk-image-builder"))
+            : sandboxService.getOrCreateApp("terse-sdk-image-builder"))
 
         const baseImage = sandboxService.getImageFromRegistry(executor.sandboxImage)
         const uniqueName = dependencyBuildSandboxUniqueName(dependencyHash)
-        const sb = await sandboxService.getOrCreateSandbox(app, baseImage, uniqueName, SANDBOX_DEFAULT_OPTIONS)
+        const sb = await (telemetry
+            ? telemetry.measure("dependencyBuildSandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, baseImage, uniqueName, SANDBOX_DEFAULT_OPTIONS))
+            : sandboxService.getOrCreateSandbox(app, baseImage, uniqueName, SANDBOX_DEFAULT_OPTIONS))
 
         const buildContext: SdkDependencyImageBuildContext = {
             sb,
@@ -383,8 +455,8 @@ export class SdkSandboxImageService {
             escapeShellArg: shellQuote
         }
 
-        await executor.buildDependencyImage(buildContext)
-        const image = await sb.snapshotFilesystem()
+        await (telemetry ? telemetry.measure("dependencyBuildExecutorMs", () => executor.buildDependencyImage(buildContext)) : executor.buildDependencyImage(buildContext))
+        const image = await (telemetry ? telemetry.measure("dependencyBuildSnapshotMs", () => sb.snapshotFilesystem()) : sb.snapshotFilesystem())
 
         return image.imageId
     }
@@ -394,34 +466,65 @@ export class SdkSandboxImageService {
         executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>
         sourceLayerKey: string
         zipBuffer: Buffer
+        telemetry?: SdkDeployTelemetry
     }): Promise<string> {
-        const { dependencySandboxImageId, executor, sourceLayerKey, zipBuffer } = params
+        const { dependencySandboxImageId, executor, sourceLayerKey, zipBuffer, telemetry } = params
         const sandboxService = getSandboxProvider()
-        const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
-        const dependencyImage = await sandboxService.getImageFromId(dependencySandboxImageId)
-        const sb = await sandboxService.getOrCreateSandbox(app, dependencyImage, sourceImageBuildSandboxUniqueName(sourceLayerKey), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
+        const app = await (telemetry
+            ? telemetry.measure("sourceBuildGetAppMs", () => sandboxService.getOrCreateApp("terse-sdk-image-builder"))
+            : sandboxService.getOrCreateApp("terse-sdk-image-builder"))
+        const dependencyImage = await (telemetry
+            ? telemetry.measure("sourceBuildLoadDependencyImageMs", () => sandboxService.getImageFromId(dependencySandboxImageId))
+            : sandboxService.getImageFromId(dependencySandboxImageId))
+        const sb = await (telemetry
+            ? telemetry.measure("sourceBuildSandboxReadyMs", () =>
+                  sandboxService.getOrCreateSandbox(app, dependencyImage, sourceImageBuildSandboxUniqueName(sourceLayerKey), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
+              )
+            : sandboxService.getOrCreateSandbox(app, dependencyImage, sourceImageBuildSandboxUniqueName(sourceLayerKey), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 }))
 
         const projectDir = sandboxService.getProjectPath(sb)
         const sourceZipPath = sandboxService.getScratchPath(sb, "source-image-code.zip")
-        await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
-        await this.ensureSandboxCommand(
-            sb,
-            "extract SDK source",
-            `mkdir -p ${shellQuote(projectDir)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
-            executor.runtime
-        )
-        await executor.prepareSourceImage({
-            sb,
-            projectDir,
-            templateDir: sandboxService.getDependencyCachePath(sb, executor.runtime),
-            cliCachePath: sandboxService.getCliCachePath(sb),
-            ensureSandboxCommand: async (label, command) => {
-                await this.ensureSandboxCommand(sb, label, command, executor.runtime)
-            },
-            escapeShellArg: shellQuote
-        })
+        await (telemetry ? telemetry.measure("sourceBuildWriteZipMs", () => this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)) : this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer))
+        await (telemetry
+            ? telemetry.measure("sourceBuildExtractZipMs", () =>
+                  this.ensureSandboxCommand(
+                      sb,
+                      "extract SDK source",
+                      `mkdir -p ${shellQuote(projectDir)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
+                      executor.runtime
+                  )
+              )
+            : this.ensureSandboxCommand(
+                  sb,
+                  "extract SDK source",
+                  `mkdir -p ${shellQuote(projectDir)} && (command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null)) && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
+                  executor.runtime
+              ))
+        await (telemetry
+            ? telemetry.measure("sourceBuildPrepareMs", () =>
+                  executor.prepareSourceImage({
+                      sb,
+                      projectDir,
+                      templateDir: sandboxService.getDependencyCachePath(sb, executor.runtime),
+                      cliCachePath: sandboxService.getCliCachePath(sb),
+                      ensureSandboxCommand: async (label, command) => {
+                          await this.ensureSandboxCommand(sb, label, command, executor.runtime)
+                      },
+                      escapeShellArg: shellQuote
+                  })
+              )
+            : executor.prepareSourceImage({
+                  sb,
+                  projectDir,
+                  templateDir: sandboxService.getDependencyCachePath(sb, executor.runtime),
+                  cliCachePath: sandboxService.getCliCachePath(sb),
+                  ensureSandboxCommand: async (label, command) => {
+                      await this.ensureSandboxCommand(sb, label, command, executor.runtime)
+                  },
+                  escapeShellArg: shellQuote
+              }))
 
-        const image = await sb.snapshotFilesystem()
+        const image = await (telemetry ? telemetry.measure("sourceBuildSnapshotMs", () => sb.snapshotFilesystem()) : sb.snapshotFilesystem())
 
         return image.imageId
     }
