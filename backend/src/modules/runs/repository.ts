@@ -10,14 +10,56 @@ export async function findAgentInOrg(agentId: string, organizationId: string) {
     })
 }
 
+export async function findAutomationIdsInOrg(organizationId: string): Promise<string[]> {
+    const automations = await db().automations.findMany({
+        where: { organization_id: organizationId },
+        select: { id: true }
+    })
+    return automations.map(automation => automation.id)
+}
+
+const runHistoryActionSummarySelect = {
+    action: true,
+    integration: true,
+    target: true,
+    details: true,
+    url: true,
+    step_id: true,
+    type: true
+} satisfies Prisma.run_history_actionsSelect
+
+export type RunHistoryActionSummary = Prisma.run_history_actionsGetPayload<{ select: typeof runHistoryActionSummarySelect }>
+
 export async function countAndListRunHistory(where: RunHistoryWhere, opts: { skip: number; take: number; includeAgent: boolean }) {
     const prisma = db()
-    return prisma.$transaction([
+    return Promise.all([
         prisma.run_history_records.count({ where }),
         prisma.run_history_records.findMany({
             where,
             orderBy: { timestamp: "desc" },
-            include: opts.includeAgent ? { actions: true, automation: { select: { name: true } } } : { actions: true },
+            // Explicit select — this list view never reads trigger_payload/sdk_skills, and both
+            // can be large (trigger_payload observed up to several hundred KB per row in prod).
+            select: {
+                id: true,
+                automation_id: true,
+                timestamp: true,
+                event: true,
+                trigger_integration: true,
+                trigger_source: true,
+                trigger_title: true,
+                trigger_subheader: true,
+                trigger_url: true,
+                filtered: true,
+                decision_action: true,
+                decision_reason: true,
+                status: true,
+                is_manually_triggered: true,
+                is_test: true,
+                triggered_by_user_id: true,
+                replay_of_run_id: true,
+                actions: { select: runHistoryActionSummarySelect },
+                ...(opts.includeAgent ? { automation: { select: { name: true } } } : {})
+            },
             skip: opts.skip,
             take: opts.take
         })

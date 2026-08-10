@@ -6,7 +6,7 @@ import { type GetRunHistoryParams, type RunHistoryModelEvent, type RunHistoryRec
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../../common/typeConverters"
 import { getRunHistoryModelEventsWithActions } from "../../modules/agents/runHistoryModelEvents"
 
-import { RunHistoryWhere, countAndListRunHistory, findActionsByIdsInOrg, findAgentInOrg, findRunRecordForChat } from "./repository"
+import { RunHistoryActionSummary, RunHistoryWhere, countAndListRunHistory, findActionsByIdsInOrg, findAgentInOrg, findAutomationIdsInOrg, findRunRecordForChat } from "./repository"
 
 const MAX_TRIGGER_PAYLOAD_RESPONSE_CHARS = 256 * 1024
 
@@ -95,7 +95,7 @@ function applyFilters(where: RunHistoryWhere, params: GetRunHistoryParams, inclu
             if (endDate) where.timestamp.lte = endDate
         }
     }
-    if (params.status && params.status.length > 0) {
+    if (params.status && params.status.length > 0 && !VALID_STATUSES.every(status => params.status!.includes(status))) {
         where.status = { in: params.status }
     }
     if (params.q) {
@@ -114,7 +114,7 @@ function applyFilters(where: RunHistoryWhere, params: GetRunHistoryParams, inclu
     return where
 }
 
-function mapActions(actions: import("@prisma/client").run_history_actions[]) {
+function mapActions(actions: RunHistoryActionSummary[]) {
     return actions.map(action => ({
         action: action.action,
         integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(action.integration),
@@ -127,7 +127,8 @@ function mapActions(actions: import("@prisma/client").run_history_actions[]) {
 }
 
 export async function listAllRunHistory(organizationId: string, params: GetRunHistoryParams, skip: number, take: number) {
-    const where = applyFilters({ automation: { organization_id: organizationId } } as RunHistoryWhere, params, true)
+    const automationIds = await findAutomationIdsInOrg(organizationId)
+    const where = applyFilters({ automation_id: { in: automationIds } }, params, true)
     const [total, rows] = await countAndListRunHistory(where, { skip, take, includeAgent: true })
     const items = rows.map(runRecord => ({
         id: runRecord.id,
