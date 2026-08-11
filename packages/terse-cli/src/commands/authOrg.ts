@@ -2,9 +2,9 @@ import { select } from "@inquirer/prompts"
 import chalk from "chalk"
 import type { SdkOrganizationsListResponse, SwitchOrganizationResponse } from "terse-types"
 
-import { ApiError, fetchWithAuth } from "../api.js"
+import { ApiError, fetchWithAuth, readApiKey } from "../api.js"
 import { isNonInteractive } from "../cliHelpers.js"
-import { cacheOrgToken, getStoredApiKey, getStoredApiKeyForOrg, setActiveOrg, setActiveOrgToken } from "../userConfig.js"
+import { cacheOrgToken, getStoredApiKeyForOrg, setActiveOrg, setActiveOrgToken } from "../userConfig.js"
 
 /**
  * Get an API key scoped to `orgId`, reusing a cached one if we have it and
@@ -21,7 +21,7 @@ export async function resolveApiKeyForOrg(orgId: string, orgName: string, curren
 }
 
 function readApiKeyOrExit(): string {
-    const apiKey = getStoredApiKey()
+    const apiKey = readApiKey()
     if (!apiKey) {
         console.log("Not logged in. Run `terse auth login`.")
         process.exit(1)

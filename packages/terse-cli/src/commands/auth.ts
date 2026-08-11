@@ -3,13 +3,13 @@ import chalk from "chalk"
 import { type DeviceTokenExchangeResponse, type IdentifyResponse, type UserSession, authModeResponseSchema } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
-import { fetchWithAuth, readApiKeyFromDir } from "../api.js"
+import { fetchWithAuth, readApiKey, readApiKeyFromDir } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { type NonInteractiveOpts } from "../cliHelpers.js"
 import { createSpinner } from "../cliUi.js"
 import { BACKEND_URL, FRONTEND_URL, WORKOS_CLIENT_ID } from "../config.js"
 import { openUrlInBrowser } from "../openBrowser.js"
-import { clearStoredApiKey, getAuthFilePath, getStoredApiKey, setActiveOrgToken } from "../userConfig.js"
+import { clearStoredApiKey, getAuthFilePath, setActiveOrgToken } from "../userConfig.js"
 
 const DEVICE_AUTH_URL = "https://api.workos.com/user_management/authorize/device"
 const TOKEN_URL = "https://api.workos.com/user_management/authenticate"
@@ -242,7 +242,7 @@ async function login(): Promise<{ apiKey: string; displayName: string | null; or
 export async function loginAndPersist(opts?: NonInteractiveOpts): Promise<{ apiKey: string; displayName: string | null } | null> {
     const canFallToDeviceLogin = !opts?.nonInteractive
 
-    const stored = getStoredApiKey()
+    const stored = readApiKey()
 
     if (stored) {
         const s = createSpinner()
