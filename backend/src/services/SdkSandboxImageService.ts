@@ -455,10 +455,14 @@ export class SdkSandboxImageService {
             escapeShellArg: shellQuote
         }
 
-        await (telemetry ? telemetry.measure("dependencyBuildExecutorMs", () => executor.buildDependencyImage(buildContext)) : executor.buildDependencyImage(buildContext))
-        const image = await (telemetry ? telemetry.measure("dependencyBuildSnapshotMs", () => sb.snapshotFilesystem()) : sb.snapshotFilesystem())
+        try {
+            await (telemetry ? telemetry.measure("dependencyBuildExecutorMs", () => executor.buildDependencyImage(buildContext)) : executor.buildDependencyImage(buildContext))
+            const image = await (telemetry ? telemetry.measure("dependencyBuildSnapshotMs", () => sb.snapshotFilesystem()) : sb.snapshotFilesystem())
 
-        return image.imageId
+            return image.imageId
+        } finally {
+            await this.terminateBuildSandbox(sb, "dependency image build", executor.runtime)
+        }
     }
 
     private async buildSourceImage(params: {
@@ -482,6 +486,21 @@ export class SdkSandboxImageService {
               )
             : sandboxService.getOrCreateSandbox(app, dependencyImage, sourceImageBuildSandboxUniqueName(sourceLayerKey), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 }))
 
+        try {
+            return await this.populateSourceImageSandbox({ sb, sandboxService, executor, zipBuffer, telemetry })
+        } finally {
+            await this.terminateBuildSandbox(sb, "source image build", executor.runtime)
+        }
+    }
+
+    private async populateSourceImageSandbox(params: {
+        sb: Sandbox
+        sandboxService: ReturnType<typeof getSandboxProvider>
+        executor: ReturnType<typeof sdkRuntimeExecutorRegistry.resolve>
+        zipBuffer: Buffer
+        telemetry?: SdkDeployTelemetry
+    }): Promise<string> {
+        const { sb, sandboxService, executor, zipBuffer, telemetry } = params
         const projectDir = sandboxService.getProjectPath(sb)
         const sourceZipPath = sandboxService.getScratchPath(sb, "source-image-code.zip")
         await (telemetry ? telemetry.measure("sourceBuildWriteZipMs", () => this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)) : this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer))
@@ -559,6 +578,20 @@ export class SdkSandboxImageService {
             const failureMessage = this.buildFailureMessage(result)
             await this.terminateSandboxAfterFailure(sb, label, runtime, failureMessage)
             throw new Error(`${label} failed for ${runtime}: ${failureMessage}`)
+        }
+    }
+
+    private async terminateBuildSandbox(sb: Sandbox, label: string, runtime: SdkProjectRuntime): Promise<void> {
+        try {
+            await sb.terminate()
+            logger.info("SDK image build: terminated build sandbox", { label, runtime, sandboxId: sb.sandboxId })
+        } catch (error) {
+            logger.warn("SDK image build: terminate build sandbox failed", {
+                label,
+                runtime,
+                sandboxId: sb.sandboxId,
+                errorMessage: error instanceof Error ? error.message : String(error)
+            })
         }
     }
 
