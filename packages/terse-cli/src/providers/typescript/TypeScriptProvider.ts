@@ -180,7 +180,7 @@ class TypeScriptProvider implements LanguageProvider {
         ensureDotenvLoaded(cwd)
 
         try {
-            await tsImport(entryPath, parentURL)
+            await tsImport(pathToFileURL(entryPath).href, parentURL)
         } catch (error) {
             if (isModuleNotFoundError(error)) {
                 const missingPackage = extractMissingPackage(error)
