@@ -199,12 +199,11 @@ function collectFiles(dir: string, baseDir: string, provider: LanguageProvider):
         if (provider.deployExclusions.files.has(entry.name)) continue
 
         const fullPath = path.join(dir, entry.name)
-        const relativePath = path.relative(baseDir, fullPath)
 
         if (entry.isDirectory()) {
             Object.assign(entries, collectFiles(fullPath, baseDir, provider))
         } else if (entry.isFile()) {
-            entries[relativePath] = new Uint8Array(fs.readFileSync(fullPath))
+            entries[path.relative(baseDir, fullPath).split(path.sep).join("/")] = new Uint8Array(fs.readFileSync(fullPath))
         }
     }
 
