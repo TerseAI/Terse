@@ -1,7 +1,6 @@
 import chalk from "chalk"
 
-import { ApiError, fetchWithAuth } from "../api.js"
-import { getStoredApiKey } from "../userConfig.js"
+import { ApiError, fetchWithAuth, readApiKey } from "../api.js"
 
 interface MeResponse {
     id: string
@@ -14,7 +13,7 @@ interface MeResponse {
 }
 
 export async function authStatus(): Promise<void> {
-    const apiKey = getStoredApiKey()
+    const apiKey = readApiKey()
     if (!apiKey) {
         console.log("Not logged in. Run `terse auth login`.")
         process.exit(1)

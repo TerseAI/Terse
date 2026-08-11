@@ -6,9 +6,9 @@ import os from "node:os"
 import path from "node:path"
 import { z } from "zod"
 
+import { readApiKey } from "../api.js"
 import { CliError } from "../cliError.js"
 import { NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
-import { getStoredApiKey } from "../userConfig.js"
 
 import { loginAndPersist } from "./auth.js"
 
@@ -147,7 +147,7 @@ function readClaudeSettings(settingsPath: string): ClaudeSettings | null {
 }
 
 async function ensureAuth(opts?: NonInteractiveOpts): Promise<void> {
-    if (getStoredApiKey()) return
+    if (readApiKey()) return
     if (isNonInteractive(opts)) {
         log.info("Not logged in. Run `terse auth login` when ready.")
         return
