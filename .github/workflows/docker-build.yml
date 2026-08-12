@@ -28,5 +28,7 @@ jobs:
                   push: false
                   load: false
                   cache-from: type=gha
-                  cache-to: type=gha,mode=max
+                  # Fork PRs get a read-only cache token; a denied export must not
+                  # fail the build check.
+                  cache-to: type=gha,mode=max,ignore-error=true
                   provenance: false

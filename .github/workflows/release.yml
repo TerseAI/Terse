@@ -22,6 +22,11 @@ jobs:
     preflight:
         name: Preflight
         runs-on: ubuntu-latest
+        # `checks: read` is what lets the CI-green gate below call the
+        # check-runs API with GITHUB_TOKEN.
+        permissions:
+            contents: read
+            checks: read
         outputs:
             version: ${{ steps.version.outputs.version }}
             minor: ${{ steps.version.outputs.minor }}
@@ -168,8 +173,10 @@ jobs:
                   registry-url: "https://registry.npmjs.org"
 
             # Trusted publishing (OIDC) needs npm >= 11.5.1; pnpm packs, npm publishes.
+            # Pinned exactly: this job holds publish rights, so it must not run a
+            # mutable `latest` from the registry.
             - name: Upgrade npm
-              run: npm install -g npm@latest
+              run: npm install -g npm@11.9.0
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
@@ -198,7 +205,8 @@ jobs:
         name: Deploy production
         needs: [preflight, npm]
         runs-on: ubuntu-latest
-        timeout-minutes: 30
+        # Render polls up to 20 minutes, then Vercel polls up to 20 minutes.
+        timeout-minutes: 50
         environment: production
         steps:
             - name: Checkout tag
