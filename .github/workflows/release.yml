@@ -22,6 +22,11 @@ jobs:
     preflight:
         name: Preflight
         runs-on: ubuntu-latest
+        # `checks: read` is what lets the CI-green gate below call the
+        # check-runs API with GITHUB_TOKEN.
+        permissions:
+            contents: read
+            checks: read
         outputs:
             version: ${{ steps.version.outputs.version }}
             minor: ${{ steps.version.outputs.minor }}
@@ -189,11 +194,17 @@ jobs:
                   ls -l dist-tarballs
 
             # Ordered dependencies-first so a consumer never resolves against a missing version.
+            # Already-published versions are skipped, so re-running a job that died
+            # partway through finishes the remaining packages instead of erroring out.
             - name: Publish to npm
               run: |
                   set -euo pipefail
                   version="${{ needs.preflight.outputs.version }}"
                   for pkg in terse-types terse-sdk terse-cli create-terse; do
+                      if npm view "${pkg}@${version}" version >/dev/null 2>&1; then
+                          echo "${pkg}@${version} is already on npm, skipping."
+                          continue
+                      fi
                       npm publish "dist-tarballs/${pkg}-${version}.tgz" --access public --tag latest
                   done
 
@@ -202,7 +213,8 @@ jobs:
         name: Deploy production
         needs: [preflight, npm]
         runs-on: ubuntu-latest
-        timeout-minutes: 30
+        # Render polls up to 20 minutes, then Vercel polls up to 20 minutes.
+        timeout-minutes: 50
         environment: production
         steps:
             - name: Checkout tag
