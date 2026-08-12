@@ -168,8 +168,10 @@ jobs:
                   registry-url: "https://registry.npmjs.org"
 
             # Trusted publishing (OIDC) needs npm >= 11.5.1; pnpm packs, npm publishes.
+            # Pinned exactly: this job holds publish rights, so it must not run a
+            # mutable `latest` from the registry.
             - name: Upgrade npm
-              run: npm install -g npm@latest
+              run: npm install -g npm@11.9.0
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
