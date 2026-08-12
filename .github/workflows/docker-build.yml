@@ -1,0 +1,32 @@
+name: Docker Build Check
+on:
+    pull_request:
+        paths:
+            - "Dockerfile"
+            - "backend/**"
+            - "frontend/**"
+            - "terse-types/**"
+            - "packages/terse-sdk/**"
+            - "pnpm-lock.yaml"
+            - ".github/workflows/docker-build.yml"
+permissions:
+    contents: read
+jobs:
+    build:
+        name: Build image (no push)
+        runs-on: blacksmith-4vcpu-ubuntu-2404
+        timeout-minutes: 45
+        steps:
+            - uses: actions/checkout@v4
+            - uses: docker/setup-buildx-action@v3
+            # Releases build multi-arch; a PR only needs to prove the Dockerfile works.
+            - uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./Dockerfile
+                  platforms: linux/amd64
+                  push: false
+                  load: false
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  provenance: false

@@ -33,7 +33,7 @@ services:
       retries: 10
 
   backend:
-    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest}
+    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse}:${TERSE_VERSION:-latest}
     pull_policy: always
     container_name: terse-backend
     restart: unless-stopped
@@ -59,7 +59,7 @@ services:
              pnpm run dev:server"
 
   worker:
-    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest}
+    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse}:${TERSE_VERSION:-latest}
     pull_policy: always
     container_name: terse-worker
     restart: unless-stopped
@@ -80,7 +80,7 @@ services:
     command: pnpm run dev:worker
 
   frontend:
-    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest}
+    image: ${TERSE_IMAGE:-us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse}:${TERSE_VERSION:-latest}
     pull_policy: always
     container_name: terse-frontend
     restart: unless-stopped

@@ -30,7 +30,7 @@ The script is interactive by default (uses `@clack/prompts`). It will ask for:
 Then it does, in order:
 
 1. Picks a free Postgres host port (5432 → 54322 → 54323 …).
-2. Writes `.env` with: `FRONTEND_URL`, `BACKEND_URL`, `POSTGRES_USER/PASSWORD/DB/PORT`, `JWT_SECRET` (generated), `LOCAL_SECRETS_ENCRYPTION_KEY` (generated), `VITE_API_BASE_URL`, `VITE_BACKEND_REDIRECT_URL`, `VITE_SOCKET_URL`, `NODE_ENV=development`, commented `TERSE_IMAGE=`.
+2. Writes `.env` with: `FRONTEND_URL`, `BACKEND_URL`, `POSTGRES_USER/PASSWORD/DB/PORT`, `JWT_SECRET` (generated), `LOCAL_SECRETS_ENCRYPTION_KEY` (generated), `VITE_API_BASE_URL`, `VITE_BACKEND_REDIRECT_URL`, `VITE_SOCKET_URL`, `NODE_ENV=development`, `TERSE_VERSION` pinned to the create-terse release, commented `TERSE_IMAGE=`.
 3. `docker compose pull` (first run downloads ~500MB) → `docker compose up -d`. Backend container runs Prisma migrations for both schemas on startup, then `pnpm run dev:server`.
 4. Polls the backend URL until it answers (up to 120s).
 5. `npm install -g terse-cli` if `terse` isn't on PATH.
@@ -43,7 +43,7 @@ Set the Bash timeout to 600000 (10 minutes). The image pull is the slow step.
 - **`docker: command not found`** or **`Cannot connect to the Docker daemon`**: tell the user to install / start Docker Desktop, then re-run.
 - **`port is already allocated`**: another service is on the chosen frontend or backend port. Have the user re-run and pick different URLs (with non-default ports), or stop the conflicting service.
 - **Backend wait times out (`Backend at … never started responding`)**: run `docker compose logs backend` from the target directory and surface the error. Most common cause is migrations failing — usually a stale `terse_postgres` volume from a previous version. `docker compose down -v && docker compose up -d` clears it (destroys data).
-- **Image pull fails**: the prebuilt image lives at `us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest`. If the user is on a restricted network, they may need to allowlist that host or set `TERSE_IMAGE=` in `.env` to point at a mirror.
+- **Image pull fails**: the prebuilt image lives at `us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse`, tagged per release (`TERSE_VERSION` in `.env`; `latest` points at the newest release). If the user is on a restricted network, they may need to allowlist that host or set `TERSE_IMAGE=` in `.env` to point at a mirror.
 
 ## 4. Hand off
 

@@ -1,0 +1,226 @@
+name: Release
+
+on:
+    release:
+        types: [published]
+
+concurrency:
+    group: release
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+env:
+    REGISTRY: us-central1-docker.pkg.dev
+    IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse
+    REQUIRED_CHECK: End-to-End Tests
+
+jobs:
+    # ── Gate ──────────────────────────────────────────────────────────────────
+    # Nothing is published until the tag, the manifests, and CI all agree.
+    preflight:
+        name: Preflight
+        runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.version.outputs.version }}
+            minor: ${{ steps.version.outputs.minor }}
+            sha: ${{ steps.version.outputs.sha }}
+        steps:
+            - name: Reject prereleases and malformed tags
+              id: version
+              env:
+                  TAG: ${{ github.event.release.tag_name }}
+                  IS_PRERELEASE: ${{ github.event.release.prerelease }}
+                  SHA: ${{ github.sha }}
+              run: |
+                  set -euo pipefail
+                  if [[ "$IS_PRERELEASE" == "true" ]]; then
+                      echo "::error::Prereleases are not published. Tag $TAG is marked as a prerelease."
+                      exit 1
+                  fi
+                  if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                      echo "::error::Tag must look like v1.2.3 (got '$TAG')"
+                      exit 1
+                  fi
+                  version="${TAG#v}"
+                  echo "version=${version}" >> "$GITHUB_OUTPUT"
+                  echo "minor=${version%.*}" >> "$GITHUB_OUTPUT"
+                  echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+                  echo "Releasing ${version} from ${SHA}"
+
+            - name: Checkout tag
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Assert the tagged commit is on main
+              run: |
+                  set -euo pipefail
+                  git fetch --quiet origin main
+                  if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+                      echo "::error::${{ github.sha }} is not an ancestor of origin/main. Release only from main."
+                      exit 1
+                  fi
+
+            - name: Assert every manifest matches the tag
+              run: node scripts/check-release-versions.mjs "${{ steps.version.outputs.version }}"
+
+            - name: Assert CI is green on the tagged commit
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  set -euo pipefail
+                  runs=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs" --paginate \
+                      --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion // "none")"')
+                  echo "$runs"
+
+                  failed=$(echo "$runs" | awk -F'\t' '$2 == "completed" && $3 != "success" && $3 != "skipped" && $3 != "neutral"' || true)
+                  if [[ -n "$failed" ]]; then
+                      echo "::error::Checks on ${{ github.sha }} are not green:"
+                      echo "$failed"
+                      exit 1
+                  fi
+
+                  pending=$(echo "$runs" | awk -F'\t' '$2 != "completed" && $1 != "Preflight"' || true)
+                  if [[ -n "$pending" ]]; then
+                      echo "::error::Checks on ${{ github.sha }} are still running:"
+                      echo "$pending"
+                      exit 1
+                  fi
+
+                  if ! echo "$runs" | awk -F'\t' -v want="$REQUIRED_CHECK" '$1 == want && $3 == "success" { found = 1 } END { exit !found }'; then
+                      echo "::error::'$REQUIRED_CHECK' did not run successfully on ${{ github.sha }}"
+                      exit 1
+                  fi
+
+    # ── 1 · Image (retryable) ─────────────────────────────────────────────────
+    image:
+        name: Publish image
+        needs: preflight
+        runs-on: blacksmith-4vcpu-ubuntu-2404
+        timeout-minutes: 45
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Checkout tag
+              uses: actions/checkout@v4
+
+            - name: Authenticate to Google Cloud
+              uses: google-github-actions/auth@v3
+              with:
+                  project_id: fluid-analogy-473415-c2
+                  workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
+            - name: Set up gcloud
+              uses: google-github-actions/setup-gcloud@v2
+
+            - name: Configure Docker for Artifact Registry
+              run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+              with:
+                  platforms: linux/amd64,linux/arm64
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build and push
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./Dockerfile
+                  platforms: linux/amd64,linux/arm64
+                  push: true
+                  tags: |
+                      ${{ env.IMAGE }}:${{ needs.preflight.outputs.version }}
+                      ${{ env.IMAGE }}:${{ needs.preflight.outputs.minor }}
+                      ${{ env.IMAGE }}:latest
+                      ${{ env.IMAGE }}:sha-${{ needs.preflight.outputs.sha }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  provenance: false
+
+    # ── 2 · npm (irreversible) ────────────────────────────────────────────────
+    npm:
+        name: Publish npm packages
+        needs: [preflight, image]
+        runs-on: blacksmith-4vcpu-ubuntu-2404
+        timeout-minutes: 30
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Checkout tag
+              uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: 10
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "22.19.0"
+                  cache: "pnpm"
+                  cache-dependency-path: pnpm-lock.yaml
+                  registry-url: "https://registry.npmjs.org"
+
+            # Trusted publishing (OIDC) needs npm >= 11.5.1; pnpm packs, npm publishes.
+            - name: Upgrade npm
+              run: npm install -g npm@latest
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build publishable packages
+              run: pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli --filter create-terse run build
+
+            - name: Pack tarballs
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist-tarballs
+                  for pkg in terse-types terse-sdk terse-cli create-terse; do
+                      pnpm --filter "$pkg" pack --pack-destination "$PWD/dist-tarballs"
+                  done
+                  ls -l dist-tarballs
+
+            # Ordered dependencies-first so a consumer never resolves against a missing version.
+            - name: Publish to npm
+              run: |
+                  set -euo pipefail
+                  version="${{ needs.preflight.outputs.version }}"
+                  for pkg in terse-types terse-sdk terse-cli create-terse; do
+                      npm publish "dist-tarballs/${pkg}-${version}.tgz" --access public --tag latest
+                  done
+
+    # ── 3 · Prod (retryable) ──────────────────────────────────────────────────
+    deploy:
+        name: Deploy production
+        needs: [preflight, npm]
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        environment: production
+        steps:
+            - name: Checkout tag
+              uses: actions/checkout@v4
+
+            - name: Deploy Render services at the tagged commit
+              env:
+                  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+                  COMMIT_SHA: ${{ needs.preflight.outputs.sha }}
+                  # AI-Product-Owner (api.useterse.ai) and terse-prod-worker.
+                  RENDER_SERVICE_IDS: srv-d1eqvi7gi27c739pt4bg srv-d94fmbuq1p3s73bjoutg
+              run: node scripts/render-deploy.mjs
+
+            - name: Deploy frontend to Vercel production
+              env:
+                  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+                  VERCEL_TEAM_ID: team_UyOJ7NQ43Xk4UQtfqggcupD8
+                  VERCEL_PROJECT_ID: prj_BUmtGEgbjPw0oW3io14O5MozPAyC
+                  GITHUB_REPO_ID: "1076128380"
+                  # Deploying the tag ref (not "main") is what lets the project's
+                  # ignored-build-step skip pushes to main but allow releases.
+                  RELEASE_REF: ${{ github.event.release.tag_name }}
+              run: node scripts/vercel-deploy.mjs

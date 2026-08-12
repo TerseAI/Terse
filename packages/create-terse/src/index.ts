@@ -14,6 +14,7 @@ const execAsync = promisify(exec)
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const TEMPLATES_DIR = path.resolve(SCRIPT_DIR, "../templates")
+const PACKAGE_JSON_PATH = path.resolve(SCRIPT_DIR, "../package.json")
 
 const DEFAULTS = {
     targetDir: "./terse",
@@ -58,14 +59,15 @@ async function main(): Promise<void> {
 
     const frontendPort = hostPortFromUrl(frontendUrl)
     const backendPort = hostPortFromUrl(backendUrl)
-    await writeEnv(resolved, { frontendUrl, backendUrl, frontendPort, backendPort, postgresPort })
+    const releaseVersion = await readOwnVersion()
+    await writeEnv(resolved, { frontendUrl, backendUrl, frontendPort, backendPort, postgresPort, releaseVersion })
     log.success(`Wrote .env (edit ${path.join(targetDir, ".env")} to tweak ports, URLs, or secrets)`)
 
-    await runStepStreaming("Pulling Terse image (first run downloads ~500MB)", "docker compose pull", resolved)
+    await runStepStreaming(`Pulling Terse image ${releaseVersion} (first run downloads ~500MB)`, "docker compose pull", resolved)
     await runStep("Starting Terse services", "docker compose up -d", resolved)
     await waitForBackend(backendUrl)
 
-    await installTerseCli()
+    await installTerseCli(releaseVersion)
     await pointTerseCliAtLocal({ frontendUrl, backendUrl })
 
     printNextSteps({ frontendUrl })
@@ -98,12 +100,13 @@ function printNextSteps(args: { frontendUrl: string }): void {
     )
 }
 
-async function installTerseCli(): Promise<void> {
+async function installTerseCli(releaseVersion: string): Promise<void> {
     if (commandExists("terse")) {
         log.info("terse CLI already installed, skipping global install")
         return
     }
-    await runStep("Installing terse CLI globally (npm i -g terse-cli)", "npm install -g terse-cli", process.cwd())
+    const spec = `terse-cli@${releaseVersion}`
+    await runStep(`Installing terse CLI globally (npm i -g ${spec})`, `npm install -g ${spec}`, process.cwd())
 }
 
 async function pointTerseCliAtLocal(urls: { frontendUrl: string; backendUrl: string }): Promise<void> {
@@ -124,7 +127,16 @@ function commandExists(name: string): boolean {
     }
 }
 
-async function writeEnv(targetDir: string, config: { frontendUrl: string; backendUrl: string; frontendPort: number; backendPort: number; postgresPort: number }): Promise<void> {
+async function readOwnVersion(): Promise<string> {
+    const parsed: unknown = JSON.parse(await fs.readFile(PACKAGE_JSON_PATH, "utf8"))
+    if (typeof parsed === "object" && parsed !== null && "version" in parsed && typeof parsed.version === "string") return parsed.version
+    throw new Error(`Could not read a version from ${PACKAGE_JSON_PATH}`)
+}
+
+async function writeEnv(
+    targetDir: string,
+    config: { frontendUrl: string; backendUrl: string; frontendPort: number; backendPort: number; postgresPort: number; releaseVersion: string }
+): Promise<void> {
     const socketUrl = toWebSocketUrl(config.backendUrl)
     const lines = [
         "# Terse self-host config. Edit values then `docker compose up -d` to apply.",
@@ -161,7 +173,11 @@ async function writeEnv(targetDir: string, config: { frontendUrl: string; backen
         "# ── Runtime ───────────────────────────────────────────────────",
         "NODE_ENV=development",
         "",
-        "# ── Image (uncomment to pin to a specific tag) ────────────────",
+        "# ── Image ─────────────────────────────────────────────────────",
+        "# Pinned to the release this folder was scaffolded with, so `docker compose pull`",
+        "# never moves you to a new version by surprise. Bump it to upgrade, or set it to",
+        "# `latest` to always track the newest release.",
+        `TERSE_VERSION=${config.releaseVersion}`,
         "# TERSE_IMAGE=us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse",
         ""
     ]
