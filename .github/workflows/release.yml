@@ -186,7 +186,7 @@ jobs:
                       if npm view "$pkg@$RELEASE_VERSION" version >/dev/null 2>&1; then
                           echo "$pkg@$RELEASE_VERSION already published"
                       else
-                          npm publish "dist-tarballs/$pkg-$RELEASE_VERSION.tgz" --access public
+                          npm publish "./dist-tarballs/$pkg-$RELEASE_VERSION.tgz" --access public
                       fi
                   done
 
