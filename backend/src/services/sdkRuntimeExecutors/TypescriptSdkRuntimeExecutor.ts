@@ -37,9 +37,12 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     }
 
     /**
-     * One sandbox, one snapshot: the source is already unzipped into projectDir, so this installs the
-     * CLI (unless the released base image carries it), installs the project's dependencies in place,
-     * and builds the workflow bundle.
+     * One sandbox, one snapshot: the source is already unzipped into projectDir, so this installs
+     * what the project needs and builds the workflow bundle.
+     *
+     * Everything the install requires goes in one command. Each sandbox exec is a round trip to
+     * Modal, and the CLI check is usually just a file comparison against the baked version, so
+     * paying a round trip to learn "already there" cost more than the check saved.
      */
     async buildDeployImage(context: SdkDeployImageBuildContext): Promise<void> {
         const packageJson = context.archive.readText("package.json")
@@ -57,17 +60,18 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             await context.writeFile(`${context.projectDir}/package.json`, withTerseOverrides(packageJson, localTarballs, packageManager))
             await installLocalCli(context, localTarballs)
             await writeHoistMarker(context, localPackages)
-        } else {
-            await this.ensureCli(context)
         }
         // === end dev-only ===
 
-        await this.ensurePackageManager(context, packageManager)
+        const install = [
+            localTarballs ? undefined : this.ensureCliCommand(context),
+            this.ensurePackageManagerCommand(context, packageManager),
+            localTarballs
+                ? buildLocalDependencyInstallCommand(packageManager, context.projectDir, context.escapeShellArg)
+                : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg)
+        ].filter((command): command is string => command !== undefined)
 
-        const installCommand = localTarballs
-            ? buildLocalDependencyInstallCommand(packageManager, context.projectDir, context.escapeShellArg)
-            : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg)
-        await context.ensureSandboxCommand("install_dependencies", installCommand)
+        await context.ensureSandboxCommand("install_dependencies", install.join(" && "))
 
         // Only the durable runtime reads .terse/wf; directJobRuntime calls the handler from source.
         if (!context.requiresWorkflowBundle) {
@@ -85,27 +89,27 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
      * beside it, so the skip is a file comparison rather than anything the control plane has to
      * know about the image. Any other version installs, warm, off the image's package cache.
      */
-    private async ensureCli(context: SdkDeployImageBuildContext): Promise<void> {
+    private ensureCliCommand(context: SdkDeployImageBuildContext): string {
         const marker = context.escapeShellArg(`${context.cliCachePath}/${CLI_VERSION_MARKER}`)
         const wanted = context.escapeShellArg(context.cliVersion)
         const cliCachePath = context.escapeShellArg(context.cliCachePath)
         const install = `mkdir -p ${cliCachePath} && npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`
 
-        await context.ensureSandboxCommand("install_cli", `if [ "$(cat ${marker} 2>/dev/null)" = ${wanted} ]; then echo "terse-cli ${context.cliVersion} already baked"; else ${install}; fi`)
+        return `if [ "$(cat ${marker} 2>/dev/null)" = ${wanted} ]; then echo "terse-cli ${context.cliVersion} already baked"; else ${install}; fi`
     }
 
-    private async ensurePackageManager(context: SdkDeployImageBuildContext, packageManager: PackageManager): Promise<void> {
-        if (packageManager !== "pnpm") return
+    private ensurePackageManagerCommand(context: SdkDeployImageBuildContext, packageManager: PackageManager): string | undefined {
+        if (packageManager !== "pnpm") return undefined
 
         const pnpmVersion = this.detectPnpmVersion(context.archive)
         if (context.baseImage.kind === "sandbox" && pnpmVersion === DEFAULT_PNPM_VERSION) {
             logger.info("SDK image build: reusing prebuilt pnpm", { pnpmVersion })
-            return
+            return undefined
         }
 
         // --force: overwrite any pre-existing pnpm shim (e.g. corepack's at
         // /usr/local/bin/pnpm in the self-host image), which npm otherwise EEXISTs on.
-        await context.ensureSandboxCommand("install_package_manager", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`)
+        return `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
