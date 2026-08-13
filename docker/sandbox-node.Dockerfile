@@ -1,29 +1,28 @@
-# Node SDK sandbox image. There is one of these, consumed through a moving tag, not one per
-# release: its value is the warm package cache for the Terse dependency tree, and that tree is
-# near-identical across releases (adding a whole release to a warm cache measures at ~1MB).
-#
-# It bakes this release's CLI so current deploys skip the install entirely, and warms the package
-# cache for this release. Older CLIs are not warmed on purpose: their trees overlap this one so
-# heavily that they install warm anyway (measured: 4.02s against a cache warmed with a different
-# release, versus 3.98s fully cached and 13.5s cold).
-#
-# Paths below must match ModalSandboxService.getCliCachePath.
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM node:22.22.3-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732
 
 ARG TERSE_VERSION
+ARG PNPM_VERSION=10.34.1
 RUN test -n "${TERSE_VERSION}"
 
 ENV TERSE_SANDBOX_RELEASE=${TERSE_VERSION}
 ENV TERSE_CLI_CACHE_PATH=/opt/terse-sdk-cache/cli
 
-# The baked CLI. The marker is what a build compares against to decide whether to install.
+RUN apt-get -o Acquire::Retries=3 update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y -qq --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g --force --no-fund "pnpm@${PNPM_VERSION}"
+
+# Install the Terse CLI
 RUN mkdir -p "${TERSE_CLI_CACHE_PATH}" \
     && npm install -g --prefix "${TERSE_CLI_CACHE_PATH}" --no-fund "terse-cli@${TERSE_VERSION}" \
     && printf '%s' "${TERSE_VERSION}" > "${TERSE_CLI_CACHE_PATH}/.terse-cli-version"
 
-# Warm the caches rather than a node_modules tree: a deploy with a lockfile runs `npm ci`, which
-# wipes node_modules but still reads ~/.npm.
+# Install the Terse SDK
 RUN mkdir -p /tmp/warm && cd /tmp/warm \
     && npm init -y > /dev/null \
     && npm install --omit=dev --no-fund "terse-sdk@${TERSE_VERSION}" \

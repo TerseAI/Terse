@@ -14,7 +14,6 @@ permissions:
 env:
     REGISTRY: us-central1-docker.pkg.dev
     IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse
-    SANDBOX_BASE_IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse-sandbox-base
     SANDBOX_NODE_IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse-sandbox-node
 
 jobs:
@@ -194,13 +193,13 @@ jobs:
                       fi
                   done
 
-    # ── 3 · SDK sandbox images (retryable) ────────────────────────────────────
+    # ── 3 · SDK sandbox image (retryable) ─────────────────────────────────────
     # What customer deploys boot from. Built after npm because the runtime image
     # installs terse-cli from the registry, and consumed through a moving tag: the
     # value here is the warm package cache, and the Terse dependency tree barely
     # changes between releases.
-    sandbox-images:
-        name: Publish SDK sandbox images
+    sandbox-image:
+        name: Publish the SDK sandbox image
         needs: [preflight, npm]
         runs-on: blacksmith-4vcpu-ubuntu-2404
         timeout-minutes: 60
@@ -228,20 +227,6 @@ jobs:
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-            # Modal sandboxes are amd64, so these skip the arm64 pass the control plane takes.
-            - name: Build and push the sandbox base
-              uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
-              with:
-                  context: .
-                  file: ./docker/sandbox-base.Dockerfile
-                  platforms: linux/amd64
-                  push: true
-                  tags: |
-                      ${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
-                      ${{ env.SANDBOX_BASE_IMAGE }}:latest
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-
             # The npm job publishes, but the registry can lag a few seconds behind it.
             - name: Wait for the packages to be resolvable
               env:
@@ -260,7 +245,8 @@ jobs:
                   echo "::error::terse-cli@$RELEASE_VERSION never became visible on npm"
                   exit 1
 
-            - name: Build and push the node sandbox image
+            # Modal sandboxes are amd64, so this skips the arm64 pass the control plane takes.
+            - name: Build and push the sandbox image
               uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
               with:
                   context: .
@@ -268,7 +254,6 @@ jobs:
                   platforms: linux/amd64
                   push: true
                   build-args: |
-                      BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
                   tags: |
                       ${{ env.SANDBOX_NODE_IMAGE }}:${{ needs.preflight.outputs.version }}
@@ -279,8 +264,8 @@ jobs:
     # ── 4 · Prod (retryable) ──────────────────────────────────────────────────
     deploy:
         name: Deploy production
-        # Waits on the sandbox images so prod never runs ahead of the image its deploys boot.
-        needs: [preflight, npm, sandbox-images]
+        # Waits on the sandbox image so prod never runs ahead of what its deploys boot.
+        needs: [preflight, npm, sandbox-image]
         runs-on: ubuntu-latest
         timeout-minutes: 50
         environment: production

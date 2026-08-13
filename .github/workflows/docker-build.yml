@@ -29,31 +29,19 @@ jobs:
                   # fail the build check.
                   cache-to: type=gha,mode=max,ignore-error=true
 
-            - name: Sandbox base image
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  file: ./docker/sandbox-base.Dockerfile
-                  platforms: linux/amd64
-                  load: true
-                  tags: terse-sandbox-base:pr
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max,ignore-error=true
-
             # This release's packages do not exist yet, so the Dockerfile is proven
             # against whatever is currently published.
             - name: Resolve the published CLI version
               id: published
               run: echo "version=$(npm view terse-cli version)" >> "$GITHUB_OUTPUT"
 
-            - name: Sandbox node image
+            - name: Sandbox image
               uses: docker/build-push-action@v6
               with:
                   context: .
                   file: ./docker/sandbox-node.Dockerfile
                   platforms: linux/amd64
                   build-args: |
-                      BASE_IMAGE=terse-sandbox-base:pr
                       TERSE_VERSION=${{ steps.published.outputs.version }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true
