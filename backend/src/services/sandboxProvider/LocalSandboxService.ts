@@ -57,11 +57,6 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         return { imageId: REGISTRY_IMAGE_MARKER }
     }
 
-    // Local runs install straight onto the host, so there is no volume to mount a package cache on.
-    async getOrCreateCacheVolume(_name: string): Promise<undefined> {
-        return undefined
-    }
-
     async getImageFromId(imageId: string): Promise<SandboxImage> {
         logger.info("#LocalSandbox image fromId", { imageId })
         return { imageId }

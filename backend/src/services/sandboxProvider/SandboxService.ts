@@ -7,8 +7,6 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     getImageFromRegistry(registry: string): I
     getImageFromId(imageId: string): Promise<I>
 
-    /** Persistent named volume for build caches. Undefined when the provider has no volume support. */
-    getOrCreateCacheVolume(name: string): Promise<SandboxVolume | undefined>
     deleteImage(imageId: string): Promise<void>
 
     imageExists(imageId: string): Promise<boolean>

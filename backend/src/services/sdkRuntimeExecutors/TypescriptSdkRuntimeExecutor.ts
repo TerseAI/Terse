@@ -1,19 +1,9 @@
 import crypto from "crypto"
 
 import logger from "../../common/logger"
-import { shellQuote } from "../../common/shellEscape"
 import type { LocalPackagesBundle } from "../../utility/localPackages"
 
-import type {
-    DefineDeployImageParams,
-    PackageCachePaths,
-    SandboxCommandResult,
-    SdkDeployImageBuildContext,
-    SdkDeployImageDefinition,
-    SdkProjectArchive,
-    SdkRuntimeExecutor,
-    SdkRuntimeExecutorContext
-} from "./types"
+import type { DefineDeployImageParams, SandboxCommandResult, SdkDeployImageBuildContext, SdkDeployImageDefinition, SdkProjectArchive, SdkRuntimeExecutor, SdkRuntimeExecutorContext } from "./types"
 import { type PackageManager, buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeHoistMarker, writeLocalTarballs } from "./typescriptLocalPackages"
 
 const DEFAULT_PNPM_VERSION = "10.34.1"
@@ -74,12 +64,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
         await this.ensurePackageManager(context, packageManager)
 
-        const installCommand = withPackageCacheEnv(
-            localTarballs
-                ? buildLocalDependencyInstallCommand(packageManager, context.projectDir, context.escapeShellArg)
-                : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg),
-            context.packageCache
-        )
+        const installCommand = localTarballs
+            ? buildLocalDependencyInstallCommand(packageManager, context.projectDir, context.escapeShellArg)
+            : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg)
         await context.ensureSandboxCommand("install TypeScript dependencies", installCommand)
 
         // Older CLIs lack `terse build`; they always ship a prebuilt .terse/wf inside the source zip, so fall back to that.
@@ -97,10 +84,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         const wanted = context.escapeShellArg(context.cliVersion)
         const install = `npm install -g --prefix ${context.escapeShellArg(context.cliCachePath)} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`
 
-        await context.ensureSandboxCommand(
-            "install terse cli",
-            `if [ "$(cat ${marker} 2>/dev/null)" = ${wanted} ]; then echo "terse-cli ${context.cliVersion} already baked"; else ${withPackageCacheEnv(install, context.packageCache)}; fi`
-        )
+        await context.ensureSandboxCommand("install terse cli", `if [ "$(cat ${marker} 2>/dev/null)" = ${wanted} ]; then echo "terse-cli ${context.cliVersion} already baked"; else ${install}; fi`)
     }
 
     private async ensurePackageManager(context: SdkDeployImageBuildContext, packageManager: PackageManager): Promise<void> {
@@ -114,8 +98,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
         // --force: overwrite any pre-existing pnpm shim (e.g. corepack's at
         // /usr/local/bin/pnpm in the self-host image), which npm otherwise EEXISTs on.
-        const command = `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`
-        await context.ensureSandboxCommand("install pnpm", withPackageCacheEnv(command, context.packageCache))
+        await context.ensureSandboxCommand("install pnpm", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`)
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
@@ -200,17 +183,4 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
         return `cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
     }
-}
-
-/**
- * Points npm and pnpm at the organization's mounted cache. Each org gets its own volume, so a
- * malicious postinstall can only ever poison that org's cache, never another tenant's.
- */
-function withPackageCacheEnv(command: string, cache: PackageCachePaths): string {
-    const assignments = [
-        cache.npmCacheDir ? `npm_config_cache=${shellQuote(cache.npmCacheDir)}` : undefined,
-        cache.pnpmStoreDir ? `npm_config_store_dir=${shellQuote(cache.pnpmStoreDir)}` : undefined
-    ].filter((value): value is string => value !== undefined)
-
-    return assignments.length > 0 ? `export ${assignments.join(" ")} && ${command}` : command
 }

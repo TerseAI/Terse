@@ -24,12 +24,14 @@ RUN mkdir -p "${TERSE_CLI_CACHE_PATH}" \
     && printf '%s' "${TERSE_VERSION}" > "${TERSE_CLI_CACHE_PATH}/.terse-cli-version"
 
 # Warm the npm cache with the SDK's whole dependency tree, have to install the SDK into a throwaway project
-# because adding to npm cache only fetches the SDK's tarball.
+# because adding to npm cache only fetches the SDK's tarball. The SDK isn't actually installed because
+# the actual version is dictated by the user's project.
 RUN mkdir -p /tmp/warm && cd /tmp/warm \
     && npm init -y > /dev/null \
     && npm install --omit=dev --no-fund --ignore-scripts "terse-sdk@${TERSE_VERSION}" \
     && cd / && rm -rf /tmp/warm
 
+# Warm the pnpm cache with the SDK AND CLIs whole dependency tree
 RUN pnpm store add "terse-sdk@${TERSE_VERSION}" "terse-cli@${TERSE_VERSION}"
 
 LABEL org.opencontainers.image.source="https://github.com/TerseAI/Terse" \

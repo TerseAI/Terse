@@ -66,10 +66,6 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return this.modal.images.fromRegistry(registry)
     }
 
-    async getOrCreateCacheVolume(name: string): Promise<Volume> {
-        return this.modal.volumes.fromName(name, { createIfMissing: true })
-    }
-
     async getImageFromId(imageId: string): Promise<ModalImage> {
         const t0 = Date.now()
         try {

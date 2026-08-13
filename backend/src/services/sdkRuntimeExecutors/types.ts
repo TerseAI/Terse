@@ -27,20 +27,12 @@ export interface SdkDeployImageBuildContext {
     baseImage: ResolvedSandboxBaseImage
     projectDir: string
     cliCachePath: string
-    /** Package-manager cache locations, backed by the org's cache volume when one is mounted. */
-    packageCache: PackageCachePaths
     // Dev-only: locally-packed terse-types/terse-sdk/terse-cli to install instead of npm registry versions.
     localPackages?: LocalPackagesBundle
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     writeFile: (path: string, content: string) => Promise<void>
     writeBinaryFile: (path: string, content: Buffer) => Promise<void>
     escapeShellArg: (value: string) => string
-}
-
-export interface PackageCachePaths {
-    /** Mounted per-organization cache, or undefined when the provider has no volumes. */
-    npmCacheDir?: string
-    pnpmStoreDir?: string
 }
 
 export interface SdkRuntimeExecutorContext {

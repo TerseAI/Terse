@@ -12,10 +12,10 @@ import { type LocalPackagesBundle, packLocalSdkPackages } from "../utility/local
 import { type ResolvedSandboxBaseImage, SandboxBaseImageResolver } from "./sandboxBaseImage/SandboxBaseImageResolver"
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
-import type { Sandbox, SandboxVolume } from "./sandboxProvider/SandboxService"
+import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import { type PackageCachePaths, type SandboxCommandResult, type SdkDeployImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
-import { NPM_CACHE_PATH, PNPM_STORE_PATH, SANDBOX_CACHE_MOUNT_PATH, deployBuildSandboxUniqueName, organizationCacheVolumeName } from "./sdkSandboxLayerKeys"
+import { type SandboxCommandResult, type SdkDeployImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
+import { deployBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
@@ -269,13 +269,7 @@ export class SdkSandboxImageService {
             ? telemetry.measure("deployBuildGetAppMs", () => sandboxService.getOrCreateApp("terse-sdk-image-builder"))
             : sandboxService.getOrCreateApp("terse-sdk-image-builder"))
         const sandboxBaseImage = sandboxService.getImageFromRegistry(baseImage.reference)
-        const packageCacheVolume = await sandboxService.getOrCreateCacheVolume(organizationCacheVolumeName(organizationId))
-
-        const createParams = {
-            ...SANDBOX_DEFAULT_OPTIONS,
-            timeoutMs: 30 * 60 * 1000,
-            ...(packageCacheVolume ? { volumes: { [SANDBOX_CACHE_MOUNT_PATH]: packageCacheVolume } } : {})
-        }
+        const createParams = { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 }
         const uniqueName = deployBuildSandboxUniqueName(buildHash)
         const sb = await (telemetry
             ? telemetry.measure("deployBuildSandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, sandboxBaseImage, uniqueName, createParams))
@@ -287,7 +281,7 @@ export class SdkSandboxImageService {
                 ? telemetry.measure("deployBuildExtractZipMs", () => this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
                 : this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
 
-            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, packageCacheVolume })
+            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages })
             await (telemetry ? telemetry.measure("deployBuildExecutorMs", () => executor.buildDeployImage(buildContext)) : executor.buildDeployImage(buildContext))
 
             onProgress?.("building_bundle")
@@ -306,10 +300,8 @@ export class SdkSandboxImageService {
         cliVersion: string
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
-        packageCacheVolume?: SandboxVolume
     }): SdkDeployImageBuildContext {
-        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, packageCacheVolume } = params
-        const packageCache: PackageCachePaths = packageCacheVolume ? { npmCacheDir: NPM_CACHE_PATH, pnpmStoreDir: PNPM_STORE_PATH } : {}
+        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages } = params
 
         return {
             sb,
@@ -318,7 +310,6 @@ export class SdkSandboxImageService {
             baseImage,
             projectDir: sandboxService.getProjectPath(sb),
             cliCachePath: sandboxService.getCliCachePath(sb),
-            packageCache,
             localPackages,
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, executor.runtime)
