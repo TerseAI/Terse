@@ -1,4 +1,4 @@
-import { AlreadyExistsError, CloudBucketMount, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams, Volume } from "modal"
+import { AlreadyExistsError, CloudBucketMount, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams, Secret, Volume } from "modal"
 
 import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
@@ -16,6 +16,11 @@ const CREATE_RETRY_BASE_DELAY_MS = 150
 export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, ModalSandbox, ModalApp> {
     readonly settingsKey = "modal"
     readonly supportsContainerizedRunners = true
+
+    /** One RPC per deploy for a name that never changes, so it is looked up once per process. */
+    private readonly appsByName = new Map<string, Promise<ModalApp>>()
+    /** The HMAC credentials are static, so the Modal secret holding them can be too. */
+    private bucketMountSecret: Promise<Secret> | undefined
 
     private readonly modal = new ModalClient({
         tokenId: this.config.tokenId,
@@ -51,6 +56,18 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
     }
 
     async getOrCreateApp(name: string): Promise<ModalApp> {
+        const cached = this.appsByName.get(name)
+        if (cached) return cached
+
+        const app = this.lookupApp(name)
+        this.appsByName.set(name, app)
+        return app.catch(error => {
+            this.appsByName.delete(name)
+            throw error
+        })
+    }
+
+    private async lookupApp(name: string): Promise<ModalApp> {
         const t0 = Date.now()
         try {
             const app = await this.modal.apps.fromName(name, { createIfMissing: true })
@@ -71,11 +88,13 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
      * with AWS_* the sandbox starts and then dies on first use, GOOGLE_* works.
      */
     async createBucketMount(params: BucketMountParams): Promise<CloudBucketMount> {
-        const secret = await this.modal.secrets.fromObject({
+        this.bucketMountSecret ??= this.modal.secrets.fromObject({
             GOOGLE_ACCESS_KEY_ID: params.accessKeyId,
             GOOGLE_ACCESS_KEY_SECRET: params.secretAccessKey
         })
+        const secret = await this.bucketMountSecret
 
+        // The mount itself is per organization (keyPrefix), so only the secret is reused.
         return this.modal.cloudBucketMounts.create(params.bucket, {
             secret,
             readOnly: true,

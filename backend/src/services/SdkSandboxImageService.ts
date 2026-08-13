@@ -317,11 +317,8 @@ export class SdkSandboxImageService {
         })
 
         try {
-            await this.runPhase(phaseContext, "unpacking_source", () =>
-                this.extractSourceZip({ sb, sandboxService, executor, zipBuffer, mountedArchive: sourceMount ? archiveNameOf(sourceObjectKey) : undefined })
-            )
-
-            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, phaseContext })
+            const unpackCommand = await this.prepareSourceArchive({ sb, sandboxService, zipBuffer, mountedArchive: sourceMount ? archiveNameOf(sourceObjectKey) : undefined })
+            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, unpackCommand, phaseContext })
             await executor.buildDeployImage(buildContext)
 
             const image = await this.runPhase(phaseContext, "saving_image", () => sb.snapshotFilesystem())
@@ -340,9 +337,10 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
+        unpackCommand: string
         phaseContext: PhaseContext
     }): SdkDeployImageBuildContext {
-        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, phaseContext } = params
+        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, unpackCommand, phaseContext } = params
 
         return {
             sb,
@@ -350,6 +348,7 @@ export class SdkSandboxImageService {
             cliVersion,
             baseImage,
             requiresWorkflowBundle: requiresWorkflowBundle ?? true,
+            unpackCommand,
             projectDir: sandboxService.getProjectPath(sb),
             cliCachePath: sandboxService.getCliCachePath(sb),
             localPackages,
@@ -372,26 +371,15 @@ export class SdkSandboxImageService {
      * through it at all. The write stays as the fallback for a legacy inline upload, or a control
      * plane with no bucket to mount.
      */
-    private async extractSourceZip(params: {
-        sb: Sandbox
-        sandboxService: ReturnType<typeof getSandboxProvider>
-        executor: SdkRuntimeExecutor
-        zipBuffer: Buffer
-        mountedArchive?: string
-    }): Promise<void> {
-        const { sb, sandboxService, executor, zipBuffer, mountedArchive } = params
+    private async prepareSourceArchive(params: { sb: Sandbox; sandboxService: ReturnType<typeof getSandboxProvider>; zipBuffer: Buffer; mountedArchive?: string }): Promise<string> {
+        const { sb, sandboxService, zipBuffer, mountedArchive } = params
         const projectDir = sandboxService.getProjectPath(sb)
         const sourceZipPath = mountedArchive ? `${SOURCE_MOUNT_PATH}/${mountedArchive}` : sandboxService.getScratchPath(sb, "source-image-code.zip")
 
         if (!mountedArchive) await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
 
         const ensureUnzip = `(command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null))`
-        await this.ensureSandboxCommand(
-            sb,
-            "unpacking_source",
-            `mkdir -p ${shellQuote(projectDir)} && find ${shellQuote(projectDir)} -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + && ${ensureUnzip} && unzip -qq -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
-            executor.runtime
-        )
+        return `mkdir -p ${shellQuote(projectDir)} && find ${shellQuote(projectDir)} -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + && ${ensureUnzip} && unzip -qq -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`
     }
 
     /** Scoped to the organization's own prefix: customer code runs in the sandbox this is mounted into. */
@@ -426,7 +414,7 @@ export class SdkSandboxImageService {
         await fileHandle.close()
     }
 
-    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep | "unpacking_source", command: string, runtime: SdkProjectRuntime): Promise<void> {
+    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep, command: string, runtime: SdkProjectRuntime): Promise<void> {
         const label = step.replace(/_/g, " ")
         let result: SandboxCommandResult
         try {
@@ -450,8 +438,8 @@ export class SdkSandboxImageService {
      * and without it a slow install is indistinguishable from a cold cache. Discarding that on
      * success cost this several rounds of guessing, so the summary lines are kept.
      */
-    private logStepOutcome(step: SdkBuildStep | "unpacking_source", result: SandboxCommandResult): void {
-        if (step !== "install_dependencies") return
+    private logStepOutcome(step: SdkBuildStep, result: SandboxCommandResult): void {
+        if (step !== "building_project") return
 
         const summary = result.stdout
             .split("\n")

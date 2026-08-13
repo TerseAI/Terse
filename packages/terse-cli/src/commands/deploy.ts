@@ -89,13 +89,16 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     if (!isUrlMode) {
         timeline.enter("PACKAGING_PROJECT")
         s.message(getStageMessage("PACKAGING_PROJECT"))
+        // Asking for the upload URL is a round trip that does not need the archive, so it runs
+        // while the project is being zipped.
+        const session = requestUploadSession(apiKey)
         const zipPayload = buildZipPayload(provider)
         fileCount = zipPayload.fileCount
         zipSizeBytes = zipPayload.zipSizeBytes
 
         timeline.enter("UPLOADING_SOURCE")
         s.message(`${getStageMessage("UPLOADING_SOURCE")} ${chalk.dim(formatBytes(zipSizeBytes))}`)
-        sourceArchive = await uploadSource(zipPayload.zipBytes, apiKey)
+        sourceArchive = await uploadSource(zipPayload.zipBytes, session)
     }
 
     try {
@@ -250,10 +253,14 @@ function buildZipPayload(provider: LanguageProvider): { zipBytes: Uint8Array; fi
  * fetch: its chunked path rejects a session it did not create itself (it bails after a valid 308),
  * and its working path is this same single PUT, which is not worth a 10MB dependency in a CLI.
  */
-async function uploadSource(zipBytes: Uint8Array, apiKey: string): Promise<{ sourceObjectKey?: string; sourceZipBase64?: string }> {
+function requestUploadSession(apiKey: string): Promise<SdkSourceUploadResponse> {
+    return fetchWithAuth<SdkSourceUploadResponse>(ApiRoutes.SDK.DEPLOY_SOURCE_UPLOAD, apiKey, {}, "POST")
+}
+
+async function uploadSource(zipBytes: Uint8Array, session: Promise<SdkSourceUploadResponse>): Promise<{ sourceObjectKey?: string; sourceZipBase64?: string }> {
     let reason: string
     try {
-        const response = await fetchWithAuth<SdkSourceUploadResponse>(ApiRoutes.SDK.DEPLOY_SOURCE_UPLOAD, apiKey, {}, "POST")
+        const response = await session
         if (!response.upload) return inlineArchive(zipBytes, "this Terse server has no object storage configured")
 
         const upload = response.upload
@@ -367,14 +374,8 @@ function getStageMessage(stage: SdkDeployStage): string {
             return "Starting a build sandbox"
         case "UPLOADING_SOURCE":
             return "Uploading your project"
-        case "UNPACKING_SOURCE":
-            return "Unpacking it in the sandbox"
-        case "INSTALLING_CLI":
-            return "Installing the Terse CLI"
-        case "INSTALLING_DEPENDENCIES":
-            return "Installing dependencies"
-        case "BUILDING_BUNDLE":
-            return "Building the workflow bundle"
+        case "BUILDING_PROJECT":
+            return "Building your project"
         case "SAVING_IMAGE":
             return "Saving the build image"
         case "CONFIGURING_AUTOMATIONS":

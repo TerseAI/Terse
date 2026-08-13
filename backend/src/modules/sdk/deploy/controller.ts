@@ -375,16 +375,11 @@ function toDeployStage(phase: SdkDeployPhase): SdkDeployStage {
             return "REUSING_CACHED_BUILD"
         case "starting_sandbox":
             return "STARTING_SANDBOX"
-        case "unpacking_source":
-            return "UNPACKING_SOURCE"
-        case "install_cli":
-            return "INSTALLING_CLI"
-        // The package manager is installed only to run the dependency install, so it reads as one step.
-        case "install_package_manager":
-        case "install_dependencies":
-            return "INSTALLING_DEPENDENCIES"
-        case "build_bundle":
-            return "BUILDING_BUNDLE"
+        case "uploading_source":
+            return "UPLOADING_SOURCE"
+        // Unpack, dependencies and bundle are one command in one sandbox, so they read as one step.
+        case "building_project":
+            return "BUILDING_PROJECT"
         case "saving_image":
             return "SAVING_IMAGE"
         default:

@@ -63,7 +63,10 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         }
         // === end dev-only ===
 
+        // One exec: unpack, CLI, package manager, dependencies, bundle. Entering the sandbox costs a
+        // round trip each time, and the container readiness gate is paid by whichever comes first.
         const install = [
+            context.unpackCommand,
             localTarballs ? undefined : this.ensureCliCommand(context),
             this.ensurePackageManagerCommand(context, packageManager),
             localTarballs
@@ -71,17 +74,16 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
                 : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg)
         ].filter((command): command is string => command !== undefined)
 
-        await context.ensureSandboxCommand("install_dependencies", install.join(" && "))
-
         // Only the durable runtime reads .terse/wf; directJobRuntime calls the handler from source.
-        if (!context.requiresWorkflowBundle) {
+        if (context.requiresWorkflowBundle) {
+            // Older CLIs lack `terse build`; they always ship a prebuilt .terse/wf inside the source zip.
+            const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
+            install.push(`cd ${context.escapeShellArg(context.projectDir)} && { ${cliBin} build || [ -d .terse/wf ]; }`)
+        } else {
             logger.info("SDK image build: no durable jobs, skipping the workflow bundle")
-            return
         }
 
-        // Older CLIs lack `terse build`; they always ship a prebuilt .terse/wf inside the source zip, so fall back to that.
-        const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
-        await context.ensureSandboxCommand("build_bundle", `cd ${context.escapeShellArg(context.projectDir)} && { ${cliBin} build || [ -d .terse/wf ]; }`)
+        await context.ensureSandboxCommand("building_project", install.join(" && "))
     }
 
     /**

@@ -9,19 +9,10 @@ export type SdkProjectRuntime = "typescript"
  * user is told, what the telemetry times, and what an error names, so a new step cannot be added
  * without all three following it.
  */
-export type SdkDeployPhase =
-    | "preparing"
-    | "reusing_cached_build"
-    | "starting_sandbox"
-    | "unpacking_source"
-    | "install_cli"
-    | "install_package_manager"
-    | "install_dependencies"
-    | "build_bundle"
-    | "saving_image"
+export type SdkDeployPhase = "preparing" | "reusing_cached_build" | "starting_sandbox" | "uploading_source" | "building_project" | "saving_image"
 
 /** The subset a runtime executor is responsible for. */
-export type SdkBuildStep = Extract<SdkDeployPhase, "install_cli" | "install_package_manager" | "install_dependencies" | "build_bundle">
+export type SdkBuildStep = Extract<SdkDeployPhase, "building_project">
 
 export interface SandboxCommandResult {
     exitCode: number
@@ -48,6 +39,8 @@ export interface SdkDeployImageBuildContext {
     requiresWorkflowBundle: boolean
     projectDir: string
     cliCachePath: string
+    /** Unpacks the archive. Prepended to the build so the sandbox is entered once, not twice. */
+    unpackCommand: string
     // Dev-only: locally-packed terse-types/terse-sdk/terse-cli to install instead of npm registry versions.
     localPackages?: LocalPackagesBundle
     ensureSandboxCommand: (step: SdkBuildStep, command: string) => Promise<void>
