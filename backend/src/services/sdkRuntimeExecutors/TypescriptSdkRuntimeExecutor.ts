@@ -52,6 +52,10 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         const localPackages = context.localPackages
         let localTarballs: Map<string, string> | undefined
         if (localPackages) {
+            // Unpack first: the overridden package.json is written into the project dir, which the
+            // unpack creates and then empties. Folding it into the install exec below would write it
+            // before the directory exists, then delete it. The extra round trip is dev-only.
+            await context.ensureSandboxCommand("building_project", context.unpackCommand)
             localTarballs = await writeLocalTarballs(context, localPackages)
             await context.writeFile(`${context.projectDir}/package.json`, withTerseOverrides(packageJson, localTarballs, packageManager))
             await installLocalCli(context, localTarballs)
@@ -60,7 +64,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         // === end dev-only ===
 
         const install = [
-            context.unpackCommand,
+            localTarballs ? undefined : context.unpackCommand,
             localTarballs ? undefined : this.ensureCliCommand(context),
             this.ensurePackageManagerCommand(context, packageManager),
             localTarballs
