@@ -23,7 +23,7 @@ import {
     type SdkProjectRuntime,
     SdkRuntimeExecutor
 } from "./sdkRuntimeExecutors/types"
-import { deployBuildSandboxUniqueName, prewarmBuildSandboxName } from "./sdkSandboxLayerKeys"
+import { deployBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
@@ -121,12 +121,10 @@ export class SdkSandboxImageService {
         cliVersion: string
         /** Absent means build one: an older CLI cannot tell us, and a missing bundle breaks durable jobs. */
         requiresWorkflowBundle?: boolean
-        /** Identifies the sandbox warmed while this archive was uploading, if there was one. */
-        prewarmKey?: string
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<PreparedSdkDeployImage> {
-        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, prewarmKey, onProgress, telemetry } = params
+        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, onProgress, telemetry } = params
         const archive = telemetry ? telemetry.measureSync("buildArchiveMs", () => new ZipSdkProjectArchive(zipBuffer)) : new ZipSdkProjectArchive(zipBuffer)
         const executor = telemetry ? telemetry.measureSync("resolveRuntimeMs", () => sdkRuntimeExecutorRegistry.resolve(archive.entries)) : sdkRuntimeExecutorRegistry.resolve(archive.entries)
         telemetry?.setRuntime(executor.runtime)
@@ -154,7 +152,7 @@ export class SdkSandboxImageService {
         const buildHash = (telemetry ? telemetry.measureSync("defineDeployImageMs", () => executor.defineDeployImage(defineParams)) : executor.defineDeployImage(defineParams)).buildHash
 
         onProgress?.("preparing")
-        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, requiresWorkflowBundle, prewarmKey }
+        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, requiresWorkflowBundle }
         const deployImage = await (telemetry ? telemetry.measure("deployImageResolveMs", () => this.ensureDeployImage({ ...ensureParams, telemetry })) : this.ensureDeployImage(ensureParams))
 
         return {
@@ -229,7 +227,6 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
-        prewarmKey?: string
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
@@ -293,21 +290,18 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
-        prewarmKey?: string
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<string> {
-        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, prewarmKey, zipBuffer, onProgress, telemetry } = params
+        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, zipBuffer, onProgress, telemetry } = params
         const sandboxService = getSandboxProvider()
         const phaseContext: PhaseContext = { onProgress, telemetry }
         const sandboxBaseImage = sandboxService.getImageFromRegistry(baseImage.reference)
 
-        // Reuses the sandbox warmed while this archive uploaded, or starts one when there is none.
-        const uniqueName = prewarmKey ? prewarmBuildSandboxName(prewarmKey) : deployBuildSandboxUniqueName(buildHash)
         const sb = await this.runPhase(phaseContext, "starting_sandbox", async () => {
             const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
-            return sandboxService.getOrCreateSandbox(app, sandboxBaseImage, uniqueName, { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
+            return sandboxService.getOrCreateSandbox(app, sandboxBaseImage, deployBuildSandboxUniqueName(buildHash), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
         })
 
         try {
