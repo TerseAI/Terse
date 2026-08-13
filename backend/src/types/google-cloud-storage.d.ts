@@ -16,6 +16,8 @@ declare module "@google-cloud/storage" {
         exists(): Promise<[boolean]>
         getMetadata(): Promise<[FileMetadata]>
         download(options?: unknown): Promise<[Buffer]>
+        /** Returns the session URI a client can upload to without credentials of its own. */
+        createResumableUpload(options?: { metadata?: { contentType?: string } }): Promise<[string]>
     }
     export class Bucket {
         file(name: string): File

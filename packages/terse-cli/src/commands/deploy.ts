@@ -21,6 +21,9 @@ import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { openSessionStream } from "../providers/shared/sessionStream.js"
 
+// Base64 in a JSON body: fine for a source-only project, not for one carrying data files.
+const MAX_INLINE_ARCHIVE_BYTES = 8 * 1024 * 1024
+
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
     const apiKey = readApiKeyOrBail({
         title: "Error: Not authenticated.",
@@ -234,23 +237,35 @@ function buildZipPayload(provider: LanguageProvider): { zipBytes: Uint8Array; fi
  * Object storage first, so a project carrying data files never rides inside the deploy request:
  * base64 in JSON inflates it by a third and buffers the whole thing in the control plane. A
  * control plane without object storage (self-host) says so, and the archive goes inline instead.
+ *
+ * The URL is a GCS resumable session created by the control plane, which accepts the whole archive
+ * in one request; 120MB uploads in about 4s. Note that @google-cloud/storage cannot replace this
+ * fetch: its chunked path rejects a session it did not create itself (it bails after a valid 308),
+ * and its working path is this same single PUT, which is not worth a 10MB dependency in a CLI.
  */
 async function uploadSource(zipBytes: Uint8Array, apiKey: string): Promise<{ sourceObjectKey?: string; sourceZipBase64?: string }> {
-    const inline = () => ({ sourceZipBase64: Buffer.from(zipBytes).toString("base64") })
-
     const response = await fetchWithAuth<SdkSourceUploadResponse>(ApiRoutes.SDK.DEPLOY_SOURCE_UPLOAD, apiKey, {}, "POST").catch(() => undefined)
     const upload = response?.upload
-    if (!upload) return inline()
+    if (!upload) return inlineArchive(zipBytes)
 
     const put = await fetch(upload.uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": upload.contentType },
-        body: new Blob([new Uint8Array(zipBytes)])
-    })
-    // A failed upload is not worth failing the deploy over while the inline path still works.
-    if (!put.ok) return inline()
+        headers: { "Content-Type": upload.contentType, "Content-Length": String(zipBytes.byteLength) },
+        body: zipBytes
+    }).catch(() => undefined)
 
-    return { sourceObjectKey: upload.objectKey }
+    if (put?.ok) return { sourceObjectKey: upload.objectKey }
+    return inlineArchive(zipBytes)
+}
+
+/** The legacy path: still what older CLIs use, and the fallback when object storage is unavailable. */
+function inlineArchive(zipBytes: Uint8Array): { sourceZipBase64: string } {
+    if (zipBytes.byteLength > MAX_INLINE_ARCHIVE_BYTES) {
+        throw new CliError("source_upload_failed", `Could not upload this project (${(zipBytes.byteLength / 1024 / 1024).toFixed(0)}MB) and it is too large to send inline.`, {
+            detail: "Retry, and if it persists check your connection to storage.googleapis.com."
+        })
+    }
+    return { sourceZipBase64: Buffer.from(zipBytes).toString("base64") }
 }
 
 async function syncMissingLocalSecrets(args: { projectId: string; apiKey: string }): Promise<void> {

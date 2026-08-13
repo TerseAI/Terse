@@ -34,18 +34,20 @@ export class GcsSourceArchiveStore implements SourceArchiveStore {
         return GcsSourceArchiveStore.instance
     }
 
-    /** Keyed by organization so a deploy can only ever read back its own tenant's archive. */
+    /**
+     * A resumable session rather than a plain signed PUT, so one mechanism covers every size: a
+     * small archive is a single chunk, and a large one (a project carrying data files) uploads in
+     * chunks that can resume after a dropped connection instead of starting over.
+     *
+     * The session URI is a write capability for this object key alone, and the key is prefixed by
+     * organization, so it can neither be pointed at another tenant's path nor read anything back.
+     */
     async createUpload(organizationId: string): Promise<SourceArchiveUpload> {
         const objectKey = `${ARCHIVE_PREFIX}/${organizationId}/${crypto.randomUUID()}.zip`
         const [uploadUrl] = await this.storage
             .bucket(this.bucket)
             .file(objectKey)
-            .getSignedUrl({
-                version: "v4",
-                action: "write",
-                expires: Date.now() + UPLOAD_URL_TTL_MS,
-                contentType: ARCHIVE_CONTENT_TYPE
-            })
+            .createResumableUpload({ metadata: { contentType: ARCHIVE_CONTENT_TYPE } })
 
         return { objectKey, uploadUrl, contentType: ARCHIVE_CONTENT_TYPE, expiresAtMs: Date.now() + UPLOAD_URL_TTL_MS }
     }
