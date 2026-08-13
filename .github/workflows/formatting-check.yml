@@ -7,6 +7,7 @@ on:
       - 'terse-types/**'
       - '.prettierrc'
       - '.github/workflows/formatting-check.yml'
+  workflow_call:
 permissions:
   contents: read
 jobs:

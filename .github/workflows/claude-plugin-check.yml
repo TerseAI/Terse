@@ -5,6 +5,7 @@ on:
             - "packages/terse-claude-plugin/**"
             - ".claude-plugin/**"
             - ".github/workflows/claude-plugin-check.yml"
+    workflow_call:
 permissions:
     contents: read
 jobs:

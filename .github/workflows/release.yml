@@ -1,0 +1,271 @@
+name: Release
+
+on:
+    release:
+        types: [published]
+
+concurrency:
+    group: release
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+env:
+    REGISTRY: us-central1-docker.pkg.dev
+    IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse
+
+jobs:
+    # ── Gate ──────────────────────────────────────────────────────────────────
+    preflight:
+        name: Preflight
+        if: github.event.release.prerelease == false
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        outputs:
+            version: ${{ steps.version.outputs.version }}
+        steps:
+            - name: Read release version
+              id: version
+              env:
+                  TAG: ${{ github.event.release.tag_name }}
+              run: |
+                  if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                      echo "::error::Tag must look like v1.2.3 (got '$TAG')"
+                      exit 1
+                  fi
+                  version="${TAG#v}"
+                  echo "version=${version}" >> "$GITHUB_OUTPUT"
+                  echo "Releasing ${version} from ${{ github.sha }}"
+
+            # Every job checks out github.sha, never the tag name: tags are mutable,
+            # so re-pointing one mid-release must not swap what preflight approved.
+            - name: Checkout the tagged commit
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  ref: ${{ github.sha }}
+                  fetch-depth: 0
+
+            - name: Assert the tagged commit is on main
+              run: |
+                  set -euo pipefail
+                  git fetch --quiet origin main
+                  if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+                      echo "::error::${{ github.sha }} is not an ancestor of origin/main. Release only from main."
+                      exit 1
+                  fi
+
+            - name: Assert every manifest matches the tag
+              run: node scripts/release.mjs verify "${{ steps.version.outputs.version }}"
+
+    # ── CI ────────────────────────────────────────────────────────────────────
+    # The full PR suite, re-run against the tagged commit. Running it here rather
+    # than reading main's check-runs means there is no wait for main to go green,
+    # no check-name string to keep in sync, and nothing to skip past. The image
+    # job below is the Docker build check, so it is not repeated here.
+    backend:
+        name: CI backend build
+        needs: preflight
+        uses: ./.github/workflows/backend-build.yml
+
+    formatting:
+        name: CI formatting
+        needs: preflight
+        uses: ./.github/workflows/formatting-check.yml
+
+    plugin:
+        name: CI claude plugin
+        needs: preflight
+        uses: ./.github/workflows/claude-plugin-check.yml
+
+    e2e:
+        name: CI end-to-end
+        needs: preflight
+        uses: ./.github/workflows/e2e.yml
+        secrets: inherit
+
+    # ── 1 · Image (retryable) ─────────────────────────────────────────────────
+    image:
+        name: Publish image
+        needs: [preflight, backend, formatting, plugin, e2e]
+        runs-on: blacksmith-4vcpu-ubuntu-2404
+        timeout-minutes: 60
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Checkout the tagged commit
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  ref: ${{ github.sha }}
+
+            - name: Authenticate to Google Cloud
+              uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+              with:
+                  project_id: fluid-analogy-473415-c2
+                  workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
+            - name: Set up gcloud
+              uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+            - name: Configure Docker for Artifact Registry
+              run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+              with:
+                  platforms: linux/amd64,linux/arm64
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+            - name: Build and push
+              uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+              with:
+                  context: .
+                  file: ./Dockerfile
+                  platforms: linux/amd64,linux/arm64
+                  push: true
+                  tags: |
+                      ${{ env.IMAGE }}:${{ needs.preflight.outputs.version }}
+                      ${{ env.IMAGE }}:latest
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+    # ── 2 · npm (irreversible) ────────────────────────────────────────────────
+    npm:
+        name: Publish npm packages
+        needs: [preflight, image]
+        runs-on: blacksmith-4vcpu-ubuntu-2404
+        timeout-minutes: 30
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Checkout the tagged commit
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  ref: ${{ github.sha }}
+
+            - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+              with:
+                  version: 10
+
+            - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: "22.19.0"
+                  cache: "pnpm"
+                  cache-dependency-path: pnpm-lock.yaml
+                  registry-url: "https://registry.npmjs.org"
+
+            # Trusted publishing (OIDC) needs npm >= 11.5.1; pnpm packs, npm publishes.
+            # Pinned exactly: this job holds publish rights, so it must not run a
+            # mutable `latest` from the registry.
+            - name: Upgrade npm
+              run: npm install -g npm@11.9.0
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build publishable packages
+              run: pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli --filter create-terse run build
+
+            - name: Pack tarballs
+              run: |
+                  mkdir -p dist-tarballs
+                  for pkg in terse-types terse-sdk terse-cli create-terse; do
+                      pnpm --filter "$pkg" pack --pack-destination "$PWD/dist-tarballs"
+                  done
+
+            - name: Publish to npm
+              env:
+                  RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+              run: |
+                  for pkg in terse-types terse-sdk terse-cli create-terse; do
+                      if npm view "$pkg@$RELEASE_VERSION" version >/dev/null 2>&1; then
+                          echo "$pkg@$RELEASE_VERSION already published"
+                      else
+                          npm publish "dist-tarballs/$pkg-$RELEASE_VERSION.tgz" --access public
+                      fi
+                  done
+
+    # ── 3 · Prod (retryable) ──────────────────────────────────────────────────
+    deploy:
+        name: Deploy production
+        needs: [preflight, npm]
+        runs-on: ubuntu-latest
+        timeout-minutes: 50
+        environment: production
+        steps:
+            - name: Checkout the tagged commit
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  ref: ${{ github.sha }}
+
+            # Homebrew is not on PATH on ubuntu-latest runners, so the release is
+            # published from the pinned Linux build instead. This job holds the prod
+            # deploy credentials, so the download is checked against the sha256 from
+            # the release's SHA256SUMS before it runs. Bump both values together.
+            - name: Install Render CLI
+              env:
+                  RENDER_CLI_VERSION: 2.22.0
+                  RENDER_CLI_SHA256: 6cdcd11897b7bd7e673317e6f4aaf041b654d818444f3b1efec7240a835f79ec
+              run: |
+                  set -euo pipefail
+                  # Unpack in a temp dir: the archive also carries README.md/LICENSE,
+                  # and unzip prompts (even with -q) on collisions with the checkout.
+                  workdir="$(mktemp -d)"
+                  curl -fsSL "https://github.com/render-oss/cli/releases/download/v${RENDER_CLI_VERSION}/cli_${RENDER_CLI_VERSION}_linux_amd64.zip" -o "${workdir}/render.zip"
+                  if ! echo "${RENDER_CLI_SHA256}  ${workdir}/render.zip" | sha256sum --check --status; then
+                      echo "::error::Render CLI ${RENDER_CLI_VERSION} failed checksum verification (expected ${RENDER_CLI_SHA256}, got $(sha256sum "${workdir}/render.zip" | cut -d' ' -f1))"
+                      exit 1
+                  fi
+                  unzip -q -o "${workdir}/render.zip" -d "${workdir}"
+                  binary="$(find "${workdir}" -maxdepth 2 -type f -name 'cli_v*' -print -quit)"
+                  if [ -z "${binary}" ]; then
+                      echo "::error::Render CLI ${RENDER_CLI_VERSION} archive did not contain a cli_v* binary"
+                      exit 1
+                  fi
+                  sudo install "${binary}" /usr/local/bin/render
+                  rm -rf "${workdir}"
+                  render --version
+
+            - name: Deploy Render services at the tagged commit
+              env:
+                  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+                  COMMIT_SHA: ${{ github.sha }}
+                  # AI-Product-Owner (api.useterse.ai) and terse-prod-worker.
+                  RENDER_SERVICE_IDS: srv-d1eqvi7gi27c739pt4bg srv-d94fmbuq1p3s73bjoutg
+              run: |
+                  pids=()
+                  for service_id in $RENDER_SERVICE_IDS; do
+                      render deploys create "$service_id" --commit "$COMMIT_SHA" --wait --confirm &
+                      pids+=("$!")
+                  done
+                  for pid in "${pids[@]}"; do
+                      wait "$pid"
+                  done
+
+            # Bare `npx vercel@X` resolves and runs whatever the registry serves
+            # for that version inside the job that holds the prod credentials, so
+            # the published tarball is fetched and checked against its sha256
+            # first: a republished or tampered artifact fails the release instead
+            # of executing here. Bump the version and the checksum together
+            # (`curl -fsSL <tarball> | sha256sum`).
+            - name: Deploy frontend to Vercel production
+              env:
+                  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+                  VERCEL_ORG_ID: team_UyOJ7NQ43Xk4UQtfqggcupD8
+                  VERCEL_PROJECT_ID: prj_BUmtGEgbjPw0oW3io14O5MozPAyC
+                  VERCEL_CLI_VERSION: 58.10.0
+                  VERCEL_CLI_SHA256: bda9b7bf6f73fa8819942cb9cc999ec0f0023e1f3a680b95b2bfd61ac7055ae0
+              run: |
+                  set -euo pipefail
+                  workdir="$(mktemp -d)"
+                  curl -fsSL "https://registry.npmjs.org/vercel/-/vercel-${VERCEL_CLI_VERSION}.tgz" -o "${workdir}/vercel.tgz"
+                  if ! echo "${VERCEL_CLI_SHA256}  ${workdir}/vercel.tgz" | sha256sum --check --status; then
+                      echo "::error::Vercel CLI ${VERCEL_CLI_VERSION} failed checksum verification (expected ${VERCEL_CLI_SHA256}, got $(sha256sum "${workdir}/vercel.tgz" | cut -d' ' -f1))"
+                      exit 1
+                  fi
+                  npx --yes --package="${workdir}/vercel.tgz" -- vercel deploy --prod --yes --token="$VERCEL_TOKEN"

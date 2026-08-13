@@ -18,7 +18,7 @@ README.md            # you are here
 | Restart after editing `.env`  | `docker compose up -d`               |
 | Stop everything               | `docker compose down`                |
 | Stop and delete all data      | `docker compose down -v`             |
-| Pull the latest image         | `docker compose pull && docker compose up -d` |
+| Upgrade to a new release      | update the tag in `TERSE_IMAGE`, then `docker compose pull && docker compose up -d` |
 | Open a shell in the backend   | `docker compose exec backend sh`     |
 | Check service status          | `docker compose ps`                  |
 
@@ -28,7 +28,7 @@ README.md            # you are here
 - **backend** — Terse API, port from `BACKEND_URL` in `.env`. SQLite for local secrets lives in the `terse_sqlite` volume.
 - **frontend** — Vite dev server, port from `FRONTEND_URL` in `.env`.
 
-Both backend and frontend run from the same prebuilt image: `us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:latest`. To pin to a specific tag, uncomment `TERSE_IMAGE=` at the bottom of `.env`.
+Both backend and frontend run from the `TERSE_IMAGE` in `.env`, pinned to the release used to scaffold this folder.
 
 ## Configuration
 
@@ -70,7 +70,7 @@ docker compose pull
 docker compose up -d
 ```
 
-The `latest` tag is updated on every push to `main` in the [TerseAI/Terse](https://github.com/TerseAI/Terse) repo. Pin `TERSE_IMAGE` in `.env` if you want explicit control over upgrades.
+To upgrade, change the `TERSE_IMAGE` tag to a newer [release](https://github.com/TerseAI/Terse/releases) and pull. Use the `latest` tag to track new releases automatically. Keep your `terse` CLI on the same version: `npm i -g terse-cli@<version>`.
 
 ## Backups
 
