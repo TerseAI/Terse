@@ -997,17 +997,37 @@ export const sdkDeployRequestBodySchema = z
         cliVersion: z.string(),
         jobs: z.array(sdkDeployJobSchema),
         remoteServerUrl: z.string().optional(),
-        sourceZipBase64: z.string().optional()
+        sourceZipBase64: z.string().optional(),
+        /** Key of an archive already uploaded to object storage. Preferred over sourceZipBase64. */
+        sourceObjectKey: z.string().optional(),
+        /** False when no job needs the durable workflow bundle, letting the build skip compiling one. */
+        requiresWorkflowBundle: z.boolean().optional()
     })
-    .refine(data => !(data.remoteServerUrl && data.sourceZipBase64), {
-        message: "remoteServerUrl and sourceZipBase64 cannot be provided together",
+    .refine(data => !(data.remoteServerUrl && (data.sourceZipBase64 || data.sourceObjectKey)), {
+        message: "remoteServerUrl and a source archive cannot be provided together",
         path: ["remoteServerUrl"]
     })
-    .refine(data => data.remoteServerUrl != null || data.sourceZipBase64 != null, {
-        message: "Either remoteServerUrl or sourceZipBase64 is required",
+    .refine(data => !(data.sourceZipBase64 && data.sourceObjectKey), {
+        message: "sourceZipBase64 and sourceObjectKey cannot be provided together",
+        path: ["sourceObjectKey"]
+    })
+    .refine(data => data.remoteServerUrl != null || data.sourceZipBase64 != null || data.sourceObjectKey != null, {
+        message: "Either remoteServerUrl or a source archive is required",
         path: ["sourceZipBase64"]
     })
 export type SdkDeployRequestBody = z.infer<typeof sdkDeployRequestBodySchema>
+
+/** Absent `upload` means the control plane has no object storage, so the CLI inlines the archive. */
+export const sdkSourceUploadResponseSchema = z.object({
+    upload: z
+        .object({
+            objectKey: z.string(),
+            uploadUrl: z.string(),
+            contentType: z.string()
+        })
+        .optional()
+})
+export type SdkSourceUploadResponse = z.infer<typeof sdkSourceUploadResponseSchema>
 
 export const sdkDeployResultSchema = z.object({
     jobName: z.string(),

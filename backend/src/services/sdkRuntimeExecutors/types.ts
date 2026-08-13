@@ -44,6 +44,8 @@ export interface SdkDeployImageBuildContext {
     archive: SdkProjectArchive
     cliVersion: string
     baseImage: ResolvedSandboxBaseImage
+    /** The workflow bundle is the durable engine's input; a project without durable jobs never reads it. */
+    requiresWorkflowBundle: boolean
     projectDir: string
     cliCachePath: string
     // Dev-only: locally-packed terse-types/terse-sdk/terse-cli to install instead of npm registry versions.

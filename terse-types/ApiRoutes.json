@@ -198,7 +198,8 @@
         "SWITCH_ORGANIZATION": "/sdk/auth/switch-organization",
         "INTEGRATION_FIELDS": "/sdk/integrations/:integrationType/fields",
         "INTEGRATION_FORM_SUBMIT": "/sdk/integrations/:integrationType/form-submit",
-        "JOB_WEBHOOK_TRIGGER": "/webhook/terse/trigger"
+        "JOB_WEBHOOK_TRIGGER": "/webhook/terse/trigger",
+        "DEPLOY_SOURCE_UPLOAD": "/sdk/deploy/source-upload"
     },
     "NOTIFICATION_SETTINGS": "/notification-settings",
     "SENT_NOTIFICATIONS": {

@@ -5,7 +5,7 @@ import dotenv from "dotenv"
 import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
-import { ApiRoutes, SdkDeployStage, buildRoute, sdkDeployRequestBodySchema, validateSecretName, validateSecretValue } from "terse-types"
+import { ApiRoutes, SdkDeployStage, SdkSourceUploadResponse, buildRoute, sdkDeployRequestBodySchema, validateSecretName, validateSecretValue } from "terse-types"
 import type { ProjectSecretUpsertRequest, ProjectSecretsImportResponse, ProjectSecretsListResponse, SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
@@ -60,15 +60,15 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         await syncMissingLocalSecrets({ projectId, apiKey })
     }
 
-    let sourceZipBase64: string | undefined
+    let sourceArchive: { sourceObjectKey?: string; sourceZipBase64?: string } = {}
     let fileCount = 0
     let zipSizeBytes = 0
 
     if (!isUrlMode) {
         const zipPayload = buildZipPayload(provider)
-        sourceZipBase64 = zipPayload.sourceZipBase64
         fileCount = zipPayload.fileCount
         zipSizeBytes = zipPayload.zipSizeBytes
+        sourceArchive = await uploadSource(zipPayload.zipBytes, apiKey)
     }
 
     const s = createSpinner()
@@ -97,7 +97,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
                 triggers: job.triggers
             })),
             remoteServerUrl: isUrlMode ? remoteServerUrl : undefined,
-            sourceZipBase64
+            // Only the durable runtime reads .terse/wf, so the build can skip compiling one.
+            requiresWorkflowBundle: jobs.some(job => provider.runtimeName(job) === "durable"),
+            ...sourceArchive
         })
 
         const deployResult = await fetchWithAuthAndSession<SdkDeployResponseBody>(ApiRoutes.SDK.DEPLOY, apiKey, session.sessionId, body, "POST")
@@ -215,7 +217,7 @@ function collectFiles(dir: string, baseDir: string, provider: LanguageProvider):
     return entries
 }
 
-function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {
+function buildZipPayload(provider: LanguageProvider): { zipBytes: Uint8Array; fileCount: number; zipSizeBytes: number } {
     const cwd = process.cwd()
     const files = collectFiles(cwd, cwd, provider)
     const fileCount = Object.keys(files).length
@@ -225,11 +227,30 @@ function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string;
     }
 
     const zipData = zipSync(files, { level: 6 })
-    return {
-        sourceZipBase64: Buffer.from(zipData).toString("base64"),
-        fileCount,
-        zipSizeBytes: zipData.length
-    }
+    return { zipBytes: zipData, fileCount, zipSizeBytes: zipData.length }
+}
+
+/**
+ * Object storage first, so a project carrying data files never rides inside the deploy request:
+ * base64 in JSON inflates it by a third and buffers the whole thing in the control plane. A
+ * control plane without object storage (self-host) says so, and the archive goes inline instead.
+ */
+async function uploadSource(zipBytes: Uint8Array, apiKey: string): Promise<{ sourceObjectKey?: string; sourceZipBase64?: string }> {
+    const inline = () => ({ sourceZipBase64: Buffer.from(zipBytes).toString("base64") })
+
+    const response = await fetchWithAuth<SdkSourceUploadResponse>(ApiRoutes.SDK.DEPLOY_SOURCE_UPLOAD, apiKey, {}, "POST").catch(() => undefined)
+    const upload = response?.upload
+    if (!upload) return inline()
+
+    const put = await fetch(upload.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": upload.contentType },
+        body: new Blob([new Uint8Array(zipBytes)])
+    })
+    // A failed upload is not worth failing the deploy over while the inline path still works.
+    if (!put.ok) return inline()
+
+    return { sourceObjectKey: upload.objectKey }
 }
 
 async function syncMissingLocalSecrets(args: { projectId: string; apiKey: string }): Promise<void> {

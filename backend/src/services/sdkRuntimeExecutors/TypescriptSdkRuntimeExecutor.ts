@@ -69,6 +69,12 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg)
         await context.ensureSandboxCommand("install_dependencies", installCommand)
 
+        // Only the durable runtime reads .terse/wf; directJobRuntime calls the handler from source.
+        if (!context.requiresWorkflowBundle) {
+            logger.info("SDK image build: no durable jobs, skipping the workflow bundle")
+            return
+        }
+
         // Older CLIs lack `terse build`; they always ship a prebuilt .terse/wf inside the source zip, so fall back to that.
         const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
         await context.ensureSandboxCommand("build_bundle", `cd ${context.escapeShellArg(context.projectDir)} && { ${cliBin} build || [ -d .terse/wf ]; }`)

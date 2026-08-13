@@ -1,7 +1,7 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { Request, Response } from "express"
 import { ConfigType, TriggerConfigData } from "terse-types/Configs"
-import { SdkDeployJob, SdkDeployResponseBody, SdkDeployStage, sdkDeployRequestBodySchema } from "terse-types/types"
+import { SdkDeployJob, SdkDeployResponseBody, SdkDeployStage, SdkSourceUploadResponse, sdkDeployRequestBodySchema } from "terse-types/types"
 
 import { AnalyticsEvent, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
@@ -21,6 +21,7 @@ import { createProjectScopedToken } from "../../../modules/auth/helpers/apiToken
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
 import type { SdkDeployPhase } from "../../../services/sdkRuntimeExecutors/types"
+import { GcsSourceArchiveStore } from "../../../services/sourceArchive/SourceArchiveStore"
 import { InvalidCronExpressionError, assertValidUserCron } from "../../../tasks/queues/scheduleQueue"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
@@ -32,7 +33,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     const organizationId = user.organizationId
     const prisma = db()
 
-    const { remoteServerUrl, jobs, sourceZipBase64, projectId, cliVersion } = sdkDeployRequestBodySchema.parse(req.body)
+    const { remoteServerUrl, jobs, sourceZipBase64, sourceObjectKey, requiresWorkflowBundle, projectId, cliVersion } = sdkDeployRequestBodySchema.parse(req.body)
     const telemetry = new SdkDeployTelemetry({
         userId,
         organizationId,
@@ -84,18 +85,19 @@ export async function handleSdkDeploy(req: Request, res: Response) {
     try {
         emitCacheInvalidationWithWildcard(organizationId, "projectDeploys", projectId)
 
-        if (!sourceZipBase64 && !remoteServerUrl) {
-            telemetry.capture(false, new Error("sourceZipBase64 or remoteServerUrl is required"))
-            return res.status(400).json({ success: false, error: "sourceZipBase64 or remoteServerUrl is required" })
-        } else if (sourceZipBase64 && remoteServerUrl) {
-            telemetry.capture(false, new Error("sourceZipBase64 and remoteServerUrl cannot be provided together"))
-            return res.status(400).json({ success: false, error: "sourceZipBase64 and remoteServerUrl cannot be provided together" })
+        const hasSourceArchive = Boolean(sourceZipBase64 || sourceObjectKey)
+        if (!hasSourceArchive && !remoteServerUrl) {
+            telemetry.capture(false, new Error("a source archive or remoteServerUrl is required"))
+            return res.status(400).json({ success: false, error: "a source archive or remoteServerUrl is required" })
+        } else if (hasSourceArchive && remoteServerUrl) {
+            telemetry.capture(false, new Error("a source archive and remoteServerUrl cannot be provided together"))
+            return res.status(400).json({ success: false, error: "a source archive and remoteServerUrl cannot be provided together" })
         }
 
         const results: SdkDeployResponseBody["results"] = []
 
-        if (sourceZipBase64) {
-            const sourceZipBuffer = telemetry.measureSync("parseSourceZipMs", () => parseSourceZipBuffer(sourceZipBase64))
+        if (sourceZipBase64 || sourceObjectKey) {
+            const sourceZipBuffer = await telemetry.measure("parseSourceZipMs", () => readSourceArchive({ sourceZipBase64, sourceObjectKey, organizationId }))
             telemetry.setSourceZipBytes(sourceZipBuffer.length)
 
             const preparedImages = await telemetry.measure("prepareImagesMs", () =>
@@ -103,6 +105,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     zipBuffer: sourceZipBuffer,
                     organizationId,
                     cliVersion,
+                    requiresWorkflowBundle,
                     onProgress: phase => emitStage(toDeployStage(phase)),
                     telemetry
                 })
@@ -112,6 +115,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 where: { id: deploy.id },
                 data: { sdk_source_image_id: preparedImages.deployImageId }
             })
+
+            if (sourceObjectKey) void GcsSourceArchiveStore.getInstance()?.discard(sourceObjectKey, organizationId)
         }
 
         let signingSecretJustGenerated = false
@@ -384,4 +389,26 @@ function toDeployStage(phase: SdkDeployPhase): SdkDeployStage {
         default:
             throw phase satisfies never
     }
+}
+
+/** Hands the CLI somewhere to upload to, or nothing when this control plane has no object storage. */
+export async function handleSdkSourceUpload(req: Request, res: Response): Promise<Response> {
+    const user = req.session?.user
+    if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })
+    const organizationId = user.organizationId
+
+    const store = GcsSourceArchiveStore.getInstance()
+    if (!store) return res.json({ upload: undefined } satisfies SdkSourceUploadResponse)
+
+    const upload = await store.createUpload(organizationId)
+    return res.json({ upload: { objectKey: upload.objectKey, uploadUrl: upload.uploadUrl, contentType: upload.contentType } } satisfies SdkSourceUploadResponse)
+}
+
+async function readSourceArchive(params: { sourceZipBase64?: string; sourceObjectKey?: string; organizationId: string }): Promise<Buffer> {
+    const { sourceZipBase64, sourceObjectKey, organizationId } = params
+    if (sourceZipBase64) return parseSourceZipBuffer(sourceZipBase64)
+
+    const store = GcsSourceArchiveStore.getInstance()
+    if (!store || !sourceObjectKey) throw new Error("No source archive was provided with this deploy")
+    return store.download(sourceObjectKey, organizationId)
 }

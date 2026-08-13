@@ -32,7 +32,13 @@ RUN mkdir -p /tmp/warm && cd /tmp/warm \
     && cd / && rm -rf /tmp/warm
 
 # Warm the pnpm cache with the SDK AND CLIs whole dependency tree
-RUN pnpm store add "terse-sdk@${TERSE_VERSION}" "terse-cli@${TERSE_VERSION}"
+# pnpm needs the same treatment for the same reason: `pnpm store add` fetches the named package
+# and nothing it depends on, which left the store at 296KB against 184MB for the real tree, and
+# an install reusing 1 of 452 packages. A real install fills it: 5.3s cold -> 1.8s warm.
+RUN mkdir -p /tmp/warm-pnpm && cd /tmp/warm-pnpm \
+    && pnpm init > /dev/null \
+    && pnpm add --prod --ignore-scripts --config.confirmModulesPurge=false "terse-sdk@${TERSE_VERSION}" \
+    && cd / && rm -rf /tmp/warm-pnpm
 
 LABEL org.opencontainers.image.source="https://github.com/TerseAI/Terse" \
       org.opencontainers.image.title="terse-sandbox-node"

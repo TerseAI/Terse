@@ -119,10 +119,12 @@ export class SdkSandboxImageService {
         zipBuffer: Buffer
         organizationId: string
         cliVersion: string
+        /** Absent means build one: an older CLI cannot tell us, and a missing bundle breaks durable jobs. */
+        requiresWorkflowBundle?: boolean
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<PreparedSdkDeployImage> {
-        const { zipBuffer, organizationId, cliVersion, onProgress, telemetry } = params
+        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, onProgress, telemetry } = params
         const archive = telemetry ? telemetry.measureSync("buildArchiveMs", () => new ZipSdkProjectArchive(zipBuffer)) : new ZipSdkProjectArchive(zipBuffer)
         const executor = telemetry ? telemetry.measureSync("resolveRuntimeMs", () => sdkRuntimeExecutorRegistry.resolve(archive.entries)) : sdkRuntimeExecutorRegistry.resolve(archive.entries)
         telemetry?.setRuntime(executor.runtime)
@@ -150,7 +152,7 @@ export class SdkSandboxImageService {
         const buildHash = (telemetry ? telemetry.measureSync("defineDeployImageMs", () => executor.defineDeployImage(defineParams)) : executor.defineDeployImage(defineParams)).buildHash
 
         onProgress?.("preparing")
-        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress }
+        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, requiresWorkflowBundle }
         const deployImage = await (telemetry ? telemetry.measure("deployImageResolveMs", () => this.ensureDeployImage({ ...ensureParams, telemetry })) : this.ensureDeployImage(ensureParams))
 
         return {
@@ -224,6 +226,7 @@ export class SdkSandboxImageService {
         cliVersion: string
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
+        requiresWorkflowBundle?: boolean
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
@@ -286,11 +289,12 @@ export class SdkSandboxImageService {
         cliVersion: string
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
+        requiresWorkflowBundle?: boolean
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<string> {
-        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, telemetry } = params
+        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, zipBuffer, onProgress, telemetry } = params
         const sandboxService = getSandboxProvider()
         const phaseContext: PhaseContext = { onProgress, telemetry }
         const sandboxBaseImage = sandboxService.getImageFromRegistry(baseImage.reference)
@@ -304,7 +308,7 @@ export class SdkSandboxImageService {
         try {
             await this.runPhase(phaseContext, "uploading_source", () => this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
 
-            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, phaseContext })
+            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, phaseContext })
             await executor.buildDeployImage(buildContext)
 
             const image = await this.runPhase(phaseContext, "saving_image", () => sb.snapshotFilesystem())
@@ -322,15 +326,17 @@ export class SdkSandboxImageService {
         cliVersion: string
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
+        requiresWorkflowBundle?: boolean
         phaseContext: PhaseContext
     }): SdkDeployImageBuildContext {
-        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, phaseContext } = params
+        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, phaseContext } = params
 
         return {
             sb,
             archive,
             cliVersion,
             baseImage,
+            requiresWorkflowBundle: requiresWorkflowBundle ?? true,
             projectDir: sandboxService.getProjectPath(sb),
             cliCachePath: sandboxService.getCliCachePath(sb),
             localPackages,
