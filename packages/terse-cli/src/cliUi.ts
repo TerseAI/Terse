@@ -71,13 +71,7 @@ export function formatSummaryList(items: string[], maxItems = 8): string {
 }
 
 function isInteractiveOutput(): boolean {
-    return (
-        Boolean(process.stdout.isTTY) &&
-        process.env.TERM !== "dumb" &&
-        process.env.CODEX_CI !== "1" &&
-        process.env.CI !== "true" &&
-        !process.env.TERSE_NO_SPINNER
-    )
+    return Boolean(process.stdout.isTTY) && process.env.TERM !== "dumb" && process.env.CODEX_CI !== "1" && process.env.CI !== "true" && !process.env.TERSE_NO_SPINNER
 }
 
 // Non-TTY drop-in for clack's spinner. A spinner is a human affordance; a captured
