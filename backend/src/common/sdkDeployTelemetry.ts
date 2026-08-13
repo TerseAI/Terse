@@ -1,3 +1,5 @@
+import type { SdkDeployPhase } from "../services/sdkRuntimeExecutors/types"
+
 import { AnalyticsEvent, SdkDeployLatencyProperties, analytics } from "./analytics"
 import { LatencyTelemetry } from "./latencyTelemetry"
 import logger from "./logger"
@@ -16,11 +18,6 @@ type SdkDeployDurationKey = Extract<
     | "computeSourceHashMs"
     | "deployImageResolveMs"
     | "deployImageBuildMs"
-    | "deployBuildGetAppMs"
-    | "deployBuildSandboxReadyMs"
-    | "deployBuildExecutorMs"
-    | "deployBuildSnapshotMs"
-    | "deployBuildExtractZipMs"
 >
 
 type SdkDeployTelemetryParams = {
@@ -40,6 +37,7 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
     private jobsRemoved: number | undefined
     private baseImageKind: string | undefined
     private deployImageCacheHit: boolean | undefined
+    private readonly phaseMs: Partial<Record<SdkDeployPhase, number>> = {}
 
     constructor(private readonly params: SdkDeployTelemetryParams) {
         super()
@@ -66,8 +64,20 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
         this.baseImageKind = kind
     }
 
+    /** Times one unit of build work. Repeats of a phase accumulate rather than overwrite. */
+    recordPhase(phase: SdkDeployPhase, durationMs: number): void {
+        this.phaseMs[phase] = (this.phaseMs[phase] ?? 0) + Math.round(durationMs)
+    }
+
     setDeployImageCacheHit(hit: boolean): void {
         this.deployImageCacheHit = hit
+    }
+
+    /** Surfaced flat so "what dominated this deploy" is one property, not a scan of an object. */
+    private slowestPhase(): string | undefined {
+        const entries = Object.entries(this.phaseMs)
+        if (entries.length === 0) return undefined
+        return entries.reduce((slowest, entry) => (entry[1] > slowest[1] ? entry : slowest))[0]
     }
 
     capture(success: boolean, error?: unknown): void {
@@ -86,6 +96,8 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
             runtime: this.runtime,
             baseImageKind: this.baseImageKind,
             deployImageCacheHit: this.deployImageCacheHit,
+            phases: this.phaseMs,
+            slowestPhase: this.slowestPhase(),
             success,
             ...(error ? { errorMessage: extractErrorMessage(error).slice(0, 500) } : {}),
             ...this.durations

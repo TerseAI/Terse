@@ -48,7 +48,6 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         }
 
         const packageManager = this.detectPackageManager(context.archive)
-        await context.ensureSandboxCommand("prepare TypeScript image filesystem", `mkdir -p ${context.escapeShellArg(context.cliCachePath)}`)
 
         // Dev-only: hoist the dev's locally-built SDK/CLI into the sandbox instead of the npm registry.
         const localPackages = context.localPackages
@@ -68,11 +67,11 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         const installCommand = localTarballs
             ? buildLocalDependencyInstallCommand(packageManager, context.projectDir, context.escapeShellArg)
             : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg)
-        await context.ensureSandboxCommand("install TypeScript dependencies", installCommand)
+        await context.ensureSandboxCommand("install_dependencies", installCommand)
 
         // Older CLIs lack `terse build`; they always ship a prebuilt .terse/wf inside the source zip, so fall back to that.
         const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
-        await context.ensureSandboxCommand("build workflow bundle", `cd ${context.escapeShellArg(context.projectDir)} && { ${cliBin} build || [ -d .terse/wf ]; }`)
+        await context.ensureSandboxCommand("build_bundle", `cd ${context.escapeShellArg(context.projectDir)} && { ${cliBin} build || [ -d .terse/wf ]; }`)
     }
 
     /**
@@ -83,9 +82,10 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     private async ensureCli(context: SdkDeployImageBuildContext): Promise<void> {
         const marker = context.escapeShellArg(`${context.cliCachePath}/${CLI_VERSION_MARKER}`)
         const wanted = context.escapeShellArg(context.cliVersion)
-        const install = `npm install -g --prefix ${context.escapeShellArg(context.cliCachePath)} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`
+        const cliCachePath = context.escapeShellArg(context.cliCachePath)
+        const install = `mkdir -p ${cliCachePath} && npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`
 
-        await context.ensureSandboxCommand("install terse cli", `if [ "$(cat ${marker} 2>/dev/null)" = ${wanted} ]; then echo "terse-cli ${context.cliVersion} already baked"; else ${install}; fi`)
+        await context.ensureSandboxCommand("install_cli", `if [ "$(cat ${marker} 2>/dev/null)" = ${wanted} ]; then echo "terse-cli ${context.cliVersion} already baked"; else ${install}; fi`)
     }
 
     private async ensurePackageManager(context: SdkDeployImageBuildContext, packageManager: PackageManager): Promise<void> {
@@ -99,7 +99,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
         // --force: overwrite any pre-existing pnpm shim (e.g. corepack's at
         // /usr/local/bin/pnpm in the self-host image), which npm otherwise EEXISTs on.
-        await context.ensureSandboxCommand("install pnpm", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`)
+        await context.ensureSandboxCommand("install_package_manager", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`)
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {

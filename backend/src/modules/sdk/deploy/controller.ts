@@ -20,6 +20,7 @@ import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDown
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
+import type { SdkDeployPhase } from "../../../services/sdkRuntimeExecutors/types"
 import { InvalidCronExpressionError, assertValidUserCron } from "../../../tasks/queues/scheduleQueue"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
@@ -102,10 +103,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     zipBuffer: sourceZipBuffer,
                     organizationId,
                     cliVersion,
-                    onProgress: phase => {
-                        // Stage names predate the single-image build; kept so already-released CLIs keep rendering them.
-                        emitStage(phase === "installing_dependencies" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
-                    },
+                    onProgress: phase => emitStage(toDeployStage(phase)),
                     telemetry
                 })
             )
@@ -360,4 +358,30 @@ async function removeStaleAutomations(prisma: ReturnType<typeof db>, organizatio
 
 function buildDeployResultTriggers(agent: AgentWithTriggerRelations): SdkDeployResponseBody["results"][number]["triggers"] {
     return agent.inputs.map(trigger => ({ id: trigger.id, ...buildTriggerMetadata(trigger) }))
+}
+
+/** Build phases are internal; this is the vocabulary the user sees. */
+function toDeployStage(phase: SdkDeployPhase): SdkDeployStage {
+    switch (phase) {
+        case "preparing":
+            return "PREPARING_BUILD"
+        case "reusing_cached_build":
+            return "REUSING_CACHED_BUILD"
+        case "starting_sandbox":
+            return "STARTING_SANDBOX"
+        case "uploading_source":
+            return "UPLOADING_SOURCE"
+        case "install_cli":
+            return "INSTALLING_CLI"
+        // The package manager is installed only to run the dependency install, so it reads as one step.
+        case "install_package_manager":
+        case "install_dependencies":
+            return "INSTALLING_DEPENDENCIES"
+        case "build_bundle":
+            return "BUILDING_BUNDLE"
+        case "saving_image":
+            return "SAVING_IMAGE"
+        default:
+            throw phase satisfies never
+    }
 }

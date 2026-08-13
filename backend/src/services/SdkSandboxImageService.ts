@@ -14,7 +14,15 @@ import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
-import { type SandboxCommandResult, type SdkDeployImageBuildContext, type SdkProjectArchive, type SdkProjectRuntime, SdkRuntimeExecutor } from "./sdkRuntimeExecutors/types"
+import {
+    type SandboxCommandResult,
+    type SdkBuildStep,
+    type SdkDeployImageBuildContext,
+    type SdkDeployPhase,
+    type SdkProjectArchive,
+    type SdkProjectRuntime,
+    SdkRuntimeExecutor
+} from "./sdkRuntimeExecutors/types"
 import { deployBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
@@ -23,13 +31,16 @@ const DEFAULT_CLEANUP_BATCH_SIZE = 50
 
 const APT_GET_INSTALL_FLAGS = "apt-get -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3 -o DPkg::Lock::Timeout=120"
 
-export type SdkDeployBuildPhase = "installing_dependencies" | "building_bundle"
-
 interface PreparedSdkDeployImage {
     runtime: SdkProjectRuntime
     buildHash: string
     sourceHash: string
     deployImageId: string
+}
+
+interface PhaseContext {
+    onProgress?: (phase: SdkDeployPhase) => void
+    telemetry?: SdkDeployTelemetry
 }
 
 interface CleanupSdkSandboxImagesResult {
@@ -90,11 +101,25 @@ export class SdkSandboxImageService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
+    /**
+     * The one path every unit of build work goes through: the user hears about it before it
+     * starts, and the telemetry keeps what it cost. Nothing else should time a build step.
+     */
+    private async runPhase<T>(context: PhaseContext, phase: SdkDeployPhase, work: () => Promise<T>): Promise<T> {
+        context.onProgress?.(phase)
+        const start = performance.now()
+        try {
+            return await work()
+        } finally {
+            context.telemetry?.recordPhase(phase, performance.now() - start)
+        }
+    }
+
     async prepareFromSourceZip(params: {
         zipBuffer: Buffer
         organizationId: string
         cliVersion: string
-        onProgress?: (phase: SdkDeployBuildPhase) => void
+        onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<PreparedSdkDeployImage> {
         const { zipBuffer, organizationId, cliVersion, onProgress, telemetry } = params
@@ -124,6 +149,7 @@ export class SdkSandboxImageService {
         const defineParams = { archive, organizationId, sourceHash, cliVersion, baseImage, localPackages }
         const buildHash = (telemetry ? telemetry.measureSync("defineDeployImageMs", () => executor.defineDeployImage(defineParams)) : executor.defineDeployImage(defineParams)).buildHash
 
+        onProgress?.("preparing")
         const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress }
         const deployImage = await (telemetry ? telemetry.measure("deployImageResolveMs", () => this.ensureDeployImage({ ...ensureParams, telemetry })) : this.ensureDeployImage(ensureParams))
 
@@ -199,7 +225,7 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         zipBuffer: Buffer
-        onProgress?: (phase: SdkDeployBuildPhase) => void
+        onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }) {
         const { organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, zipBuffer, telemetry } = params
@@ -211,6 +237,7 @@ export class SdkSandboxImageService {
         const existingImageExists = existing ? await sandboxService.imageExists(existing.image_id) : false
         if (existing && existingImageExists) {
             telemetry?.setDeployImageCacheHit(true)
+            params.onProgress?.("reusing_cached_build")
             logger.info("SDK image cache: reuse deploy image", { buildHash, organizationId, imageId: existing.image_id })
             return prisma.sdk_source_images.update({ where: { id: existing.id }, data: { last_used_at: new Date() } })
         }
@@ -260,32 +287,27 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         zipBuffer: Buffer
-        onProgress?: (phase: SdkDeployBuildPhase) => void
+        onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<string> {
         const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, telemetry } = params
         const sandboxService = getSandboxProvider()
-        const app = await (telemetry
-            ? telemetry.measure("deployBuildGetAppMs", () => sandboxService.getOrCreateApp("terse-sdk-image-builder"))
-            : sandboxService.getOrCreateApp("terse-sdk-image-builder"))
+        const phaseContext: PhaseContext = { onProgress, telemetry }
         const sandboxBaseImage = sandboxService.getImageFromRegistry(baseImage.reference)
-        const createParams = { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 }
-        const uniqueName = deployBuildSandboxUniqueName(buildHash)
-        const sb = await (telemetry
-            ? telemetry.measure("deployBuildSandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, sandboxBaseImage, uniqueName, createParams))
-            : sandboxService.getOrCreateSandbox(app, sandboxBaseImage, uniqueName, createParams))
+
+        const sb = await this.runPhase(phaseContext, "starting_sandbox", async () => {
+            const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
+            const createParams = { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 }
+            return sandboxService.getOrCreateSandbox(app, sandboxBaseImage, deployBuildSandboxUniqueName(buildHash), createParams)
+        })
 
         try {
-            onProgress?.("installing_dependencies")
-            await (telemetry
-                ? telemetry.measure("deployBuildExtractZipMs", () => this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
-                : this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
+            await this.runPhase(phaseContext, "uploading_source", () => this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
 
-            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages })
-            await (telemetry ? telemetry.measure("deployBuildExecutorMs", () => executor.buildDeployImage(buildContext)) : executor.buildDeployImage(buildContext))
+            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, phaseContext })
+            await executor.buildDeployImage(buildContext)
 
-            onProgress?.("building_bundle")
-            const image = await (telemetry ? telemetry.measure("deployBuildSnapshotMs", () => sb.snapshotFilesystem()) : sb.snapshotFilesystem())
+            const image = await this.runPhase(phaseContext, "saving_image", () => sb.snapshotFilesystem())
             return image.imageId
         } finally {
             await this.terminateBuildSandbox(sb, "deploy image build", executor.runtime)
@@ -300,8 +322,9 @@ export class SdkSandboxImageService {
         cliVersion: string
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
+        phaseContext: PhaseContext
     }): SdkDeployImageBuildContext {
-        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages } = params
+        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, phaseContext } = params
 
         return {
             sb,
@@ -311,8 +334,8 @@ export class SdkSandboxImageService {
             projectDir: sandboxService.getProjectPath(sb),
             cliCachePath: sandboxService.getCliCachePath(sb),
             localPackages,
-            ensureSandboxCommand: async (label, command) => {
-                await this.ensureSandboxCommand(sb, label, command, executor.runtime)
+            ensureSandboxCommand: async (step, command) => {
+                await this.runPhase(phaseContext, step, () => this.ensureSandboxCommand(sb, step, command, executor.runtime))
             },
             writeFile: async (path, content) => {
                 await this.writeFileToSandbox(sb, path, content)
@@ -335,7 +358,7 @@ export class SdkSandboxImageService {
         // alive, and `unzip -o` overwrites files without removing ones the new source dropped.
         await this.ensureSandboxCommand(
             sb,
-            "extract SDK source",
+            "uploading_source",
             `rm -rf ${shellQuote(projectDir)} && mkdir -p ${shellQuote(projectDir)} && ${ensureUnzip} && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
             executor.runtime
         )
@@ -358,7 +381,8 @@ export class SdkSandboxImageService {
         await fileHandle.close()
     }
 
-    private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, runtime: SdkProjectRuntime): Promise<void> {
+    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep | "uploading_source", command: string, runtime: SdkProjectRuntime): Promise<void> {
+        const label = step.replace(/_/g, " ")
         let result: SandboxCommandResult
         try {
             result = await this.runSandboxCommand(sb, command)

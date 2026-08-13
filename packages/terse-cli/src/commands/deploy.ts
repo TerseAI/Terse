@@ -301,10 +301,22 @@ function readEligibleLocalEnv(envPath: string): ProjectSecretUpsertRequest[] {
 
 function getStageMessage(stage: SdkDeployStage): string {
     switch (stage) {
-        case "BUILDING_DEPENDENCY_IMAGE":
-            return "Building dependency image"
-        case "BUILDING_SOURCE_IMAGE":
-            return "Building source image"
+        case "PREPARING_BUILD":
+            return "Checking for a cached build"
+        case "REUSING_CACHED_BUILD":
+            return "Reusing the cached build"
+        case "STARTING_SANDBOX":
+            return "Starting a build sandbox"
+        case "UPLOADING_SOURCE":
+            return "Uploading your project"
+        case "INSTALLING_CLI":
+            return "Installing the Terse CLI"
+        case "INSTALLING_DEPENDENCIES":
+            return "Installing dependencies"
+        case "BUILDING_BUNDLE":
+            return "Building the workflow bundle"
+        case "SAVING_IMAGE":
+            return "Saving the build image"
         case "CONFIGURING_AUTOMATIONS":
             return "Configuring automations"
         default: {

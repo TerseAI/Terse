@@ -11,7 +11,7 @@ export type PackageManager = "npm" | "pnpm"
 // Writes the packed tarballs into the sandbox and returns name -> absolute sandbox path.
 export async function writeLocalTarballs(context: SdkDeployImageBuildContext, localPackages: LocalPackagesBundle): Promise<Map<string, string>> {
     const tarballDir = `${context.cliCachePath}/local-packages`
-    await context.ensureSandboxCommand("prepare local package dir", `mkdir -p ${context.escapeShellArg(tarballDir)}`)
+    await context.ensureSandboxCommand("install_cli", `mkdir -p ${context.escapeShellArg(tarballDir)}`)
 
     const paths = new Map<string, string>()
     for (const pkg of localPackages.packages) {
@@ -92,7 +92,7 @@ export async function installLocalCli(context: SdkDeployImageBuildContext, tarba
     const binDir = context.escapeShellArg(`${context.cliCachePath}/bin`)
     const installedBin = context.escapeShellArg(`${context.cliCachePath}/node_modules/.bin/terse`)
     const linkedBin = context.escapeShellArg(`${context.cliCachePath}/bin/terse`)
-    await context.ensureSandboxCommand("install local terse cli", `cd ${cliCachePath} && npm install --no-fund && mkdir -p ${binDir} && ln -sf ${installedBin} ${linkedBin}`)
+    await context.ensureSandboxCommand("install_cli", `cd ${cliCachePath} && npm install --no-fund && mkdir -p ${binDir} && ln -sf ${installedBin} ${linkedBin}`)
 }
 
 // Bakes a marker into the installed CLI recording the hoisted versions + content hash. The CLI reads

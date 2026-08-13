@@ -99,6 +99,9 @@ export interface SdkDeployLatencyProperties extends BaseEventProperties {
     sourceZipBytes?: number
     baseImageKind?: string
     deployImageCacheHit?: boolean
+    /** Per-step build durations, keyed by SdkDeployPhase. */
+    phases?: Record<string, number>
+    slowestPhase?: string
     totalDeployMs?: number
     parseSourceZipMs?: number
     prepareImagesMs?: number
@@ -110,11 +113,6 @@ export interface SdkDeployLatencyProperties extends BaseEventProperties {
     computeSourceHashMs?: number
     deployImageResolveMs?: number
     deployImageBuildMs?: number
-    deployBuildGetAppMs?: number
-    deployBuildSandboxReadyMs?: number
-    deployBuildExecutorMs?: number
-    deployBuildSnapshotMs?: number
-    deployBuildExtractZipMs?: number
 }
 
 interface JobDefinitionProperties extends BaseEventProperties {

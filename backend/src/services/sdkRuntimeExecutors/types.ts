@@ -4,6 +4,25 @@ import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export type SdkProjectRuntime = "typescript"
 
+/**
+ * Every distinct unit of work a deploy build performs. One union drives three things: what the
+ * user is told, what the telemetry times, and what an error names, so a new step cannot be added
+ * without all three following it.
+ */
+export type SdkDeployPhase =
+    | "preparing"
+    | "reusing_cached_build"
+    | "starting_sandbox"
+    | "uploading_source"
+    | "install_cli"
+    | "install_package_manager"
+    | "install_dependencies"
+    | "build_bundle"
+    | "saving_image"
+
+/** The subset a runtime executor is responsible for. */
+export type SdkBuildStep = Extract<SdkDeployPhase, "install_cli" | "install_package_manager" | "install_dependencies" | "build_bundle">
+
 export interface SandboxCommandResult {
     exitCode: number
     stdout: string
@@ -29,7 +48,7 @@ export interface SdkDeployImageBuildContext {
     cliCachePath: string
     // Dev-only: locally-packed terse-types/terse-sdk/terse-cli to install instead of npm registry versions.
     localPackages?: LocalPackagesBundle
-    ensureSandboxCommand: (label: string, command: string) => Promise<void>
+    ensureSandboxCommand: (step: SdkBuildStep, command: string) => Promise<void>
     writeFile: (path: string, content: string) => Promise<void>
     writeBinaryFile: (path: string, content: Buffer) => Promise<void>
     escapeShellArg: (value: string) => string
