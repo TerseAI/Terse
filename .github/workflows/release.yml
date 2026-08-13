@@ -213,13 +213,22 @@ jobs:
                   RENDER_CLI_SHA256: 6cdcd11897b7bd7e673317e6f4aaf041b654d818444f3b1efec7240a835f79ec
               run: |
                   set -euo pipefail
-                  curl -fsSL "https://github.com/render-oss/cli/releases/download/v${RENDER_CLI_VERSION}/cli_${RENDER_CLI_VERSION}_linux_amd64.zip" -o render.zip
-                  if ! echo "${RENDER_CLI_SHA256}  render.zip" | sha256sum --check --status; then
-                      echo "::error::Render CLI ${RENDER_CLI_VERSION} failed checksum verification (expected ${RENDER_CLI_SHA256}, got $(sha256sum render.zip | cut -d' ' -f1))"
+                  # Unpack in a temp dir: the archive also carries README.md/LICENSE,
+                  # and unzip prompts (even with -q) on collisions with the checkout.
+                  workdir="$(mktemp -d)"
+                  curl -fsSL "https://github.com/render-oss/cli/releases/download/v${RENDER_CLI_VERSION}/cli_${RENDER_CLI_VERSION}_linux_amd64.zip" -o "${workdir}/render.zip"
+                  if ! echo "${RENDER_CLI_SHA256}  ${workdir}/render.zip" | sha256sum --check --status; then
+                      echo "::error::Render CLI ${RENDER_CLI_VERSION} failed checksum verification (expected ${RENDER_CLI_SHA256}, got $(sha256sum "${workdir}/render.zip" | cut -d' ' -f1))"
                       exit 1
                   fi
-                  unzip -q render.zip
-                  sudo install "cli_v${RENDER_CLI_VERSION}" /usr/local/bin/render
+                  unzip -q -o "${workdir}/render.zip" -d "${workdir}"
+                  binary="$(find "${workdir}" -maxdepth 2 -type f -name 'cli_v*' -print -quit)"
+                  if [ -z "${binary}" ]; then
+                      echo "::error::Render CLI ${RENDER_CLI_VERSION} archive did not contain a cli_v* binary"
+                      exit 1
+                  fi
+                  sudo install "${binary}" /usr/local/bin/render
+                  rm -rf "${workdir}"
                   render --version
 
             - name: Deploy Render services at the tagged commit
