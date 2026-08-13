@@ -174,12 +174,8 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             return `cd ${escapedProjectDir} && pnpm install --prod ${frozen} ${PNPM_NON_INTERACTIVE}`
         }
 
+        // Not `npm ci`: npm writes lockfiles its own `ci` then rejects as out of sync.
         const clearPnpmTree = `rm -rf ${escapeShellArg(`${projectDir}/node_modules`)}`
-
-        if (archive.has("package-lock.json") || archive.has("npm-shrinkwrap.json")) {
-            return `${clearPnpmTree} && cd ${escapedProjectDir} && npm ci --omit=dev --no-fund`
-        }
-
         return `${clearPnpmTree} && cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
     }
 }
