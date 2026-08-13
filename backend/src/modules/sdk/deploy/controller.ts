@@ -366,7 +366,6 @@ function buildDeployResultTriggers(agent: AgentWithTriggerRelations): SdkDeployR
     return agent.inputs.map(trigger => ({ id: trigger.id, ...buildTriggerMetadata(trigger) }))
 }
 
-/** Build phases are internal; this is the vocabulary the user sees. */
 function toDeployStage(phase: SdkDeployPhase): SdkDeployStage {
     switch (phase) {
         case "preparing":
@@ -387,7 +386,6 @@ function toDeployStage(phase: SdkDeployPhase): SdkDeployStage {
     }
 }
 
-/** Hands the CLI somewhere to upload to, or nothing when this control plane has no object storage. */
 export async function handleSdkSourceUpload(req: Request, res: Response): Promise<Response> {
     const user = req.session?.user
     if (!user) return res.status(401).json({ success: false, error: "Unauthorized" })

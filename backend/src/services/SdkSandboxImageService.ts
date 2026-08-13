@@ -94,20 +94,11 @@ class ZipSdkProjectArchive implements SdkProjectArchive {
     }
 }
 
-/**
- * Builds the one image a deploy needs: source, installed dependencies, and the built workflow bundle.
- * Runs boot straight from it. Package downloads are cached on a per-organization volume, so a build
- * never shares a mutable surface with another tenant.
- */
 export class SdkSandboxImageService {
     private elapsed(startMs: number): string {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
-    /**
-     * The one path every unit of build work goes through: the user hears about it before it
-     * starts, and the telemetry keeps what it cost. Nothing else should time a build step.
-     */
     private async runPhase<T>(context: PhaseContext, phase: SdkDeployPhase, work: () => Promise<T>): Promise<T> {
         context.onProgress?.(phase)
         const start = performance.now()
@@ -365,12 +356,6 @@ export class SdkSandboxImageService {
         }
     }
 
-    /**
-     * Mounting object storage is the difference between working and not for a large project: writing
-     * the archive into the sandbox is capped at 16MiB per request, so a data-heavy project cannot go
-     * through it at all. The write stays as the fallback for a legacy inline upload, or a control
-     * plane with no bucket to mount.
-     */
     private async prepareSourceArchive(params: { sb: Sandbox; sandboxService: ReturnType<typeof getSandboxProvider>; zipBuffer: Buffer; mountedArchive?: string }): Promise<string> {
         const { sb, sandboxService, zipBuffer, mountedArchive } = params
         const projectDir = sandboxService.getProjectPath(sb)
@@ -433,11 +418,6 @@ export class SdkSandboxImageService {
         this.logStepOutcome(step, result)
     }
 
-    /**
-     * A package manager says exactly what it did ("reused 452, downloaded 0", "Already up to date"),
-     * and without it a slow install is indistinguishable from a cold cache. Discarding that on
-     * success cost this several rounds of guessing, so the summary lines are kept.
-     */
     private logStepOutcome(step: SdkBuildStep, result: SandboxCommandResult): void {
         if (step !== "building_project") return
 

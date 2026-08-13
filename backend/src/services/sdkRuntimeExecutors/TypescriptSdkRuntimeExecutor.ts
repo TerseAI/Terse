@@ -1,7 +1,6 @@
 import crypto from "crypto"
 
 import logger from "../../common/logger"
-import type { LocalPackagesBundle } from "../../utility/localPackages"
 
 import type { DefineDeployImageParams, SandboxCommandResult, SdkDeployImageBuildContext, SdkDeployImageDefinition, SdkProjectArchive, SdkRuntimeExecutor, SdkRuntimeExecutorContext } from "./types"
 import { type PackageManager, buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeHoistMarker, writeLocalTarballs } from "./typescriptLocalPackages"
@@ -36,14 +35,6 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         }
     }
 
-    /**
-     * One sandbox, one snapshot: the source is already unzipped into projectDir, so this installs
-     * what the project needs and builds the workflow bundle.
-     *
-     * Everything the install requires goes in one command. Each sandbox exec is a round trip to
-     * Modal, and the CLI check is usually just a file comparison against the baked version, so
-     * paying a round trip to learn "already there" cost more than the check saved.
-     */
     async buildDeployImage(context: SdkDeployImageBuildContext): Promise<void> {
         const packageJson = context.archive.readText("package.json")
         if (!packageJson) {
@@ -63,8 +54,6 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         }
         // === end dev-only ===
 
-        // One exec: unpack, CLI, package manager, dependencies, bundle. Entering the sandbox costs a
-        // round trip each time, and the container readiness gate is paid by whichever comes first.
         const install = [
             context.unpackCommand,
             localTarballs ? undefined : this.ensureCliCommand(context),
@@ -86,11 +75,6 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         await context.ensureSandboxCommand("building_project", install.join(" && "))
     }
 
-    /**
-     * The sandbox image bakes whichever CLI was newest when it was built and records that version
-     * beside it, so the skip is a file comparison rather than anything the control plane has to
-     * know about the image. Any other version installs, warm, off the image's package cache.
-     */
     private ensureCliCommand(context: SdkDeployImageBuildContext): string {
         const marker = context.escapeShellArg(`${context.cliCachePath}/${CLI_VERSION_MARKER}`)
         const wanted = context.escapeShellArg(context.cliVersion)
@@ -187,14 +171,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
         if (packageManager === "pnpm") {
             const frozen = archive.has("pnpm-lock.yaml") ? "--frozen-lockfile" : "--no-frozen-lockfile"
-            // A sandbox has no TTY, so pnpm aborts rather than prompt before clearing a
-            // node_modules it did not create.
             return `cd ${escapedProjectDir} && pnpm install --prod ${frozen} ${PNPM_NON_INTERACTIVE}`
         }
 
-        // The image bakes a pnpm-shaped node_modules, which npm cannot read: arborist fails on the
-        // symlinked virtual store rather than replacing it. Clearing it costs a whiteout, and npm
-        // was going to rebuild the tree from its own cache regardless.
         const clearPnpmTree = `rm -rf ${escapeShellArg(`${projectDir}/node_modules`)}`
 
         if (archive.has("package-lock.json") || archive.has("npm-shrinkwrap.json")) {

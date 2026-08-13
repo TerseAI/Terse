@@ -17,9 +17,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
     readonly settingsKey = "modal"
     readonly supportsContainerizedRunners = true
 
-    /** One RPC per deploy for a name that never changes, so it is looked up once per process. */
     private readonly appsByName = new Map<string, Promise<ModalApp>>()
-    /** The HMAC credentials are static, so the Modal secret holding them can be too. */
     private bucketMountSecret: Promise<Secret> | undefined
 
     private readonly modal = new ModalClient({

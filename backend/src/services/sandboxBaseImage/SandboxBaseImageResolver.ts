@@ -1,17 +1,8 @@
 import logger from "../../common/logger"
 import { settings } from "../../settings"
 
-import { type ContainerRegistryClient, PublicOciRegistryClient } from "./ContainerRegistryClient"
+import { type ContainerRegistryClient, GoogleArtifactRegistryClient } from "./ContainerRegistryClient"
 
-/**
- * Chooses the image a deploy build boots from.
- *
- * There is one sandbox image, not one per release: its value is the warm package cache for the
- * Terse dependency tree, which is near-identical across releases (adding a whole release to a
- * warm cache measured at ~1MB). So the tag is a moving one, resolved to a digest here so a build
- * is still reproducible and the build hash tracks actual image content. A registry that cannot be
- * reached falls back to the runtime's generic base image, which is slower and never wrong.
- */
 export class SandboxBaseImageResolver {
     private static instance: SandboxBaseImageResolver | undefined
 
@@ -24,7 +15,7 @@ export class SandboxBaseImageResolver {
 
     static getInstance(): SandboxBaseImageResolver {
         if (!SandboxBaseImageResolver.instance) {
-            SandboxBaseImageResolver.instance = new SandboxBaseImageResolver(new PublicOciRegistryClient(), settings.sandboxImages)
+            SandboxBaseImageResolver.instance = new SandboxBaseImageResolver(GoogleArtifactRegistryClient.fromSettings(), settings.sandboxImages)
         }
         return SandboxBaseImageResolver.instance
     }

@@ -4,11 +4,6 @@ import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export type SdkProjectRuntime = "typescript"
 
-/**
- * Every distinct unit of work a deploy build performs. One union drives three things: what the
- * user is told, what the telemetry times, and what an error names, so a new step cannot be added
- * without all three following it.
- */
 export type SdkDeployPhase = "preparing" | "reusing_cached_build" | "starting_sandbox" | "uploading_source" | "building_project" | "saving_image"
 
 /** The subset a runtime executor is responsible for. */
@@ -35,13 +30,10 @@ export interface SdkDeployImageBuildContext {
     archive: SdkProjectArchive
     cliVersion: string
     baseImage: ResolvedSandboxBaseImage
-    /** The workflow bundle is the durable engine's input; a project without durable jobs never reads it. */
     requiresWorkflowBundle: boolean
     projectDir: string
     cliCachePath: string
-    /** Unpacks the archive. Prepended to the build so the sandbox is entered once, not twice. */
     unpackCommand: string
-    // Dev-only: locally-packed terse-types/terse-sdk/terse-cli to install instead of npm registry versions.
     localPackages?: LocalPackagesBundle
     ensureSandboxCommand: (step: SdkBuildStep, command: string) => Promise<void>
     writeFile: (path: string, content: string) => Promise<void>
@@ -67,9 +59,7 @@ export interface SdkRuntimeExecutorContext {
 
 export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
-    /** Base image used when no released sandbox image matches the deploy. */
     sandboxImage: string
-    /** Artifact Registry repository name of this runtime's prebuilt sandbox image. */
     releaseImageName: string
     matchesArchive(entries: Set<string>): boolean
     defineDeployImage(params: DefineDeployImageParams): SdkDeployImageDefinition

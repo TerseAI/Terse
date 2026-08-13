@@ -64,7 +64,6 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
         this.baseImageKind = kind
     }
 
-    /** Times one unit of build work. Repeats of a phase accumulate rather than overwrite. */
     recordPhase(phase: SdkDeployPhase, durationMs: number): void {
         this.phaseMs[phase] = (this.phaseMs[phase] ?? 0) + Math.round(durationMs)
     }
@@ -73,7 +72,6 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
         this.deployImageCacheHit = hit
     }
 
-    /** Surfaced flat so "what dominated this deploy" is one property, not a scan of an object. */
     private slowestPhase(): string | undefined {
         const entries = Object.entries(this.phaseMs)
         if (entries.length === 0) return undefined

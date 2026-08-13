@@ -8,13 +8,6 @@ const UPLOAD_URL_TTL_MS = 15 * 60 * 1000
 const ARCHIVE_PREFIX = "sdk-deploys"
 const ARCHIVE_CONTENT_TYPE = "application/zip"
 
-/**
- * Holds a deploy's source archive between the CLI and the build.
- *
- * The CLI used to base64 the whole project into the deploy request body, which inflates it by a
- * third and buffers it in the control plane. Uploading straight to object storage keeps large
- * projects (data files, fixtures) off the request path entirely.
- */
 export class GcsSourceArchiveStore implements SourceArchiveStore {
     private static instance: SourceArchiveStore | undefined
 
@@ -34,14 +27,6 @@ export class GcsSourceArchiveStore implements SourceArchiveStore {
         return GcsSourceArchiveStore.instance
     }
 
-    /**
-     * A resumable session rather than a plain signed PUT, so one mechanism covers every size: a
-     * small archive is a single chunk, and a large one (a project carrying data files) uploads in
-     * chunks that can resume after a dropped connection instead of starting over.
-     *
-     * The session URI is a write capability for this object key alone, and the key is prefixed by
-     * organization, so it can neither be pointed at another tenant's path nor read anything back.
-     */
     async createUpload(organizationId: string): Promise<SourceArchiveUpload> {
         const objectKey = `${ARCHIVE_PREFIX}/${organizationId}/${crypto.randomUUID()}.zip`
         const [uploadUrl] = await this.storage
@@ -58,7 +43,6 @@ export class GcsSourceArchiveStore implements SourceArchiveStore {
         return contents
     }
 
-    /** Best-effort: a leftover archive is bounded by the bucket's lifecycle rule, not by this. */
     async discard(objectKey: string, organizationId: string): Promise<void> {
         try {
             assertOwnedBy(objectKey, organizationId)
@@ -69,7 +53,6 @@ export class GcsSourceArchiveStore implements SourceArchiveStore {
     }
 }
 
-/** A signed URL says nothing about who may read the object back, so the key is checked on use. */
 function assertOwnedBy(objectKey: string, organizationId: string): void {
     if (!objectKey.startsWith(`${ARCHIVE_PREFIX}/${organizationId}/`)) {
         throw new SourceArchiveAccessError(`Source archive ${objectKey} does not belong to this organization`)
