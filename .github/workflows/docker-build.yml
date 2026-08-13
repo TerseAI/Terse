@@ -19,16 +19,10 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - uses: docker/setup-buildx-action@v3
-            # Releases build multi-arch; a PR only needs to prove the Dockerfile works.
             - uses: docker/build-push-action@v6
               with:
                   context: .
-                  file: ./Dockerfile
-                  platforms: linux/amd64
-                  push: false
-                  load: false
                   cache-from: type=gha
                   # Fork PRs get a read-only cache token; a denied export must not
                   # fail the build check.
                   cache-to: type=gha,mode=max,ignore-error=true
-                  provenance: false

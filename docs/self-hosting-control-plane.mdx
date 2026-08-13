@@ -69,8 +69,7 @@ Anything user-tunable lives in `.env`. Edit and run `docker compose up -d` to ap
 | `FRONTEND_URL`, `BACKEND_URL` | What the browser sees. Change both together if you put the instance behind a real domain. |
 | `LOCAL_SECRETS_ENCRYPTION_KEY` | Encrypts project secrets at rest. Generated for you. Back it up out of band — lose it and every stored integration credential is unrecoverable. |
 | `NODE_ENV` | `development` by default. Set to `production` before exposing the instance. |
-| `TERSE_VERSION` | Image tag to run. Pinned to the release you scaffolded with; set to `latest` to track the newest release. |
-| `TERSE_IMAGE` | Point at a mirror of the Terse image. Commented out by default. |
+| `TERSE_IMAGE` | Full image reference, pinned to the release you scaffolded with. Change its tag to upgrade. |
 | `WORKOS_*`, `MODAL_*`, `RESEND_API_KEY`, integration OAuth secrets | Opt in to anything that's off by default. |
 
 Anything else (container-internal URLs, port mappings, volume names) lives in `docker-compose.yml`. The `README.md` in your install directory is the daily-ops cheat sheet for logs, upgrades, and backups.

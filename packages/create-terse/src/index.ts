@@ -174,11 +174,8 @@ async function writeEnv(
         "NODE_ENV=development",
         "",
         "# ── Image ─────────────────────────────────────────────────────",
-        "# Pinned to the release this folder was scaffolded with, so `docker compose pull`",
-        "# never moves you to a new version by surprise. Bump it to upgrade, or set it to",
-        "# `latest` to always track the newest release.",
-        `TERSE_VERSION=${config.releaseVersion}`,
-        "# TERSE_IMAGE=us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse",
+        "# Change the tag to upgrade, or use `latest` to track new releases.",
+        `TERSE_IMAGE=us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse:${config.releaseVersion}`,
         ""
     ]
     await fs.writeFile(path.join(targetDir, ".env"), lines.join("\n"))

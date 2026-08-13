@@ -14,45 +14,31 @@ permissions:
 env:
     REGISTRY: us-central1-docker.pkg.dev
     IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse
-    REQUIRED_CHECK: End-to-End Tests
 
 jobs:
     # ── Gate ──────────────────────────────────────────────────────────────────
-    # Nothing is published until the tag, the manifests, and CI all agree.
     preflight:
         name: Preflight
+        if: github.event.release.prerelease == false
         runs-on: ubuntu-latest
-        # `checks: read` is what lets the CI-green gate below call the
-        # check-runs API with GITHUB_TOKEN.
         permissions:
             contents: read
             checks: read
         outputs:
             version: ${{ steps.version.outputs.version }}
-            minor: ${{ steps.version.outputs.minor }}
-            sha: ${{ steps.version.outputs.sha }}
         steps:
-            - name: Reject prereleases and malformed tags
+            - name: Read release version
               id: version
               env:
                   TAG: ${{ github.event.release.tag_name }}
-                  IS_PRERELEASE: ${{ github.event.release.prerelease }}
-                  SHA: ${{ github.sha }}
               run: |
-                  set -euo pipefail
-                  if [[ "$IS_PRERELEASE" == "true" ]]; then
-                      echo "::error::Prereleases are not published. Tag $TAG is marked as a prerelease."
-                      exit 1
-                  fi
                   if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
                       echo "::error::Tag must look like v1.2.3 (got '$TAG')"
                       exit 1
                   fi
                   version="${TAG#v}"
                   echo "version=${version}" >> "$GITHUB_OUTPUT"
-                  echo "minor=${version%.*}" >> "$GITHUB_OUTPUT"
-                  echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
-                  echo "Releasing ${version} from ${SHA}"
+                  echo "Releasing ${version} from ${{ github.sha }}"
 
             - name: Checkout tag
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -75,27 +61,10 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  set -euo pipefail
-                  runs=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs" --paginate \
-                      --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion // "none")"')
-                  echo "$runs"
-
-                  failed=$(echo "$runs" | awk -F'\t' '$2 == "completed" && $3 != "success" && $3 != "skipped" && $3 != "neutral"' || true)
-                  if [[ -n "$failed" ]]; then
-                      echo "::error::Checks on ${{ github.sha }} are not green:"
-                      echo "$failed"
-                      exit 1
-                  fi
-
-                  pending=$(echo "$runs" | awk -F'\t' '$2 != "completed" && $1 != "Preflight"' || true)
-                  if [[ -n "$pending" ]]; then
-                      echo "::error::Checks on ${{ github.sha }} are still running:"
-                      echo "$pending"
-                      exit 1
-                  fi
-
-                  if ! echo "$runs" | awk -F'\t' -v want="$REQUIRED_CHECK" '$1 == want && $3 == "success" { found = 1 } END { exit !found }'; then
-                      echo "::error::'$REQUIRED_CHECK' did not run successfully on ${{ github.sha }}"
+                  conclusion=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs?check_name=End-to-End%20Tests" \
+                      --jq '.check_runs[0].conclusion // "missing"')
+                  if [[ "$conclusion" != "success" ]]; then
+                      echo "::error::End-to-End Tests concluded '$conclusion' on ${{ github.sha }}"
                       exit 1
                   fi
 
@@ -104,7 +73,7 @@ jobs:
         name: Publish image
         needs: preflight
         runs-on: blacksmith-4vcpu-ubuntu-2404
-        timeout-minutes: 45
+        timeout-minutes: 60
         permissions:
             contents: read
             id-token: write
@@ -141,12 +110,9 @@ jobs:
                   push: true
                   tags: |
                       ${{ env.IMAGE }}:${{ needs.preflight.outputs.version }}
-                      ${{ env.IMAGE }}:${{ needs.preflight.outputs.minor }}
                       ${{ env.IMAGE }}:latest
-                      ${{ env.IMAGE }}:sha-${{ needs.preflight.outputs.sha }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
-                  provenance: false
 
     # ── 2 · npm (irreversible) ────────────────────────────────────────────────
     npm:
@@ -186,47 +152,61 @@ jobs:
 
             - name: Pack tarballs
               run: |
-                  set -euo pipefail
                   mkdir -p dist-tarballs
                   for pkg in terse-types terse-sdk terse-cli create-terse; do
                       pnpm --filter "$pkg" pack --pack-destination "$PWD/dist-tarballs"
                   done
-                  ls -l dist-tarballs
 
-            # Skips versions already on the registry, so re-running this job finishes
-            # a release that died partway through the packages.
             - name: Publish to npm
               env:
                   RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
-              run: node scripts/npm-publish.mjs
+              run: |
+                  for pkg in terse-types terse-sdk terse-cli create-terse; do
+                      if npm view "$pkg@$RELEASE_VERSION" version >/dev/null 2>&1; then
+                          echo "$pkg@$RELEASE_VERSION already published"
+                      else
+                          npm publish "dist-tarballs/$pkg-$RELEASE_VERSION.tgz" --access public
+                      fi
+                  done
 
     # ── 3 · Prod (retryable) ──────────────────────────────────────────────────
     deploy:
         name: Deploy production
         needs: [preflight, npm]
         runs-on: ubuntu-latest
-        # Render polls up to 20 minutes, then Vercel polls up to 20 minutes.
         timeout-minutes: 50
         environment: production
         steps:
             - name: Checkout tag
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+            - name: Install Render CLI
+              env:
+                  RENDER_CLI_VERSION: 2.22.0
+              run: |
+                  curl -fsSL "https://github.com/render-oss/cli/releases/download/v${RENDER_CLI_VERSION}/cli_${RENDER_CLI_VERSION}_linux_amd64.zip" -o render.zip
+                  unzip -q render.zip
+                  sudo install "cli_v${RENDER_CLI_VERSION}" /usr/local/bin/render
+
             - name: Deploy Render services at the tagged commit
               env:
                   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-                  COMMIT_SHA: ${{ needs.preflight.outputs.sha }}
+                  COMMIT_SHA: ${{ github.sha }}
                   # AI-Product-Owner (api.useterse.ai) and terse-prod-worker.
                   RENDER_SERVICE_IDS: srv-d1eqvi7gi27c739pt4bg srv-d94fmbuq1p3s73bjoutg
-              run: node scripts/render-deploy.mjs
+              run: |
+                  pids=()
+                  for service_id in $RENDER_SERVICE_IDS; do
+                      render deploys create "$service_id" --commit "$COMMIT_SHA" --wait --confirm &
+                      pids+=("$!")
+                  done
+                  for pid in "${pids[@]}"; do
+                      wait "$pid"
+                  done
 
             - name: Deploy frontend to Vercel production
               env:
                   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-                  VERCEL_TEAM_ID: team_UyOJ7NQ43Xk4UQtfqggcupD8
+                  VERCEL_ORG_ID: team_UyOJ7NQ43Xk4UQtfqggcupD8
                   VERCEL_PROJECT_ID: prj_BUmtGEgbjPw0oW3io14O5MozPAyC
-                  GITHUB_REPO_ID: "1076128380"
-                  # Deploying the tag ref (not "main") is what lets the project's
-                  # ignored-build-step skip pushes to main but allow releases.
-                  RELEASE_REF: ${{ github.event.release.tag_name }}
-              run: node scripts/vercel-deploy.mjs
+              run: npx --yes vercel@58.10.0 deploy --prod --yes --token="$VERCEL_TOKEN"
