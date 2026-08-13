@@ -190,10 +190,15 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             return `cd ${escapedProjectDir} && pnpm install --prod ${frozen} ${PNPM_NON_INTERACTIVE}`
         }
 
+        // The image bakes a pnpm-shaped node_modules, which npm cannot read: arborist fails on the
+        // symlinked virtual store rather than replacing it. Clearing it costs a whiteout, and npm
+        // was going to rebuild the tree from its own cache regardless.
+        const clearPnpmTree = `rm -rf ${escapeShellArg(`${projectDir}/node_modules`)}`
+
         if (archive.has("package-lock.json") || archive.has("npm-shrinkwrap.json")) {
-            return `cd ${escapedProjectDir} && npm ci --omit=dev --no-fund`
+            return `${clearPnpmTree} && cd ${escapedProjectDir} && npm ci --omit=dev --no-fund`
         }
 
-        return `cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
+        return `${clearPnpmTree} && cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
     }
 }

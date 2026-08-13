@@ -33,7 +33,10 @@ jobs:
             # against whatever is currently published.
             - name: Resolve the published CLI version
               id: published
-              run: echo "version=$(npm view terse-cli version)" >> "$GITHUB_OUTPUT"
+              run: |
+                  version=$(npm view terse-cli version)
+                  echo "version=${version}" >> "$GITHUB_OUTPUT"
+                  echo "workflow=$(npm view "terse-cli@${version}" dependencies.workflow)" >> "$GITHUB_OUTPUT"
 
             - name: Sandbox image
               uses: docker/build-push-action@v6
@@ -43,5 +46,6 @@ jobs:
                   platforms: linux/amd64
                   build-args: |
                       TERSE_VERSION=${{ steps.published.outputs.version }}
+                      WORKFLOW_VERSION=${{ steps.published.outputs.workflow }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true

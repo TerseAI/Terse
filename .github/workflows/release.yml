@@ -246,6 +246,12 @@ jobs:
                   exit 1
 
             # Modal sandboxes are amd64, so this skips the arm64 pass the control plane takes.
+            # The scaffold pins the same workflow version the CLI depends on, and the image bakes
+            # that project's node_modules, so the two have to agree.
+            - name: Resolve the workflow version
+              id: workflow
+              run: echo "version=$(node -p "require('./packages/terse-cli/package.json').dependencies.workflow")" >> "$GITHUB_OUTPUT"
+
             - name: Build and push the sandbox image
               uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
               with:
@@ -255,6 +261,7 @@ jobs:
                   push: true
                   build-args: |
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
+                      WORKFLOW_VERSION=${{ steps.workflow.outputs.version }}
                   tags: |
                       ${{ env.SANDBOX_NODE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       ${{ env.SANDBOX_NODE_IMAGE }}:latest
