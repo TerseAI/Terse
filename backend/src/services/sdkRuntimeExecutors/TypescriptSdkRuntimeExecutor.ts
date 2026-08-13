@@ -8,6 +8,7 @@ import { type PackageManager, buildLocalDependencyInstallCommand, installLocalCl
 
 const DEFAULT_PNPM_VERSION = "10.34.1"
 const CLI_VERSION_MARKER = ".terse-cli-version"
+const PNPM_NON_INTERACTIVE = "--config.confirmModulesPurge=false"
 
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
@@ -174,7 +175,9 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
         if (packageManager === "pnpm") {
             const frozen = archive.has("pnpm-lock.yaml") ? "--frozen-lockfile" : "--no-frozen-lockfile"
-            return `cd ${escapedProjectDir} && pnpm install --prod ${frozen}`
+            // A sandbox has no TTY, so pnpm aborts rather than prompt before clearing a
+            // node_modules it did not create.
+            return `cd ${escapedProjectDir} && pnpm install --prod ${frozen} ${PNPM_NON_INTERACTIVE}`
         }
 
         if (archive.has("package-lock.json") || archive.has("npm-shrinkwrap.json")) {

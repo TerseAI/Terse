@@ -110,7 +110,7 @@ export function buildLocalDependencyInstallCommand(packageManager: PackageManage
     const escapedProjectDir = escapeShellArg(projectDir)
 
     if (packageManager === "pnpm") {
-        return `cd ${escapedProjectDir} && pnpm install --prod --no-frozen-lockfile`
+        return `cd ${escapedProjectDir} && pnpm install --prod --no-frozen-lockfile --config.confirmModulesPurge=false`
     }
 
     return `cd ${escapedProjectDir} && npm install --omit=dev --no-fund`

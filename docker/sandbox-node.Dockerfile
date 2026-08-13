@@ -18,7 +18,7 @@ RUN apt-get -o Acquire::Retries=3 update -qq \
 
 RUN npm install -g --force --no-fund "pnpm@${PNPM_VERSION}"
 
-# Install the Terse CLI
+# Install the Terse CLI. We install it fully here because we have to run 
 RUN mkdir -p "${TERSE_CLI_CACHE_PATH}" \
     && npm install -g --prefix "${TERSE_CLI_CACHE_PATH}" --no-fund "terse-cli@${TERSE_VERSION}" \
     && printf '%s' "${TERSE_VERSION}" > "${TERSE_CLI_CACHE_PATH}/.terse-cli-version"

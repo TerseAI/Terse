@@ -331,10 +331,12 @@ export class SdkSandboxImageService {
         await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
 
         const ensureUnzip = `(command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null))`
+        // Start from an empty directory: a build can land in a sandbox a previous attempt left
+        // alive, and `unzip -o` overwrites files without removing ones the new source dropped.
         await this.ensureSandboxCommand(
             sb,
             "extract SDK source",
-            `mkdir -p ${shellQuote(projectDir)} && ${ensureUnzip} && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
+            `rm -rf ${shellQuote(projectDir)} && mkdir -p ${shellQuote(projectDir)} && ${ensureUnzip} && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
             executor.runtime
         )
     }

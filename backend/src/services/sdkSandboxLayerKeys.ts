@@ -5,8 +5,14 @@ function hexHead(s: string, maxLen: number): string {
     return hex.slice(0, maxLen)
 }
 
+/**
+ * Unique per attempt, not per build. A build sandbox is snapshotted whole, so adopting one a
+ * previous attempt left behind would fold its leftovers into the image. Orphans happen: the
+ * teardown runs in a `finally`, which a killed process never reaches, and Modal keeps the
+ * sandbox alive until its idle timeout.
+ */
 export function deployBuildSandboxUniqueName(buildHash: string): string {
-    return `db-${hexHead(buildHash, 32)}`
+    return `db-${hexHead(buildHash, 24)}-${crypto.randomBytes(4).toString("hex")}`
 }
 
 export function runtimeSandboxUniqueName(projectId: string, runId: string): string {
