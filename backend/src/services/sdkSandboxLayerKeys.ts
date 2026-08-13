@@ -15,6 +15,15 @@ export function deployBuildSandboxUniqueName(buildHash: string): string {
     return `db-${hexHead(buildHash, 24)}-${crypto.randomBytes(4).toString("hex")}`
 }
 
+/**
+ * Named after the upload rather than the build, so the sandbox warmed while the archive was
+ * uploading is the one the build picks up, with no state kept between the two requests. An
+ * unclaimed one is reaped by its idle timeout.
+ */
+export function prewarmBuildSandboxName(objectKey: string): string {
+    return `db-warm-${crypto.createHash("sha256").update(objectKey).digest("hex").slice(0, 24)}`
+}
+
 export function runtimeSandboxUniqueName(projectId: string, runId: string): string {
     const digest = crypto.createHash("sha256").update(projectId).update("\0").update(runId).digest("hex").slice(0, 32)
     return `sr-${digest}`

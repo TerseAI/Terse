@@ -10,7 +10,6 @@ import { settings } from "../settings"
 import { type LocalPackagesBundle, packLocalSdkPackages } from "../utility/localPackages"
 
 import { type ResolvedSandboxBaseImage, SandboxBaseImageResolver } from "./sandboxBaseImage/SandboxBaseImageResolver"
-import { BuildSandboxPrewarmer } from "./sandboxPrewarm/BuildSandboxPrewarmer"
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
@@ -24,7 +23,7 @@ import {
     type SdkProjectRuntime,
     SdkRuntimeExecutor
 } from "./sdkRuntimeExecutors/types"
-import { deployBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
+import { deployBuildSandboxUniqueName, prewarmBuildSandboxName } from "./sdkSandboxLayerKeys"
 
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
@@ -244,8 +243,6 @@ export class SdkSandboxImageService {
         const existingImageExists = existing ? await sandboxService.imageExists(existing.image_id) : false
         if (existing && existingImageExists) {
             telemetry?.setDeployImageCacheHit(true)
-            // Nothing to build, so the sandbox warmed during the upload is dead weight.
-            void BuildSandboxPrewarmer.getInstance().discard(params.prewarmKey)
             params.onProgress?.("reusing_cached_build")
             logger.info("SDK image cache: reuse deploy image", { buildHash, organizationId, imageId: existing.image_id })
             return prisma.sdk_source_images.update({ where: { id: existing.id }, data: { last_used_at: new Date() } })
@@ -306,13 +303,11 @@ export class SdkSandboxImageService {
         const phaseContext: PhaseContext = { onProgress, telemetry }
         const sandboxBaseImage = sandboxService.getImageFromRegistry(baseImage.reference)
 
+        // Reuses the sandbox warmed while this archive uploaded, or starts one when there is none.
+        const uniqueName = prewarmKey ? prewarmBuildSandboxName(prewarmKey) : deployBuildSandboxUniqueName(buildHash)
         const sb = await this.runPhase(phaseContext, "starting_sandbox", async () => {
-            const prewarmed = await BuildSandboxPrewarmer.getInstance().claim(prewarmKey)
-            if (prewarmed) return prewarmed
-
             const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
-            const createParams = { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 }
-            return sandboxService.getOrCreateSandbox(app, sandboxBaseImage, deployBuildSandboxUniqueName(buildHash), createParams)
+            return sandboxService.getOrCreateSandbox(app, sandboxBaseImage, uniqueName, { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
         })
 
         try {
