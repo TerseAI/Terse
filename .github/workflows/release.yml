@@ -14,7 +14,9 @@ permissions:
 env:
     REGISTRY: us-central1-docker.pkg.dev
     IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse
-    SANDBOX_NODE_IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse-sandbox-node
+    SANDBOX_BASE_IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse-sandbox-base
+    SANDBOX_NPM_IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse-sandbox-node-npm
+    SANDBOX_PNPM_IMAGE: us-central1-docker.pkg.dev/fluid-analogy-473415-c2/public/terse-sandbox-node-pnpm
 
 jobs:
     # ── Gate ──────────────────────────────────────────────────────────────────
@@ -199,7 +201,7 @@ jobs:
     # value here is the warm package cache, and the Terse dependency tree barely
     # changes between releases.
     sandbox-image:
-        name: Publish the SDK sandbox image
+        name: Publish the SDK sandbox images
         needs: [preflight, npm]
         runs-on: blacksmith-4vcpu-ubuntu-2404
         timeout-minutes: 60
@@ -252,19 +254,56 @@ jobs:
               id: workflow
               run: echo "version=$(node -p "require('./packages/terse-cli/package.json').dependencies.workflow")" >> "$GITHUB_OUTPUT"
 
-            - name: Build and push the sandbox image
+            # The two leaves are identical up to the package manager, so everything they share
+            # lives here and is pulled once rather than per image.
+            - name: Build and push the shared sandbox base
               uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
               with:
                   context: .
-                  file: ./docker/sandbox-node.Dockerfile
+                  file: ./docker/sandbox-node-base.Dockerfile
                   platforms: linux/amd64
                   push: true
                   build-args: |
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
+                  tags: |
+                      ${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
+                      ${{ env.SANDBOX_BASE_IMAGE }}:latest
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            # A deploy picks the image matching the project's package manager, because each bakes
+            # the scaffold's node_modules in that manager's layout and the layouts cannot coexist.
+            - name: Build and push the pnpm sandbox image
+              uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+              with:
+                  context: .
+                  file: ./docker/sandbox-node-pnpm.Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  build-args: |
+                      BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
+                      TERSE_VERSION=${{ needs.preflight.outputs.version }}
                       WORKFLOW_VERSION=${{ steps.workflow.outputs.version }}
                   tags: |
-                      ${{ env.SANDBOX_NODE_IMAGE }}:${{ needs.preflight.outputs.version }}
-                      ${{ env.SANDBOX_NODE_IMAGE }}:latest
+                      ${{ env.SANDBOX_PNPM_IMAGE }}:${{ needs.preflight.outputs.version }}
+                      ${{ env.SANDBOX_PNPM_IMAGE }}:latest
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            - name: Build and push the npm sandbox image
+              uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+              with:
+                  context: .
+                  file: ./docker/sandbox-node-npm.Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  build-args: |
+                      BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
+                      TERSE_VERSION=${{ needs.preflight.outputs.version }}
+                      WORKFLOW_VERSION=${{ steps.workflow.outputs.version }}
+                  tags: |
+                      ${{ env.SANDBOX_NPM_IMAGE }}:${{ needs.preflight.outputs.version }}
+                      ${{ env.SANDBOX_NPM_IMAGE }}:latest
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 

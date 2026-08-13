@@ -60,7 +60,7 @@ export interface SdkRuntimeExecutorContext {
 export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
     sandboxImage: string
-    releaseImageName: string
+    releaseImageNameFor(archive: SdkProjectArchive): string
     matchesArchive(entries: Set<string>): boolean
     defineDeployImage(params: DefineDeployImageParams): SdkDeployImageDefinition
     buildDeployImage(context: SdkDeployImageBuildContext): Promise<void>

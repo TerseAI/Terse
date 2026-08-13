@@ -6,7 +6,7 @@ import { type ContainerRegistryClient, GoogleArtifactRegistryClient } from "./Co
 export class SandboxBaseImageResolver {
     private static instance: SandboxBaseImageResolver | undefined
 
-    private cachedDigest: { reference: string; expiresAtMs: number } | undefined
+    private readonly cachedDigests = new Map<string, { reference: string; expiresAtMs: number }>()
 
     private constructor(
         private readonly registryClient: ContainerRegistryClient,
@@ -51,8 +51,9 @@ export class SandboxBaseImageResolver {
     }
 
     private async resolveDigestReference(releaseImageName: string): Promise<string | undefined> {
-        if (this.cachedDigest && this.cachedDigest.expiresAtMs > Date.now()) {
-            return this.cachedDigest.reference
+        const cached = this.cachedDigests.get(releaseImageName)
+        if (cached && cached.expiresAtMs > Date.now()) {
+            return cached.reference
         }
 
         const repository = `${this.config.repositoryPrefix}/${releaseImageName}`
@@ -60,7 +61,7 @@ export class SandboxBaseImageResolver {
         if (digest === undefined) return undefined
 
         const reference = `${this.config.registry}/${repository}@${digest}`
-        this.cachedDigest = { reference, expiresAtMs: Date.now() + this.config.probeTtlMs }
+        this.cachedDigests.set(releaseImageName, { reference, expiresAtMs: Date.now() + this.config.probeTtlMs })
         return reference
     }
 }

@@ -135,7 +135,7 @@ export class SdkSandboxImageService {
         const sourceHash = telemetry ? telemetry.measureSync("computeSourceHashMs", () => archive.computeSourceHash()) : archive.computeSourceHash()
 
         const baseImage = await SandboxBaseImageResolver.getInstance().resolve({
-            releaseImageName: executor.releaseImageName,
+            releaseImageName: executor.releaseImageNameFor(archive),
             genericImage: executor.sandboxImage,
             usesLocalPackages: localPackages !== undefined,
             // The local provider ignores registry images entirely, so a probe would buy nothing.

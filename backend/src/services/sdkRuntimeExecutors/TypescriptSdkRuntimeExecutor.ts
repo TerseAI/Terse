@@ -12,10 +12,15 @@ const PNPM_NON_INTERACTIVE = "--config.confirmModulesPurge=false"
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
     readonly sandboxImage = "node:22.22.3-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732"
-    readonly releaseImageName = "terse-sandbox-node"
 
     matchesArchive(entries: Set<string>): boolean {
         return entries.has("package.json")
+    }
+
+    // One image per package manager: each bakes the scaffold's node_modules in its own layout, and
+    // the two layouts cannot share a directory.
+    releaseImageNameFor(archive: SdkProjectArchive): string {
+        return `terse-sandbox-node-${this.detectPackageManager(archive)}`
     }
 
     defineDeployImage({ archive, organizationId, sourceHash, cliVersion, baseImage, localPackages }: DefineDeployImageParams): SdkDeployImageDefinition {
@@ -174,8 +179,8 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             return `cd ${escapedProjectDir} && pnpm install --prod ${frozen} ${PNPM_NON_INTERACTIVE}`
         }
 
-        // Not `npm ci`: npm writes lockfiles its own `ci` then rejects as out of sync.
-        const clearPnpmTree = `rm -rf ${escapeShellArg(`${projectDir}/node_modules`)}`
-        return `${clearPnpmTree} && cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
+        // Not `npm ci`: npm writes lockfiles its own `ci` then rejects as out of sync. No wiping
+        // node_modules either, so npm reconciles the image's baked tree instead of rebuilding it.
+        return `cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
     }
 }

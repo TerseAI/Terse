@@ -17,9 +17,16 @@ jobs:
         name: Build image (no push)
         runs-on: blacksmith-4vcpu-ubuntu-2404
         timeout-minutes: 45
+        services:
+            registry:
+                image: registry:2
+                ports:
+                    - 5000:5000
         steps:
             - uses: actions/checkout@v4
             - uses: docker/setup-buildx-action@v3
+              with:
+                  driver-opts: network=host
             - name: Control plane image
               uses: docker/build-push-action@v6
               with:
@@ -38,13 +45,42 @@ jobs:
                   echo "version=${version}" >> "$GITHUB_OUTPUT"
                   echo "workflow=$(npm view "terse-cli@${version}" dependencies.workflow)" >> "$GITHUB_OUTPUT"
 
-            - name: Sandbox image
+            # Pushed to the job-local registry so the leaf images can FROM it. BuildKit reaches it
+            # over the host network and allows plain HTTP because the host is localhost.
+            - name: Sandbox base image
               uses: docker/build-push-action@v6
               with:
                   context: .
-                  file: ./docker/sandbox-node.Dockerfile
+                  file: ./docker/sandbox-node-base.Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  tags: localhost:5000/terse-sandbox-base:pr
+                  build-args: |
+                      TERSE_VERSION=${{ steps.published.outputs.version }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max,ignore-error=true
+
+            - name: Sandbox image (pnpm)
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./docker/sandbox-node-pnpm.Dockerfile
                   platforms: linux/amd64
                   build-args: |
+                      BASE_IMAGE=localhost:5000/terse-sandbox-base:pr
+                      TERSE_VERSION=${{ steps.published.outputs.version }}
+                      WORKFLOW_VERSION=${{ steps.published.outputs.workflow }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max,ignore-error=true
+
+            - name: Sandbox image (npm)
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./docker/sandbox-node-npm.Dockerfile
+                  platforms: linux/amd64
+                  build-args: |
+                      BASE_IMAGE=localhost:5000/terse-sandbox-base:pr
                       TERSE_VERSION=${{ steps.published.outputs.version }}
                       WORKFLOW_VERSION=${{ steps.published.outputs.workflow }}
                   cache-from: type=gha
