@@ -251,27 +251,35 @@ function buildZipPayload(provider: LanguageProvider): { zipBytes: Uint8Array; fi
  * and its working path is this same single PUT, which is not worth a 10MB dependency in a CLI.
  */
 async function uploadSource(zipBytes: Uint8Array, apiKey: string): Promise<{ sourceObjectKey?: string; sourceZipBase64?: string }> {
-    const response = await fetchWithAuth<SdkSourceUploadResponse>(ApiRoutes.SDK.DEPLOY_SOURCE_UPLOAD, apiKey, {}, "POST").catch(() => undefined)
-    const upload = response?.upload
-    if (!upload) return inlineArchive(zipBytes)
+    let reason: string
+    try {
+        const response = await fetchWithAuth<SdkSourceUploadResponse>(ApiRoutes.SDK.DEPLOY_SOURCE_UPLOAD, apiKey, {}, "POST")
+        if (!response.upload) return inlineArchive(zipBytes, "this Terse server has no object storage configured")
 
-    const put = await fetch(upload.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": upload.contentType, "Content-Length": String(zipBytes.byteLength) },
-        body: zipBytes
-    }).catch(() => undefined)
+        const upload = response.upload
+        const put = await fetch(upload.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": upload.contentType },
+            body: zipBytes
+        })
 
-    if (put?.ok) return { sourceObjectKey: upload.objectKey }
-    return inlineArchive(zipBytes)
+        if (put.ok) return { sourceObjectKey: upload.objectKey }
+        reason = `storage rejected the upload: ${put.status} ${(await put.text().catch(() => "")).slice(0, 200)}`
+    } catch (error) {
+        reason = error instanceof Error ? error.message : String(error)
+    }
+
+    return inlineArchive(zipBytes, reason)
 }
 
 /** The legacy path: still what older CLIs use, and the fallback when object storage is unavailable. */
-function inlineArchive(zipBytes: Uint8Array): { sourceZipBase64: string } {
+function inlineArchive(zipBytes: Uint8Array, reason: string): { sourceZipBase64: string } {
     if (zipBytes.byteLength > MAX_INLINE_ARCHIVE_BYTES) {
-        throw new CliError("source_upload_failed", `Could not upload this project (${(zipBytes.byteLength / 1024 / 1024).toFixed(0)}MB) and it is too large to send inline.`, {
-            detail: "Retry, and if it persists check your connection to storage.googleapis.com."
-        })
+        throw new CliError("source_upload_failed", `Could not upload this project (${(zipBytes.byteLength / 1024 / 1024).toFixed(0)}MB), and it is too large to send inline.`, { detail: reason })
     }
+
+    // Small enough to send inline, so the deploy still works, but say why the fast path was skipped.
+    log.warn(`Uploading inline: ${reason}`)
     return { sourceZipBase64: Buffer.from(zipBytes).toString("base64") }
 }
 
