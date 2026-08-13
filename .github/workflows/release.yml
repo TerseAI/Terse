@@ -247,9 +247,25 @@ jobs:
                       wait "$pid"
                   done
 
+            # Bare `npx vercel@X` resolves and runs whatever the registry serves
+            # for that version inside the job that holds the prod credentials, so
+            # the published tarball is fetched and checked against its sha256
+            # first: a republished or tampered artifact fails the release instead
+            # of executing here. Bump the version and the checksum together
+            # (`curl -fsSL <tarball> | sha256sum`).
             - name: Deploy frontend to Vercel production
               env:
                   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
                   VERCEL_ORG_ID: team_UyOJ7NQ43Xk4UQtfqggcupD8
                   VERCEL_PROJECT_ID: prj_BUmtGEgbjPw0oW3io14O5MozPAyC
-              run: npx --yes vercel@58.10.0 deploy --prod --yes --token="$VERCEL_TOKEN"
+                  VERCEL_CLI_VERSION: 58.10.0
+                  VERCEL_CLI_SHA256: bda9b7bf6f73fa8819942cb9cc999ec0f0023e1f3a680b95b2bfd61ac7055ae0
+              run: |
+                  set -euo pipefail
+                  workdir="$(mktemp -d)"
+                  curl -fsSL "https://registry.npmjs.org/vercel/-/vercel-${VERCEL_CLI_VERSION}.tgz" -o "${workdir}/vercel.tgz"
+                  if ! echo "${VERCEL_CLI_SHA256}  ${workdir}/vercel.tgz" | sha256sum --check --status; then
+                      echo "::error::Vercel CLI ${VERCEL_CLI_VERSION} failed checksum verification (expected ${VERCEL_CLI_SHA256}, got $(sha256sum "${workdir}/vercel.tgz" | cut -d' ' -f1))"
+                      exit 1
+                  fi
+                  npx --yes --package="${workdir}/vercel.tgz" -- vercel deploy --prod --yes --token="$VERCEL_TOKEN"
