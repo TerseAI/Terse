@@ -7,6 +7,7 @@ RUN test -n "${TERSE_VERSION}"
 ENV TERSE_SANDBOX_RELEASE=${TERSE_VERSION}
 ENV TERSE_CLI_CACHE_PATH=/opt/terse-sdk-cache/cli
 
+# Install the base dependencies
 RUN apt-get -o Acquire::Retries=3 update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y -qq --no-install-recommends \
         ca-certificates \
@@ -22,10 +23,11 @@ RUN mkdir -p "${TERSE_CLI_CACHE_PATH}" \
     && npm install -g --prefix "${TERSE_CLI_CACHE_PATH}" --no-fund "terse-cli@${TERSE_VERSION}" \
     && printf '%s' "${TERSE_VERSION}" > "${TERSE_CLI_CACHE_PATH}/.terse-cli-version"
 
-# Install the Terse SDK
+# Warm the npm cache with the SDK's whole dependency tree, have to install the SDK into a throwaway project
+# because adding to npm cache only fetches the SDK's tarball.
 RUN mkdir -p /tmp/warm && cd /tmp/warm \
     && npm init -y > /dev/null \
-    && npm install --omit=dev --no-fund "terse-sdk@${TERSE_VERSION}" \
+    && npm install --omit=dev --no-fund --ignore-scripts "terse-sdk@${TERSE_VERSION}" \
     && cd / && rm -rf /tmp/warm
 
 RUN pnpm store add "terse-sdk@${TERSE_VERSION}" "terse-cli@${TERSE_VERSION}"
