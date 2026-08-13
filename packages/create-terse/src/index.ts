@@ -101,10 +101,6 @@ function printNextSteps(args: { frontendUrl: string }): void {
 }
 
 async function installTerseCli(releaseVersion: string): Promise<void> {
-    if (commandExists("terse")) {
-        log.info("terse CLI already installed, skipping global install")
-        return
-    }
     const spec = `terse-cli@${releaseVersion}`
     await runStep(`Installing terse CLI globally (npm i -g ${spec})`, `npm install -g ${spec}`, process.cwd())
 }

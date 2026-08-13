@@ -23,7 +23,6 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
-            checks: read
         outputs:
             version: ${{ steps.version.outputs.version }}
         steps:
@@ -40,10 +39,12 @@ jobs:
                   echo "version=${version}" >> "$GITHUB_OUTPUT"
                   echo "Releasing ${version} from ${{ github.sha }}"
 
-            - name: Checkout tag
+            # Every job checks out github.sha, never the tag name: tags are mutable,
+            # so re-pointing one mid-release must not swap what preflight approved.
+            - name: Checkout the tagged commit
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
               with:
-                  ref: ${{ github.event.release.tag_name }}
+                  ref: ${{ github.sha }}
                   fetch-depth: 0
 
             - name: Assert the tagged commit is on main
@@ -58,31 +59,46 @@ jobs:
             - name: Assert every manifest matches the tag
               run: node scripts/release.mjs verify "${{ steps.version.outputs.version }}"
 
-            - name: Assert CI is green on the tagged commit
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: |
-                  conclusion=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs?check_name=End-to-End%20Tests" \
-                      --jq '.check_runs[0].conclusion // "missing"')
-                  if [[ "$conclusion" != "success" ]]; then
-                      echo "::error::End-to-End Tests concluded '$conclusion' on ${{ github.sha }}"
-                      exit 1
-                  fi
+    # ── CI ────────────────────────────────────────────────────────────────────
+    # The full PR suite, re-run against the tagged commit. Running it here rather
+    # than reading main's check-runs means there is no wait for main to go green,
+    # no check-name string to keep in sync, and nothing to skip past. The image
+    # job below is the Docker build check, so it is not repeated here.
+    backend:
+        name: CI backend build
+        needs: preflight
+        uses: ./.github/workflows/backend-build.yml
+
+    formatting:
+        name: CI formatting
+        needs: preflight
+        uses: ./.github/workflows/formatting-check.yml
+
+    plugin:
+        name: CI claude plugin
+        needs: preflight
+        uses: ./.github/workflows/claude-plugin-check.yml
+
+    e2e:
+        name: CI end-to-end
+        needs: preflight
+        uses: ./.github/workflows/e2e.yml
+        secrets: inherit
 
     # ── 1 · Image (retryable) ─────────────────────────────────────────────────
     image:
         name: Publish image
-        needs: preflight
+        needs: [preflight, backend, formatting, plugin, e2e]
         runs-on: blacksmith-4vcpu-ubuntu-2404
         timeout-minutes: 60
         permissions:
             contents: read
             id-token: write
         steps:
-            - name: Checkout tag
+            - name: Checkout the tagged commit
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
               with:
-                  ref: ${{ github.event.release.tag_name }}
+                  ref: ${{ github.sha }}
 
             - name: Authenticate to Google Cloud
               uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -127,10 +143,10 @@ jobs:
             contents: read
             id-token: write
         steps:
-            - name: Checkout tag
+            - name: Checkout the tagged commit
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
               with:
-                  ref: ${{ github.event.release.tag_name }}
+                  ref: ${{ github.sha }}
 
             - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
               with:
@@ -182,10 +198,10 @@ jobs:
         timeout-minutes: 50
         environment: production
         steps:
-            - name: Checkout tag
+            - name: Checkout the tagged commit
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
               with:
-                  ref: ${{ github.event.release.tag_name }}
+                  ref: ${{ github.sha }}
 
             - name: Install Render CLI
               env:

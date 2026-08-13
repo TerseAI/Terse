@@ -5,6 +5,7 @@ on:
             - "backend/**"
             - "terse-types/**"
             - ".github/workflows/backend-build.yml"
+    workflow_call:
 permissions:
     contents: read
 jobs:
