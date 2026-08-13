@@ -72,17 +72,20 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     }
 
     const s = createSpinner()
+    const timeline = new DeployTimeline()
 
     // Open the SSE session BEFORE starting the spinner so a clean error
     // (e.g. 401) surfaces without leaving the spinner mid-frame.
     const session = await openSessionStream(apiKey, {
         onEvent: event => {
             if (event.type === "deploy_stage") {
-                s.message(getStageMessage(event.stage))
+                timeline.enter(event.stage)
+                s.message(`${getStageMessage(event.stage)} ${chalk.dim(`(${timeline.elapsed()})`)}`)
             }
         }
     })
 
+    timeline.start()
     s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
 
     try {
@@ -99,7 +102,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
         const deployResult = await fetchWithAuthAndSession<SdkDeployResponseBody>(ApiRoutes.SDK.DEPLOY, apiKey, session.sessionId, body, "POST")
 
-        s.stop(`Deployed ${deployResult.results.length} job${deployResult.results.length === 1 ? "" : "s"}`)
+        timeline.finish()
+        s.stop(`Deployed ${deployResult.results.length} job${deployResult.results.length === 1 ? "" : "s"} in ${timeline.elapsed()}`)
+        timeline.printBreakdown()
 
         for (const r of deployResult.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
@@ -324,4 +329,55 @@ function getStageMessage(stage: SdkDeployStage): string {
             return exhaustiveCheck
         }
     }
+}
+
+/**
+ * Deploy timing as the user experiences it: wall clock from the CLI, not the server's view, so
+ * upload and round trips are included. A stage's duration ends when the next one starts, and the
+ * breakdown is only worth printing when a build actually happened.
+ */
+class DeployTimeline {
+    private startedAtMs = 0
+    private currentStage: { stage: SdkDeployStage; startedAtMs: number } | undefined
+    private readonly completed: Array<{ stage: SdkDeployStage; durationMs: number }> = []
+    private totalMs: number | undefined
+
+    start(): void {
+        this.startedAtMs = Date.now()
+    }
+
+    enter(stage: SdkDeployStage): void {
+        this.closeCurrentStage()
+        this.currentStage = { stage, startedAtMs: Date.now() }
+    }
+
+    finish(): void {
+        this.closeCurrentStage()
+        this.totalMs = Date.now() - this.startedAtMs
+    }
+
+    elapsed(): string {
+        return formatDuration((this.totalMs ?? Date.now() - this.startedAtMs) / 1000)
+    }
+
+    printBreakdown(): void {
+        // A cached deploy is two blinks and a total; a per-stage table would be noise.
+        if (this.completed.length < 2) return
+
+        for (const { stage, durationMs } of this.completed) {
+            console.log(chalk.dim(`    ${getStageMessage(stage).padEnd(30)} ${formatDuration(durationMs / 1000)}`))
+        }
+    }
+
+    private closeCurrentStage(): void {
+        if (!this.currentStage) return
+        this.completed.push({ stage: this.currentStage.stage, durationMs: Date.now() - this.currentStage.startedAtMs })
+        this.currentStage = undefined
+    }
+}
+
+function formatDuration(seconds: number): string {
+    if (seconds < 10) return `${seconds.toFixed(1)}s`
+    if (seconds < 60) return `${Math.round(seconds)}s`
+    return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
 }
