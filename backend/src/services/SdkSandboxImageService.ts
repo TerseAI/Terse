@@ -357,18 +357,21 @@ export class SdkSandboxImageService {
         const { sb, sandboxService, executor, zipBuffer } = params
         const projectDir = sandboxService.getProjectPath(sb)
         const sourceZipPath = sandboxService.getScratchPath(sb, "source-image-code.zip")
-        await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
 
         const ensureUnzip = `(command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null))`
         // Clear stale source but keep node_modules: the sandbox image bakes the scaffold's tree here,
         // and re-creating it would cost the install and the snapshot we baked it to avoid. A build can
         // also land in a sandbox a previous attempt left alive, and `unzip -o` overwrites files
         // without removing ones the new source dropped.
+        // The archive arrives on stdin rather than through open/write/close: the first operation on a
+        // fresh sandbox waits ~1.6s for the container, and every operation after it costs ~290ms, so
+        // what matters is how many operations there are, not how many bytes they carry.
         await this.ensureSandboxCommand(
             sb,
             "unpacking_source",
-            `mkdir -p ${shellQuote(projectDir)} && find ${shellQuote(projectDir)} -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + && ${ensureUnzip} && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
-            executor.runtime
+            `mkdir -p ${shellQuote(projectDir)} && find ${shellQuote(projectDir)} -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + && ${ensureUnzip} && cat > ${shellQuote(sourceZipPath)} && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
+            executor.runtime,
+            zipBuffer
         )
     }
 
@@ -389,11 +392,11 @@ export class SdkSandboxImageService {
         await fileHandle.close()
     }
 
-    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep | "unpacking_source", command: string, runtime: SdkProjectRuntime): Promise<void> {
+    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep | "unpacking_source", command: string, runtime: SdkProjectRuntime, input?: Buffer): Promise<void> {
         const label = step.replace(/_/g, " ")
         let result: SandboxCommandResult
         try {
-            result = await this.runSandboxCommand(sb, command)
+            result = await this.runSandboxCommand(sb, command, input)
         } catch (error) {
             await this.terminateSandboxAfterFailure(sb, label, runtime, error)
             throw error
@@ -460,11 +463,16 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async runSandboxCommand(sb: Sandbox, command: string): Promise<SandboxCommandResult> {
+    private async runSandboxCommand(sb: Sandbox, command: string, input?: Buffer): Promise<SandboxCommandResult> {
         const proc = await sb.exec(["sh", "-c", command], {
             stdout: "pipe",
             stderr: "pipe"
         })
+
+        if (input) {
+            await proc.stdin.writeBytes(new Uint8Array(input))
+            await proc.stdin.close()
+        }
 
         const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
         const exitCode = await proc.wait()
