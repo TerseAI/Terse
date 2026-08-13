@@ -206,10 +206,6 @@ jobs:
         permissions:
             contents: read
             id-token: write
-        # Mapped here because the secrets context is not available to a step's `if`.
-        env:
-            MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
-            MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
         steps:
             - name: Checkout the tagged commit
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -257,7 +253,6 @@ jobs:
               run: echo "version=$(node -p "require('./packages/terse-cli/package.json').dependencies.workflow")" >> "$GITHUB_OUTPUT"
 
             - name: Build and push the sandbox image
-              id: sandbox
               uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
               with:
                   context: .
@@ -274,29 +269,6 @@ jobs:
                   cache-to: type=gha,mode=max
 
 
-            # Modal caches an image the first time it runs one, so without this the first customer
-            # deploy after a release waits ~23s for the pull. Skipped when Modal credentials are
-            # absent: a cold image is slower, never broken.
-            - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-              if: env.MODAL_TOKEN_ID != ''
-              with:
-                  version: 10
-
-            - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-              if: env.MODAL_TOKEN_ID != ''
-              with:
-                  node-version: "22.19.0"
-                  cache: "pnpm"
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - name: Warm the image in Modal
-              if: env.MODAL_TOKEN_ID != ''
-              env:
-                  # By digest, which is what the control plane resolves the moving tag to.
-                  SANDBOX_IMAGE_REFERENCE: ${{ env.SANDBOX_NODE_IMAGE }}@${{ steps.sandbox.outputs.digest }}
-              run: |
-                  pnpm install --frozen-lockfile
-                  pnpm --filter backend exec node scripts/warmSandboxImage.mjs
 
     # ── 4 · Prod (retryable) ──────────────────────────────────────────────────
     deploy:
