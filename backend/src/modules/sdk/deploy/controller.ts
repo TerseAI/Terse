@@ -106,6 +106,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     organizationId,
                     cliVersion,
                     requiresWorkflowBundle,
+                    sourceObjectKey,
                     onProgress: phase => emitStage(toDeployStage(phase)),
                     telemetry
                 })

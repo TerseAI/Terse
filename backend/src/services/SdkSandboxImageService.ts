@@ -12,7 +12,7 @@ import { type LocalPackagesBundle, packLocalSdkPackages } from "../utility/local
 import { type ResolvedSandboxBaseImage, SandboxBaseImageResolver } from "./sandboxBaseImage/SandboxBaseImageResolver"
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
-import type { Sandbox } from "./sandboxProvider/SandboxService"
+import type { Sandbox, SandboxBucketMount } from "./sandboxProvider/SandboxService"
 import { sdkRuntimeExecutorRegistry } from "./sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import {
     type SandboxCommandResult,
@@ -28,6 +28,9 @@ import { deployBuildSandboxUniqueName } from "./sdkSandboxLayerKeys"
 const DEFAULT_SOURCE_IMAGE_GRACE_HOURS = 24
 const DEFAULT_DEPENDENCY_IMAGE_GRACE_HOURS = 72
 const DEFAULT_CLEANUP_BATCH_SIZE = 50
+
+/** Where a build sees the organization's uploaded archives, read-only. */
+const SOURCE_MOUNT_PATH = "/mnt/terse-source"
 
 const APT_GET_INSTALL_FLAGS = "apt-get -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3 -o DPkg::Lock::Timeout=120"
 
@@ -121,10 +124,12 @@ export class SdkSandboxImageService {
         cliVersion: string
         /** Absent means build one: an older CLI cannot tell us, and a missing bundle breaks durable jobs. */
         requiresWorkflowBundle?: boolean
+        /** Set when the archive is in object storage, which lets the build read it from a mount. */
+        sourceObjectKey?: string
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<PreparedSdkDeployImage> {
-        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, onProgress, telemetry } = params
+        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, sourceObjectKey, onProgress, telemetry } = params
         const archive = telemetry ? telemetry.measureSync("buildArchiveMs", () => new ZipSdkProjectArchive(zipBuffer)) : new ZipSdkProjectArchive(zipBuffer)
         const executor = telemetry ? telemetry.measureSync("resolveRuntimeMs", () => sdkRuntimeExecutorRegistry.resolve(archive.entries)) : sdkRuntimeExecutorRegistry.resolve(archive.entries)
         telemetry?.setRuntime(executor.runtime)
@@ -152,7 +157,7 @@ export class SdkSandboxImageService {
         const buildHash = (telemetry ? telemetry.measureSync("defineDeployImageMs", () => executor.defineDeployImage(defineParams)) : executor.defineDeployImage(defineParams)).buildHash
 
         onProgress?.("preparing")
-        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, requiresWorkflowBundle }
+        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, requiresWorkflowBundle, sourceObjectKey }
         const deployImage = await (telemetry ? telemetry.measure("deployImageResolveMs", () => this.ensureDeployImage({ ...ensureParams, telemetry })) : this.ensureDeployImage(ensureParams))
 
         return {
@@ -227,6 +232,7 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
+        sourceObjectKey?: string
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
@@ -290,22 +296,30 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
+        sourceObjectKey?: string
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<string> {
-        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, zipBuffer, onProgress, telemetry } = params
+        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, sourceObjectKey, zipBuffer, onProgress, telemetry } = params
         const sandboxService = getSandboxProvider()
         const phaseContext: PhaseContext = { onProgress, telemetry }
         const sandboxBaseImage = sandboxService.getImageFromRegistry(baseImage.reference)
 
+        const sourceMount = await this.sourceBucketMount(organizationId, sourceObjectKey)
         const sb = await this.runPhase(phaseContext, "starting_sandbox", async () => {
             const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
-            return sandboxService.getOrCreateSandbox(app, sandboxBaseImage, deployBuildSandboxUniqueName(buildHash), { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 })
+            return sandboxService.getOrCreateSandbox(app, sandboxBaseImage, deployBuildSandboxUniqueName(buildHash), {
+                ...SANDBOX_DEFAULT_OPTIONS,
+                timeoutMs: 30 * 60 * 1000,
+                ...(sourceMount ? { cloudBucketMounts: { [SOURCE_MOUNT_PATH]: sourceMount } } : {})
+            })
         })
 
         try {
-            await this.runPhase(phaseContext, "unpacking_source", () => this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
+            await this.runPhase(phaseContext, "unpacking_source", () =>
+                this.extractSourceZip({ sb, sandboxService, executor, zipBuffer, mountedArchive: sourceMount ? archiveNameOf(sourceObjectKey) : undefined })
+            )
 
             const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, phaseContext })
             await executor.buildDeployImage(buildContext)
@@ -352,12 +366,24 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async extractSourceZip(params: { sb: Sandbox; sandboxService: ReturnType<typeof getSandboxProvider>; executor: SdkRuntimeExecutor; zipBuffer: Buffer }): Promise<void> {
-        const { sb, sandboxService, executor, zipBuffer } = params
+    /**
+     * Mounting object storage is the difference between working and not for a large project: writing
+     * the archive into the sandbox is capped at 16MiB per request, so a data-heavy project cannot go
+     * through it at all. The write stays as the fallback for a legacy inline upload, or a control
+     * plane with no bucket to mount.
+     */
+    private async extractSourceZip(params: {
+        sb: Sandbox
+        sandboxService: ReturnType<typeof getSandboxProvider>
+        executor: SdkRuntimeExecutor
+        zipBuffer: Buffer
+        mountedArchive?: string
+    }): Promise<void> {
+        const { sb, sandboxService, executor, zipBuffer, mountedArchive } = params
         const projectDir = sandboxService.getProjectPath(sb)
-        const sourceZipPath = sandboxService.getScratchPath(sb, "source-image-code.zip")
+        const sourceZipPath = mountedArchive ? `${SOURCE_MOUNT_PATH}/${mountedArchive}` : sandboxService.getScratchPath(sb, "source-image-code.zip")
 
-        await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
+        if (!mountedArchive) await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
 
         const ensureUnzip = `(command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null))`
         await this.ensureSandboxCommand(
@@ -366,6 +392,21 @@ export class SdkSandboxImageService {
             `mkdir -p ${shellQuote(projectDir)} && find ${shellQuote(projectDir)} -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + && ${ensureUnzip} && unzip -qq -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
             executor.runtime
         )
+    }
+
+    /** Scoped to the organization's own prefix: customer code runs in the sandbox this is mounted into. */
+    private async sourceBucketMount(organizationId: string, sourceObjectKey: string | undefined): Promise<SandboxBucketMount | undefined> {
+        if (!sourceObjectKey || !settings.gcsHmac || !settings.gcs.imageBucket) return undefined
+
+        const keyPrefix = sourceObjectKey.slice(0, sourceObjectKey.lastIndexOf("/") + 1)
+        if (keyPrefix === "") return undefined
+
+        return getSandboxProvider().createBucketMount({
+            bucket: settings.gcs.imageBucket,
+            keyPrefix,
+            accessKeyId: settings.gcsHmac.accessId,
+            secretAccessKey: settings.gcsHmac.secret
+        })
     }
 
     private async deleteImage(imageId: string): Promise<void> {
@@ -492,4 +533,8 @@ function isUniqueConstraintError(error: unknown): error is Prisma.PrismaClientKn
 
 function extractError(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
+}
+
+function archiveNameOf(objectKey: string | undefined): string | undefined {
+    return objectKey?.slice(objectKey.lastIndexOf("/") + 1)
 }

@@ -7,6 +7,12 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     getImageFromRegistry(registry: string): I
     getImageFromId(imageId: string): Promise<I>
 
+    /**
+     * Mounts an object storage prefix into a sandbox, read-only. Undefined when the provider cannot,
+     * in which case the caller has to get the bytes in some other way.
+     */
+    createBucketMount(params: BucketMountParams): Promise<SandboxBucketMount | undefined>
+
     deleteImage(imageId: string): Promise<void>
 
     imageExists(imageId: string): Promise<boolean>
@@ -90,10 +96,23 @@ type SandboxCreateParams = {
     secrets?: Secret[]
     /** Mount points (absolute path -> volume handle from a VolumeManager). */
     volumes?: Record<string, SandboxVolume>
+    /** Mount points (absolute path -> handle from createBucketMount). */
+    cloudBucketMounts?: Record<string, SandboxBucketMount>
 }
 
 /** Opaque per-provider volume handle (Modal Volume / local dir marker). */
 export type SandboxVolume = unknown
+
+/** Opaque per-provider bucket mount handle. */
+export type SandboxBucketMount = unknown
+
+export interface BucketMountParams {
+    bucket: string
+    /** Scopes what the sandbox can see. Customer code runs in there, so this is not optional. */
+    keyPrefix: string
+    accessKeyId: string
+    secretAccessKey: string
+}
 
 interface SandboxProxy {
     proxyId?: string

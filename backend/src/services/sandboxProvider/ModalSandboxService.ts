@@ -1,9 +1,9 @@
-import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams, Volume } from "modal"
+import { AlreadyExistsError, CloudBucketMount, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams, Volume } from "modal"
 
 import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
 
-import { Sandbox, SandboxService } from "./SandboxService"
+import { BucketMountParams, Sandbox, SandboxService } from "./SandboxService"
 
 export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     idleTimeoutMs: 5 * 60 * 1000,
@@ -64,6 +64,24 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
 
     getImageFromRegistry(registry: string): ModalImage {
         return this.modal.images.fromRegistry(registry)
+    }
+
+    /**
+     * GCS is reached through its S3-compatible endpoint with HMAC keys. The credential names matter:
+     * with AWS_* the sandbox starts and then dies on first use, GOOGLE_* works.
+     */
+    async createBucketMount(params: BucketMountParams): Promise<CloudBucketMount> {
+        const secret = await this.modal.secrets.fromObject({
+            GOOGLE_ACCESS_KEY_ID: params.accessKeyId,
+            GOOGLE_ACCESS_KEY_SECRET: params.secretAccessKey
+        })
+
+        return this.modal.cloudBucketMounts.create(params.bucket, {
+            secret,
+            readOnly: true,
+            bucketEndpointUrl: "https://storage.googleapis.com",
+            keyPrefix: params.keyPrefix
+        })
     }
 
     async getImageFromId(imageId: string): Promise<ModalImage> {

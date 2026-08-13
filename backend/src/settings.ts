@@ -202,6 +202,13 @@ export const settings = {
         rpm: Number(optionalEnv("LITELLM_KEY_RPM", "60"))
     })),
 
+    // HMAC keys for mounting the source bucket into a build sandbox — opt-in. Absent means the
+    // archive is written into the sandbox instead, which Modal caps at 16MiB per write.
+    gcsHmac: optionalIntegrationSettings(["GCS_HMAC_ACCESS_ID", "GCS_HMAC_SECRET"], () => ({
+        accessId: requireEnv("GCS_HMAC_ACCESS_ID"),
+        secret: requireSecretMinLength("GCS_HMAC_SECRET")
+    })),
+
     // Prebuilt SDK sandbox image, rebuilt each release and consumed via a moving tag. Carries the warm
     // package cache for the Terse dependency tree plus the newest CLI; deploys boot it instead of node:slim.
     sandboxImages: {
