@@ -1,3 +1,4 @@
+import { createHook } from "@workflow/core"
 import type {
     SdkInputRequestDelivery,
     SdkInputRequestMedia,
@@ -8,7 +9,6 @@ import type {
     SdkInputResponseTransport
 } from "terse-types"
 import { ApiRoutes, buildRoute, sdkInputRequestRegisterResponseSchema, sdkInputResponsePayloadSchema } from "terse-types"
-import { createHook } from "workflow"
 
 import { buildSdkRequestHeaders, resolveTerseBackendUrl } from "./backendRequest.js"
 import { DurableOnlyError, isDurableExecution, isLocalTestRun } from "./execution.js"

@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { verifyWorkflowShim } from "./verifyWorkflowShim.mjs"
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 const manifests = [
     packageManifest("terse-types/package.json"),
@@ -27,6 +29,7 @@ else if (command === "verify") verify(version)
 else throw new Error("Usage: release.mjs <prepare|verify> <version>")
 
 function prepare(nextVersion) {
+    verifyWorkflowShim()
     manifests.forEach(manifest => {
         const path = join(root, manifest.path)
         const source = readFileSync(path, "utf8")
@@ -46,6 +49,7 @@ function stampVersion(source, manifest, nextVersion) {
 }
 
 function verify(expected) {
+    verifyWorkflowShim()
     const mismatched = manifests
         .map(manifest => {
             const json = JSON.parse(readFileSync(join(root, manifest.path), "utf8"))
