@@ -20,6 +20,7 @@ import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDown
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
 import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
+import { BuildSandboxPrewarmer } from "../../../services/sandboxPrewarm/BuildSandboxPrewarmer"
 import type { SdkDeployPhase } from "../../../services/sdkRuntimeExecutors/types"
 import { GcsSourceArchiveStore } from "../../../services/sourceArchive/SourceArchiveStore"
 import { InvalidCronExpressionError, assertValidUserCron } from "../../../tasks/queues/scheduleQueue"
@@ -106,6 +107,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     organizationId,
                     cliVersion,
                     requiresWorkflowBundle,
+                    prewarmKey: sourceObjectKey,
                     onProgress: phase => emitStage(toDeployStage(phase)),
                     telemetry
                 })
@@ -401,6 +403,8 @@ export async function handleSdkSourceUpload(req: Request, res: Response): Promis
     if (!store) return res.json({ upload: undefined } satisfies SdkSourceUploadResponse)
 
     const upload = await store.createUpload(organizationId)
+    // The upload is dead time here, so the build sandbox becomes ready during it.
+    BuildSandboxPrewarmer.getInstance().prewarm(upload.objectKey)
     return res.json({ upload: { objectKey: upload.objectKey, uploadUrl: upload.uploadUrl, contentType: upload.contentType } } satisfies SdkSourceUploadResponse)
 }
 

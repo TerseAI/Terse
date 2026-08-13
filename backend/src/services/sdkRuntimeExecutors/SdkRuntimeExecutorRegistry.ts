@@ -26,6 +26,11 @@ class SdkRuntimeExecutorRegistry {
         return match
     }
 
+    /** For work that starts before any source exists to inspect, like prewarming a build sandbox. */
+    defaultExecutor(): SdkRuntimeExecutor {
+        return this.resolveRuntime("typescript")
+    }
+
     resolveRuntime(runtime: SdkRuntimeExecutor["runtime"]): SdkRuntimeExecutor {
         const match = this.executors.find(executor => executor.runtime === runtime)
         if (!match) {

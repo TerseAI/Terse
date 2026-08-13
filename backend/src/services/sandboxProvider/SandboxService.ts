@@ -53,8 +53,6 @@ export interface ReadStream<R = string> {
 export interface WriteStream {
     writeText(text: string): Promise<void>
     writeBytes(bytes: Uint8Array): Promise<void>
-    /** Signals EOF. A command reading stdin hangs without it. */
-    close(): Promise<void>
 }
 
 export interface ContainerProcess {

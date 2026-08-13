@@ -370,7 +370,7 @@ function getStageMessage(stage: SdkDeployStage): string {
         case "SAVING_IMAGE":
             return "Saving the build image"
         case "CONFIGURING_AUTOMATIONS":
-            return "Configuring automations"
+            return "Setting up jobs"
         default: {
             const exhaustiveCheck: never = stage
             return exhaustiveCheck

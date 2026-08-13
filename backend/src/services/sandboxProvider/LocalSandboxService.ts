@@ -222,9 +222,6 @@ class ChildContainerProcess implements ContainerProcess {
             writeBytes: async (bytes: Uint8Array) => {
                 if (!child.stdin) throw new Error("stdin not available")
                 await new Promise<void>((resolve, reject) => child.stdin!.write(Buffer.from(bytes), err => (err ? reject(err) : resolve())))
-            },
-            close: async () => {
-                child.stdin?.end()
             }
         }
     }

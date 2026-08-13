@@ -10,6 +10,7 @@ import { settings } from "../settings"
 import { type LocalPackagesBundle, packLocalSdkPackages } from "../utility/localPackages"
 
 import { type ResolvedSandboxBaseImage, SandboxBaseImageResolver } from "./sandboxBaseImage/SandboxBaseImageResolver"
+import { BuildSandboxPrewarmer } from "./sandboxPrewarm/BuildSandboxPrewarmer"
 import { getSandboxProvider } from "./sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "./sandboxProvider/ModalSandboxService"
 import type { Sandbox } from "./sandboxProvider/SandboxService"
@@ -121,10 +122,12 @@ export class SdkSandboxImageService {
         cliVersion: string
         /** Absent means build one: an older CLI cannot tell us, and a missing bundle breaks durable jobs. */
         requiresWorkflowBundle?: boolean
+        /** Identifies the sandbox warmed while this archive was uploading, if there was one. */
+        prewarmKey?: string
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<PreparedSdkDeployImage> {
-        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, onProgress, telemetry } = params
+        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, prewarmKey, onProgress, telemetry } = params
         const archive = telemetry ? telemetry.measureSync("buildArchiveMs", () => new ZipSdkProjectArchive(zipBuffer)) : new ZipSdkProjectArchive(zipBuffer)
         const executor = telemetry ? telemetry.measureSync("resolveRuntimeMs", () => sdkRuntimeExecutorRegistry.resolve(archive.entries)) : sdkRuntimeExecutorRegistry.resolve(archive.entries)
         telemetry?.setRuntime(executor.runtime)
@@ -152,7 +155,7 @@ export class SdkSandboxImageService {
         const buildHash = (telemetry ? telemetry.measureSync("defineDeployImageMs", () => executor.defineDeployImage(defineParams)) : executor.defineDeployImage(defineParams)).buildHash
 
         onProgress?.("preparing")
-        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, requiresWorkflowBundle }
+        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, requiresWorkflowBundle, prewarmKey }
         const deployImage = await (telemetry ? telemetry.measure("deployImageResolveMs", () => this.ensureDeployImage({ ...ensureParams, telemetry })) : this.ensureDeployImage(ensureParams))
 
         return {
@@ -227,6 +230,7 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
+        prewarmKey?: string
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
@@ -240,6 +244,8 @@ export class SdkSandboxImageService {
         const existingImageExists = existing ? await sandboxService.imageExists(existing.image_id) : false
         if (existing && existingImageExists) {
             telemetry?.setDeployImageCacheHit(true)
+            // Nothing to build, so the sandbox warmed during the upload is dead weight.
+            void BuildSandboxPrewarmer.getInstance().discard(params.prewarmKey)
             params.onProgress?.("reusing_cached_build")
             logger.info("SDK image cache: reuse deploy image", { buildHash, organizationId, imageId: existing.image_id })
             return prisma.sdk_source_images.update({ where: { id: existing.id }, data: { last_used_at: new Date() } })
@@ -290,16 +296,20 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
+        prewarmKey?: string
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<string> {
-        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, zipBuffer, onProgress, telemetry } = params
+        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, prewarmKey, zipBuffer, onProgress, telemetry } = params
         const sandboxService = getSandboxProvider()
         const phaseContext: PhaseContext = { onProgress, telemetry }
         const sandboxBaseImage = sandboxService.getImageFromRegistry(baseImage.reference)
 
         const sb = await this.runPhase(phaseContext, "starting_sandbox", async () => {
+            const prewarmed = await BuildSandboxPrewarmer.getInstance().claim(prewarmKey)
+            if (prewarmed) return prewarmed
+
             const app = await sandboxService.getOrCreateApp("terse-sdk-image-builder")
             const createParams = { ...SANDBOX_DEFAULT_OPTIONS, timeoutMs: 30 * 60 * 1000 }
             return sandboxService.getOrCreateSandbox(app, sandboxBaseImage, deployBuildSandboxUniqueName(buildHash), createParams)
@@ -358,20 +368,14 @@ export class SdkSandboxImageService {
         const projectDir = sandboxService.getProjectPath(sb)
         const sourceZipPath = sandboxService.getScratchPath(sb, "source-image-code.zip")
 
+        await this.writeBinaryToSandbox(sb, sourceZipPath, zipBuffer)
+
         const ensureUnzip = `(command -v unzip >/dev/null || (export DEBIAN_FRONTEND=noninteractive && ${APT_GET_INSTALL_FLAGS} update -qq && ${APT_GET_INSTALL_FLAGS} install -y -qq unzip >/dev/null))`
-        // Clear stale source but keep node_modules: the sandbox image bakes the scaffold's tree here,
-        // and re-creating it would cost the install and the snapshot we baked it to avoid. A build can
-        // also land in a sandbox a previous attempt left alive, and `unzip -o` overwrites files
-        // without removing ones the new source dropped.
-        // The archive arrives on stdin rather than through open/write/close: the first operation on a
-        // fresh sandbox waits ~1.6s for the container, and every operation after it costs ~290ms, so
-        // what matters is how many operations there are, not how many bytes they carry.
         await this.ensureSandboxCommand(
             sb,
             "unpacking_source",
-            `mkdir -p ${shellQuote(projectDir)} && find ${shellQuote(projectDir)} -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + && ${ensureUnzip} && cat > ${shellQuote(sourceZipPath)} && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
-            executor.runtime,
-            zipBuffer
+            `mkdir -p ${shellQuote(projectDir)} && find ${shellQuote(projectDir)} -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + && ${ensureUnzip} && unzip -qq -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
+            executor.runtime
         )
     }
 
@@ -392,11 +396,11 @@ export class SdkSandboxImageService {
         await fileHandle.close()
     }
 
-    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep | "unpacking_source", command: string, runtime: SdkProjectRuntime, input?: Buffer): Promise<void> {
+    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep | "unpacking_source", command: string, runtime: SdkProjectRuntime): Promise<void> {
         const label = step.replace(/_/g, " ")
         let result: SandboxCommandResult
         try {
-            result = await this.runSandboxCommand(sb, command, input)
+            result = await this.runSandboxCommand(sb, command)
         } catch (error) {
             await this.terminateSandboxAfterFailure(sb, label, runtime, error)
             throw error
@@ -463,16 +467,11 @@ export class SdkSandboxImageService {
         }
     }
 
-    private async runSandboxCommand(sb: Sandbox, command: string, input?: Buffer): Promise<SandboxCommandResult> {
+    private async runSandboxCommand(sb: Sandbox, command: string): Promise<SandboxCommandResult> {
         const proc = await sb.exec(["sh", "-c", command], {
             stdout: "pipe",
             stderr: "pipe"
         })
-
-        if (input) {
-            await proc.stdin.writeBytes(new Uint8Array(input))
-            await proc.stdin.close()
-        }
 
         const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
         const exitCode = await proc.wait()
