@@ -187,11 +187,20 @@ jobs:
               with:
                   ref: ${{ github.event.release.tag_name }}
 
+            # This job holds the prod deploy credentials, so the downloaded binary is
+            # checked against the sha256 published in the release's SHA256SUMS before it
+            # runs. Bump both values together.
             - name: Install Render CLI
               env:
                   RENDER_CLI_VERSION: 2.22.0
+                  RENDER_CLI_SHA256: 6cdcd11897b7bd7e673317e6f4aaf041b654d818444f3b1efec7240a835f79ec
               run: |
+                  set -euo pipefail
                   curl -fsSL "https://github.com/render-oss/cli/releases/download/v${RENDER_CLI_VERSION}/cli_${RENDER_CLI_VERSION}_linux_amd64.zip" -o render.zip
+                  if ! echo "${RENDER_CLI_SHA256}  render.zip" | sha256sum --check --status; then
+                      echo "::error::Render CLI ${RENDER_CLI_VERSION} failed checksum verification (expected ${RENDER_CLI_SHA256}, got $(sha256sum render.zip | cut -d' ' -f1))"
+                      exit 1
+                  fi
                   unzip -q render.zip
                   sudo install "cli_v${RENDER_CLI_VERSION}" /usr/local/bin/render
 
@@ -211,9 +220,30 @@ jobs:
                       wait "$pid"
                   done
 
+            # A CLI deploy is not a git deployment, so it carries no branch ref for the
+            # project's ignored-build-step to match on. Configure that step to skip
+            # git-triggered production builds only, and never on VERCEL_ENV alone, or it
+            # will cancel this deploy too. Vercel can cancel a build and still let the
+            # CLI exit 0, so the deployment state is checked rather than trusted.
             - name: Deploy frontend to Vercel production
               env:
                   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
                   VERCEL_ORG_ID: team_UyOJ7NQ43Xk4UQtfqggcupD8
                   VERCEL_PROJECT_ID: prj_BUmtGEgbjPw0oW3io14O5MozPAyC
-              run: npx --yes vercel@58.10.0 deploy --prod --yes --token="$VERCEL_TOKEN"
+              run: |
+                  set -euo pipefail
+                  url=$(npx --yes vercel@58.10.0 deploy --prod --yes --token="$VERCEL_TOKEN" | tail -n1)
+                  if [[ ! "$url" =~ ^https:// ]]; then
+                      echo "::error::vercel deploy printed no deployment URL (got '$url')"
+                      exit 1
+                  fi
+                  echo "Vercel deployment: $url"
+                  deployment=$(curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN" \
+                      "https://api.vercel.com/v13/deployments/${url#https://}?teamId=$VERCEL_ORG_ID")
+                  state=$(jq -r '.readyState // .status // "UNKNOWN"' <<<"$deployment")
+                  target=$(jq -r '.target // "none"' <<<"$deployment")
+                  echo "Vercel deployment state: $state (target $target)"
+                  if [[ "$state" != "READY" || "$target" != "production" ]]; then
+                      echo "::error::Vercel production deploy did not go live: state=$state target=$target. A canceled build usually means the project's ignored-build-step matched this deploy."
+                      exit 1
+                  fi
