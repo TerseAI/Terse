@@ -202,6 +202,16 @@ export const settings = {
         rpm: Number(optionalEnv("LITELLM_KEY_RPM", "60"))
     })),
 
+    // Prebuilt SDK sandbox image, rebuilt each release and consumed via a moving tag. Carries the warm
+    // package cache for the Terse dependency tree plus the newest CLI; deploys boot it instead of node:slim.
+    sandboxImages: {
+        enabled: optionalBoolEnv("TERSE_PREBUILT_SANDBOX_IMAGES", true),
+        registry: optionalEnv("TERSE_SANDBOX_IMAGE_REGISTRY", "us-central1-docker.pkg.dev"),
+        repositoryPrefix: optionalEnv("TERSE_SANDBOX_IMAGE_REPOSITORY_PREFIX", "fluid-analogy-473415-c2/public"),
+        tag: optionalEnv("TERSE_SANDBOX_IMAGE_TAG", "latest"),
+        probeTtlMs: Number(optionalEnv("TERSE_SANDBOX_IMAGE_PROBE_TTL_MS", String(60 * 60 * 1000)))
+    },
+
     // Modal — opt-in. Used by ModalSandboxService; absent falls through to LocalSandboxService.
     modal: optionalIntegrationSettings(["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"], () => ({
         tokenId: requireEnv("MODAL_TOKEN_ID"),

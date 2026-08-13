@@ -12,23 +12,15 @@ type SdkDeployDurationKey = Extract<
     | "buildArchiveMs"
     | "resolveRuntimeMs"
     | "packLocalPackagesMs"
-    | "defineDependencyImageMs"
+    | "defineDeployImageMs"
     | "computeSourceHashMs"
-    | "dependencyImageResolveMs"
-    | "dependencyImageBuildMs"
-    | "dependencyBuildGetAppMs"
-    | "dependencyBuildSandboxReadyMs"
-    | "dependencyBuildExecutorMs"
-    | "dependencyBuildSnapshotMs"
-    | "sourceImageResolveMs"
-    | "sourceImageBuildMs"
-    | "sourceBuildGetAppMs"
-    | "sourceBuildLoadDependencyImageMs"
-    | "sourceBuildSandboxReadyMs"
-    | "sourceBuildWriteZipMs"
-    | "sourceBuildExtractZipMs"
-    | "sourceBuildPrepareMs"
-    | "sourceBuildSnapshotMs"
+    | "deployImageResolveMs"
+    | "deployImageBuildMs"
+    | "deployBuildGetAppMs"
+    | "deployBuildSandboxReadyMs"
+    | "deployBuildExecutorMs"
+    | "deployBuildSnapshotMs"
+    | "deployBuildExtractZipMs"
 >
 
 type SdkDeployTelemetryParams = {
@@ -46,8 +38,8 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
     private sourceZipBytes: number | undefined
     private jobsAdded: number | undefined
     private jobsRemoved: number | undefined
-    private dependencyImageCacheHit: boolean | undefined
-    private sourceImageCacheHit: boolean | undefined
+    private baseImageKind: string | undefined
+    private deployImageCacheHit: boolean | undefined
 
     constructor(private readonly params: SdkDeployTelemetryParams) {
         super()
@@ -70,12 +62,12 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
         this.jobsRemoved = params.jobsRemoved
     }
 
-    setDependencyImageCacheHit(hit: boolean): void {
-        this.dependencyImageCacheHit = hit
+    setBaseImageKind(kind: string): void {
+        this.baseImageKind = kind
     }
 
-    setSourceImageCacheHit(hit: boolean): void {
-        this.sourceImageCacheHit = hit
+    setDeployImageCacheHit(hit: boolean): void {
+        this.deployImageCacheHit = hit
     }
 
     capture(success: boolean, error?: unknown): void {
@@ -92,8 +84,8 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
             jobsRemoved: this.jobsRemoved,
             sourceZipBytes: this.sourceZipBytes,
             runtime: this.runtime,
-            dependencyImageCacheHit: this.dependencyImageCacheHit,
-            sourceImageCacheHit: this.sourceImageCacheHit,
+            baseImageKind: this.baseImageKind,
+            deployImageCacheHit: this.deployImageCacheHit,
             success,
             ...(error ? { errorMessage: extractErrorMessage(error).slice(0, 500) } : {}),
             ...this.durations

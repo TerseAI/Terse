@@ -103,7 +103,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     organizationId,
                     cliVersion,
                     onProgress: phase => {
-                        emitStage(phase === "dependency_image" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
+                        // Stage names predate the single-image build; kept so already-released CLIs keep rendering them.
+                        emitStage(phase === "installing_dependencies" ? "BUILDING_DEPENDENCY_IMAGE" : "BUILDING_SOURCE_IMAGE")
                     },
                     telemetry
                 })
@@ -111,7 +112,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             await prisma.project_deploys.update({
                 where: { id: deploy.id },
-                data: { sdk_source_image_id: preparedImages.sourceImageId }
+                data: { sdk_source_image_id: preparedImages.deployImageId }
             })
         }
 

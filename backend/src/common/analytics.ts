@@ -97,8 +97,8 @@ export interface SdkDeployLatencyProperties extends BaseEventProperties {
     jobsAdded?: number
     jobsRemoved?: number
     sourceZipBytes?: number
-    dependencyImageCacheHit?: boolean
-    sourceImageCacheHit?: boolean
+    baseImageKind?: string
+    deployImageCacheHit?: boolean
     totalDeployMs?: number
     parseSourceZipMs?: number
     prepareImagesMs?: number
@@ -106,23 +106,15 @@ export interface SdkDeployLatencyProperties extends BaseEventProperties {
     buildArchiveMs?: number
     resolveRuntimeMs?: number
     packLocalPackagesMs?: number
-    defineDependencyImageMs?: number
+    defineDeployImageMs?: number
     computeSourceHashMs?: number
-    dependencyImageResolveMs?: number
-    dependencyImageBuildMs?: number
-    dependencyBuildGetAppMs?: number
-    dependencyBuildSandboxReadyMs?: number
-    dependencyBuildExecutorMs?: number
-    dependencyBuildSnapshotMs?: number
-    sourceImageResolveMs?: number
-    sourceImageBuildMs?: number
-    sourceBuildGetAppMs?: number
-    sourceBuildLoadDependencyImageMs?: number
-    sourceBuildSandboxReadyMs?: number
-    sourceBuildWriteZipMs?: number
-    sourceBuildExtractZipMs?: number
-    sourceBuildPrepareMs?: number
-    sourceBuildSnapshotMs?: number
+    deployImageResolveMs?: number
+    deployImageBuildMs?: number
+    deployBuildGetAppMs?: number
+    deployBuildSandboxReadyMs?: number
+    deployBuildExecutorMs?: number
+    deployBuildSnapshotMs?: number
+    deployBuildExtractZipMs?: number
 }
 
 interface JobDefinitionProperties extends BaseEventProperties {

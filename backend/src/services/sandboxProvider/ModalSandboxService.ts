@@ -1,4 +1,4 @@
-import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams } from "modal"
+import { AlreadyExistsError, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams, Volume } from "modal"
 
 import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
@@ -29,10 +29,6 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
 
     getProjectPath(_sandbox: ModalSandbox): string {
         return "/opt/terse-sdk-run/project"
-    }
-
-    getDependencyCachePath(_sandbox: ModalSandbox, runtime: string): string {
-        return `/opt/terse-sdk-cache/${runtime}/project`
     }
 
     getCliCachePath(_sandbox: ModalSandbox): string {
@@ -68,6 +64,10 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
 
     getImageFromRegistry(registry: string): ModalImage {
         return this.modal.images.fromRegistry(registry)
+    }
+
+    async getOrCreateCacheVolume(name: string): Promise<Volume> {
+        return this.modal.volumes.fromName(name, { createIfMissing: true })
     }
 
     async getImageFromId(imageId: string): Promise<ModalImage> {

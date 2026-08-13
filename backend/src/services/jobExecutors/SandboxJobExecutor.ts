@@ -18,7 +18,7 @@ import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
 import { runJournalDir } from "../sandboxProvider/runJournal"
 import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "../sdkRuntimeExecutors/types"
-import { SDK_SANDBOX_APP_NAME, computeSourceLayerKey, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
+import { SDK_SANDBOX_APP_NAME, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
 
 import { JobExecutionContext, JobExecutionKind, JobExecutor, RunOutcome } from "./types"
 
@@ -26,8 +26,6 @@ type SdkSourceImageRecord = {
     recordId: string
     imageId: string
     runtime: SdkProjectRuntime
-    dependencyImageId: string
-    sourceLayerKey: string
     cliVersion: string
 }
 
@@ -174,10 +172,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 id: true,
                 image_id: true,
                 runtime: true,
-                dependency_image_id: true,
-                organization_id: true,
-                source_hash: true,
-                dependency_image: { select: { dependency_hash: true, cli_version: true } }
+                cli_version: true
             }
         })
 
@@ -185,34 +180,19 @@ export class SandboxJobExecutor implements JobExecutor {
             return null
         }
 
-        const sourceLayerKey = computeSourceLayerKey({
-            organizationId: record.organization_id,
-            dependencyHash: record.dependency_image.dependency_hash,
-            sourceHash: record.source_hash
-        })
-
         return {
             recordId: record.id,
             imageId: record.image_id,
             runtime: this.parseRuntime(record.runtime),
-            dependencyImageId: record.dependency_image_id,
-            sourceLayerKey,
-            cliVersion: record.dependency_image.cli_version
+            cliVersion: record.cli_version
         }
     }
 
-    private async touchSourceImageUsage(sourceImage: Pick<SdkSourceImageRecord, "recordId" | "dependencyImageId">): Promise<void> {
-        const now = new Date()
-        await db().$transaction([
-            db().sdk_source_images.updateMany({
-                where: { id: sourceImage.recordId },
-                data: { last_used_at: now }
-            }),
-            db().sdk_dependency_images.updateMany({
-                where: { id: sourceImage.dependencyImageId },
-                data: { last_used_at: now }
-            })
-        ])
+    private async touchSourceImageUsage(sourceImage: Pick<SdkSourceImageRecord, "recordId">): Promise<void> {
+        await db().sdk_source_images.updateMany({
+            where: { id: sourceImage.recordId },
+            data: { last_used_at: new Date() }
+        })
     }
 
     private async executeWithSourceImage(params: {

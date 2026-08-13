@@ -1,4 +1,5 @@
 import type { LocalPackagesBundle } from "../../utility/localPackages"
+import type { ResolvedSandboxBaseImage } from "../sandboxBaseImage/SandboxBaseImageResolver"
 import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export type SdkProjectRuntime = "typescript"
@@ -15,16 +16,19 @@ export interface SdkProjectArchive {
     readText(path: string): string | null
 }
 
-export interface SdkDependencyImageDefinition {
-    dependencyHash: string
+export interface SdkDeployImageDefinition {
+    buildHash: string
 }
 
-export interface SdkDependencyImageBuildContext {
+export interface SdkDeployImageBuildContext {
     sb: Sandbox
     archive: SdkProjectArchive
     cliVersion: string
-    templateDir: string
+    baseImage: ResolvedSandboxBaseImage
+    projectDir: string
     cliCachePath: string
+    /** Package-manager cache locations, backed by the org's cache volume when one is mounted. */
+    packageCache: PackageCachePaths
     // Dev-only: locally-packed terse-types/terse-sdk/terse-cli to install instead of npm registry versions.
     localPackages?: LocalPackagesBundle
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
@@ -33,13 +37,10 @@ export interface SdkDependencyImageBuildContext {
     escapeShellArg: (value: string) => string
 }
 
-export interface SdkSourceImageBuildContext {
-    sb: Sandbox
-    projectDir: string
-    templateDir: string
-    cliCachePath: string
-    ensureSandboxCommand: (label: string, command: string) => Promise<void>
-    escapeShellArg: (value: string) => string
+export interface PackageCachePaths {
+    /** Mounted per-organization cache, or undefined when the provider has no volumes. */
+    npmCacheDir?: string
+    pnpmStoreDir?: string
 }
 
 export interface SdkRuntimeExecutorContext {
@@ -60,13 +61,24 @@ export interface SdkRuntimeExecutorContext {
 
 export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
+    /** Base image used when no released sandbox image matches the deploy. */
     sandboxImage: string
+    /** Artifact Registry repository name of this runtime's prebuilt sandbox image. */
+    releaseImageName: string
     matchesArchive(entries: Set<string>): boolean
-    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string, localPackages?: LocalPackagesBundle): SdkDependencyImageDefinition
-    buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void>
-    prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void>
+    defineDeployImage(params: DefineDeployImageParams): SdkDeployImageDefinition
+    buildDeployImage(context: SdkDeployImageBuildContext): Promise<void>
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
     resume(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
+}
+
+export interface DefineDeployImageParams {
+    archive: SdkProjectArchive
+    organizationId: string
+    sourceHash: string
+    cliVersion: string
+    baseImage: ResolvedSandboxBaseImage
+    localPackages?: LocalPackagesBundle
 }
 
 export const SDK_SOURCE_IMAGE_PROJECT_DIR = "/opt/terse-sdk-run/project"

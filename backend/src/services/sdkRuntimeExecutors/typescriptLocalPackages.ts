@@ -1,6 +1,6 @@
 import type { LocalPackagesBundle } from "../../utility/localPackages"
 
-import type { SdkDependencyImageBuildContext } from "./types"
+import type { SdkDeployImageBuildContext } from "./types"
 
 export type PackageManager = "npm" | "pnpm"
 
@@ -9,7 +9,7 @@ export type PackageManager = "npm" | "pnpm"
 // the registry install path stays clean and self-contained.
 
 // Writes the packed tarballs into the sandbox and returns name -> absolute sandbox path.
-export async function writeLocalTarballs(context: SdkDependencyImageBuildContext, localPackages: LocalPackagesBundle): Promise<Map<string, string>> {
+export async function writeLocalTarballs(context: SdkDeployImageBuildContext, localPackages: LocalPackagesBundle): Promise<Map<string, string>> {
     const tarballDir = `${context.cliCachePath}/local-packages`
     await context.ensureSandboxCommand("prepare local package dir", `mkdir -p ${context.escapeShellArg(tarballDir)}`)
 
@@ -72,7 +72,7 @@ export function withTerseOverrides(packageJsonText: string, tarballs: Map<string
 // Installs the CLI from its local tarball into a host project so npm `overrides` apply to its nested
 // terse-sdk/terse-types (global `npm install -g` ignores overrides). Symlinks the bin to the same
 // `${cliCachePath}/bin/terse` path the registry install and execute() already expect.
-export async function installLocalCli(context: SdkDependencyImageBuildContext, tarballs: Map<string, string>): Promise<void> {
+export async function installLocalCli(context: SdkDeployImageBuildContext, tarballs: Map<string, string>): Promise<void> {
     const cliTarball = tarballs.get("terse-cli")
     const sdkTarball = tarballs.get("terse-sdk")
     const typesTarball = tarballs.get("terse-types")
@@ -98,7 +98,7 @@ export async function installLocalCli(context: SdkDependencyImageBuildContext, t
 // Bakes a marker into the installed CLI recording the hoisted versions + content hash. The CLI reads
 // it (relative to its own install) at run time to confirm in the run output that the local build ran.
 // Living in the image makes it authoritative: it travels with the image, unlike a runtime env flag.
-export async function writeHoistMarker(context: SdkDependencyImageBuildContext, localPackages: LocalPackagesBundle): Promise<void> {
+export async function writeHoistMarker(context: SdkDeployImageBuildContext, localPackages: LocalPackagesBundle): Promise<void> {
     const markerPath = `${context.cliCachePath}/node_modules/terse-cli/.terse-local-hoist`
     const versions = localPackages.packages.map(p => `${p.name}@${p.version}`).join(", ")
     await context.writeFile(markerPath, `${versions} (${localPackages.contentHash.slice(0, 12)})`)
@@ -106,12 +106,12 @@ export async function writeHoistMarker(context: SdkDependencyImageBuildContext, 
 
 // Local installs inject overrides that desync the lockfile, so a frozen install (pnpm --frozen-lockfile
 // / npm ci) would fail. Always do a regular install that can update the lockfile.
-export function buildLocalDependencyInstallCommand(packageManager: PackageManager, templateDir: string, escapeShellArg: (value: string) => string): string {
-    const escapedTemplateDir = escapeShellArg(templateDir)
+export function buildLocalDependencyInstallCommand(packageManager: PackageManager, projectDir: string, escapeShellArg: (value: string) => string): string {
+    const escapedProjectDir = escapeShellArg(projectDir)
 
     if (packageManager === "pnpm") {
-        return `cd ${escapedTemplateDir} && pnpm install --prod --no-frozen-lockfile`
+        return `cd ${escapedProjectDir} && pnpm install --prod --no-frozen-lockfile`
     }
 
-    return `cd ${escapedTemplateDir} && npm install --omit=dev --no-fund`
+    return `cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
 }

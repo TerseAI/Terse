@@ -8,6 +8,7 @@ on:
             - "terse-types/**"
             - "packages/terse-sdk/**"
             - "pnpm-lock.yaml"
+            - "docker/**"
             - ".github/workflows/docker-build.yml"
 permissions:
     contents: read
@@ -19,10 +20,40 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - uses: docker/setup-buildx-action@v3
-            - uses: docker/build-push-action@v6
+            - name: Control plane image
+              uses: docker/build-push-action@v6
               with:
                   context: .
                   cache-from: type=gha
                   # Fork PRs get a read-only cache token; a denied export must not
                   # fail the build check.
+                  cache-to: type=gha,mode=max,ignore-error=true
+
+            - name: Sandbox base image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./docker/sandbox-base.Dockerfile
+                  platforms: linux/amd64
+                  load: true
+                  tags: terse-sandbox-base:pr
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max,ignore-error=true
+
+            # This release's packages do not exist yet, so the Dockerfile is proven
+            # against whatever is currently published.
+            - name: Resolve the published CLI version
+              id: published
+              run: echo "version=$(npm view terse-cli version)" >> "$GITHUB_OUTPUT"
+
+            - name: Sandbox node image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./docker/sandbox-node.Dockerfile
+                  platforms: linux/amd64
+                  build-args: |
+                      BASE_IMAGE=terse-sandbox-base:pr
+                      TERSE_VERSION=${{ steps.published.outputs.version }}
+                  cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true
