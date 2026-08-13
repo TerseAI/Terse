@@ -404,6 +404,25 @@ export class SdkSandboxImageService {
             await this.terminateSandboxAfterFailure(sb, label, runtime, failureMessage)
             throw new Error(`${label} failed for ${runtime}: ${failureMessage}`)
         }
+
+        this.logStepOutcome(step, result)
+    }
+
+    /**
+     * A package manager says exactly what it did ("reused 452, downloaded 0", "Already up to date"),
+     * and without it a slow install is indistinguishable from a cold cache. Discarding that on
+     * success cost this several rounds of guessing, so the summary lines are kept.
+     */
+    private logStepOutcome(step: SdkBuildStep | "unpacking_source", result: SandboxCommandResult): void {
+        if (step !== "install_dependencies") return
+
+        const summary = result.stdout
+            .split("\n")
+            .map(line => line.trim())
+            .filter(line => /^(Progress:|Packages:|Already up to date|added |up to date)/.test(line))
+            .slice(-2)
+
+        logger.info("SDK image build: dependencies installed", { summary: summary.length > 0 ? summary : result.stdout.trim().split("\n").slice(-1) })
     }
 
     private async terminateBuildSandbox(sb: Sandbox, label: string, runtime: SdkProjectRuntime): Promise<void> {
