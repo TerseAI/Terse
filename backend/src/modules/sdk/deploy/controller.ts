@@ -374,8 +374,8 @@ function toDeployStage(phase: SdkDeployPhase): SdkDeployStage {
             return "REUSING_CACHED_BUILD"
         case "starting_sandbox":
             return "STARTING_SANDBOX"
-        case "uploading_source":
-            return "UPLOADING_SOURCE"
+        case "unpacking_source":
+            return "UNPACKING_SOURCE"
         case "install_cli":
             return "INSTALLING_CLI"
         // The package manager is installed only to run the dependency install, so it reads as one step.

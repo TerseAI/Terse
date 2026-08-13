@@ -747,10 +747,13 @@ export const errorSchema = z.object({ type: z.literal("error"), message: z.strin
 export const doneSchema = z.object({ type: z.literal("done") })
 
 export const sdkDeployStageEnum = z.enum([
+    // Client-side stages: the CLI reports these itself, the control plane never sends them.
+    "PACKAGING_PROJECT",
     "PREPARING_BUILD",
     "REUSING_CACHED_BUILD",
     "STARTING_SANDBOX",
     "UPLOADING_SOURCE",
+    "UNPACKING_SOURCE",
     "INSTALLING_CLI",
     "INSTALLING_DEPENDENCIES",
     "BUILDING_BUNDLE",

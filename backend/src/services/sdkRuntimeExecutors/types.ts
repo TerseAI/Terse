@@ -13,7 +13,7 @@ export type SdkDeployPhase =
     | "preparing"
     | "reusing_cached_build"
     | "starting_sandbox"
-    | "uploading_source"
+    | "unpacking_source"
     | "install_cli"
     | "install_package_manager"
     | "install_dependencies"

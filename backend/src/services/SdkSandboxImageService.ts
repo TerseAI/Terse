@@ -306,7 +306,7 @@ export class SdkSandboxImageService {
         })
 
         try {
-            await this.runPhase(phaseContext, "uploading_source", () => this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
+            await this.runPhase(phaseContext, "unpacking_source", () => this.extractSourceZip({ sb, sandboxService, executor, zipBuffer }))
 
             const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, phaseContext })
             await executor.buildDeployImage(buildContext)
@@ -364,7 +364,7 @@ export class SdkSandboxImageService {
         // alive, and `unzip -o` overwrites files without removing ones the new source dropped.
         await this.ensureSandboxCommand(
             sb,
-            "uploading_source",
+            "unpacking_source",
             `rm -rf ${shellQuote(projectDir)} && mkdir -p ${shellQuote(projectDir)} && ${ensureUnzip} && unzip -o ${shellQuote(sourceZipPath)} -d ${shellQuote(projectDir)}`,
             executor.runtime
         )
@@ -387,7 +387,7 @@ export class SdkSandboxImageService {
         await fileHandle.close()
     }
 
-    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep | "uploading_source", command: string, runtime: SdkProjectRuntime): Promise<void> {
+    private async ensureSandboxCommand(sb: Sandbox, step: SdkBuildStep | "unpacking_source", command: string, runtime: SdkProjectRuntime): Promise<void> {
         const label = step.replace(/_/g, " ")
         let result: SandboxCommandResult
         try {

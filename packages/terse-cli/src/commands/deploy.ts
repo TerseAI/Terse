@@ -63,17 +63,6 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         await syncMissingLocalSecrets({ projectId, apiKey })
     }
 
-    let sourceArchive: { sourceObjectKey?: string; sourceZipBase64?: string } = {}
-    let fileCount = 0
-    let zipSizeBytes = 0
-
-    if (!isUrlMode) {
-        const zipPayload = buildZipPayload(provider)
-        fileCount = zipPayload.fileCount
-        zipSizeBytes = zipPayload.zipSizeBytes
-        sourceArchive = await uploadSource(zipPayload.zipBytes, apiKey)
-    }
-
     const s = createSpinner()
     const timeline = new DeployTimeline()
 
@@ -88,8 +77,26 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         }
     })
 
+    // Timing starts here, before the archive is zipped and uploaded: the user waits for both, so
+    // leaving them outside the timeline reports a total shorter than the deploy they sat through.
     timeline.start()
     s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
+
+    let sourceArchive: { sourceObjectKey?: string; sourceZipBase64?: string } = {}
+    let fileCount = 0
+    let zipSizeBytes = 0
+
+    if (!isUrlMode) {
+        timeline.enter("PACKAGING_PROJECT")
+        s.message(getStageMessage("PACKAGING_PROJECT"))
+        const zipPayload = buildZipPayload(provider)
+        fileCount = zipPayload.fileCount
+        zipSizeBytes = zipPayload.zipSizeBytes
+
+        timeline.enter("UPLOADING_SOURCE")
+        s.message(`${getStageMessage("UPLOADING_SOURCE")} ${chalk.dim(formatBytes(zipSizeBytes))}`)
+        sourceArchive = await uploadSource(zipPayload.zipBytes, apiKey)
+    }
 
     try {
         const body = sdkDeployRequestBodySchema.parse({
@@ -342,6 +349,8 @@ function readEligibleLocalEnv(envPath: string): ProjectSecretUpsertRequest[] {
 
 function getStageMessage(stage: SdkDeployStage): string {
     switch (stage) {
+        case "PACKAGING_PROJECT":
+            return "Packaging your project"
         case "PREPARING_BUILD":
             return "Checking for a cached build"
         case "REUSING_CACHED_BUILD":
@@ -350,6 +359,8 @@ function getStageMessage(stage: SdkDeployStage): string {
             return "Starting a build sandbox"
         case "UPLOADING_SOURCE":
             return "Uploading your project"
+        case "UNPACKING_SOURCE":
+            return "Unpacking it in the sandbox"
         case "INSTALLING_CLI":
             return "Installing the Terse CLI"
         case "INSTALLING_DEPENDENCIES":
@@ -410,6 +421,10 @@ class DeployTimeline {
         this.completed.push({ stage: this.currentStage.stage, durationMs: Date.now() - this.currentStage.startedAtMs })
         this.currentStage = undefined
     }
+}
+
+function formatBytes(bytes: number): string {
+    return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)}KB` : `${(bytes / 1024 / 1024).toFixed(1)}MB`
 }
 
 function formatDuration(seconds: number): string {
