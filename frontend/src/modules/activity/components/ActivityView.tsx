@@ -1,45 +1,16 @@
 import { useState } from "react"
 
-import { type RunHistoryRecordWithAgent, RunHistoryStatus } from "terse-types/RunHistoryTypes"
+import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useAllRunHistory } from "@/modules/runHistory/api/useAllRunHistory"
 import DateRangePicker from "@/modules/runHistory/components/DatePicker"
-import RunHistoryEmptyState from "@/modules/runHistory/components/RunHistoryEmptyState"
+import RunHistoryList from "@/modules/runHistory/components/RunHistoryList"
 import RunHistoryPagination from "@/modules/runHistory/components/RunHistoryPagination"
-import { RunHistoryRow } from "@/modules/runHistory/components/RunHistoryRow"
 import { SearchBar } from "@/modules/runHistory/components/SearchBar"
 import StatusFilter from "@/modules/runHistory/components/StatusFilter"
-import { useRunHistoryChatDrawer } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
 const DEFAULT_STATUSES: readonly RunHistoryStatus[] = Object.values(RunHistoryStatus)
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function LoadingSkeleton() {
-    return (
-        <div className="divide-y divide-border/40">
-            {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 px-4 py-3">
-                    <Skeleton className="w-8 h-8 rounded-lg flex-shrink-0" />
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                        <Skeleton className="h-4 w-3/4 max-w-[280px]" />
-                        <Skeleton className="h-3 w-1/2 max-w-[180px]" />
-                    </div>
-                    <Skeleton className="h-5 w-16 rounded-full hidden sm:block" />
-                    <Skeleton className="h-3 w-12" />
-                </div>
-            ))}
-        </div>
-    )
-}
-
-// ---------------------------------------------------------------------------
-// Main Component
-// ---------------------------------------------------------------------------
 
 export default function ActivityPage() {
     const [currentPage, setCurrentPage] = useState(1)
@@ -57,8 +28,6 @@ export default function ActivityPage() {
         selectedStatuses,
         includeTest
     })
-    const { openDrawer } = useRunHistoryChatDrawer()
-
     const totalPages = Math.ceil(total / runsPerPage) || 1
 
     const toggleStatus = (status: RunHistoryStatus) => {
@@ -87,11 +56,11 @@ export default function ActivityPage() {
         setCurrentPage(1)
     }
 
-    const handleOpenChat = (run: RunHistoryRecordWithAgent) => {
-        openDrawer({
-            runs: runs,
-            initialRunIndex: runs.findIndex(r => r.id === run.id)
-        })
+    const clearFilters = () => {
+        setSearchQuery("")
+        setDateRange({ from: undefined, to: undefined })
+        setSelectedStatuses(new Set(DEFAULT_STATUSES))
+        setCurrentPage(1)
     }
 
     const hasActiveFilters = !!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < DEFAULT_STATUSES.length || includeTest
@@ -146,29 +115,7 @@ export default function ActivityPage() {
             </div>
 
             {/* ── Content ─────────────────────────────────────────── */}
-            <div className="overflow-hidden rounded-lg border bg-card">
-                {isLoading ? (
-                    <LoadingSkeleton />
-                ) : runs.length === 0 ? (
-                    <div className="py-12">
-                        <RunHistoryEmptyState
-                            hasActiveFilters={hasActiveFilters}
-                            onClearAll={() => {
-                                setSearchQuery("")
-                                setDateRange({ from: undefined, to: undefined })
-                                setSelectedStatuses(new Set(DEFAULT_STATUSES))
-                                setCurrentPage(1)
-                            }}
-                        />
-                    </div>
-                ) : (
-                    <div role="list" aria-label="Run history" className="divide-y divide-border/40">
-                        {runs.map(run => (
-                            <RunHistoryRow key={run.id} run={run} onOpenChat={handleOpenChat} />
-                        ))}
-                    </div>
-                )}
-            </div>
+            <RunHistoryList runs={runs} isLoading={isLoading} hasActiveFilters={hasActiveFilters} onClearFilters={clearFilters} />
 
             {/* ── Bottom pagination ───────────────────────────────── */}
             {runs.length > 0 && totalPages > 1 && (

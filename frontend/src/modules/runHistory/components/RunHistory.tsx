@@ -7,9 +7,7 @@ import { BackendProvider } from "@/lib/http"
 import { useRunHistory } from "@/modules/runHistory/api/useRunHistory"
 import { useRunHistoryChatDrawer } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
-import RunHistoryEmptyState from "./RunHistoryEmptyState"
-import RunHistoryItem from "./RunHistoryItem"
-import RunHistoryLoadingState from "./RunHistoryLoadingState"
+import RunHistoryList from "./RunHistoryList"
 import RunHistoryToolBar from "./RunHistoryToolBar"
 
 // Remote data source only; no local mock
@@ -135,7 +133,11 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
 
     const toggleStatus = (status: RunHistoryStatus) => {
         const next = new Set(selectedStatuses)
-        next.has(status) ? next.delete(status) : next.add(status)
+        if (next.has(status)) {
+            next.delete(status)
+        } else {
+            next.add(status)
+        }
         setSelectedStatuses(next)
         setCurrentPage(1)
     }
@@ -152,6 +154,14 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
 
     const handleRunsPerPageChange = (value: number) => {
         setRunsPerPage(value)
+        setCurrentPage(1)
+    }
+
+    const clearFilters = () => {
+        setSearchQuery("")
+        setIncludeTest(false)
+        setDateRange({ from: undefined, to: undefined })
+        setSelectedStatuses(new Set(ALL_STATUSES))
         setCurrentPage(1)
     }
 
@@ -181,44 +191,12 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                     onTriggerNow={onTriggerNow}
                 />
 
-                {isLoading ? (
-                    <RunHistoryLoadingState />
-                ) : paginatedRuns.length === 0 ? (
-                    <RunHistoryEmptyState
-                        hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length || includeTest}
-                        onClearAll={() => {
-                            setSearchQuery("")
-                            setIncludeTest(false)
-                            setDateRange({ from: undefined, to: undefined })
-                            setSelectedStatuses(
-                                new Set([
-                                    RunHistoryStatus.SUCCESS,
-                                    RunHistoryStatus.FAILED,
-                                    RunHistoryStatus.CANCELLED,
-                                    RunHistoryStatus.SKIPPED,
-                                    RunHistoryStatus.IN_PROGRESS,
-                                    RunHistoryStatus.AWAITING_APPROVAL,
-                                    RunHistoryStatus.SUSPENDED
-                                ])
-                            )
-                            setCurrentPage(1)
-                        }}
-                    />
-                ) : (
-                    <div className="mb-6">
-                        <div className="flex flex-col gap-3 overflow-x-auto pb-3 md:overflow-visible md:pb-0 max-w-full">
-                            {paginatedRuns.map(run => (
-                                <RunHistoryItem
-                                    key={run.id}
-                                    run={run}
-                                    onViewChat={runId => {
-                                        openRunFromList(runId, paginatedRuns, openDrawer)
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
+                <RunHistoryList
+                    runs={paginatedRuns}
+                    isLoading={isLoading}
+                    hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length || includeTest}
+                    onClearFilters={clearFilters}
+                />
             </div>
         </div>
     )
