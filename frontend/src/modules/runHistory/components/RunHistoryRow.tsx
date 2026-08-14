@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 
 import { ExternalLink, MessageSquare, Zap } from "lucide-react"
 import { buildRoute } from "terse-types"
@@ -22,13 +22,12 @@ interface RunHistoryRowProps {
 }
 
 export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps) {
-    const navigate = useNavigate()
     const openRun = useOpenRunDeepLink()
     const title = run.trigger.title || run.trigger.source
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
 
     return (
-        <div role="listitem" onClick={() => onOpenChat(run)} className={cn("group flex cursor-pointer items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-muted/40", className)}>
+        <div role="listitem" className={cn("group flex items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-muted/40", className)}>
             {/* Integration icon */}
             <div className="shrink-0 w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
                 <IconForIntegration integration={run.trigger.integration} />
@@ -37,7 +36,13 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
             {/* Main content */}
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground truncate">{title}</span>
+                    <button
+                        type="button"
+                        onClick={() => onOpenChat(run)}
+                        className="truncate rounded-sm text-left text-sm font-medium text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        {title}
+                    </button>
                     {run.trigger.url && (
                         <a
                             href={run.trigger.url}
@@ -52,16 +57,14 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                    <button
-                        onClick={e => {
-                            e.stopPropagation()
-                            navigate(buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId }))
-                        }}
+                    <Link
+                        to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId })}
+                        onClick={e => e.stopPropagation()}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                         title={run.agentName}
                     >
                         {run.agentName}
-                    </button>
+                    </Link>
                     {run.trigger.subheader && (
                         <>
                             <span className="text-muted-foreground/40 shrink-0">·</span>

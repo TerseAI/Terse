@@ -1,6 +1,5 @@
 import { useState } from "react"
 
-import { Eye, EyeOff } from "lucide-react"
 import { IntegrationType } from "terse-types/Integrations"
 import { apolloIntegrationsKey } from "terse-types/InvalidationKeys"
 
@@ -9,6 +8,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PasswordVisibilityButton } from "@/components/ui/password-visibility-button"
 import { BackendProvider } from "@/lib/http"
 import { cn } from "@/lib/utils"
 import { useApolloIntegrations } from "@/modules/integrations/api/useApolloIntegrations"
@@ -102,14 +102,12 @@ export default function ApolloIntegrationCard({ className, isActive = true, stat
                                 disabled={submitting}
                                 className="pr-10"
                             />
-                            <button type="button" onClick={() => setShowKey(value => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
+                            <PasswordVisibilityButton visible={showKey} onToggle={() => setShowKey(value => !value)} label="Apollo API key" />
                         </div>
                     </div>
                     {error && <p className="text-sm text-danger">{error}</p>}
                     <Button type="submit" disabled={submitting || !apiKey}>
-                        {submitting ? "Connecting..." : "Connect"}
+                        {submitting ? "Connecting…" : "Connect"}
                     </Button>
                 </form>
             </DialogContent>

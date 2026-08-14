@@ -65,7 +65,7 @@ function PageHeader({ onCreate, showAction }: { onCreate: () => void; showAction
     return (
         <div className="flex items-start justify-between gap-4">
             <div className="flex flex-col gap-1">
-                <h1 className="text-xl font-bold text-foreground">API Tokens</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">API Tokens</h1>
                 <p className="text-sm text-muted-foreground">Create tokens to authenticate with the Terse SDK from your code, CI, or any automated pipeline.</p>
             </div>
             {showAction && (
@@ -330,7 +330,7 @@ function CreateTokenDialog({ open, createdRawToken, onOpenChange, onCreated }: C
                                 <Button variant="outline">Cancel</Button>
                             </DialogClose>
                             <Button onClick={handleCreate} disabled={!name.trim() || isCreating}>
-                                {isCreating ? "Creating..." : "Create token"}
+                                {isCreating ? "Creating…" : "Create token"}
                             </Button>
                         </>
                     )}
@@ -402,7 +402,7 @@ function RenameTokenDialogContent({ token, onOpenChange, onUpdated }: RenameToke
                     <Button variant="outline">Cancel</Button>
                 </DialogClose>
                 <Button onClick={handleSave} disabled={!name.trim() || isSaving}>
-                    {isSaving ? "Saving..." : "Save"}
+                    {isSaving ? "Saving…" : "Save"}
                 </Button>
             </DialogFooter>
         </DialogContent>
@@ -454,7 +454,7 @@ function RevokeTokenDialog({ token, onOpenChange, onRevoked }: RevokeTokenDialog
                         <Button variant="outline">Cancel</Button>
                     </DialogClose>
                     <Button variant="destructive" onClick={handleRevoke} disabled={isRevoking}>
-                        {isRevoking ? "Revoking..." : "Revoke token"}
+                        {isRevoking ? "Revoking…" : "Revoke token"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

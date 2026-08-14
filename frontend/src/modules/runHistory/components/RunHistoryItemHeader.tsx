@@ -34,18 +34,20 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
-                            className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={`Open ${title} in a new tab`}
+                            className="grid size-7 flex-shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         >
                             <ExternalLink className="w-3 h-3" />
                         </a>
                     )}
                     <button
-                        className="flex-shrink-0 p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="grid size-7 flex-shrink-0 place-items-center rounded-md text-muted-foreground opacity-0 transition-[background-color,color,opacity] hover:bg-accent hover:text-foreground group-hover:opacity-100 focus:opacity-100"
                         onClick={e => {
                             e.stopPropagation()
                             onCopy(title ?? "")
                         }}
                         type="button"
+                        aria-label={`Copy ${title}`}
                     >
                         <Copy className="w-3 h-3" />
                     </button>

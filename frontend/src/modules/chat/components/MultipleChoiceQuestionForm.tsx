@@ -133,7 +133,7 @@ export function MultipleChoiceQuestionForm({ questionId, question, options, allo
                                     key={opt.value}
                                     type="button"
                                     className={cn(
-                                        "flex items-center gap-2.5 rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                                        "flex min-h-9 items-center gap-2.5 rounded-md border px-3 py-2 text-left text-sm transition-colors max-md:min-h-11",
                                         isSelected ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-foreground hover:bg-muted"
                                     )}
                                     title={opt.label}
@@ -180,7 +180,7 @@ export function MultipleChoiceQuestionForm({ questionId, question, options, allo
                         Or write your own answer
                     </Label>
                     <div className="flex gap-2">
-                        <Input id={`${questionId}-write-in`} type="text" placeholder="Type your answer..." value={writeInValue} onChange={e => setWriteInValue(e.target.value)} className="flex-1" />
+                        <Input id={`${questionId}-write-in`} type="text" placeholder="Type your answer…" value={writeInValue} onChange={e => setWriteInValue(e.target.value)} className="flex-1" />
                         <Button type="submit" size="sm" variant="secondary" disabled={!writeInValue.trim()}>
                             Submit
                         </Button>

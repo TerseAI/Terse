@@ -44,7 +44,7 @@ export function SlackConnectionOptions({ isBotUser, setIsBotUser, onBack, onConn
 
             <div className="flex justify-end">
                 <Button size="sm" onClick={onConnect} disabled={isConnecting}>
-                    {isConnecting ? "Connecting..." : "Connect"}
+                    {isConnecting ? "Connecting…" : "Connect"}
                 </Button>
             </div>
         </div>

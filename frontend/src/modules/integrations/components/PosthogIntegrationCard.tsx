@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { Eye, EyeOff, Palette } from "lucide-react"
+import { Palette } from "lucide-react"
 import { INTEGRATION_METADATA, IntegrationType, PosthogIntegration } from "terse-types/Integrations"
 import { posthogIntegrationsKey } from "terse-types/InvalidationKeys"
 
@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PasswordVisibilityButton } from "@/components/ui/password-visibility-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BackendProvider } from "@/lib/http"
 import { cn } from "@/lib/utils"
@@ -176,20 +177,13 @@ function PosthogForm({
                         className="pr-10"
                         autoComplete="off"
                     />
-                    <button
-                        type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        disabled={isSubmitting}
-                    >
-                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    <PasswordVisibilityButton visible={showApiKey} onToggle={() => setShowApiKey(!showApiKey)} label="PostHog API key" disabled={isSubmitting} />
                 </div>
                 {error && <p className="text-sm text-danger">{error}</p>}
             </div>
             <div className="flex gap-2">
                 <Button type="submit" disabled={isSubmitting || !apiKey}>
-                    {isSubmitting ? "Connecting..." : "Connect"}
+                    {isSubmitting ? "Connecting…" : "Connect"}
                 </Button>
                 <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
                     Cancel

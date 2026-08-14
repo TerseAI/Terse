@@ -43,7 +43,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
         onSendMessage,
         input,
         setInput,
-        placeholders = ["Type a message..."],
+        placeholders = ["Type a message…"],
         EmptyContentPlaceholder,
         onApprove,
         onReject,
@@ -131,14 +131,14 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        type="button"
                         onClick={handleScrollButtonClick}
                         className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 
                             flex items-center justify-center
-                            w-10 h-10 rounded-full
-                            bg-secondary backdrop-blur-md
+                            size-10 max-md:size-11 rounded-full
+                            bg-card
                             border border-border
-                            shadow-lg shadow-black/20
                             hover:bg-accent 
                             hover:scale-105
                             transition-colors duration-200 ease-out

@@ -493,7 +493,7 @@ export function DeleteProjectAction({ project }: { project: Pick<ProjectDetailRe
     return (
         <>
             <section className="mt-10">
-                <h2 className="text-danger mb-3 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase">
+                <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-danger">
                     <AlertTriangle className="h-3 w-3" />
                     Danger zone
                 </h2>
@@ -535,7 +535,7 @@ export function DeleteProjectAction({ project }: { project: Pick<ProjectDetailRe
 }
 
 export function SectionLabel({ children, className }: { children: React.ReactNode; className?: string }) {
-    return <h2 className={cn("text-muted-foreground mb-3 text-[10px] font-semibold tracking-[0.18em] uppercase", className)}>{children}</h2>
+    return <h2 className={cn("mb-3 text-sm font-semibold text-foreground", className)}>{children}</h2>
 }
 
 export function CenteredMessage({ text }: { text: string }) {

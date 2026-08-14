@@ -262,7 +262,7 @@ function JobHeading({
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label="Job actions">
+                            <Button variant="ghost" size="icon-sm" aria-label="Job actions">
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -361,7 +361,7 @@ function EnvironmentSection({ remoteServerUrl, isVerifying, onVerify }: { remote
             </div>
             <div className="border-border/60 bg-muted/10 overflow-hidden rounded-lg border">
                 <div className="px-4 py-3">
-                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">Remote server</div>
+                    <div className="text-xs font-medium text-muted-foreground">Remote server</div>
                     <div className="mt-1.5 text-sm">
                         {remoteServerUrl ? <code className="text-foreground font-mono text-[13px] break-all">{remoteServerUrl}</code> : <span className="text-muted-foreground">—</span>}
                     </div>
@@ -373,7 +373,7 @@ function EnvironmentSection({ remoteServerUrl, isVerifying, onVerify }: { remote
 
 function ActivitySection({ agentId, pendingCount, selectedTab, onTabChange }: { agentId: string; pendingCount: number; selectedTab: number; onTabChange: (i: number) => void }) {
     return (
-        <section className="mt-10">
+        <section className="mt-9">
             <TabGroup selectedIndex={selectedTab} onChange={onTabChange}>
                 <TabList className="border-border/60 flex items-baseline gap-6 border-b">
                     <StreamTab label="Activity" />
@@ -391,9 +391,8 @@ function StreamTab({ label, badge }: { label: string; badge?: number }) {
         <Tab
             className={({ selected }) =>
                 cn(
-                    "group rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                    "relative -mb-px inline-flex items-center gap-2 border-b-2 pb-3 text-[10px] font-semibold tracking-[0.18em] uppercase transition-colors",
-                    selected ? "text-foreground border-foreground" : "text-muted-foreground hover:text-foreground border-transparent"
+                    "group relative -mb-px inline-flex items-center gap-2 rounded-sm px-1 pb-3 text-sm font-medium outline-none transition-colors duration-150 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:scale-x-0 after:bg-foreground after:transition-transform focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    selected ? "text-foreground after:scale-x-100" : "text-muted-foreground hover:text-foreground"
                 )
             }
         >
@@ -441,6 +440,7 @@ function SampleEventsDialog({
                         {events.map((event, i) => (
                             <button
                                 key={i}
+                                type="button"
                                 className="border-border/60 hover:bg-muted/40 w-full space-y-1.5 rounded-lg border p-3 text-left transition-colors disabled:opacity-50"
                                 onClick={() => onSelect(event)}
                                 disabled={isTriggering}

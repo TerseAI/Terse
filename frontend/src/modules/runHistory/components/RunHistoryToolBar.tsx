@@ -65,7 +65,7 @@ export default function RunHistoryToolBar({
     return (
         <div className="mb-6 space-y-3 relative">
             <div className="flex items-center justify-between gap-4">
-                <SearchBar searchQuery={searchQuery} onSearchChange={onSearchChange} placeholder="Search events..." />
+                <SearchBar searchQuery={searchQuery} onSearchChange={onSearchChange} placeholder="Search events…" />
 
                 <div className="flex items-center gap-2">
                     <DateRangePicker

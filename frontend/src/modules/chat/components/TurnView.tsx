@@ -3,6 +3,7 @@ import { useState } from "react"
 import { CheckIcon, DocumentDuplicateIcon, HandThumbDownIcon, HandThumbUpIcon } from "@heroicons/react/24/outline"
 import { HandThumbDownIcon as HandThumbDownFilledIcon, HandThumbUpIcon as HandThumbUpFilledIcon } from "@heroicons/react/24/solid"
 
+import { Button } from "@/components/ui/button"
 import type { ToolApprovalResponseOptions } from "@/lib/socket"
 
 import type { Turn } from "../turnModel"
@@ -118,9 +119,9 @@ function CopyButton({ text }: { text: string }) {
     }
 
     return (
-        <button onClick={handleCopy} className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" aria-label="Copy to clipboard">
+        <Button type="button" variant="ghost" size="icon-sm" onClick={handleCopy} className="text-muted-foreground" aria-label="Copy response">
             {copied ? <CheckIcon className="w-4 h-4 text-success animate-pop ring-1 ring-success/20 ring-opacity-50 rounded" /> : <DocumentDuplicateIcon className="w-4 h-4" />}
-        </button>
+        </Button>
     )
 }
 
@@ -136,31 +137,31 @@ function FeedbackButtons() {
     if (feedback === FeedbackState.None) {
         return (
             <>
-                <button className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => setFeedback(FeedbackState.Good)}>
+                <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" onClick={() => setFeedback(FeedbackState.Good)} aria-label="Mark response as helpful">
                     <HandThumbUpIcon className="h-4 w-4" />
-                </button>
-                <button className="rounded text-muted-foreground transition-colors duration-200 hover:cursor-pointer hover:opacity-80 active:scale-95" onClick={() => setFeedback(FeedbackState.Bad)}>
+                </Button>
+                <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" onClick={() => setFeedback(FeedbackState.Bad)} aria-label="Mark response as not helpful">
                     <HandThumbDownIcon className="h-4 w-4" />
-                </button>
+                </Button>
             </>
         )
     }
 
     if (feedback === FeedbackState.Good) {
         return (
-            <div className="flex gap-2">
-                <button className="rounded text-muted-foreground transition-colors animate-pop">
+            <div className="flex gap-2" role="status" aria-label="Response marked as helpful">
+                <span className="grid size-8 animate-pop place-items-center rounded-md text-success">
                     <HandThumbUpFilledIcon className="h-4 w-4" />
-                </button>
+                </span>
             </div>
         )
     }
 
     return (
-        <div className="flex gap-2">
-            <button className="rounded text-muted-foreground transition-colors animate-pop">
+        <div className="flex gap-2" role="status" aria-label="Response marked as not helpful">
+            <span className="grid size-8 animate-pop place-items-center rounded-md text-danger">
                 <HandThumbDownFilledIcon className="h-4 w-4" />
-            </button>
+            </span>
         </div>
     )
 }

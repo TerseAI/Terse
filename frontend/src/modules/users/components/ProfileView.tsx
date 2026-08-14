@@ -9,15 +9,15 @@ import { UserProfileWidget } from "@/modules/users/components/UserProfileWidget"
 import { UserSecurityWidget } from "@/modules/users/components/UserSecurityWidget"
 
 const tabClass = ({ selected }: { selected: boolean }) =>
-    `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${
-        selected ? "text-foreground border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
+    `inline-flex h-9 items-center gap-2 rounded-sm px-3 text-sm font-medium outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+        selected ? "bg-card text-foreground shadow-[var(--shadow-control)]" : "text-muted-foreground hover:text-foreground"
     }`
 
 const TAB_KEYS = ["profile", "security", "users"] as const
 
 export default function ProfilePage() {
     const { user } = useAuth()
-    const [searchParams] = useSearchParams()
+    const [searchParams, setSearchParams] = useSearchParams()
     const isAdmin = user?.roles.includes("admin") ?? false
 
     const visibleTabs = TAB_KEYS.filter(key => {
@@ -25,13 +25,17 @@ export default function ProfilePage() {
         return true
     })
     const tabParam = searchParams.get("tab")
-    const defaultIndex = Math.max(0, visibleTabs.indexOf(tabParam as (typeof TAB_KEYS)[number]))
+    const selectedIndex = Math.max(0, visibleTabs.indexOf(tabParam as (typeof TAB_KEYS)[number]))
 
     return (
-        <div className="flex flex-col h-full p-4">
-            <h1 className="text-xl font-bold text-foreground mb-5">Account Settings</h1>
-            <TabGroup defaultIndex={defaultIndex} className="flex flex-col flex-1 min-h-0">
-                <TabList className="flex gap-2 border-b border-input shrink-0">
+        <div className="flex h-full flex-col p-4 md:p-6">
+            <h1 className="mb-5 text-xl font-semibold tracking-tight text-foreground">Account Settings</h1>
+            <TabGroup
+                selectedIndex={selectedIndex}
+                onChange={index => setSearchParams(previous => ({ ...Object.fromEntries(previous), tab: visibleTabs[index] }), { replace: true })}
+                className="flex min-h-0 flex-1 flex-col"
+            >
+                <TabList className="flex w-fit shrink-0 gap-1 rounded-md bg-muted p-1">
                     <Tab className={tabClass}>
                         <User2 className="h-4 w-4" />
                         <span>Profile</span>
@@ -47,7 +51,7 @@ export default function ProfilePage() {
                         </Tab>
                     )}
                 </TabList>
-                <TabPanels className="flex-1 min-h-0 flex flex-col pt-4">
+                <TabPanels className="flex min-h-0 flex-1 flex-col pt-5">
                     <TabPanel className="flex-1 min-h-0 flex flex-col">
                         <UserProfileWidget />
                     </TabPanel>

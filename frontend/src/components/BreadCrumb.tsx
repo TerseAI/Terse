@@ -97,7 +97,7 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
                     items.push(<BreadcrumbSeparator key="sep-channel" />)
                     items.push(
                         <BreadcrumbItem key="channel-detail">
-                            <BreadcrumbPage>{isLoading ? "Loading..." : agent?.name || params.id}</BreadcrumbPage>
+                            <BreadcrumbPage>{isLoading ? "Loading…" : agent?.name || params.id}</BreadcrumbPage>
                         </BreadcrumbItem>
                     )
                     break // We've handled both segments
@@ -119,7 +119,7 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
                 items.push(<BreadcrumbSeparator key="sep-project" />)
                 items.push(
                     <BreadcrumbItem key="project-detail">
-                        <BreadcrumbPage>{isProjectLoading ? "Loading..." : project?.name || appSegments[i + 1]}</BreadcrumbPage>
+                        <BreadcrumbPage>{isProjectLoading ? "Loading…" : project?.name || appSegments[i + 1]}</BreadcrumbPage>
                     </BreadcrumbItem>
                 )
                 break
@@ -167,7 +167,7 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
         }
 
         return (
-            <div className="flex items-center gap-4 px-2 py-3">
+            <div className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3">
                 <SidebarTrigger />
             </div>
         )
@@ -182,7 +182,7 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
     }
 
     return (
-        <div className="flex items-center gap-4 px-2 py-3">
+        <div className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3">
             <SidebarTrigger />
             <Breadcrumb>
                 <BreadcrumbList>{buildBreadcrumbItems()}</BreadcrumbList>
@@ -204,13 +204,13 @@ function ChannelDropdownMenu() {
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-1 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5">
+            <DropdownMenuTrigger className="flex items-center gap-1 rounded-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5">
                 Jobs
                 <ChevronDownIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
                 {agents.map(agent => (
-                    <DropdownMenuItem key={agent.id}>
+                    <DropdownMenuItem key={agent.id} asChild>
                         <Link to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: agent.id })}>{agent.name}</Link>
                     </DropdownMenuItem>
                 ))}

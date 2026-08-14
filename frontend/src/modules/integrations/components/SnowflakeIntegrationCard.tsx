@@ -135,7 +135,7 @@ function SnowflakeIntegrationCard({ className, isActive = true, stateToken, comp
 
                     <div className="flex gap-2">
                         <Button type="submit" disabled={isSubmitting || !accountIdentifier || !username || !privateKey || !warehouse}>
-                            {isSubmitting ? "Connecting..." : "Connect"}
+                            {isSubmitting ? "Connecting…" : "Connect"}
                         </Button>
                         <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
                             Cancel

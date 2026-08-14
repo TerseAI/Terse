@@ -109,7 +109,7 @@ export default function ActivityPage() {
             {/* ── Toolbar ─────────────────────────────────────────── */}
             <div className="space-y-4 mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} placeholder="Search by event or job name..." className="w-full sm:max-w-sm" />
+                    <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} placeholder="Search by event or job name…" className="w-full sm:max-w-sm" />
 
                     <div className="flex items-center gap-3 sm:ml-auto">
                         <DateRangePicker
@@ -146,7 +146,7 @@ export default function ActivityPage() {
             </div>
 
             {/* ── Content ─────────────────────────────────────────── */}
-            <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+            <div className="overflow-hidden rounded-lg border bg-card">
                 {isLoading ? (
                     <LoadingSkeleton />
                 ) : runs.length === 0 ? (

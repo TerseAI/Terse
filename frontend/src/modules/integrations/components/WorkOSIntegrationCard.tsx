@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { CheckIcon, CopyIcon, ExternalLinkIcon, Eye, EyeOff, Shield } from "lucide-react"
+import { CheckIcon, CopyIcon, ExternalLinkIcon, Shield } from "lucide-react"
 import { INTEGRATION_METADATA, IntegrationType, WorkOSIntegration } from "terse-types/Integrations"
 import { workosIntegrationsKey } from "terse-types/InvalidationKeys"
 
@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PasswordVisibilityButton } from "@/components/ui/password-visibility-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BackendProvider } from "@/lib/http"
 import { cn } from "@/lib/utils"
@@ -146,20 +147,13 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                     type={showApiKey ? "text" : "password"}
                                     value={apiKey}
                                     onChange={e => setApiKey(e.target.value)}
-                                    placeholder="sk_live_..."
+                                    placeholder="sk_live_…"
                                     disabled={isSubmitting}
                                     required
                                     className="pr-10"
                                     autoComplete="off"
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowApiKey(!showApiKey)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    disabled={isSubmitting}
-                                >
-                                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
+                                <PasswordVisibilityButton visible={showApiKey} onToggle={() => setShowApiKey(!showApiKey)} label="WorkOS API key" disabled={isSubmitting} />
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 Found under{" "}
@@ -174,7 +168,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
 
                         <div className="flex gap-2">
                             <Button type="submit" disabled={isSubmitting || !apiKey}>
-                                {isSubmitting ? "Connecting..." : "Continue"}
+                                {isSubmitting ? "Connecting…" : "Continue"}
                             </Button>
                             <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
                                 Cancel
@@ -243,14 +237,12 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
                                         className="pr-10"
                                         autoComplete="off"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    <PasswordVisibilityButton
+                                        visible={showWebhookSecret}
+                                        onToggle={() => setShowWebhookSecret(!showWebhookSecret)}
+                                        label="WorkOS webhook signing secret"
                                         disabled={isSubmitting}
-                                    >
-                                        {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    </button>
+                                    />
                                 </div>
                                 <p className="text-xs text-muted-foreground">WorkOS shows the signing secret after creating the webhook endpoint.</p>
                             </div>
@@ -259,7 +251,7 @@ function WorkOSIntegrationCard({ className, isActive = true, stateToken, compact
 
                             <div className="flex gap-2">
                                 <Button type="submit" disabled={isSubmitting || !webhookSecret}>
-                                    {isSubmitting ? "Saving..." : "Save Secret"}
+                                    {isSubmitting ? "Saving…" : "Save Secret"}
                                 </Button>
                                 <Button type="button" variant="outline" onClick={handleClose}>
                                     {isConnected ? "Done" : "Skip for Now"}

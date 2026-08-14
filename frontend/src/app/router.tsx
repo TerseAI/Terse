@@ -1,52 +1,57 @@
+import { Suspense, lazy } from "react"
 import { Navigate, Route, Routes } from "react-router-dom"
 
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { AppGate } from "@/app/AppGate"
 import { RequireAdminOutlet } from "@/app/layouts/RequireAdminOutlet"
-import ActivityPage from "@/pages/ActivityPage"
-import AgentDetailPage from "@/pages/AgentDetailPage"
-import ApiTokensPage from "@/pages/ApiTokensPage"
-import BillingPage from "@/pages/BillingPage"
-import HomePage from "@/pages/HomePage"
-import IntegrationsPage from "@/pages/IntegrationsPage"
-import NotFoundPage from "@/pages/NotFoundPage"
-import NotificationsPage from "@/pages/NotificationsPage"
-import OAuthErrorPage from "@/pages/OAuthErrorPage"
-import OAuthSuccessPage from "@/pages/OAuthSuccessPage"
-import OrganizationCreationPage from "@/pages/OrganizationCreationPage"
-import PricingPage from "@/pages/PricingPage"
-import ProfilePage from "@/pages/ProfilePage"
-import ProjectDeploysPage from "@/pages/ProjectDeploysPage"
-import ProjectDetailPage from "@/pages/ProjectDetailPage"
-import StatsPage from "@/pages/StatsPage"
+import AppBootScreen from "@/components/loading/AppBootScreen"
+
+const ActivityPage = lazy(() => import("@/pages/ActivityPage"))
+const AgentDetailPage = lazy(() => import("@/pages/AgentDetailPage"))
+const ApiTokensPage = lazy(() => import("@/pages/ApiTokensPage"))
+const BillingPage = lazy(() => import("@/pages/BillingPage"))
+const HomePage = lazy(() => import("@/pages/HomePage"))
+const IntegrationsPage = lazy(() => import("@/pages/IntegrationsPage"))
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"))
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"))
+const OAuthErrorPage = lazy(() => import("@/pages/OAuthErrorPage"))
+const OAuthSuccessPage = lazy(() => import("@/pages/OAuthSuccessPage"))
+const OrganizationCreationPage = lazy(() => import("@/pages/OrganizationCreationPage"))
+const PricingPage = lazy(() => import("@/pages/PricingPage"))
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"))
+const ProjectDeploysPage = lazy(() => import("@/pages/ProjectDeploysPage"))
+const ProjectDetailPage = lazy(() => import("@/pages/ProjectDetailPage"))
+const StatsPage = lazy(() => import("@/pages/StatsPage"))
 
 export function AppRoutes() {
     return (
-        <Routes>
-            <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
-            <Route path="/pricing" element={<Navigate to={FrontendRoutes.PRICING} replace />} />
-            <Route path={FrontendRoutes.APP} element={<AppGate />}>
-                <Route index element={<Navigate to="home" replace />} />
-                <Route path="home" element={<HomePage />} />
-                <Route path="pricing" element={<PricingPage />} />
-                <Route path={FrontendRoutes.JOBS.BY_ID} element={<AgentDetailPage />} />
-                <Route path={FrontendRoutes.PROJECTS.BY_ID} element={<ProjectDetailPage />} />
-                <Route path={FrontendRoutes.PROJECTS.DEPLOYS} element={<ProjectDeploysPage />} />
-                <Route path="activity" element={<ActivityPage />} />
-                <Route path="stats" element={<StatsPage />} />
-                <Route path="integrations" element={<IntegrationsPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="api-tokens" element={<ApiTokensPage />} />
-                <Route element={<RequireAdminOutlet />}>
-                    <Route path="billing" element={<BillingPage />} />
+        <Suspense fallback={<AppBootScreen revealAfterMs={150} />}>
+            <Routes>
+                <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
+                <Route path="/pricing" element={<Navigate to={FrontendRoutes.PRICING} replace />} />
+                <Route path={FrontendRoutes.APP} element={<AppGate />}>
+                    <Route index element={<Navigate to="home" replace />} />
+                    <Route path="home" element={<HomePage />} />
+                    <Route path="pricing" element={<PricingPage />} />
+                    <Route path={FrontendRoutes.JOBS.BY_ID} element={<AgentDetailPage />} />
+                    <Route path={FrontendRoutes.PROJECTS.BY_ID} element={<ProjectDetailPage />} />
+                    <Route path={FrontendRoutes.PROJECTS.DEPLOYS} element={<ProjectDeploysPage />} />
+                    <Route path="activity" element={<ActivityPage />} />
+                    <Route path="stats" element={<StatsPage />} />
+                    <Route path="integrations" element={<IntegrationsPage />} />
+                    <Route path="notifications" element={<NotificationsPage />} />
+                    <Route path="api-tokens" element={<ApiTokensPage />} />
+                    <Route element={<RequireAdminOutlet />}>
+                        <Route path="billing" element={<BillingPage />} />
+                    </Route>
+                    <Route path="profile" element={<ProfilePage />} />
                 </Route>
-                <Route path="profile" element={<ProfilePage />} />
-            </Route>
-            <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
-            <Route path={FrontendRoutes.OAUTH.SUCCESS} element={<OAuthSuccessPage />} />
-            <Route path={FrontendRoutes.OAUTH.ERROR} element={<OAuthErrorPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+                <Route path={FrontendRoutes.ORGANIZATIONS.CREATE} element={<OrganizationCreationPage />} />
+                <Route path={FrontendRoutes.OAUTH.SUCCESS} element={<OAuthSuccessPage />} />
+                <Route path={FrontendRoutes.OAUTH.ERROR} element={<OAuthErrorPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+        </Suspense>
     )
 }

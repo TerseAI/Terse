@@ -76,7 +76,7 @@ export default function AgentImprovementsTab({ agentId }: AgentImprovementsTabPr
     }
 
     if (isLoading) {
-        return <div className="p-4 text-sm text-muted-foreground">Loading improvements...</div>
+        return <div className="p-4 text-sm text-muted-foreground">Loading improvements…</div>
     }
 
     const isBusy = isDismissingId !== null
@@ -161,7 +161,7 @@ function ImprovementRow({
                 <div className="flex items-center gap-1.5 shrink-0">
                     {improvement.suggestedPatch && <CopyCommandButton command={`terse apply ${improvement.id}`} title="Copy. Then run in your project's terminal" disabled={disabled} />}
                     <Button size="sm" variant="ghost" onClick={onDismiss} disabled={disabled}>
-                        {isDismissing ? "Dismissing..." : "Dismiss"}
+                        {isDismissing ? "Dismissing…" : "Dismiss"}
                     </Button>
                 </div>
             </div>

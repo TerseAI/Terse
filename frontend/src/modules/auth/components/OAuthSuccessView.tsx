@@ -19,7 +19,10 @@ export default function OAuthSuccess() {
         <div className="h-screen w-screen flex items-center justify-center bg-background">
             <div className="flex flex-col items-center justify-center gap-6 text-center px-6 max-w-2xl">
                 <img src="/terse-160.png" alt="Terse" className="w-20 h-20 object-contain" />
-                <h1 className="text-2xl font-semibold text-foreground leading-tight">Your integration with Terse was successfully completed, you can close this window now.</h1>
+                <div className="space-y-2">
+                    <h1 className="text-2xl font-semibold leading-tight text-foreground">Integration connected</h1>
+                    <p className="text-sm text-muted-foreground">You can close this window and return to Terse.</p>
+                </div>
             </div>
         </div>
     )

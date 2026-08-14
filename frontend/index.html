@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#f9f6f2" />
         <title>Terse AI</title>
         <meta name="description" content="Terse is the AI workflow platform for coding agents." />
         <script>
@@ -13,6 +14,7 @@
                 var el = document.documentElement
                 el.classList.toggle("dark", dark)
                 el.classList.toggle("light", !dark)
+                document.querySelector('meta[name="theme-color"]').setAttribute("content", dark ? "#1a1715" : "#f9f6f2")
             })()
         </script>
         <link href="/src/styles/app.css" rel="stylesheet" />

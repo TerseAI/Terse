@@ -5,7 +5,7 @@ export default function RunHistoryLoadingState() {
         <div className="mb-6">
             <div className="flex flex-col gap-3 overflow-x-auto md:overflow-visible pb-3 md:pb-0">
                 {[1, 2, 3].map(i => (
-                    <div key={i} className="overflow-hidden bg-[theme(background-light)] border border-[theme(border)] rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
+                    <div key={i} className="min-w-[640px] shrink-0 overflow-hidden rounded-lg border bg-card md:mb-3 md:min-w-0 md:shrink">
                         <div className="p-4">
                             <div className="flex items-start gap-4">
                                 {/* Chevron */}

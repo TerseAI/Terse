@@ -1,9 +1,10 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import TextareaAutosize from "react-textarea-autosize"
 
-import { Button } from "@headlessui/react"
 import { AnimatePresence, motion } from "framer-motion"
 import { CircleStop, Send, Sparkles } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
 
 interface GlowingTextFieldProps {
     isLoading: boolean
@@ -247,9 +248,12 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                     {/* Stop button */}
                     {hasActionButton && showStopButton && (
                         <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
                             onClick={onStop}
                             disabled={isCancelling}
-                            className={`absolute right-3 rounded-md border border-foreground/15 hover:bg-foreground/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-1 ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
+                            className={`absolute right-3 ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
                             aria-label={isCancelling ? "Stopping generation" : "Stop generation"}
                         >
                             <CircleStop className="h-5 w-5 [&_rect]:fill-current [&_rect]:stroke-none" />
@@ -258,11 +262,11 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                     {/* Send button */}
                     {hasActionButton && !showStopButton && (
                         <Button
+                            type="button"
+                            size="icon"
                             onClick={onSend}
                             disabled={disabled}
-                            className={`absolute right-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all p-1 ${
-                                inputValue.trim() ? "" : "opacity-50"
-                            } ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
+                            className={`absolute right-3 ${inputValue.trim() ? "" : "opacity-50"} ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
                             aria-label="Send message"
                         >
                             <Send className="w-5 h-5" />
@@ -294,7 +298,7 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                                     type="button"
                                     onClick={() => handlePlaceholderClick(placeholder)}
                                     aria-label={placeholder}
-                                    className="min-h-11 flex items-center px-3 py-2 text-sm text-muted-foreground bg-secondary/50 hover:bg-secondary hover:text-foreground border border-border/50 hover:border-border rounded-full transition-all duration-200 truncate max-w-[200px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                    className="flex min-h-11 max-w-[200px] items-center truncate rounded-full border border-border/50 bg-secondary/50 px-3 py-2 text-sm text-muted-foreground transition-[background-color,border-color,color] duration-150 hover:border-border hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                     {placeholder}
                                 </button>

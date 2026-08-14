@@ -22,7 +22,7 @@ export default function RunHistoryPagination({ currentPage, totalPages, onPageCh
         pages.push(1)
 
         if (currentPage > 3) {
-            pages.push("...")
+            pages.push("…")
         }
 
         // Show pages around current page
@@ -34,7 +34,7 @@ export default function RunHistoryPagination({ currentPage, totalPages, onPageCh
         }
 
         if (currentPage < totalPages - 2) {
-            pages.push("...")
+            pages.push("…")
         }
 
         // Always show last page
@@ -44,13 +44,13 @@ export default function RunHistoryPagination({ currentPage, totalPages, onPageCh
     return (
         <nav aria-label="Pagination" className="flex items-center gap-1">
             {pages.map((page, index) => {
-                const isEllipsis = page === "..."
+                const isEllipsis = page === "…"
                 const isCurrent = page === currentPage
 
                 return (
                     <button
                         key={index}
-                        className={`h-9 px-3 rounded-md border text-sm transition-colors ${
+                        className={`h-9 min-w-9 px-3 rounded-md border text-sm transition-colors max-md:h-11 max-md:min-w-11 ${
                             isCurrent ? "border-primary bg-primary text-primary-foreground" : "border-border text-accent-foreground hover:text-foreground hover:bg-accent"
                         } ${isEllipsis ? "cursor-default hover:bg-transparent" : ""}`}
                         onClick={() => typeof page === "number" && onPageChange(page)}

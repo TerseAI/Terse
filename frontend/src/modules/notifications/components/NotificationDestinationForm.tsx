@@ -224,7 +224,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                     </Button>
                 )}
                 <Button size="sm" onClick={saveDestination} disabled={isSaving} className="min-w-20">
-                    {isSaving ? "Saving..." : isEditMode ? "Update" : "Save"}
+                    {isSaving ? "Saving…" : isEditMode ? "Update" : "Save"}
                 </Button>
             </div>
         </div>

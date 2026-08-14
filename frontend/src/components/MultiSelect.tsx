@@ -33,8 +33,8 @@ export function MultiSelect({
     options,
     selectedIds,
     onSelect,
-    placeholder = "Select...",
-    searchPlaceholder = "Search...",
+    placeholder = "Select…",
+    searchPlaceholder = "Search…",
     emptyMessage = "No options found.",
     displayText,
     showBadges = true,
@@ -122,7 +122,7 @@ export function MultiSelect({
                             <button
                                 type="button"
                                 onClick={() => handleRemove(option.id)}
-                                className="ml-1 rounded-full hover:bg-secondary-foreground/20 p-0.5"
+                                className="relative ml-1 grid size-5 place-items-center rounded-full before:absolute before:-inset-0.5 hover:bg-secondary-foreground/20"
                                 aria-label={`Remove ${option.label}`}
                                 onKeyDown={e => {
                                     if (e.key === "Enter" || e.key === " ") {

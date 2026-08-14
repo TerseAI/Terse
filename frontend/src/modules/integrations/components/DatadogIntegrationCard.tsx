@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { BarChart3, Eye, EyeOff } from "lucide-react"
+import { BarChart3 } from "lucide-react"
 import { DatadogIntegration, INTEGRATION_METADATA, IntegrationType } from "terse-types/Integrations"
 import { datadogIntegrationsKey } from "terse-types/InvalidationKeys"
 
@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PasswordVisibilityButton } from "@/components/ui/password-visibility-button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BackendProvider } from "@/lib/http"
@@ -222,14 +223,7 @@ function DatadogForm({
                         className="pr-10"
                         autoComplete="off"
                     />
-                    <button
-                        type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        disabled={isSubmitting}
-                    >
-                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    <PasswordVisibilityButton visible={showApiKey} onToggle={() => setShowApiKey(!showApiKey)} label="Datadog API key" disabled={isSubmitting} />
                 </div>
             </div>
 
@@ -247,14 +241,7 @@ function DatadogForm({
                         className="pr-10"
                         autoComplete="off"
                     />
-                    <button
-                        type="button"
-                        onClick={() => setShowAppKey(!showAppKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        disabled={isSubmitting}
-                    >
-                        {showAppKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    <PasswordVisibilityButton visible={showAppKey} onToggle={() => setShowAppKey(!showAppKey)} label="Datadog application key" disabled={isSubmitting} />
                 </div>
             </div>
 
@@ -262,7 +249,7 @@ function DatadogForm({
 
             <div className="flex gap-2">
                 <Button type="submit" disabled={isSubmitting || !apiKey || !appKey || !region}>
-                    {isSubmitting ? "Connecting..." : "Connect"}
+                    {isSubmitting ? "Connecting…" : "Connect"}
                 </Button>
                 <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
                     Cancel

@@ -10,7 +10,7 @@ const Tabs = TabsPrimitive.Root
 const tabsListVariants = cva("inline-flex items-center justify-center text-muted-foreground", {
     variants: {
         variant: {
-            default: "h-9 rounded-lg bg-muted p-1",
+            default: "h-9 rounded-md bg-muted p-1",
             line: "w-full flex border-b border-border -mb-px"
         }
     },
@@ -25,12 +25,12 @@ const TabsList = React.forwardRef<React.ElementRef<typeof TabsPrimitive.List>, R
 TabsList.displayName = TabsPrimitive.List.displayName
 
 const tabsTriggerVariants = cva(
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium outline-none transition-all disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    "relative inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium outline-none transition-[background-color,color,box-shadow] duration-150 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     {
         variants: {
             variant: {
-                default: "rounded-md px-3 py-1 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-                line: "flex-1 border-b-2 border-transparent px-3 py-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=inactive]:hover:text-foreground"
+                default: "rounded-sm px-3 py-1 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[var(--shadow-control)]",
+                line: "flex-1 px-3 py-2 after:absolute after:inset-x-2 after:-bottom-px after:h-px after:scale-x-0 after:bg-foreground after:transition-transform after:duration-150 data-[state=active]:text-foreground data-[state=active]:after:scale-x-100 data-[state=inactive]:hover:text-foreground"
             }
         },
         defaultVariants: {

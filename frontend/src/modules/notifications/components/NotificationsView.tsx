@@ -194,7 +194,7 @@ function NotificationsPage() {
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col gap-2">
-                        <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden border-border/60 bg-card/35 py-0 backdrop-blur-sm">
+                        <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden py-0">
                             <CardContent className="flex min-h-0 flex-1 flex-col p-4">
                                 <div className="mb-3 flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-2">
@@ -646,10 +646,10 @@ function NotificationSettingsForm({ notificationSettings, mutateSettings }: Noti
                                         }))}
                                         selectedIds={field.value}
                                         onSelect={ids => field.onChange(ids as RunHistoryActionType[])}
-                                        placeholder="Select event types..."
-                                        searchPlaceholder="Search types..."
+                                        placeholder="Select event types…"
+                                        searchPlaceholder="Search types…"
                                         emptyMessage="No types found."
-                                        displayText={count => (count > 0 ? `${count} selected` : "Select event types...")}
+                                        displayText={count => (count > 0 ? `${count} selected` : "Select event types…")}
                                         renderItem={option => {
                                             const actionOption = NOTIFICATION_ACTION_OPTIONS.find(opt => opt.value === option.id)
                                             return (
