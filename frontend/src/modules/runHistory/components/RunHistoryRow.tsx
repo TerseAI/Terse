@@ -1,16 +1,14 @@
-import { useState } from "react"
 import { Link } from "react-router-dom"
 
 import { ExternalLink, RefreshCcw, Zap } from "lucide-react"
-import { toast } from "sonner"
 import { RunHistoryRecord, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
-import { BackendProvider } from "@/lib/http"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+import { useReTriggerRun } from "@/modules/runHistory/api/useReTriggerRun"
 import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 import { formatTimestamp } from "@/utils/time"
 
@@ -28,27 +26,9 @@ interface RunHistoryRowProps {
 
 export function RunHistoryRow({ run, onOpenRun, className }: RunHistoryRowProps) {
     const openRun = useOpenRunDeepLink()
-    const [isReTriggering, setIsReTriggering] = useState(false)
+    const { reTriggerRun, isReTriggering } = useReTriggerRun({ agentId: run.agentId, runId: run.id })
     const title = run.trigger.title || run.trigger.source
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
-
-    const handleReTrigger = async () => {
-        if (isReTriggering) return
-        setIsReTriggering(true)
-        try {
-            await BackendProvider.triggerWithEvent(run.agentId, undefined, run.id)
-            toast.success("Run re-triggered")
-        } catch (error) {
-            const status = (error as { response?: { status?: number } })?.response?.status
-            if (status === 404) {
-                toast.error("Could not re-trigger run: the original event or automation is no longer available")
-            } else {
-                toast.error("Failed to re-trigger run")
-            }
-        } finally {
-            setIsReTriggering(false)
-        }
-    }
 
     return (
         <div role="listitem" onClick={() => onOpenRun(run.id)} className={cn("group flex cursor-pointer items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-muted/40", className)}>
@@ -132,7 +112,7 @@ export function RunHistoryRow({ run, onOpenRun, className }: RunHistoryRowProps)
                 size="icon-sm"
                 onClick={e => {
                     e.stopPropagation()
-                    handleReTrigger()
+                    reTriggerRun()
                 }}
                 disabled={isReTriggering}
                 className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"

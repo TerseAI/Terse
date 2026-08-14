@@ -1,10 +1,11 @@
-import { Braces, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2 } from "lucide-react"
+import { Braces, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2, RefreshCcw } from "lucide-react"
 import { RunHistoryRecord, RunHistoryStatus, RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
 import { CopyCommandButton } from "@/components/ui/copy-command-button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+import { useReTriggerRun } from "@/modules/runHistory/api/useReTriggerRun"
 import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
@@ -14,6 +15,7 @@ import TriggeredBy from "../TriggeredBy"
 type Props = {
     trigger: RunHistoryTrigger
     runId: string
+    agentId: string
     runNumber?: number
     totalEvents?: number
     status: RunHistoryStatus
@@ -35,6 +37,7 @@ type Props = {
 export default function RunHistoryChatDrawerHeader({
     trigger,
     runId,
+    agentId,
     status,
     isTest,
     isManuallyTriggered,
@@ -50,6 +53,7 @@ export default function RunHistoryChatDrawerHeader({
     onToggleTriggerPayload
 }: Props) {
     const openRun = useOpenRunDeepLink()
+    const { reTriggerRun, isReTriggering } = useReTriggerRun({ agentId, runId })
     const hasRunNavigation = runs !== undefined && currentRunIndex !== undefined
     const canGoPrevious = hasRunNavigation && currentRunIndex > 0
     const canGoNext = hasRunNavigation && currentRunIndex < runs.length - 1
@@ -108,6 +112,18 @@ export default function RunHistoryChatDrawerHeader({
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
                 <CopyCommandButton command={`terse replay ${runId}`} title="Copy. Then run in your project's terminal" />
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={reTriggerRun}
+                    disabled={isReTriggering}
+                    title="Re-run this job with the same trigger event"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                >
+                    <RefreshCcw className={cn("h-3.5 w-3.5", isReTriggering && "animate-spin")} />
+                    Retry
+                </Button>
 
                 {hasTriggerPayload && onToggleTriggerPayload && (
                     <Button
