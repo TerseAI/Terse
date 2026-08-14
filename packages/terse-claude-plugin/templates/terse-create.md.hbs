@@ -4,7 +4,7 @@ description: Create a Terse workflow. Use when the user wants to build an automa
 license: MIT
 metadata:
   author: Terse AI
-  version: "0.6.1"
+  version: "0.6.2"
   category: workflow
 ---
 
@@ -46,6 +46,23 @@ If `terse test run` prints a `TERSE TEST REPORT`, surface it immediately in your
 Narration is non-blocking: never wait for a reply to an announcement; the run only pauses at the questions the steps themselves define.
 
 **Headless runs.** With no one to answer, skip every question the steps define, take your recommended answer, and state each choice with its reason in the final summary. Narrate inline the same way.
+
+### Choose the path
+
+Before running the numbered process, silently judge how much of it this build actually needs. Do not ask the user which path to take and do not announce the choice — just take the right one.
+
+Take the **fast path** only when all four hold:
+
+1. **Unambiguous intent** — the request already pins down what should happen, on which events, and for whom; there is nothing an interview would resolve.
+2. **No new integrations** — every integration the job needs is already connected (present under `src/terse.generated/`); nothing requires `terse integrate connect`, a new secret, or a `terse generate`.
+3. **Non-durable** — no wait for human input or time, and fewer than three side-effecting milestones.
+4. **Trivial shape** — the whole job is one or two deterministic `toolbox` calls, or a single narrow `generateText`.
+
+If any one fails, run the full process (steps 0–12).
+
+**On the fast path you still keep the safety floor.** Ensure a project exists (step 0), read the generated files as the source of truth and never invent constants, point side effects at test targets per the Testing Safety Conventions, prove the job green (a `tsc --noEmit` plus one `terse test run`), and ask before deploying (step 12). What you skip is the ceremony — the interview, the researchers, the shared-understanding diagram, and the milestone slicing — not the verification or the deploy gate. Write the job directly, verify it, and hand it back.
+
+**Escalate back to the full process** the moment the build turns out non-trivial — a needed integration isn't connected, a wait or approval appears, three or more side effects pile up, or the intent proves ambiguous. Drop onto the full process from step 1 rather than forcing the shortcut.
 
 ### 0. Ensure a Terse project exists
 

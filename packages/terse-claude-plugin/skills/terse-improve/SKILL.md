@@ -4,7 +4,7 @@ description: Improve an existing Terse workflow. Use when the user wants to fix,
 license: MIT
 metadata:
   author: Terse AI
-  version: "0.4.1"
+  version: "0.4.2"
   category: workflow
 ---
 
@@ -60,6 +60,22 @@ One marker per command: the command verbatim in backticks, then the why in a few
 **Explain every test before it runs.** A marker line is not enough for `terse replay` or `terse test run`: immediately before one, say in one to three casual sentences what the run exercises, why now, and what a good result looks like — "This replay re-runs the exact production event that failed on Tuesday; with the new filter I expect it to skip the bot comment instead of crashing." When it finishes, give the verdict against that stated expectation in the same voice. Cheap reads (`terse test list`, `terse test show`) keep just the marker.
 
 If `terse test run` prints a `TERSE TEST REPORT`, surface it immediately in your own message. Your first sentence must be either "The test ran as expected" or "The test did not run as expected." Then list the reported side effects exactly and explain any mismatch with your stated expectation.
+
+### Choose the path
+
+Before running the numbered process, silently judge how much of it this change actually needs. Do not ask the user which path to take and do not announce the choice — just take the right one.
+
+Take the **fast path** only when all three hold:
+
+1. **Named, localized change** — the user pointed at a specific, small edit (a typo, a rename, one obvious filter or prompt tweak), not "make this better".
+2. **No diagnosis needed** — you already know what to change from the request and the code; you would not need `terse history` to decide what the fix is.
+3. **No sign-off-worthy behavior change** — it does not silently start skipping events the job used to process, move an output surface, or flip durability.
+
+If any one fails, run the full process (find → pull production history → analyze every area → confirm → implement → verify → deploy).
+
+**On the fast path you still keep the safety floor.** Find the job and read the generated files it uses, follow the Testing Safety Conventions, verify the change (a `terse replay` or `terse test run` plus `tsc --noEmit`), and ask before deploying. What you skip is the production-history pull and the full multi-area analysis — not the verification or the deploy gate.
+
+**Escalate back to the full process** the moment it turns out you need history to know what to change, the fix touches observable behavior, or the "small" change fans out across the job.
 
 ### 1. Find the workflow
 

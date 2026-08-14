@@ -14,7 +14,7 @@
             "name": "terse",
             "source": "./terse-claude-plugin",
             "description": "Terse, the AI workflow platform for coding agents. Create and improve workflows that react to events and take actions across GitHub, Slack, Linear, and more.",
-            "version": "0.4.1",
+            "version": "0.5.0",
             "skills": ["./skills/terse-create", "./skills/terse-improve", "./skills/terse-self-host"],
             "author": {
                 "name": "Terse AI",
