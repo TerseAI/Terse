@@ -1,7 +1,6 @@
 import { InputConfigType } from "@prisma/client"
-import { CronTrigger, buildRoute } from "terse-types"
+import { CronTrigger } from "terse-types"
 import { FormFieldDefinition } from "terse-types"
-import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "terse-types/Integrations"
 import { RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
@@ -212,8 +211,7 @@ class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {
             integration: IntegrationType.CRON_JOB,
             source: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             title: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
-            subheader: isManualTrigger ? "Triggered manually by user" : "Scheduled Job",
-            url: buildRoute(FrontendRoutes.JOBS.BY_ID, { id: this.data.inputId })
+            subheader: isManualTrigger ? "Triggered manually by user" : "Scheduled Job"
         }
     }
 }

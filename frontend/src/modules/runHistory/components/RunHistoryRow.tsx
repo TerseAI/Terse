@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 
 import { ExternalLink, RefreshCcw, Zap } from "lucide-react"
 import { toast } from "sonner"
-import { buildRoute, RunHistoryRecord } from "terse-types"
+import { RunHistoryRecord, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
