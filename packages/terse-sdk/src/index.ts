@@ -13,6 +13,7 @@ import type {
 import {
     ApiRoutes,
     IntegrationType,
+    SDK_SANDBOX_TUNNEL_PORT,
     sdkAgentRunRequestBodySchema,
     sdkStateGetResponseSchema,
     stripZodJsonSchemaMetadata,
@@ -136,12 +137,17 @@ export { RunHistoryAction, RunHistoryDecision, RunHistoryRecord, RunHistoryStatu
 
 type Action = RunHistoryAction
 
+export type TriggerContext = {
+    tunnelUrl: string
+    tunnelPort: number
+}
+
 export type CreateJobParameters<TTriggers extends readonly TypedTrigger<TriggerLike>[] = TypedTrigger<TriggerLike>[], TStates extends readonly StateDefinition[] = readonly StateDefinition[]> = {
     name: string
     triggers: [...TTriggers]
     states?: [...TStates]
     filter?: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => boolean | Promise<boolean>
-    onTrigger: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>) => Promise<void>
+    onTrigger: (event: InferEvents<TTriggers>, state: StateAccessor<TStates>, ctx: TriggerContext) => Promise<void>
     remoteServerUrl?: string
     durable?: boolean
 }
@@ -322,7 +328,7 @@ export class Terse {
                     return { status: "ok" as const, filtered: true }
                 }
             }
-            await job.onTrigger(inputEvent, state)
+            await job.onTrigger(inputEvent, state, { tunnelUrl: `http://localhost:${SDK_SANDBOX_TUNNEL_PORT}`, tunnelPort: SDK_SANDBOX_TUNNEL_PORT })
 
             return { status: "ok" as const }
         } catch (error) {

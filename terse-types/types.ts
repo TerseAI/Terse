@@ -1185,6 +1185,8 @@ export const sdkRunTriggerEventResponseSchema = z.object({
 })
 export type SdkRunTriggerEventResponse = z.infer<typeof sdkRunTriggerEventResponseSchema>
 
+export const SDK_SANDBOX_TUNNEL_PORT = 8080
+
 export const manualTriggerRequestSchema = z.object({
     context: z.string().optional()
 })

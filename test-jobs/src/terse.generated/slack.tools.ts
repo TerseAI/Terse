@@ -10,12 +10,7 @@ export class SlackChannel {
     constructor(public readonly channelId: string, public readonly name: string) {}
 
     static AllTerseInc = new SlackChannel("C09DEL0AUE5", "all-terse-inc")
-    static CompetitorReport = new SlackChannel("C0ADU54C88K", "competitor-report")
-    static Gtm = new SlackChannel("C0BFJN1M44F", "gtm")
     static MpdmOlivierTerse2Terse3Thomas1 = new SlackChannel("C0A2DV3N4GL", "mpdm-olivier--terse2--terse3--thomas-1")
-    static OlivierTerseNotifications = new SlackChannel("C0A9YKCR1H9", "olivier-terse-notifications")
-    static TestAgents = new SlackChannel("C0AAEUEHX2N", "test-agents")
-    static UserFeedback = new SlackChannel("C0A2TKE27PV", "user-feedback")
 }
 
 export class SlackUser {
@@ -177,18 +172,18 @@ Supports pagination: if the response includes nextCursor and hasMore, pass nextC
 
 export const slackTools: SlackGeneratedTools = {
     sendMessage: (params: SlackSendMessageParams) =>
-        TerseAgent.executeTool<SlackSendMessageResult>("slack_send_message", { ...(params), integrationId: "cmr3l8b3d0003bpq4rpifevze" }),
+        TerseAgent.executeTool<SlackSendMessageResult>("slack_send_message", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
     listUsers: (params: SlackListUsersParams) =>
-        TerseAgent.executeTool<SlackListUsersResult>("slack_list_users", { ...(params), integrationId: "cmr3l8b3d0003bpq4rpifevze" }),
+        TerseAgent.executeTool<SlackListUsersResult>("slack_list_users", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
     listChannels: (params: SlackListChannelsParams) =>
-        TerseAgent.executeTool<SlackListChannelsResult>("slack_list_channels", { ...(params), integrationId: "cmr3l8b3d0003bpq4rpifevze" }),
+        TerseAgent.executeTool<SlackListChannelsResult>("slack_list_channels", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
     readConversation: (params: SlackReadConversationParams) =>
-        TerseAgent.executeTool<SlackReadConversationResult>("slack_read_conversation", { ...(params), integrationId: "cmr3l8b3d0003bpq4rpifevze" }),
+        TerseAgent.executeTool<SlackReadConversationResult>("slack_read_conversation", { ...(params), integrationId: "cmr3r2xb80002y5em42x4nqae" }),
 }
 
 // ── Slack skill ───────────────────────────────────────────────
 
 /** Slack — send messages and manage threads in a specific channel */
 export function slackSkill(opts: { channel: SlackChannel; userIds?: string[]; userNames?: string[]; listenToUserDms?: boolean }): TypedSkill<"slack_send_message"> {
-    return new SlackOutputConfig("cmr3l8b3d0003bpq4rpifevze", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? [], opts.userNames ?? null, opts.listenToUserDms)
+    return new SlackOutputConfig("cmr3r2xb80002y5em42x4nqae", opts.channel.channelId ?? null, opts.channel.name ?? null, opts.userIds ?? [], opts.userNames ?? null, opts.listenToUserDms)
 }

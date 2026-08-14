@@ -103,7 +103,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
         await this.ensureCliAvailable(context)
         const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
-        const runCmd = `cd ${context.projectDir} && ${cliBin} run ${context.escapeShellArg(context.jobName)} --no-verbose`
+        const runCmd = `cd ${context.projectDir} && ${cliBin} run ${context.escapeShellArg(context.jobName)} --tunnel-url ${context.escapeShellArg(context.tunnelUrl)} --tunnel-port ${context.tunnelPort} --no-verbose`
         return context.runSandboxCommandStreaming("terse run", runCmd)
     }
 

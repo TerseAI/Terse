@@ -31,13 +31,15 @@ export function transformJobSource(ts: typeof TS, source: string, fileName: stri
                 const fnName = `terseWf_${Buffer.from(jobName).toString("hex")}`
                 const param = fn.parameters.length ? fn.parameters[0].name.getText(sf) : "event"
                 const stateParam = fn.parameters.length > 1 ? fn.parameters[1].name.getText(sf) : "state"
+                const ctxParam = fn.parameters.length > 2 ? fn.parameters[2].name.getText(sf) : undefined
                 const statesText = statesProp ? statesProp.initializer.getText(sf) : "[]"
                 const body = ts.isBlock(fn.body) ? fn.body.getText(sf).slice(1, -1) : `\n  return ${fn.body.getText(sf)}\n`
                 hoisted.push(
-                    `async function ${fnName}(__rawEvent) {\n` +
+                    `async function ${fnName}(__rawEvent, __rawTunnelCtx) {\n` +
                         `  "use workflow"\n` +
                         `  const ${param} = createSDKTrigger(__rawEvent)\n` +
                         `  const ${stateParam} = __buildJobStateAccessor(${statesText})\n` +
+                        (ctxParam ? `  const ${ctxParam} = __rawTunnelCtx\n` : "") +
                         body +
                         `}`
                 )

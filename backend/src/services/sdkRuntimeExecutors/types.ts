@@ -52,6 +52,8 @@ export interface SdkRuntimeExecutorContext {
     cliCachePath: string
     usesPrebuiltImage: boolean
     cliVersion: string
+    tunnelUrl: string
+    tunnelPort: number
     ensureSandboxCommand: (label: string, command: string) => Promise<void>
     runSandboxCommand: (label: string, command: string) => Promise<SandboxCommandResult>
     runSandboxCommandStreaming: (label: string, command: string) => Promise<SandboxCommandResult>

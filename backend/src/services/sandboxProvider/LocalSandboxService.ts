@@ -90,6 +90,11 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         return path.join(sandbox.workingDir, "scratch", filename)
     }
 
+    // Subprocesses share the host's network, so a job's server is already reachable here.
+    async getTunnelUrl(_sandbox: LocalSandbox, port: number): Promise<string> {
+        return `http://localhost:${port}`
+    }
+
     async getOrCreateSandbox(_app: SandboxApp, image: SandboxImage, uniqueName: string): Promise<LocalSandbox> {
         const t0 = Date.now()
         logger.info("#LocalSandbox getOrCreate begin", { uniqueName, imageId: image.imageId })

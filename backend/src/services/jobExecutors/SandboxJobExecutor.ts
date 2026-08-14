@@ -1,3 +1,5 @@
+import { SDK_SANDBOX_TUNNEL_PORT } from "terse-types"
+
 import logger from "../../common/logger"
 import { getActiveDeployForProject } from "../../common/projectHelper"
 import { SandboxRuntimeTelemetry } from "../../common/sandboxRuntimeTelemetry"
@@ -234,7 +236,19 @@ export class SandboxJobExecutor implements JobExecutor {
         if (restoreImageId) {
             await telemetry.measure("restoreSnapshotMs", () => sandboxService.restoreDirectory(sb, runJournalDir(runId), restoreImageId))
         }
-        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
+        const tunnelUrl = await sandboxService.getTunnelUrl(sb, SDK_SANDBOX_TUNNEL_PORT)
+        const executorContext = this.createRuntimeExecutorContext(
+            sb,
+            sandboxEnv,
+            runId,
+            agentId,
+            jobName,
+            sandboxService.getProjectPath(sb),
+            sandboxService.getCliCachePath(sb),
+            true,
+            cliVersion,
+            tunnelUrl
+        )
         // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
         const result = await telemetry.measure("runtimeCommandMs", () => (restoreImageId ? executor.resume(executorContext) : executor.execute(executorContext)))
         return result
@@ -249,7 +263,8 @@ export class SandboxJobExecutor implements JobExecutor {
         projectDir: string,
         cliCachePath: string,
         usesPrebuiltImage: boolean,
-        cliVersion: string
+        cliVersion: string,
+        tunnelUrl: string
     ): SdkRuntimeExecutorContext {
         return {
             sb,
@@ -261,6 +276,8 @@ export class SandboxJobExecutor implements JobExecutor {
             cliCachePath,
             usesPrebuiltImage,
             cliVersion,
+            tunnelUrl,
+            tunnelPort: SDK_SANDBOX_TUNNEL_PORT,
             ensureSandboxCommand: async (label, command) => {
                 await this.ensureSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
             },

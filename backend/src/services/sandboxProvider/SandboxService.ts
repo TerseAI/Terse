@@ -25,6 +25,8 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
 
     snapshotDirectory(sandbox: S, path: string): Promise<string>
     restoreDirectory(sandbox: S, path: string, imageId: string): Promise<void>
+
+    getTunnelUrl(sandbox: S, port: number): Promise<string>
 }
 
 export interface SandboxApp {
@@ -88,8 +90,8 @@ type SandboxCreateParams = {
     cidrAllowlist?: string[]
     proxy?: SandboxProxy
     secrets?: Secret[]
-    /** Mount points (absolute path -> volume handle from a VolumeManager). */
     volumes?: Record<string, SandboxVolume>
+    encryptedPorts?: number[]
 }
 
 /** Opaque per-provider volume handle (Modal Volume / local dir marker). */

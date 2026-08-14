@@ -4,6 +4,8 @@ export type TerseJobContext = {
     apiBaseUrl: string
     projectId?: string
     jobName?: string
+    tunnelUrl: string
+    tunnelPort: number
 }
 
 // Counts in-process `TerseAgent` runs that have their own `onApprovalRequired`
