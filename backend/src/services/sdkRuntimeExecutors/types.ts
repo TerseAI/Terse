@@ -1,7 +1,13 @@
 import type { LocalPackagesBundle } from "../../utility/localPackages"
+import type { ResolvedSandboxBaseImage } from "../sandboxBaseImage/SandboxBaseImageResolver"
 import type { Sandbox } from "../sandboxProvider/SandboxService"
 
 export type SdkProjectRuntime = "typescript"
+
+export type SdkDeployPhase = "preparing" | "reusing_cached_build" | "starting_sandbox" | "uploading_source" | "building_project" | "saving_image"
+
+/** The subset a runtime executor is responsible for. */
+export type SdkBuildStep = Extract<SdkDeployPhase, "building_project">
 
 export interface SandboxCommandResult {
     exitCode: number
@@ -15,30 +21,23 @@ export interface SdkProjectArchive {
     readText(path: string): string | null
 }
 
-export interface SdkDependencyImageDefinition {
-    dependencyHash: string
+export interface SdkDeployImageDefinition {
+    buildHash: string
 }
 
-export interface SdkDependencyImageBuildContext {
+export interface SdkDeployImageBuildContext {
     sb: Sandbox
     archive: SdkProjectArchive
     cliVersion: string
-    templateDir: string
+    baseImage: ResolvedSandboxBaseImage
+    requiresWorkflowBundle: boolean
+    projectDir: string
     cliCachePath: string
-    // Dev-only: locally-packed terse-types/terse-sdk/terse-cli to install instead of npm registry versions.
+    unpackCommand: string
     localPackages?: LocalPackagesBundle
-    ensureSandboxCommand: (label: string, command: string) => Promise<void>
+    ensureSandboxCommand: (step: SdkBuildStep, command: string) => Promise<void>
     writeFile: (path: string, content: string) => Promise<void>
     writeBinaryFile: (path: string, content: Buffer) => Promise<void>
-    escapeShellArg: (value: string) => string
-}
-
-export interface SdkSourceImageBuildContext {
-    sb: Sandbox
-    projectDir: string
-    templateDir: string
-    cliCachePath: string
-    ensureSandboxCommand: (label: string, command: string) => Promise<void>
     escapeShellArg: (value: string) => string
 }
 
@@ -61,12 +60,21 @@ export interface SdkRuntimeExecutorContext {
 export interface SdkRuntimeExecutor {
     runtime: SdkProjectRuntime
     sandboxImage: string
+    releaseImageNameFor(archive: SdkProjectArchive): string
     matchesArchive(entries: Set<string>): boolean
-    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string, localPackages?: LocalPackagesBundle): SdkDependencyImageDefinition
-    buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void>
-    prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void>
+    defineDeployImage(params: DefineDeployImageParams): SdkDeployImageDefinition
+    buildDeployImage(context: SdkDeployImageBuildContext): Promise<void>
     execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
     resume(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult>
+}
+
+export interface DefineDeployImageParams {
+    archive: SdkProjectArchive
+    organizationId: string
+    sourceHash: string
+    cliVersion: string
+    baseImage: ResolvedSandboxBaseImage
+    localPackages?: LocalPackagesBundle
 }
 
 export const SDK_SOURCE_IMAGE_PROJECT_DIR = "/opt/terse-sdk-run/project"

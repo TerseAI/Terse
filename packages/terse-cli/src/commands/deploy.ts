@@ -5,7 +5,7 @@ import dotenv from "dotenv"
 import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
-import { ApiRoutes, SdkDeployStage, buildRoute, sdkDeployRequestBodySchema, validateSecretName, validateSecretValue } from "terse-types"
+import { ApiRoutes, SdkDeployStage, SdkSourceUploadResponse, buildRoute, sdkDeployRequestBodySchema, validateSecretName, validateSecretValue } from "terse-types"
 import type { ProjectSecretUpsertRequest, ProjectSecretsImportResponse, ProjectSecretsListResponse, SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
@@ -20,6 +20,9 @@ import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfigOrBail, 
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 import { openSessionStream } from "../providers/shared/sessionStream.js"
+
+// Base64 in a JSON body: fine for a source-only project, not for one carrying data files.
+const MAX_INLINE_ARCHIVE_BYTES = 8 * 1024 * 1024
 
 export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
     const apiKey = readApiKeyOrBail({
@@ -60,30 +63,43 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
         await syncMissingLocalSecrets({ projectId, apiKey })
     }
 
-    let sourceZipBase64: string | undefined
-    let fileCount = 0
-    let zipSizeBytes = 0
-
-    if (!isUrlMode) {
-        const zipPayload = buildZipPayload(provider)
-        sourceZipBase64 = zipPayload.sourceZipBase64
-        fileCount = zipPayload.fileCount
-        zipSizeBytes = zipPayload.zipSizeBytes
-    }
-
     const s = createSpinner()
+    const timeline = new DeployTimeline()
 
     // Open the SSE session BEFORE starting the spinner so a clean error
     // (e.g. 401) surfaces without leaving the spinner mid-frame.
     const session = await openSessionStream(apiKey, {
         onEvent: event => {
             if (event.type === "deploy_stage") {
-                s.message(getStageMessage(event.stage))
+                timeline.enter(event.stage)
+                s.message(`${getStageMessage(event.stage)} ${chalk.dim(`(${timeline.elapsed()})`)}`)
             }
         }
     })
 
+    // Timing starts here, before the archive is zipped and uploaded: the user waits for both, so
+    // leaving them outside the timeline reports a total shorter than the deploy they sat through.
+    timeline.start()
     s.start(`Deploying ${jobs.length} job${jobs.length === 1 ? "" : "s"}`)
+
+    let sourceArchive: { sourceObjectKey?: string; sourceZipBase64?: string } = {}
+    let fileCount = 0
+    let zipSizeBytes = 0
+
+    if (!isUrlMode) {
+        timeline.enter("PACKAGING_PROJECT")
+        s.message(getStageMessage("PACKAGING_PROJECT"))
+        // Asking for the upload URL is a round trip that does not need the archive, so it runs
+        // while the project is being zipped.
+        const session = requestUploadSession(apiKey)
+        const zipPayload = buildZipPayload(provider)
+        fileCount = zipPayload.fileCount
+        zipSizeBytes = zipPayload.zipSizeBytes
+
+        timeline.enter("UPLOADING_SOURCE")
+        s.message(`${getStageMessage("UPLOADING_SOURCE")} ${chalk.dim(formatBytes(zipSizeBytes))}`)
+        sourceArchive = await uploadSource(zipPayload.zipBytes, session)
+    }
 
     try {
         const body = sdkDeployRequestBodySchema.parse({
@@ -94,12 +110,16 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
                 triggers: job.triggers
             })),
             remoteServerUrl: isUrlMode ? remoteServerUrl : undefined,
-            sourceZipBase64
+            // Only the durable runtime reads .terse/wf, so the build can skip compiling one.
+            requiresWorkflowBundle: jobs.some(job => provider.runtimeName(job) === "durable"),
+            ...sourceArchive
         })
 
         const deployResult = await fetchWithAuthAndSession<SdkDeployResponseBody>(ApiRoutes.SDK.DEPLOY, apiKey, session.sessionId, body, "POST")
 
-        s.stop(`Deployed ${deployResult.results.length} job${deployResult.results.length === 1 ? "" : "s"}`)
+        timeline.finish()
+        s.stop(`Deployed ${deployResult.results.length} job${deployResult.results.length === 1 ? "" : "s"} in ${timeline.elapsed()}`)
+        timeline.printBreakdown()
 
         for (const r of deployResult.results) {
             const verb = r.isUpdate ? "Updated" : "Created"
@@ -210,7 +230,7 @@ function collectFiles(dir: string, baseDir: string, provider: LanguageProvider):
     return entries
 }
 
-function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string; fileCount: number; zipSizeBytes: number } {
+function buildZipPayload(provider: LanguageProvider): { zipBytes: Uint8Array; fileCount: number; zipSizeBytes: number } {
     const cwd = process.cwd()
     const files = collectFiles(cwd, cwd, provider)
     const fileCount = Object.keys(files).length
@@ -220,11 +240,54 @@ function buildZipPayload(provider: LanguageProvider): { sourceZipBase64: string;
     }
 
     const zipData = zipSync(files, { level: 6 })
-    return {
-        sourceZipBase64: Buffer.from(zipData).toString("base64"),
-        fileCount,
-        zipSizeBytes: zipData.length
+    return { zipBytes: zipData, fileCount, zipSizeBytes: zipData.length }
+}
+
+/**
+ * Object storage first, so a project carrying data files never rides inside the deploy request:
+ * base64 in JSON inflates it by a third and buffers the whole thing in the control plane. A
+ * control plane without object storage (self-host) says so, and the archive goes inline instead.
+ *
+ * The URL is a GCS resumable session created by the control plane, which accepts the whole archive
+ * in one request; 120MB uploads in about 4s. Note that @google-cloud/storage cannot replace this
+ * fetch: its chunked path rejects a session it did not create itself (it bails after a valid 308),
+ * and its working path is this same single PUT, which is not worth a 10MB dependency in a CLI.
+ */
+function requestUploadSession(apiKey: string): Promise<SdkSourceUploadResponse> {
+    return fetchWithAuth<SdkSourceUploadResponse>(ApiRoutes.SDK.DEPLOY_SOURCE_UPLOAD, apiKey, {}, "POST")
+}
+
+async function uploadSource(zipBytes: Uint8Array, session: Promise<SdkSourceUploadResponse>): Promise<{ sourceObjectKey?: string; sourceZipBase64?: string }> {
+    let reason: string
+    try {
+        const response = await session
+        if (!response.upload) return inlineArchive(zipBytes, "this Terse server has no object storage configured")
+
+        const upload = response.upload
+        const put = await fetch(upload.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": upload.contentType },
+            body: zipBytes
+        })
+
+        if (put.ok) return { sourceObjectKey: upload.objectKey }
+        reason = `storage rejected the upload: ${put.status} ${(await put.text().catch(() => "")).slice(0, 200)}`
+    } catch (error) {
+        reason = error instanceof Error ? error.message : String(error)
     }
+
+    return inlineArchive(zipBytes, reason)
+}
+
+/** The legacy path: still what older CLIs use, and the fallback when object storage is unavailable. */
+function inlineArchive(zipBytes: Uint8Array, reason: string): { sourceZipBase64: string } {
+    if (zipBytes.byteLength > MAX_INLINE_ARCHIVE_BYTES) {
+        throw new CliError("source_upload_failed", `Could not upload this project (${(zipBytes.byteLength / 1024 / 1024).toFixed(0)}MB), and it is too large to send inline.`, { detail: reason })
+    }
+
+    // Small enough to send inline, so the deploy still works, but say why the fast path was skipped.
+    log.warn(`Uploading inline: ${reason}`)
+    return { sourceZipBase64: Buffer.from(zipBytes).toString("base64") }
 }
 
 async function syncMissingLocalSecrets(args: { projectId: string; apiKey: string }): Promise<void> {
@@ -301,15 +364,80 @@ function readEligibleLocalEnv(envPath: string): ProjectSecretUpsertRequest[] {
 
 function getStageMessage(stage: SdkDeployStage): string {
     switch (stage) {
-        case "BUILDING_DEPENDENCY_IMAGE":
-            return "Building dependency image"
-        case "BUILDING_SOURCE_IMAGE":
-            return "Building source image"
+        case "PACKAGING_PROJECT":
+            return "Packaging your project"
+        case "PREPARING_BUILD":
+            return "Checking for a cached build"
+        case "REUSING_CACHED_BUILD":
+            return "Reusing the cached build"
+        case "STARTING_SANDBOX":
+            return "Starting a build sandbox"
+        case "UPLOADING_SOURCE":
+            return "Uploading your project"
+        case "BUILDING_PROJECT":
+            return "Building your project"
+        case "SAVING_IMAGE":
+            return "Saving the build image"
         case "CONFIGURING_AUTOMATIONS":
-            return "Configuring automations"
+            return "Setting up jobs"
         default: {
             const exhaustiveCheck: never = stage
             return exhaustiveCheck
         }
     }
+}
+
+/**
+ * Deploy timing as the user experiences it: wall clock from the CLI, not the server's view, so
+ * upload and round trips are included. A stage's duration ends when the next one starts, and the
+ * breakdown is only worth printing when a build actually happened.
+ */
+class DeployTimeline {
+    private startedAtMs = 0
+    private currentStage: { stage: SdkDeployStage; startedAtMs: number } | undefined
+    private readonly completed: Array<{ stage: SdkDeployStage; durationMs: number }> = []
+    private totalMs: number | undefined
+
+    start(): void {
+        this.startedAtMs = Date.now()
+    }
+
+    enter(stage: SdkDeployStage): void {
+        this.closeCurrentStage()
+        this.currentStage = { stage, startedAtMs: Date.now() }
+    }
+
+    finish(): void {
+        this.closeCurrentStage()
+        this.totalMs = Date.now() - this.startedAtMs
+    }
+
+    elapsed(): string {
+        return formatDuration((this.totalMs ?? Date.now() - this.startedAtMs) / 1000)
+    }
+
+    printBreakdown(): void {
+        // A cached deploy is two blinks and a total; a per-stage table would be noise.
+        if (this.completed.length < 2) return
+
+        for (const { stage, durationMs } of this.completed) {
+            console.log(chalk.dim(`    ${getStageMessage(stage).padEnd(30)} ${formatDuration(durationMs / 1000)}`))
+        }
+    }
+
+    private closeCurrentStage(): void {
+        if (!this.currentStage) return
+        this.completed.push({ stage: this.currentStage.stage, durationMs: Date.now() - this.currentStage.startedAtMs })
+        this.currentStage = undefined
+    }
+}
+
+function formatBytes(bytes: number): string {
+    return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)}KB` : `${(bytes / 1024 / 1024).toFixed(1)}MB`
+}
+
+function formatDuration(seconds: number): string {
+    if (seconds < 10) return `${seconds.toFixed(1)}s`
+    if (seconds < 60) return `${Math.round(seconds)}s`
+    return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
 }

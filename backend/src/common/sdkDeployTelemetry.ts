@@ -1,3 +1,5 @@
+import type { SdkDeployPhase } from "../services/sdkRuntimeExecutors/types"
+
 import { AnalyticsEvent, SdkDeployLatencyProperties, analytics } from "./analytics"
 import { LatencyTelemetry } from "./latencyTelemetry"
 import logger from "./logger"
@@ -12,23 +14,10 @@ type SdkDeployDurationKey = Extract<
     | "buildArchiveMs"
     | "resolveRuntimeMs"
     | "packLocalPackagesMs"
-    | "defineDependencyImageMs"
+    | "defineDeployImageMs"
     | "computeSourceHashMs"
-    | "dependencyImageResolveMs"
-    | "dependencyImageBuildMs"
-    | "dependencyBuildGetAppMs"
-    | "dependencyBuildSandboxReadyMs"
-    | "dependencyBuildExecutorMs"
-    | "dependencyBuildSnapshotMs"
-    | "sourceImageResolveMs"
-    | "sourceImageBuildMs"
-    | "sourceBuildGetAppMs"
-    | "sourceBuildLoadDependencyImageMs"
-    | "sourceBuildSandboxReadyMs"
-    | "sourceBuildWriteZipMs"
-    | "sourceBuildExtractZipMs"
-    | "sourceBuildPrepareMs"
-    | "sourceBuildSnapshotMs"
+    | "deployImageResolveMs"
+    | "deployImageBuildMs"
 >
 
 type SdkDeployTelemetryParams = {
@@ -46,8 +35,9 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
     private sourceZipBytes: number | undefined
     private jobsAdded: number | undefined
     private jobsRemoved: number | undefined
-    private dependencyImageCacheHit: boolean | undefined
-    private sourceImageCacheHit: boolean | undefined
+    private baseImageKind: string | undefined
+    private deployImageCacheHit: boolean | undefined
+    private readonly phaseMs: Partial<Record<SdkDeployPhase, number>> = {}
 
     constructor(private readonly params: SdkDeployTelemetryParams) {
         super()
@@ -70,12 +60,22 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
         this.jobsRemoved = params.jobsRemoved
     }
 
-    setDependencyImageCacheHit(hit: boolean): void {
-        this.dependencyImageCacheHit = hit
+    setBaseImageKind(kind: string): void {
+        this.baseImageKind = kind
     }
 
-    setSourceImageCacheHit(hit: boolean): void {
-        this.sourceImageCacheHit = hit
+    recordPhase(phase: SdkDeployPhase, durationMs: number): void {
+        this.phaseMs[phase] = (this.phaseMs[phase] ?? 0) + Math.round(durationMs)
+    }
+
+    setDeployImageCacheHit(hit: boolean): void {
+        this.deployImageCacheHit = hit
+    }
+
+    private slowestPhase(): string | undefined {
+        const entries = Object.entries(this.phaseMs)
+        if (entries.length === 0) return undefined
+        return entries.reduce((slowest, entry) => (entry[1] > slowest[1] ? entry : slowest))[0]
     }
 
     capture(success: boolean, error?: unknown): void {
@@ -92,8 +92,10 @@ export class SdkDeployTelemetry extends LatencyTelemetry<SdkDeployDurationKey> {
             jobsRemoved: this.jobsRemoved,
             sourceZipBytes: this.sourceZipBytes,
             runtime: this.runtime,
-            dependencyImageCacheHit: this.dependencyImageCacheHit,
-            sourceImageCacheHit: this.sourceImageCacheHit,
+            baseImageKind: this.baseImageKind,
+            deployImageCacheHit: this.deployImageCacheHit,
+            phases: this.phaseMs,
+            slowestPhase: this.slowestPhase(),
             success,
             ...(error ? { errorMessage: extractErrorMessage(error).slice(0, 500) } : {}),
             ...this.durations

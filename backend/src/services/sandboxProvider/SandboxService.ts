@@ -6,6 +6,9 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
 
     getImageFromRegistry(registry: string): I
     getImageFromId(imageId: string): Promise<I>
+
+    createBucketMount(params: BucketMountParams): Promise<SandboxBucketMount | undefined>
+
     deleteImage(imageId: string): Promise<void>
 
     imageExists(imageId: string): Promise<boolean>
@@ -19,7 +22,6 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     getExistingSandbox(app: A, uniqueName: string): Promise<S | null>
 
     getProjectPath(sandbox: S): string
-    getDependencyCachePath(sandbox: S, runtime: string): string
     getCliCachePath(sandbox: S): string
     getScratchPath(sandbox: S, filename: string): string
 
@@ -90,10 +92,22 @@ type SandboxCreateParams = {
     secrets?: Secret[]
     /** Mount points (absolute path -> volume handle from a VolumeManager). */
     volumes?: Record<string, SandboxVolume>
+    cloudBucketMounts?: Record<string, SandboxBucketMount>
 }
 
 /** Opaque per-provider volume handle (Modal Volume / local dir marker). */
 export type SandboxVolume = unknown
+
+/** Opaque per-provider bucket mount handle. */
+export type SandboxBucketMount = unknown
+
+export interface BucketMountParams {
+    bucket: string
+    /** Scopes what the sandbox can see. Customer code runs in there, so this is not optional. */
+    keyPrefix: string
+    accessKeyId: string
+    secretAccessKey: string
+}
 
 interface SandboxProxy {
     proxyId?: string

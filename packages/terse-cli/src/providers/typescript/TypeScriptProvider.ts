@@ -17,7 +17,7 @@ import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenHooks, CodegenResult, CodegenRunInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 
-import { buildWorkflowArtifacts, expectedWorkflowVersion } from "./durableRuntime.js"
+import { buildWorkflowArtifacts, expectedWorkflowCoreVersion } from "./durableRuntime.js"
 import { type IntegrationModule, type ModuleOutput, RUN_HISTORY_ACTION_HOIST } from "./modules/IntegrationModule.js"
 import { integrationModuleRegistry, terseModule } from "./modules/registry.js"
 import { type JobRuntime, directJobRuntime, durableJobRuntime } from "./runtimes/index.js"
@@ -59,7 +59,7 @@ class TypeScriptProvider implements LanguageProvider {
     }
 
     buildInitTemplateContext(projectName: string, sdkVersion: string): Record<string, unknown> {
-        return { projectName, sdkVersion, workflowVersion: expectedWorkflowVersion() }
+        return { projectName, sdkVersion, workflowCoreVersion: expectedWorkflowCoreVersion() }
     }
 
     getPostInitSteps(_packageManager: string): string[] {

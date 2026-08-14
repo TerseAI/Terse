@@ -57,6 +57,11 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         return { imageId: REGISTRY_IMAGE_MARKER }
     }
 
+    // Local builds run straight on the host, where the archive is already a file on disk.
+    async createBucketMount(): Promise<undefined> {
+        return undefined
+    }
+
     async getImageFromId(imageId: string): Promise<SandboxImage> {
         logger.info("#LocalSandbox image fromId", { imageId })
         return { imageId }
@@ -76,10 +81,6 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
 
     getProjectPath(sandbox: LocalSandbox): string {
         return path.join(sandbox.workingDir, "project")
-    }
-
-    getDependencyCachePath(sandbox: LocalSandbox, runtime: string): string {
-        return path.join(sandbox.workingDir, "cache", runtime, "project")
     }
 
     getCliCachePath(sandbox: LocalSandbox): string {

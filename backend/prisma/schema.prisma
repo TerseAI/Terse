@@ -348,6 +348,8 @@ model automation_prompts {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 }
 
+/// Retired: deploys build a single image (see sdk_source_images). Rows are no longer
+/// written; the maintenance sweep drains the remaining sandbox images, then this goes away.
 model sdk_dependency_images {
   id              String   @id @default(cuid())
   dependency_hash String   @unique
@@ -359,27 +361,28 @@ model sdk_dependency_images {
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
-  source_images sdk_source_images[]
-
   @@index([runtime])
   @@index([last_used_at])
 }
 
+/// One image per deploy: source, installed dependencies and the built bundle. Runs boot from it.
 model sdk_source_images {
-  id                  String   @id @default(cuid())
-  organization_id     String
-  runtime             String
-  source_hash         String
-  image_id            String   @unique
-  dependency_image_id String
-  last_used_at        DateTime @default(now())
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
+  id              String   @id @default(cuid())
+  organization_id String
+  runtime         String
+  /// Everything the image is a function of: org, source, CLI version, base image, dev hoisting.
+  build_hash      String
+  source_hash     String
+  cli_version     String
+  base_image_tag  String
+  image_id        String   @unique
+  last_used_at    DateTime @default(now())
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
-  dependency_image sdk_dependency_images @relation(fields: [dependency_image_id], references: [id], onDelete: Cascade)
-  deploys          project_deploys[]
+  deploys project_deploys[]
 
-  @@unique([organization_id, dependency_image_id, source_hash])
+  @@unique([organization_id, build_hash])
   @@index([organization_id])
   @@index([last_used_at])
 }

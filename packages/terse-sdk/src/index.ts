@@ -1,3 +1,4 @@
+import { sleep as workflowSleep } from "@workflow/core"
 import ms from "ms"
 import type {
     RunHistoryAction,
@@ -22,7 +23,6 @@ import {
 // The type-erased base event type, enriched with the SDK methods (formatForAgentRunner/debugLog).
 // Concrete trigger types are generated into the user's workspace by `terse generate`.
 import type { Trigger as _RawTrigger } from "terse-types"
-import { sleep as workflowSleep } from "workflow"
 import { z } from "zod"
 
 import { buildSdkRequestHeaders, resolveApiBaseUrl, resolveTerseBackendUrl } from "./backendRequest.js"

@@ -8,6 +8,7 @@ on:
             - "terse-types/**"
             - "packages/terse-sdk/**"
             - "pnpm-lock.yaml"
+            - "docker/**"
             - ".github/workflows/docker-build.yml"
 permissions:
     contents: read
@@ -16,13 +17,74 @@ jobs:
         name: Build image (no push)
         runs-on: blacksmith-4vcpu-ubuntu-2404
         timeout-minutes: 45
+        services:
+            registry:
+                image: registry:2
+                ports:
+                    - 5000:5000
         steps:
             - uses: actions/checkout@v4
             - uses: docker/setup-buildx-action@v3
-            - uses: docker/build-push-action@v6
+              with:
+                  driver-opts: network=host
+            - name: Control plane image
+              uses: docker/build-push-action@v6
               with:
                   context: .
                   cache-from: type=gha
                   # Fork PRs get a read-only cache token; a denied export must not
                   # fail the build check.
+                  cache-to: type=gha,mode=max,ignore-error=true
+
+            # This release's packages do not exist yet, so the Dockerfile is proven
+            # against whatever is currently published.
+            - name: Resolve the published CLI version
+              id: published
+              run: |
+                  version=$(npm view terse-cli version)
+                  echo "version=${version}" >> "$GITHUB_OUTPUT"
+                  # Falls back to the umbrella's pin for CLI releases that predate the @workflow/core
+                  # swap; both packages ship under the same version string.
+                  deps=$(npm view "terse-cli@${version}" dependencies --json)
+                  echo "workflow_core=$(node -p "const d = JSON.parse(process.argv[1]); d['@workflow/core'] ?? d.workflow" "$deps")" >> "$GITHUB_OUTPUT"
+
+            # Pushed to the job-local registry so the leaf images can FROM it. BuildKit reaches it
+            # over the host network and allows plain HTTP because the host is localhost.
+            - name: Sandbox base image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./docker/sandbox-node-base.Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  tags: localhost:5000/terse-sandbox-base:pr
+                  build-args: |
+                      TERSE_VERSION=${{ steps.published.outputs.version }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max,ignore-error=true
+
+            - name: Sandbox image (pnpm)
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./docker/sandbox-node-pnpm.Dockerfile
+                  platforms: linux/amd64
+                  build-args: |
+                      BASE_IMAGE=localhost:5000/terse-sandbox-base:pr
+                      TERSE_VERSION=${{ steps.published.outputs.version }}
+                      WORKFLOW_CORE_VERSION=${{ steps.published.outputs.workflow_core }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max,ignore-error=true
+
+            - name: Sandbox image (npm)
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./docker/sandbox-node-npm.Dockerfile
+                  platforms: linux/amd64
+                  build-args: |
+                      BASE_IMAGE=localhost:5000/terse-sandbox-base:pr
+                      TERSE_VERSION=${{ steps.published.outputs.version }}
+                      WORKFLOW_CORE_VERSION=${{ steps.published.outputs.workflow_core }}
+                  cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true

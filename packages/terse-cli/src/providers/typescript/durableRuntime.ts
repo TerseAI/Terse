@@ -1,3 +1,4 @@
+import { getRun, resumeHook, setWorld, start } from "@workflow/core/runtime"
 import crypto from "node:crypto"
 import fs from "node:fs"
 import { createRequire } from "node:module"
@@ -5,13 +6,12 @@ import path from "node:path"
 import { __buildJobStateAccessor, createSDKTrigger, fetchRegisteredJobs } from "terse-sdk"
 import { TerseJobContext } from "terse-sdk/dist/context"
 import { SerializedEvent } from "terse-types"
-import { getRun, resumeHook, start } from "workflow/api"
-import { setWorld } from "workflow/runtime"
 
 import { createTerseWorld } from "../../terseWorld.js"
 
 import { transformJobSource } from "./jobMacro.js"
 import { TerseWorkflowBuilder } from "./terseWorkflowBuilder.js"
+import { writeWorkflowShim } from "./workflowShim.js"
 
 let runtimePromise: Promise<DurableRuntime> | null = null
 
@@ -113,17 +113,20 @@ function lookupWorkflowId(manifest: any, fnName: string): string | undefined {
 
 const JOBS_MAP_FILE = "jobs.json"
 
-export function expectedWorkflowVersion(): string {
+export function expectedWorkflowCoreVersion(): string {
     const cliPackageJson = new URL("../../../package.json", import.meta.url)
-    return JSON.parse(fs.readFileSync(cliPackageJson, "utf8")).dependencies.workflow
+    return JSON.parse(fs.readFileSync(cliPackageJson, "utf8")).dependencies["@workflow/core"]
 }
 
 function ensureProjectWorkflowDependency(cwd: string): void {
     try {
-        createRequire(path.join(cwd, "package.json")).resolve("workflow")
+        createRequire(path.join(cwd, "package.json")).resolve("@workflow/core")
     } catch {
-        throw new Error(`Durable execution needs the "workflow" package in your project. Run: npm install workflow@${expectedWorkflowVersion()}`)
+        throw new Error(
+            `Durable execution needs the "@workflow/core" package in your project. Run: npm install @workflow/core@${expectedWorkflowCoreVersion()} (the "workflow" package it replaces can be removed).`
+        )
     }
+    writeWorkflowShim(cwd, expectedWorkflowCoreVersion())
 }
 
 export async function buildWorkflowArtifacts(cwd: string): Promise<Map<string, { fnName: string; file: string }>> {

@@ -1,19 +1,13 @@
 import crypto from "crypto"
 
-import type { LocalPackagesBundle } from "../../utility/localPackages"
+import logger from "../../common/logger"
 
-import type {
-    SandboxCommandResult,
-    SdkDependencyImageBuildContext,
-    SdkDependencyImageDefinition,
-    SdkProjectArchive,
-    SdkRuntimeExecutor,
-    SdkRuntimeExecutorContext,
-    SdkSourceImageBuildContext
-} from "./types"
-import { buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeHoistMarker, writeLocalTarballs } from "./typescriptLocalPackages"
+import type { DefineDeployImageParams, SandboxCommandResult, SdkDeployImageBuildContext, SdkDeployImageDefinition, SdkProjectArchive, SdkRuntimeExecutor, SdkRuntimeExecutorContext } from "./types"
+import { type PackageManager, buildLocalDependencyInstallCommand, installLocalCli, withTerseOverrides, writeHoistMarker, writeLocalTarballs } from "./typescriptLocalPackages"
 
 const DEFAULT_PNPM_VERSION = "10.34.1"
+const CLI_VERSION_MARKER = ".terse-cli-version"
+const PNPM_NON_INTERACTIVE = "--config.confirmModulesPurge=false"
 
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
@@ -23,27 +17,30 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return entries.has("package.json")
     }
 
-    defineDependencyImage(archive: SdkProjectArchive, cliVersion: string, localPackages?: LocalPackagesBundle): SdkDependencyImageDefinition {
-        const packageManager = this.detectPackageManager(archive)
-        const relevantFiles = ["package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc"]
+    // One image per package manager: each bakes the scaffold's node_modules in its own layout, and
+    // the two layouts cannot share a directory.
+    releaseImageNameFor(archive: SdkProjectArchive): string {
+        return `terse-sandbox-node-${this.detectPackageManager(archive)}`
+    }
+
+    defineDeployImage({ archive, organizationId, sourceHash, cliVersion, baseImage, localPackages }: DefineDeployImageParams): SdkDeployImageDefinition {
         const hashPayload = {
-            version: 3,
+            version: 4,
             runtime: this.runtime,
-            baseImage: this.sandboxImage,
-            packageManager,
+            organizationId,
+            sourceHash,
+            baseImage: baseImage.reference,
+            packageManager: this.detectPackageManager(archive),
             terseCliSpec: `terse-cli@${cliVersion}`,
-            localPackages: localPackages?.contentHash,
-            files: Object.fromEntries(relevantFiles.filter(path => archive.has(path)).map(path => [path, archive.readText(path)]))
+            localPackages: localPackages?.contentHash
         }
 
         return {
-            dependencyHash: crypto.createHash("sha256").update(JSON.stringify(hashPayload)).digest("hex")
+            buildHash: crypto.createHash("sha256").update(JSON.stringify(hashPayload)).digest("hex")
         }
     }
 
-    async buildDependencyImage(context: SdkDependencyImageBuildContext): Promise<void> {
-        const templateDir = context.escapeShellArg(context.templateDir)
-        const cliCachePath = context.escapeShellArg(context.cliCachePath)
+    async buildDeployImage(context: SdkDeployImageBuildContext): Promise<void> {
         const packageJson = context.archive.readText("package.json")
         if (!packageJson) {
             throw new Error("package.json is required to build the TypeScript sandbox image")
@@ -51,53 +48,63 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
         const packageManager = this.detectPackageManager(context.archive)
 
-        await context.ensureSandboxCommand("prepare TypeScript image filesystem", `mkdir -p ${templateDir} ${cliCachePath}`)
-
         // Dev-only: hoist the dev's locally-built SDK/CLI into the sandbox instead of the npm registry.
         const localPackages = context.localPackages
         let localTarballs: Map<string, string> | undefined
         if (localPackages) {
+            // Unpack first: the overridden package.json is written into the project dir, which the
+            // unpack creates and then empties. Folding it into the install exec below would write it
+            // before the directory exists, then delete it. The extra round trip is dev-only.
+            await context.ensureSandboxCommand("building_project", context.unpackCommand)
             localTarballs = await writeLocalTarballs(context, localPackages)
-            await context.writeFile(`${context.templateDir}/package.json`, withTerseOverrides(packageJson, localTarballs, packageManager))
-        } else {
-            await context.writeFile(`${context.templateDir}/package.json`, packageJson)
+            await context.writeFile(`${context.projectDir}/package.json`, withTerseOverrides(packageJson, localTarballs, packageManager))
+            await installLocalCli(context, localTarballs)
+            await writeHoistMarker(context, localPackages)
         }
         // === end dev-only ===
 
-        for (const path of ["package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc"]) {
-            const content = context.archive.readText(path)
-            if (content) {
-                await context.writeFile(`${context.templateDir}/${path}`, content)
-            }
-        }
+        const install = [
+            localTarballs ? undefined : context.unpackCommand,
+            localTarballs ? undefined : this.ensureCliCommand(context),
+            this.ensurePackageManagerCommand(context, packageManager),
+            localTarballs
+                ? buildLocalDependencyInstallCommand(packageManager, context.projectDir, context.escapeShellArg)
+                : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg)
+        ].filter((command): command is string => command !== undefined)
 
-        if (localPackages && localTarballs) {
-            await installLocalCli(context, localTarballs)
-            await writeHoistMarker(context, localPackages)
+        // Only the durable runtime reads .terse/wf; directJobRuntime calls the handler from source.
+        if (context.requiresWorkflowBundle) {
+            // Older CLIs lack `terse build`; they always ship a prebuilt .terse/wf inside the source zip.
+            const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
+            install.push(`cd ${context.escapeShellArg(context.projectDir)} && { ${cliBin} build || [ -d .terse/wf ]; }`)
         } else {
-            await context.ensureSandboxCommand("install terse cli", `npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`)
+            logger.info("SDK image build: no durable jobs, skipping the workflow bundle")
         }
 
-        if (packageManager === "pnpm") {
-            const pnpmVersion = this.detectPnpmVersion(context.archive)
-            // --force: overwrite any pre-existing pnpm shim (e.g. corepack's at
-            // /usr/local/bin/pnpm in the self-host image), which npm otherwise EEXISTs on.
-            await context.ensureSandboxCommand("install pnpm", `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`)
-        }
-        const installCommand = localTarballs
-            ? buildLocalDependencyInstallCommand(packageManager, context.templateDir, context.escapeShellArg)
-            : this.buildDependencyInstallCommand(context.archive, context.templateDir, context.escapeShellArg)
-        await context.ensureSandboxCommand("install cached TypeScript dependencies", installCommand)
+        await context.ensureSandboxCommand("building_project", install.join(" && "))
     }
 
-    async prepareSourceImage(context: SdkSourceImageBuildContext): Promise<void> {
-        await context.ensureSandboxCommand(
-            "copy cached node_modules",
-            `rm -rf ${context.escapeShellArg(`${context.projectDir}/node_modules`)} && cp -R ${context.escapeShellArg(`${context.templateDir}/node_modules`)} ${context.escapeShellArg(`${context.projectDir}/node_modules`)}`
-        )
-        // Older CLIs lack `terse build`; they always ship a prebuilt .terse/wf inside the source zip, so fall back to that.
-        const cliBin = `${context.escapeShellArg(context.cliCachePath)}/bin/terse`
-        await context.ensureSandboxCommand("build workflow bundle", `cd ${context.escapeShellArg(context.projectDir)} && { ${cliBin} build || [ -d .terse/wf ]; }`)
+    private ensureCliCommand(context: SdkDeployImageBuildContext): string {
+        const marker = context.escapeShellArg(`${context.cliCachePath}/${CLI_VERSION_MARKER}`)
+        const wanted = context.escapeShellArg(context.cliVersion)
+        const cliCachePath = context.escapeShellArg(context.cliCachePath)
+        const install = `mkdir -p ${cliCachePath} && npm install -g --prefix ${cliCachePath} ${context.escapeShellArg(`terse-cli@${context.cliVersion}`)} --no-fund >/dev/null`
+
+        return `if [ "$(cat ${marker} 2>/dev/null)" = ${wanted} ]; then echo "terse-cli ${context.cliVersion} already baked"; else ${install}; fi`
+    }
+
+    private ensurePackageManagerCommand(context: SdkDeployImageBuildContext, packageManager: PackageManager): string | undefined {
+        if (packageManager !== "pnpm") return undefined
+
+        const pnpmVersion = this.detectPnpmVersion(context.archive)
+        if (context.baseImage.kind === "sandbox" && pnpmVersion === DEFAULT_PNPM_VERSION) {
+            logger.info("SDK image build: reusing prebuilt pnpm", { pnpmVersion })
+            return undefined
+        }
+
+        // --force: overwrite any pre-existing pnpm shim (e.g. corepack's at
+        // /usr/local/bin/pnpm in the self-host image), which npm otherwise EEXISTs on.
+        return `npm install -g ${context.escapeShellArg(`pnpm@${pnpmVersion}`)} --no-fund --force >/dev/null`
     }
 
     async execute(context: SdkRuntimeExecutorContext): Promise<SandboxCommandResult> {
@@ -167,19 +174,17 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return DEFAULT_PNPM_VERSION
     }
 
-    private buildDependencyInstallCommand(archive: SdkProjectArchive, templateDir: string, escapeShellArg: (value: string) => string): string {
-        const escapedTemplateDir = escapeShellArg(templateDir)
+    private buildDependencyInstallCommand(archive: SdkProjectArchive, projectDir: string, escapeShellArg: (value: string) => string): string {
+        const escapedProjectDir = escapeShellArg(projectDir)
         const packageManager = this.detectPackageManager(archive)
 
         if (packageManager === "pnpm") {
             const frozen = archive.has("pnpm-lock.yaml") ? "--frozen-lockfile" : "--no-frozen-lockfile"
-            return `cd ${escapedTemplateDir} && pnpm install --prod ${frozen}`
+            return `cd ${escapedProjectDir} && pnpm install --prod ${frozen} ${PNPM_NON_INTERACTIVE}`
         }
 
-        if (archive.has("package-lock.json") || archive.has("npm-shrinkwrap.json")) {
-            return `cd ${escapedTemplateDir} && npm ci --omit=dev --no-fund`
-        }
-
-        return `cd ${escapedTemplateDir} && npm install --omit=dev --no-fund`
+        // Not `npm ci`: npm writes lockfiles its own `ci` then rejects as out of sync. No wiping
+        // node_modules either, so npm reconciles the image's baked tree instead of rebuilding it.
+        return `cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
     }
 }
