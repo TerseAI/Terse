@@ -9,7 +9,7 @@ import { useAgents } from "@/modules/agents/api/useAgents"
 import { usePendingApprovals } from "@/modules/notifications/api/usePendingApprovals"
 import { useOrganizationProjects } from "@/modules/projects/api/useOrganizationProjects"
 
-import { BundleList } from "./BundleList"
+import { ProjectList } from "./ProjectList"
 import { AppSidebarFooter } from "./SidebarFooter"
 import { AppSidebarHeader } from "./SidebarHeader"
 
@@ -19,7 +19,7 @@ export function AppSidebar() {
     const { projects: organizationProjects, isLoading: projectsLoading } = useOrganizationProjects()
 
     const loading = isLoading || projectsLoading
-    const showBundles = loading || agents.length > 0 || organizationProjects.length > 0
+    const showProjects = loading || agents.length > 0 || organizationProjects.length > 0
 
     return (
         <Sidebar>
@@ -31,11 +31,11 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
 
-                {showBundles && (
+                {showProjects && (
                     <SidebarGroup>
-                        <SidebarGroupLabel>Bundles</SidebarGroupLabel>
+                        <SidebarGroupLabel>Projects</SidebarGroupLabel>
                         <SidebarGroupContent>
-                            <BundleList agents={agents} organizationProjects={organizationProjects} loading={loading} />
+                            <ProjectList agents={agents} organizationProjects={organizationProjects} loading={loading} />
                         </SidebarGroupContent>
                     </SidebarGroup>
                 )}

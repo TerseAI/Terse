@@ -441,3 +441,45 @@
         stroke-dashoffset: 0;
     }
 }
+
+/* Collapsible disclosure ---------------------------------------------------- */
+
+[data-slot="collapsible-content"] {
+    overflow: hidden;
+}
+
+[data-slot="collapsible-content"][data-state="open"] {
+    animation: collapsible-open 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-slot="collapsible-content"][data-state="closed"] {
+    animation: collapsible-close 150ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+@keyframes collapsible-open {
+    from {
+        height: 0;
+        opacity: 0;
+    }
+    to {
+        height: var(--radix-collapsible-content-height);
+        opacity: 1;
+    }
+}
+
+@keyframes collapsible-close {
+    from {
+        height: var(--radix-collapsible-content-height);
+        opacity: 1;
+    }
+    to {
+        height: 0;
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-slot="collapsible-content"] {
+        animation: none !important;
+    }
+}

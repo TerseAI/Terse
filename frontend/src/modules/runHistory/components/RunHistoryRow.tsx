@@ -6,6 +6,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
+import { TableCell, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
 import { useReTriggerRun } from "@/modules/runHistory/api/useReTriggerRun"
@@ -15,116 +16,138 @@ import { formatTimestamp } from "@/utils/time"
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
 import RunTypeBadge from "./RunTypeBadge"
 import TriggeredBy from "./TriggeredBy"
+import { RUN_HISTORY_COLUMN } from "./runHistoryColumns"
 
 export type RunHistoryRowRecord = RunHistoryRecord & { agentName?: string }
 
 interface RunHistoryRowProps {
     run: RunHistoryRowRecord
     onOpenRun: (runId: string) => void
+    showJobColumn: boolean
     className?: string
 }
 
-export function RunHistoryRow({ run, onOpenRun, className }: RunHistoryRowProps) {
+export function RunHistoryRow({ run, onOpenRun, showJobColumn, className }: RunHistoryRowProps) {
     const openRun = useOpenRunDeepLink()
     const { reTriggerRun, isReTriggering } = useReTriggerRun({ agentId: run.agentId, runId: run.id })
     const title = run.trigger.title || run.trigger.source
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
+    const hasRunType = Boolean(run.isTest || run.isManuallyTriggered || run.replayOfRunId)
 
     return (
-        <div
-            role="listitem"
-            onClick={() => onOpenRun(run.id)}
-            className={cn("group flex cursor-pointer items-center gap-3 py-2.5 pr-2.5 pl-4 transition-colors duration-150 hover:bg-muted/40", className)}
-        >
-            {/* Integration icon */}
-            <div className="shrink-0 w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
-                <IconForIntegration integration={run.trigger.integration} />
-            </div>
+        <TableRow onClick={() => onOpenRun(run.id)} className={cn("group cursor-pointer border-border/40", className)}>
+            <TableCell className={cn(RUN_HISTORY_COLUMN.event, "py-2.5 pl-4")}>
+                <div className="flex items-center gap-2.5">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+                        <IconForIntegration integration={run.trigger.integration} />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={e => {
+                            e.stopPropagation()
+                            onOpenRun(run.id)
+                        }}
+                        className="max-w-[260px] truncate rounded-sm text-left text-sm font-medium text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        {title}
+                    </button>
+                    {run.trigger.url && (
+                        <a
+                            href={run.trigger.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            aria-label={`Open ${title} in new tab`}
+                            className="shrink-0 rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 group-hover:opacity-100"
+                        >
+                            <ExternalLink className="size-3" aria-hidden="true" />
+                        </a>
+                    )}
+                </div>
+            </TableCell>
 
-            {/* Main content */}
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-                <button
-                    type="button"
-                    onClick={e => {
-                        e.stopPropagation()
-                        onOpenRun(run.id)
-                    }}
-                    className="max-w-full shrink-0 truncate rounded-sm text-left text-sm font-medium text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    {title}
-                </button>
-                {run.trigger.url && (
-                    <a
-                        href={run.trigger.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        aria-label={`Open ${title} in new tab`}
-                        className="shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                    >
-                        <ExternalLink className="w-3 h-3" aria-hidden="true" />
-                    </a>
-                )}
-                {run.agentName && (
-                    <Link
-                        to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId })}
-                        onClick={e => e.stopPropagation()}
-                        className="hidden min-w-0 truncate text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm sm:block"
-                        title={run.agentName}
-                    >
-                        {run.agentName}
-                    </Link>
-                )}
-                {run.trigger.subheader && (
-                    <span className="hidden min-w-0 truncate text-xs text-muted-foreground md:block" title={run.trigger.subheader}>
+            {showJobColumn && (
+                <TableCell className={RUN_HISTORY_COLUMN.job}>
+                    {run.agentName ? (
+                        <Link
+                            to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId })}
+                            onClick={e => e.stopPropagation()}
+                            title={run.agentName}
+                            className="block max-w-[160px] truncate rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        >
+                            {run.agentName}
+                        </Link>
+                    ) : (
+                        <EmptyCell />
+                    )}
+                </TableCell>
+            )}
+
+            <TableCell className={RUN_HISTORY_COLUMN.detail}>
+                {run.trigger.subheader ? (
+                    <span className="block max-w-[420px] truncate text-xs text-muted-foreground" title={run.trigger.subheader}>
                         {run.trigger.subheader}
                     </span>
+                ) : (
+                    <EmptyCell />
                 )}
-            </div>
+            </TableCell>
 
-            {/* Run type + who triggered */}
-            {(run.isTest || run.isManuallyTriggered || run.replayOfRunId) && (
-                <div className="hidden shrink-0 items-center gap-2 sm:flex">
+            <TableCell className={RUN_HISTORY_COLUMN.type}>
+                {hasRunType ? (
                     <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} replayOfRunId={run.replayOfRunId} onOpenOriginal={openRun} className="text-[10px]" />
-                    {run.triggeredByUserId && <TriggeredBy userId={run.triggeredByUserId} showLabel={false} className="text-[10px]" />}
-                </div>
-            )}
+                ) : (
+                    <EmptyCell />
+                )}
+            </TableCell>
 
-            {/* Write actions count */}
-            {writeActions.length > 0 && (
-                <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
-                    <Zap className="w-3 h-3" />
-                    <span>
-                        {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}
+            <TableCell className={RUN_HISTORY_COLUMN.triggeredBy}>{run.triggeredByUserId ? <TriggeredBy userId={run.triggeredByUserId} showLabel={false} /> : <EmptyCell />}</TableCell>
+
+            <TableCell className={RUN_HISTORY_COLUMN.actions}>
+                {writeActions.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+                        <Zap className="size-3" aria-hidden="true" />
+                        {writeActions.length}
                     </span>
-                </div>
-            )}
+                ) : (
+                    <EmptyCell />
+                )}
+            </TableCell>
 
-            {/* Status */}
-            <RunHistoryStatusBadge status={run.status} className="hidden sm:flex" />
-            <span className={cn("size-2 shrink-0 rounded-full sm:hidden", statusDot(run.status).className)}>
-                <span className="sr-only">{statusDot(run.status).label}</span>
-            </span>
+            <TableCell className={RUN_HISTORY_COLUMN.status}>
+                <RunHistoryStatusBadge status={run.status} className="hidden sm:inline-flex" />
+                <span className={cn("size-2 shrink-0 rounded-full sm:hidden", statusDot(run.status).className)}>
+                    <span className="sr-only">{statusDot(run.status).label}</span>
+                </span>
+            </TableCell>
 
-            {/* Timestamp */}
-            <span className="text-xs text-muted-foreground whitespace-nowrap text-right tabular-nums">{formatTimestamp(run.timestamp)}</span>
+            <TableCell className={cn(RUN_HISTORY_COLUMN.time, "text-xs text-muted-foreground")}>{formatTimestamp(run.timestamp)}</TableCell>
 
-            {/* Re-trigger */}
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={e => {
-                    e.stopPropagation()
-                    reTriggerRun()
-                }}
-                disabled={isReTriggering}
-                className="size-7 text-muted-foreground/60 transition-colors hover:text-foreground group-hover:text-muted-foreground"
-                aria-label="Re-trigger run"
-                title="Re-trigger run"
-            >
-                <RefreshCcw className={cn("w-3.5 h-3.5", isReTriggering && "animate-spin")} aria-hidden="true" />
-            </Button>
-        </div>
+            <TableCell className={cn(RUN_HISTORY_COLUMN.retrigger, "pr-2.5")}>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={e => {
+                        e.stopPropagation()
+                        reTriggerRun()
+                    }}
+                    disabled={isReTriggering}
+                    className="size-7 text-muted-foreground/60 transition-colors hover:text-foreground group-hover:text-muted-foreground"
+                    aria-label="Re-trigger run"
+                    title="Re-trigger run"
+                >
+                    <RefreshCcw className={cn("size-3.5", isReTriggering && "animate-spin")} aria-hidden="true" />
+                </Button>
+            </TableCell>
+        </TableRow>
+    )
+}
+
+function EmptyCell() {
+    return (
+        <span className="text-muted-foreground/40" aria-hidden="true">
+            &mdash;
+        </span>
     )
 }
 

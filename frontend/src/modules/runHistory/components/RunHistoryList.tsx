@@ -1,10 +1,13 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 import { useRunHistoryChatDrawer } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryPagination from "./RunHistoryPagination"
 import { RunHistoryRow, type RunHistoryRowRecord } from "./RunHistoryRow"
+import { RUN_HISTORY_COLUMN } from "./runHistoryColumns"
 
 type Props = {
     runs: RunHistoryRowRecord[]
@@ -23,6 +26,7 @@ const PAGE_SIZES = [10, 25, 50, 100]
 
 export default function RunHistoryList({ runs, isLoading, hasActiveFilters, onClearFilters, total, currentPage, totalPages, runsPerPage, onPageChange, onRunsPerPageChange }: Props) {
     const { openDrawer } = useRunHistoryChatDrawer()
+    const showJobColumn = runs.some(run => run.agentName)
 
     const handleOpenRun = (runId: string) => {
         const initialRunIndex = runs.findIndex(run => run.id === runId)
@@ -35,7 +39,7 @@ export default function RunHistoryList({ runs, isLoading, hasActiveFilters, onCl
 
     return (
         <>
-            <div className="overflow-hidden rounded-lg border bg-card">
+            <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
                 {isLoading ? (
                     <LoadingSkeleton />
                 ) : runs.length === 0 ? (
@@ -43,11 +47,14 @@ export default function RunHistoryList({ runs, isLoading, hasActiveFilters, onCl
                         <RunHistoryEmptyState hasActiveFilters={hasActiveFilters} onClearAll={onClearFilters} />
                     </div>
                 ) : (
-                    <div role="list" aria-label="Run history" className="divide-y divide-border/40">
-                        {runs.map(run => (
-                            <RunHistoryRow key={run.id} run={run} onOpenRun={handleOpenRun} />
-                        ))}
-                    </div>
+                    <Table>
+                        <RunHistoryTableHeader showJobColumn={showJobColumn} />
+                        <TableBody>
+                            {runs.map(run => (
+                                <RunHistoryRow key={run.id} run={run} onOpenRun={handleOpenRun} showJobColumn={showJobColumn} />
+                            ))}
+                        </TableBody>
+                    </Table>
                 )}
             </div>
 
@@ -83,17 +90,63 @@ export default function RunHistoryList({ runs, isLoading, hasActiveFilters, onCl
     )
 }
 
+function RunHistoryTableHeader({ showJobColumn }: { showJobColumn: boolean }) {
+    return (
+        <TableHeader className="bg-muted/20">
+            <TableRow className="border-border/40 hover:bg-transparent">
+                <TableHead className={cn(RUN_HISTORY_COLUMN.event, "pl-4")}>Event</TableHead>
+                {showJobColumn && <TableHead className={RUN_HISTORY_COLUMN.job}>Job</TableHead>}
+                <TableHead className={RUN_HISTORY_COLUMN.detail}>Detail</TableHead>
+                <TableHead className={RUN_HISTORY_COLUMN.type}>Type</TableHead>
+                <TableHead className={RUN_HISTORY_COLUMN.triggeredBy}>Triggered by</TableHead>
+                <TableHead className={RUN_HISTORY_COLUMN.actions}>Actions</TableHead>
+                <TableHead className={RUN_HISTORY_COLUMN.status}>Status</TableHead>
+                <TableHead className={RUN_HISTORY_COLUMN.time}>Time</TableHead>
+                <TableHead className={cn(RUN_HISTORY_COLUMN.retrigger, "pr-2.5")}>
+                    <span className="sr-only">Re-trigger</span>
+                </TableHead>
+            </TableRow>
+        </TableHeader>
+    )
+}
+
 function LoadingSkeleton() {
     return (
-        <div className="divide-y divide-border/40">
-            {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 px-4 py-2.5">
-                    <Skeleton className="w-7 h-7 rounded-lg flex-shrink-0" />
-                    <Skeleton className="h-4 w-3/4 max-w-[280px]" />
-                    <Skeleton className="ml-auto h-5 w-16 rounded-full hidden sm:block" />
-                    <Skeleton className="h-3 w-12" />
-                </div>
-            ))}
-        </div>
+        <Table>
+            <RunHistoryTableHeader showJobColumn={false} />
+            <TableBody>
+                {Array.from({ length: 8 }).map((_, i) => (
+                    <TableRow key={i} className="border-border/40 hover:bg-transparent">
+                        <TableCell className={cn(RUN_HISTORY_COLUMN.event, "py-2.5 pl-4")}>
+                            <div className="flex items-center gap-2.5">
+                                <Skeleton className="size-7 shrink-0 rounded-lg" />
+                                <Skeleton className="h-4 w-40" />
+                            </div>
+                        </TableCell>
+                        <TableCell className={RUN_HISTORY_COLUMN.detail}>
+                            <Skeleton className="h-3 w-56" />
+                        </TableCell>
+                        <TableCell className={RUN_HISTORY_COLUMN.type}>
+                            <Skeleton className="h-4 w-14 rounded-full" />
+                        </TableCell>
+                        <TableCell className={RUN_HISTORY_COLUMN.triggeredBy}>
+                            <Skeleton className="h-4 w-24" />
+                        </TableCell>
+                        <TableCell className={RUN_HISTORY_COLUMN.actions}>
+                            <Skeleton className="ml-auto h-3 w-6" />
+                        </TableCell>
+                        <TableCell className={RUN_HISTORY_COLUMN.status}>
+                            <Skeleton className="h-5 w-20 rounded-full" />
+                        </TableCell>
+                        <TableCell className={RUN_HISTORY_COLUMN.time}>
+                            <Skeleton className="ml-auto h-3 w-16" />
+                        </TableCell>
+                        <TableCell className={cn(RUN_HISTORY_COLUMN.retrigger, "pr-2.5")}>
+                            <Skeleton className="size-7 rounded-md" />
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
     )
 }
