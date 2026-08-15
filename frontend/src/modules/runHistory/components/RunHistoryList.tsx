@@ -22,7 +22,7 @@ type Props = {
     onRunsPerPageChange: (value: number) => void
 }
 
-const PAGE_SIZES = [10, 25, 50, 100]
+export const PAGE_SIZES = [10, 20, 50, 100]
 
 export default function RunHistoryList({ runs, isLoading, hasActiveFilters, onClearFilters, total, currentPage, totalPages, runsPerPage, onPageChange, onRunsPerPageChange }: Props) {
     const { openDrawer } = useRunHistoryChatDrawer()
@@ -34,6 +34,8 @@ export default function RunHistoryList({ runs, isLoading, hasActiveFilters, onCl
         openDrawer({ runs, initialRunIndex })
     }
 
+    // A caller's page size that isn't one of the presets would otherwise leave the select blank.
+    const sizeOptions = PAGE_SIZES.includes(runsPerPage) ? PAGE_SIZES : [...PAGE_SIZES, runsPerPage].sort((a, b) => a - b)
     const startIndex = (currentPage - 1) * runsPerPage
     const needsPaging = totalPages > 1 || total > runsPerPage
 
@@ -73,7 +75,7 @@ export default function RunHistoryList({ runs, isLoading, hasActiveFilters, onCl
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {PAGE_SIZES.map(size => (
+                                        {sizeOptions.map(size => (
                                             <SelectItem key={size} value={String(size)}>
                                                 {size}
                                             </SelectItem>
@@ -96,7 +98,6 @@ function RunHistoryTableHeader({ showJobColumn }: { showJobColumn: boolean }) {
             <TableRow className="border-border/40 hover:bg-transparent">
                 <TableHead className={cn(RUN_HISTORY_COLUMN.event, "pl-4")}>Event</TableHead>
                 {showJobColumn && <TableHead className={RUN_HISTORY_COLUMN.job}>Job</TableHead>}
-                <TableHead className={RUN_HISTORY_COLUMN.detail}>Detail</TableHead>
                 <TableHead className={RUN_HISTORY_COLUMN.type}>Type</TableHead>
                 <TableHead className={RUN_HISTORY_COLUMN.triggeredBy}>Triggered by</TableHead>
                 <TableHead className={RUN_HISTORY_COLUMN.actions}>Actions</TableHead>
@@ -122,9 +123,6 @@ function LoadingSkeleton() {
                                 <Skeleton className="size-7 shrink-0 rounded-lg" />
                                 <Skeleton className="h-4 w-40" />
                             </div>
-                        </TableCell>
-                        <TableCell className={RUN_HISTORY_COLUMN.detail}>
-                            <Skeleton className="h-3 w-56" />
                         </TableCell>
                         <TableCell className={RUN_HISTORY_COLUMN.type}>
                             <Skeleton className="h-4 w-14 rounded-full" />

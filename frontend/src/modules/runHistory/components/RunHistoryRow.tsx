@@ -83,16 +83,6 @@ export function RunHistoryRow({ run, onOpenRun, showJobColumn, className }: RunH
                 </TableCell>
             )}
 
-            <TableCell className={RUN_HISTORY_COLUMN.detail}>
-                {run.trigger.subheader ? (
-                    <span className="block max-w-[420px] truncate text-xs text-muted-foreground" title={run.trigger.subheader}>
-                        {run.trigger.subheader}
-                    </span>
-                ) : (
-                    <EmptyCell />
-                )}
-            </TableCell>
-
             <TableCell className={RUN_HISTORY_COLUMN.type}>
                 {hasRunType ? (
                     <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} replayOfRunId={run.replayOfRunId} onOpenOriginal={openRun} className="text-[10px]" />

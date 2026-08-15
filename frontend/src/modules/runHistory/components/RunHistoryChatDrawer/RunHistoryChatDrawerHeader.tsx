@@ -134,7 +134,7 @@ export default function RunHistoryChatDrawerHeader({
                         className="h-7 gap-1.5 px-2 text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                     >
                         <Braces className="h-3.5 w-3.5" />
-                        {isTriggerPayloadOpen ? "Hide payload" : "View payload"}
+                        {isTriggerPayloadOpen ? "Hide trigger data" : "View trigger data"}
                         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isTriggerPayloadOpen && "rotate-180")} />
                     </Button>
                 )}
