@@ -14,7 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { useProject } from "@/modules/projects/api/useProject"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
-import { CenteredMessage, DeployRow, DeploysEmpty, DeploysSkeleton, SectionLabel, deployStatusPresentation } from "./ProjectDetailShared"
+import { CenteredMessage, DeploysEmpty, DeploysSkeleton, DeploysTable, SectionLabel, deployStatusPresentation } from "./ProjectDetailShared"
 
 type DeploySortKey = "newest" | "oldest" | "status"
 type DeployStatusFilter = "ALL" | ProjectDeployStatus
@@ -131,11 +131,7 @@ function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
                             ) : null}
                         </div>
                     ) : (
-                        <ol className="divide-border/60 border-border/60 divide-y overflow-hidden rounded-lg border">
-                            {filtered.map(d => (
-                                <DeployRow key={d.id} deploy={d} />
-                            ))}
-                        </ol>
+                        <DeploysTable deploys={filtered} />
                     )}
                 </section>
             </PageFrame>

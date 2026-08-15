@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { type ReactNode, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { AlertTriangle, ArrowRight, Briefcase, CheckCircle2, CircleDot, KeyRound, Loader2, Rocket, RotateCcw, Trash2, XCircle } from "lucide-react"
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useAgents } from "@/modules/agents/api/useAgents"
@@ -169,12 +170,10 @@ export function DeploymentsSection({ projectId, deploys, isLoading }: { projectI
             ) : !deploys || deploys.length === 0 ? (
                 <DeploysEmpty />
             ) : (
-                <ol className="divide-border/60 border-border/60 divide-y overflow-hidden rounded-lg border">
-                    {visible.map(d => (
-                        <DeployRow key={d.id} deploy={d} />
-                    ))}
-                    {hasMore ? (
-                        <li>
+                <DeploysTable
+                    deploys={visible}
+                    footer={
+                        hasMore ? (
                             <Link
                                 to={allDeploysHref}
                                 className="text-muted-foreground hover:bg-muted/30 hover:text-foreground group flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs transition-colors"
@@ -182,15 +181,53 @@ export function DeploymentsSection({ projectId, deploys, isLoading }: { projectI
                                 See all {total} deployments
                                 <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                             </Link>
-                        </li>
-                    ) : null}
-                </ol>
+                        ) : null
+                    }
+                />
             )}
         </section>
     )
 }
 
-export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
+const DEPLOY_COLUMN = {
+    status: "",
+    deployment: "w-full",
+    jobs: "hidden sm:table-cell",
+    deployedBy: "hidden md:table-cell",
+    time: "text-right"
+} as const
+
+export function DeploysTable({ deploys, footer }: { deploys: ProjectDeploy[]; footer?: ReactNode }) {
+    return (
+        <div className="border-border/60 overflow-hidden rounded-lg border">
+            <Table>
+                <DeploysTableHeader />
+                <TableBody>
+                    {deploys.map(d => (
+                        <DeployRow key={d.id} deploy={d} />
+                    ))}
+                </TableBody>
+            </Table>
+            {footer}
+        </div>
+    )
+}
+
+function DeploysTableHeader() {
+    return (
+        <TableHeader className="bg-muted/20">
+            <TableRow className="border-border/60 hover:bg-transparent">
+                <TableHead className={cn(DEPLOY_COLUMN.status, "pl-4")}>Status</TableHead>
+                <TableHead className={DEPLOY_COLUMN.deployment}>Deployment</TableHead>
+                <TableHead className={DEPLOY_COLUMN.jobs}>Jobs</TableHead>
+                <TableHead className={DEPLOY_COLUMN.deployedBy}>Deployed by</TableHead>
+                <TableHead className={cn(DEPLOY_COLUMN.time, "pr-4")}>Deployed</TableHead>
+            </TableRow>
+        </TableHeader>
+    )
+}
+
+function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
     const relative = formatTimestamp(deploy.createdAt)
     const absolute = DateTime.fromISO(deploy.createdAt).toFormat("LLL d, yyyy · h:mm:ss a")
     const shortId = deploy.id.slice(-7)
@@ -198,41 +235,64 @@ export function DeployRow({ deploy }: { deploy: ProjectDeploy }) {
     const showFailureReason = deploy.status === "FAILED" && !!deploy.failureReason
 
     return (
-        <li className="hover:bg-muted/30 grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors sm:grid-cols-[140px_auto_1fr_auto]">
-            <DeployStatusBadge status={deploy.status} />
+        <>
+            <TableRow className={cn("border-border/60", showFailureReason && "border-b-0")}>
+                <TableCell className={cn(DEPLOY_COLUMN.status, "py-3 pl-4")}>
+                    <DeployStatusBadge status={deploy.status} />
+                </TableCell>
 
-            <div className="flex min-w-0 items-center gap-2">
-                <code className="text-muted-foreground font-mono text-[12px] tabular-nums">{shortId}</code>
-                {deploy.isActive ? <LiveBadge /> : null}
-                {deploy.jobsDelta ? <JobsDeltaSummary delta={deploy.jobsDelta} /> : null}
-            </div>
+                <TableCell className={DEPLOY_COLUMN.deployment}>
+                    <div className="flex items-center gap-2">
+                        <code className="text-muted-foreground font-mono text-xs tabular-nums">{shortId}</code>
+                        {deploy.isActive ? <LiveBadge /> : null}
+                    </div>
+                </TableCell>
 
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <span tabIndex={0} className="text-muted-foreground cursor-default rounded-sm text-xs tabular-nums outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
-                        {relative}
-                        {durationLabel ? <span className="text-muted-foreground/60"> · in {durationLabel}</span> : null}
-                    </span>
-                </TooltipTrigger>
-                <TooltipContent>{absolute}</TooltipContent>
-            </Tooltip>
+                <TableCell className={DEPLOY_COLUMN.jobs}>{deploy.jobsDelta ? <JobsDeltaSummary delta={deploy.jobsDelta} /> : <EmptyCell />}</TableCell>
 
-            <div className="col-span-3 flex items-center justify-end gap-2 sm:col-span-1">
-                {deploy.deployedBy ? (
-                    <>
-                        <Avatar className="size-5">
-                            {deploy.deployedBy.avatarUrl ? <AvatarImage src={deploy.deployedBy.avatarUrl} alt="" /> : null}
-                            <AvatarFallback className="text-[9px] font-medium">{initialsOf(deploy.deployedBy.displayName)}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-foreground max-w-[160px] truncate text-xs">{deploy.deployedBy.displayName}</span>
-                    </>
-                ) : (
-                    <span className="text-muted-foreground text-xs">Unknown deployer</span>
-                )}
-            </div>
+                <TableCell className={DEPLOY_COLUMN.deployedBy}>
+                    {deploy.deployedBy ? (
+                        <span className="flex items-center gap-2">
+                            <Avatar className="size-5">
+                                {deploy.deployedBy.avatarUrl ? <AvatarImage src={deploy.deployedBy.avatarUrl} alt="" /> : null}
+                                <AvatarFallback className="text-[9px] font-medium">{initialsOf(deploy.deployedBy.displayName)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-foreground max-w-[160px] truncate text-xs">{deploy.deployedBy.displayName}</span>
+                        </span>
+                    ) : (
+                        <span className="text-muted-foreground text-xs">Unknown</span>
+                    )}
+                </TableCell>
 
-            {showFailureReason ? <FailureReason reason={deploy.failureReason ?? ""} /> : null}
-        </li>
+                <TableCell className={cn(DEPLOY_COLUMN.time, "pr-4")}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span tabIndex={0} className="text-muted-foreground cursor-default rounded-sm text-xs tabular-nums outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
+                                {relative}
+                                {durationLabel ? <span className="text-muted-foreground/60"> · in {durationLabel}</span> : null}
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{absolute}</TooltipContent>
+                    </Tooltip>
+                </TableCell>
+            </TableRow>
+
+            {showFailureReason ? (
+                <TableRow className="border-border/60 hover:bg-transparent">
+                    <TableCell colSpan={5} className="whitespace-normal px-4 pt-0 pb-3">
+                        <FailureReason reason={deploy.failureReason ?? ""} />
+                    </TableCell>
+                </TableRow>
+            ) : null}
+        </>
+    )
+}
+
+function EmptyCell() {
+    return (
+        <span className="text-muted-foreground/40" aria-hidden="true">
+            &mdash;
+        </span>
     )
 }
 
@@ -243,10 +303,7 @@ function FailureReason({ reason }: { reason: string }) {
             type="button"
             aria-expanded={expanded}
             onClick={() => setExpanded(prev => !prev)}
-            className={cn(
-                "text-muted-foreground col-span-full mt-1 cursor-pointer rounded-sm text-left text-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:col-span-3 sm:col-start-2",
-                expanded ? "whitespace-pre-wrap" : "line-clamp-2"
-            )}
+            className={cn("text-muted-foreground cursor-pointer rounded-sm text-left text-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50", expanded ? "whitespace-pre-wrap" : "line-clamp-2")}
         >
             {reason}
         </button>
@@ -312,14 +369,34 @@ export function DeploysEmpty() {
 
 export function DeploysSkeleton() {
     return (
-        <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
-            {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 px-4 py-3">
-                    <Skeleton className="h-5 w-20 rounded-full" />
-                    <Skeleton className="h-3 w-20" />
-                    <Skeleton className="ml-auto h-3 w-24" />
-                </div>
-            ))}
+        <div className="border-border/60 overflow-hidden rounded-lg border">
+            <Table>
+                <DeploysTableHeader />
+                <TableBody>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={i} className="border-border/60 hover:bg-transparent">
+                            <TableCell className={cn(DEPLOY_COLUMN.status, "py-3 pl-4")}>
+                                <Skeleton className="h-5 w-24 rounded-full" />
+                            </TableCell>
+                            <TableCell className={DEPLOY_COLUMN.deployment}>
+                                <Skeleton className="h-3 w-16" />
+                            </TableCell>
+                            <TableCell className={DEPLOY_COLUMN.jobs}>
+                                <Skeleton className="h-3 w-12" />
+                            </TableCell>
+                            <TableCell className={DEPLOY_COLUMN.deployedBy}>
+                                <div className="flex items-center gap-2">
+                                    <Skeleton className="size-5 rounded-full" />
+                                    <Skeleton className="h-3 w-24" />
+                                </div>
+                            </TableCell>
+                            <TableCell className={cn(DEPLOY_COLUMN.time, "pr-4")}>
+                                <Skeleton className="ml-auto h-3 w-24" />
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </div>
     )
 }
