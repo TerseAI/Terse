@@ -31,52 +31,55 @@ export function RunHistoryRow({ run, onOpenRun, className }: RunHistoryRowProps)
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
 
     return (
-        <div role="listitem" onClick={() => onOpenRun(run.id)} className={cn("group flex cursor-pointer items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-muted/40", className)}>
+        <div
+            role="listitem"
+            onClick={() => onOpenRun(run.id)}
+            className={cn("group flex cursor-pointer items-center gap-3 py-2.5 pr-2.5 pl-4 transition-colors duration-150 hover:bg-muted/40", className)}
+        >
             {/* Integration icon */}
-            <div className="shrink-0 w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
+            <div className="shrink-0 w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
                 <IconForIntegration integration={run.trigger.integration} />
             </div>
 
             {/* Main content */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={e => {
-                            e.stopPropagation()
-                            onOpenRun(run.id)
-                        }}
-                        className="truncate rounded-sm text-left text-sm font-medium text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+                <button
+                    type="button"
+                    onClick={e => {
+                        e.stopPropagation()
+                        onOpenRun(run.id)
+                    }}
+                    className="max-w-full shrink-0 truncate rounded-sm text-left text-sm font-medium text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    {title}
+                </button>
+                {run.trigger.url && (
+                    <a
+                        href={run.trigger.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        aria-label={`Open ${title} in new tab`}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                     >
-                        {title}
-                    </button>
-                    {run.trigger.url && (
-                        <a
-                            href={run.trigger.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            aria-label={`Open ${title} in new tab`}
-                            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                        >
-                            <ExternalLink className="w-3 h-3" aria-hidden="true" />
-                        </a>
-                    )}
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                    {run.agentName && (
-                        <Link
-                            to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId })}
-                            onClick={e => e.stopPropagation()}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                            title={run.agentName}
-                        >
-                            {run.agentName}
-                        </Link>
-                    )}
-                    {run.agentName && run.trigger.subheader && <span className="text-muted-foreground/40 shrink-0">·</span>}
-                    {run.trigger.subheader && <span className="text-xs text-muted-foreground truncate">{run.trigger.subheader}</span>}
-                </div>
+                        <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                    </a>
+                )}
+                {run.agentName && (
+                    <Link
+                        to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId })}
+                        onClick={e => e.stopPropagation()}
+                        className="hidden min-w-0 truncate text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm sm:block"
+                        title={run.agentName}
+                    >
+                        {run.agentName}
+                    </Link>
+                )}
+                {run.trigger.subheader && (
+                    <span className="hidden min-w-0 truncate text-xs text-muted-foreground md:block" title={run.trigger.subheader}>
+                        {run.trigger.subheader}
+                    </span>
+                )}
             </div>
 
             {/* Run type + who triggered */}
@@ -104,7 +107,7 @@ export function RunHistoryRow({ run, onOpenRun, className }: RunHistoryRowProps)
             </span>
 
             {/* Timestamp */}
-            <span className="text-xs text-muted-foreground whitespace-nowrap w-20 text-right">{formatTimestamp(run.timestamp)}</span>
+            <span className="text-xs text-muted-foreground whitespace-nowrap text-right tabular-nums">{formatTimestamp(run.timestamp)}</span>
 
             {/* Re-trigger */}
             <Button
@@ -115,7 +118,7 @@ export function RunHistoryRow({ run, onOpenRun, className }: RunHistoryRowProps)
                     reTriggerRun()
                 }}
                 disabled={isReTriggering}
-                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                className="size-7 text-muted-foreground/60 transition-colors hover:text-foreground group-hover:text-muted-foreground"
                 aria-label="Re-trigger run"
                 title="Re-trigger run"
             >

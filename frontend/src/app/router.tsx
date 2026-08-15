@@ -6,6 +6,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { AppGate } from "@/app/AppGate"
 import { RequireAdminOutlet } from "@/app/layouts/RequireAdminOutlet"
 import AppBootScreen from "@/components/loading/AppBootScreen"
+import { ACTIVITY_OVERVIEW_PATH } from "@/modules/activity/activityRoutes"
 
 const ActivityPage = lazy(() => import("@/pages/ActivityPage"))
 const AgentDetailPage = lazy(() => import("@/pages/AgentDetailPage"))
@@ -22,7 +23,6 @@ const PricingPage = lazy(() => import("@/pages/PricingPage"))
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"))
 const ProjectDeploysPage = lazy(() => import("@/pages/ProjectDeploysPage"))
 const ProjectDetailPage = lazy(() => import("@/pages/ProjectDetailPage"))
-const StatsPage = lazy(() => import("@/pages/StatsPage"))
 
 export function AppRoutes() {
     return (
@@ -38,7 +38,7 @@ export function AppRoutes() {
                     <Route path={FrontendRoutes.PROJECTS.BY_ID} element={<ProjectDetailPage />} />
                     <Route path={FrontendRoutes.PROJECTS.DEPLOYS} element={<ProjectDeploysPage />} />
                     <Route path="activity" element={<ActivityPage />} />
-                    <Route path="stats" element={<StatsPage />} />
+                    <Route path="stats" element={<Navigate to={ACTIVITY_OVERVIEW_PATH} replace />} />
                     <Route path="integrations" element={<IntegrationsPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="api-tokens" element={<ApiTokensPage />} />

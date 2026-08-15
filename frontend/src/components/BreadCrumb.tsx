@@ -14,22 +14,19 @@ import { SidebarTrigger } from "./ui/sidebar"
 
 // Route path to display name mapping
 const routeLabels: Record<string, string> = {
-    "": "Home",
-    app: "Home",
-    activity: "Activity Feed",
+    activity: "Activity",
     jobs: "Jobs",
     new: "New Job",
     integrations: "Integrations",
-    notifications: "Notifications",
+    notifications: "Inbox",
     "api-tokens": "API Tokens",
+    billing: "Billing",
+    profile: "Account",
+    pricing: "Pricing",
     projects: "Projects"
 }
 
-type BreadCrumbProps = {
-    inline?: boolean
-}
-
-function BreadCrumb({ inline = false }: BreadCrumbProps) {
+function BreadCrumb() {
     const location = useLocation()
     const params = useParams()
 
@@ -57,8 +54,7 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
             </BreadcrumbItem>
         )
 
-        // Filter out 'app' segment and get app-level segments
-        const appSegments = pathSegments.filter(seg => seg !== "app")
+        const appSegments = toAppSegments(pathSegments)
 
         for (let i = 0; i < appSegments.length; i++) {
             const segment = appSegments[i]
@@ -154,41 +150,25 @@ function BreadCrumb({ inline = false }: BreadCrumbProps) {
         return null
     }
 
-    // Job and project detail pages manage their own header unless explicitly rendered inline there.
-    const appSegments = pathSegments.filter(seg => seg !== "app")
-    if (!inline && (appSegments[0] === "jobs" || appSegments[0] === "projects") && appSegments.length >= 2) {
-        return null
-    }
-
-    // Don't show breadcrumb on home page
-    if (pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === "app")) {
-        if (inline) {
-            return null
-        }
-
-        return (
-            <div className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3">
-                <SidebarTrigger />
-            </div>
-        )
-    }
-
-    if (inline) {
-        return (
-            <Breadcrumb>
-                <BreadcrumbList>{buildBreadcrumbItems()}</BreadcrumbList>
-            </Breadcrumb>
-        )
-    }
+    // Home is the breadcrumb root, so there is no trail to draw on it
+    const hasTrail = toAppSegments(pathSegments).length > 0
 
     return (
         <div className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3">
             <SidebarTrigger />
-            <Breadcrumb>
-                <BreadcrumbList>{buildBreadcrumbItems()}</BreadcrumbList>
-            </Breadcrumb>
+            {hasTrail && (
+                <Breadcrumb>
+                    <BreadcrumbList>{buildBreadcrumbItems()}</BreadcrumbList>
+                </Breadcrumb>
+            )}
         </div>
     )
+}
+
+/** Path segments below /app, with the redundant `home` segment dropped: /app/home is the root. */
+function toAppSegments(pathSegments: string[]): string[] {
+    const segments = pathSegments.filter(seg => seg !== "app")
+    return segments[0] === "home" ? segments.slice(1) : segments
 }
 
 function ChannelDropdownMenu() {

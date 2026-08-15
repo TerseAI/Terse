@@ -159,7 +159,7 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
 
     runWithUserContext(user, async () => {
         const syntheticEvent = new SyntheticTriggerRuntime(event)
-        const eventProcessor = new EventProcessor(syntheticEvent, user, { isManuallyTriggered: true })
+        const eventProcessor = new EventProcessor(syntheticEvent, user, { isManuallyTriggered: true, replayOfRunId: triggerWithEventRequest.runId })
         await eventProcessor.processSingleAgent(automationId)
     }).catch(error => {
         logger.error("Error processing trigger with event", { error, automationId })

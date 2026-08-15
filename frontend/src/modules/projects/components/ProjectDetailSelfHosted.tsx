@@ -4,6 +4,7 @@ import { AlertTriangle, Check, CheckCircle2, Circle, Copy, KeyRound, Loader2, Ro
 import { toast } from "sonner"
 import type { ProjectDetailResponse, SdkJobServerCheckResponse } from "terse-types/types"
 
+import { PageFrame } from "@/components/PageFrame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils"
 import { SdkJobServerCheckDialog } from "@/modules/agents/components/SdkJobServerCheckDialog"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
-import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, PageFrame, SectionLabel } from "./ProjectDetailShared"
+import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, SectionLabel } from "./ProjectDetailShared"
 
 export default function ProjectDetailSelfHosted({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)

@@ -313,7 +313,7 @@ function HorizontalBarSection({ title, description, data }: { title: string; des
 // Loading Skeleton
 // ---------------------------------------------------------------------------
 
-function StatsPageSkeleton() {
+function StatsOverviewSkeleton() {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -362,60 +362,53 @@ function StatsPageSkeleton() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-function StatsPage() {
+function StatsOverview() {
     const [selectedInterval, setSelectedInterval] = useState<StatsInterval>("1mo")
     const { stats, isLoading, isError, mutate } = useStats(selectedInterval)
 
     const dailyEvents = useMemo(() => stats?.dailyEvents ?? [], [stats])
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="mx-auto w-full w-full px-6 py-8 space-y-6">
-                {/* ── Header ──────────────────────────────────────────── */}
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Stats</h1>
-                </div>
-
-                <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Time range</p>
-                    <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
-                </div>
-
-                {isError && !stats ? (
-                    <FetchErrorCard message="Couldn't load stats." onRetry={() => void mutate()} />
-                ) : isLoading || !stats ? (
-                    <StatsPageSkeleton />
-                ) : (
-                    <>
-                        {/* ── Top-level KPIs ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <StatCard label="Events Processed" value={formatNumber(stats.totalEventsProcessed)} change={stats.totalEventsProcessedChange} />
-                            <StatCard label="Actions Taken" value={formatNumber(stats.actionsTaken)} change={stats.actionsTakenChange} />
-                            <StatCard label="Active Jobs" value={formatNumber(stats.numberOfAgents)} change={stats.numberOfAgentsChange} />
-                        </div>
-
-                        {/* ── Daily Events Chart ──────────────────────────── */}
-                        <DailyEventsSection eventsPerDay={dailyEvents} timezone={stats.timezone} />
-
-                        {/* ── Insights Row 1 ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <AgentLeaderboard agents={stats.agentActivity ?? []} />
-                            <StatusBreakdownChart data={stats.statusBreakdown ?? []} />
-                        </div>
-
-                        {/* ── Insights Row 2 ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <HorizontalBarSection title="Trigger Sources" description="Where your events originate from" data={stats.triggerIntegrations ?? []} />
-                            <HorizontalBarSection title="Action Integrations" description="Where your jobs take action" data={stats.actionIntegrations ?? []} />
-                        </div>
-
-                        {/* ── Action Types ────────────────────────────────── */}
-                        {(stats.actionTypes?.length ?? 0) > 0 && <HorizontalBarSection title="Action Types" description="Types of actions your jobs perform" data={stats.actionTypes ?? []} />}
-                    </>
-                )}
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Time range</p>
+                <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
             </div>
+
+            {isError && !stats ? (
+                <FetchErrorCard message="Couldn't load stats." onRetry={() => void mutate()} />
+            ) : isLoading || !stats ? (
+                <StatsOverviewSkeleton />
+            ) : (
+                <>
+                    {/* ── Top-level KPIs ──────────────────────────────── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <StatCard label="Events Processed" value={formatNumber(stats.totalEventsProcessed)} change={stats.totalEventsProcessedChange} />
+                        <StatCard label="Actions Taken" value={formatNumber(stats.actionsTaken)} change={stats.actionsTakenChange} />
+                        <StatCard label="Active Jobs" value={formatNumber(stats.numberOfAgents)} change={stats.numberOfAgentsChange} />
+                    </div>
+
+                    {/* ── Daily Events Chart ──────────────────────────── */}
+                    <DailyEventsSection eventsPerDay={dailyEvents} timezone={stats.timezone} />
+
+                    {/* ── Insights Row 1 ──────────────────────────────── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <AgentLeaderboard agents={stats.agentActivity ?? []} />
+                        <StatusBreakdownChart data={stats.statusBreakdown ?? []} />
+                    </div>
+
+                    {/* ── Insights Row 2 ──────────────────────────────── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <HorizontalBarSection title="Trigger Sources" description="Where your events originate from" data={stats.triggerIntegrations ?? []} />
+                        <HorizontalBarSection title="Action Integrations" description="Where your jobs take action" data={stats.actionIntegrations ?? []} />
+                    </div>
+
+                    {/* ── Action Types ────────────────────────────────── */}
+                    {(stats.actionTypes?.length ?? 0) > 0 && <HorizontalBarSection title="Action Types" description="Types of actions your jobs perform" data={stats.actionTypes ?? []} />}
+                </>
+            )}
         </div>
     )
 }
 
-export default StatsPage
+export default StatsOverview

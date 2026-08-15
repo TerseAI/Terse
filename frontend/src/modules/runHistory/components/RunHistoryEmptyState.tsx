@@ -5,6 +5,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { ACTIVITY_OVERVIEW_PATH } from "@/modules/activity/activityRoutes"
 
 type Props = {
     hasActiveFilters: boolean
@@ -37,7 +38,7 @@ export default function RunHistoryEmptyState({ hasActiveFilters, onClearAll }: P
                         <Link to={FrontendRoutes.HOME}>View your jobs</Link>
                     </Button>
                     <Button variant="outline" size="sm" asChild>
-                        <Link to={FrontendRoutes.STATS}>Open stats</Link>
+                        <Link to={ACTIVITY_OVERVIEW_PATH}>See the overview</Link>
                     </Button>
                 </EmptyContent>
             )}

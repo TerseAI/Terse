@@ -7,13 +7,11 @@ import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import type { ProjectDeploy, ProjectDeployJobsDelta, ProjectDeployStatus, ProjectDetailResponse, ProjectSecretSummary } from "terse-types/types"
 
-import BreadCrumb from "@/components/BreadCrumb"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -25,20 +23,6 @@ import { useAllRunHistory } from "@/modules/runHistory/api/useAllRunHistory"
 import { formatDuration, formatTimestamp } from "@/utils/time"
 
 const DEPLOYS_PREVIEW_LIMIT = 5
-
-export function PageFrame({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="flex h-full min-w-0 flex-col">
-            <div className="flex items-center gap-4 px-2 py-2.5">
-                <SidebarTrigger />
-                <div className="hidden sm:block">
-                    <BreadCrumb inline />
-                </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-10">{children}</div>
-        </div>
-    )
-}
 
 export function Heading({
     project,
@@ -536,6 +520,15 @@ export function DeleteProjectAction({ project }: { project: Pick<ProjectDetailRe
 
 export function SectionLabel({ children, className }: { children: React.ReactNode; className?: string }) {
     return <h2 className={cn("mb-3 text-sm font-semibold text-foreground", className)}>{children}</h2>
+}
+
+export function DetailField({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <dt className="text-muted-foreground w-24 shrink-0 text-xs">{label}</dt>
+            <dd className="text-foreground min-w-0 flex-1 text-sm">{children}</dd>
+        </div>
+    )
 }
 
 export function CenteredMessage({ text }: { text: string }) {

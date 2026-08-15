@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { FileText } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
+import { PageFrame } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { useIntegrations } from "@/modules/integrations/api/useIntegrations"
@@ -17,9 +18,9 @@ function IntegrationPage() {
     const hasInactive = inactiveIntegrations && inactiveIntegrations.length > 0
 
     return (
-        <div className="h-full overflow-y-auto overscroll-contain">
-            <div className="space-y-10 px-4 py-8 md:px-6 md:py-10">
-                <div className="max-w-2xl">
+        <PageFrame>
+            <div className="space-y-10">
+                <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Integrations</h1>
                     <p className="mt-1 text-sm text-muted-foreground">Manage the services your jobs use.</p>
                 </div>
@@ -53,7 +54,7 @@ function IntegrationPage() {
                     </section>
                 )}
             </div>
-        </div>
+        </PageFrame>
     )
 }
 

@@ -120,7 +120,6 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
     })
 
     const totalPages = Math.ceil(total / runsPerPage) || 1
-    const startIndex = (currentPage - 1) * runsPerPage
     const paginatedRuns = remoteRuns // server provides paginated items already
 
     useDeepLinkedRun({
@@ -166,12 +165,9 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
     }
 
     return (
-        <div className="h-full w-full px-3 py-4">
+        <div className="h-full w-full">
             <div className="w-full">
                 <RunHistoryToolBar
-                    filteredCount={total}
-                    startIndex={startIndex}
-                    runsPerPage={runsPerPage}
                     searchQuery={searchQuery}
                     onSearchChange={handleSearchChange}
                     dateRange={dateRange}
@@ -183,11 +179,6 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                     onToggleStatus={toggleStatus}
                     includeTest={includeTest}
                     onToggleIncludeTest={toggleIncludeTest}
-                    runsPerPageValue={runsPerPage}
-                    onRunsPerPageChange={handleRunsPerPageChange}
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setCurrentPage}
                     onTriggerNow={onTriggerNow}
                 />
 
@@ -196,6 +187,12 @@ export default function RunHistory({ agentId, onTriggerNow }: RunHistoryProps) {
                     isLoading={isLoading}
                     hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < Object.values(RunHistoryStatus).length || includeTest}
                     onClearFilters={clearFilters}
+                    total={total}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    runsPerPage={runsPerPage}
+                    onPageChange={setCurrentPage}
+                    onRunsPerPageChange={handleRunsPerPageChange}
                 />
             </div>
         </div>

@@ -210,8 +210,7 @@ class CronTriggerRuntime extends TriggerRuntime<CronTrigger> {
             event: isManualTrigger ? "manual_trigger" : "scheduled_event",
             integration: IntegrationType.CRON_JOB,
             source: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
-            title: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
-            subheader: isManualTrigger ? "Triggered manually by user" : "Scheduled Job"
+            title: isManualTrigger ? "Manual Trigger" : "Scheduled Job"
         }
     }
 }

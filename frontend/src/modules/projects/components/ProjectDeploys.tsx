@@ -6,6 +6,7 @@ import { FrontendRoutes, buildRoute } from "terse-types"
 import type { ProjectDeploy, ProjectDeployStatus } from "terse-types/types"
 
 import { FetchErrorCard } from "@/components/FetchErrorCard"
+import { PageFrame } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,7 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { useProject } from "@/modules/projects/api/useProject"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
-import { CenteredMessage, DeployRow, DeploysEmpty, DeploysSkeleton, PageFrame, SectionLabel, deployStatusPresentation } from "./ProjectDetailShared"
+import { CenteredMessage, DeployRow, DeploysEmpty, DeploysSkeleton, SectionLabel, deployStatusPresentation } from "./ProjectDetailShared"
 
 type DeploySortKey = "newest" | "oldest" | "status"
 type DeployStatusFilter = "ALL" | ProjectDeployStatus

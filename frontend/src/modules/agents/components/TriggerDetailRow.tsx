@@ -29,11 +29,12 @@ import { useGithubResources } from "@/modules/integrations/api/useGithubResource
 import { useHeyReachCampaigns } from "@/modules/integrations/api/useHeyReachCampaigns"
 import { useLinearTeams } from "@/modules/integrations/api/useLinearTeams"
 import { useSlackUsers } from "@/modules/integrations/api/useSlackUsers"
+import { DetailField as Field } from "@/modules/projects/components/ProjectDetailShared"
 import { getUserTimezone } from "@/utils/timezone"
 
 import { IconForConfigType } from "./Integration"
 
-export function TriggerDetailCard({ trigger }: { trigger: AgentTrigger }) {
+export function TriggerDetailRow({ trigger }: { trigger: AgentTrigger }) {
     const { config } = trigger
     const type = config.configType
     const label = CONFIG_DETAILS[type as keyof typeof CONFIG_DETAILS]?.name ?? type
@@ -98,7 +99,7 @@ function WebhookBody({ webhookUrl, label, type }: { webhookUrl: string | undefin
                             </div>
                         </Field>
                     ) : null}
-                    <p className="text-muted-foreground text-xs leading-relaxed">Send a POST request to this URL to trigger the job. The request body is delivered as the event payload.</p>
+                    <div className="text-muted-foreground text-xs leading-relaxed">Send a POST request to this URL to trigger the job. The request body is delivered as the event payload.</div>
                 </>
             ) : (
                 <EmptyValue text="Webhook URL unavailable" />
@@ -221,27 +222,21 @@ function GmailBody({ config, label, type }: { config: GmailConfigData; label: st
 function TimeBody({ config, label, type }: { config: TimeTriggerConfigData; label: string; type: ConfigType }) {
     const timezone = config.timezone ?? "UTC"
     if (!config.cronExpression) {
-        return (
-            <Frame type={type} label={label}>
-                <Field label={`Schedule (${timezone})`}>
-                    <EmptyValue text="No schedule configured" />
-                </Field>
-            </Frame>
-        )
+        return <Frame type={type} label={label} meta={<EmptyValue text="No schedule configured" />} />
     }
 
     const nextRun = getNextRun(config.cronExpression, timezone)
     const description = describeCron(config.cronExpression)
-    const anchoredDescription = description && timezone !== getUserTimezone() ? `${description} (${timezone})` : description
-    return (
-        <Frame type={type} label={label} summary={nextRun ? `Next run: ${formatNextRun(nextRun)}` : undefined}>
-            <Field label={`Schedule (${timezone})`}>
-                <code className="bg-muted/60 text-foreground inline-block rounded-md px-2 py-1 font-mono text-xs select-all">{config.cronExpression}</code>
-                {anchoredDescription ? <p className="text-muted-foreground mt-1.5 text-xs">{anchoredDescription}</p> : null}
-                {!description && !nextRun ? <p className="text-muted-foreground mt-1.5 text-xs">Unrecognized cron expression</p> : null}
-            </Field>
-        </Frame>
+    const anchoredDescription = description && timezone !== getUserTimezone() ? `${description} · ${timezone}` : description
+    const schedule = (
+        <>
+            <code className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 font-mono text-xs select-all">{config.cronExpression}</code>
+            {anchoredDescription ? <span className="text-muted-foreground text-xs">{anchoredDescription}</span> : null}
+            {!description && !nextRun ? <span className="text-muted-foreground text-xs">Unrecognized cron expression</span> : null}
+        </>
     )
+
+    return <Frame type={type} label={label} meta={schedule} summary={nextRun ? `Next run ${formatNextRun(nextRun)}` : undefined} />
 }
 
 function WorkOSBody({ config, label, type }: { config: WorkOSInputConfigData; label: string; type: ConfigType }) {
@@ -352,31 +347,23 @@ function LaunchDarklyBody({ config, label, type }: { config: LaunchDarklyConfigD
     )
 }
 
-function Frame({ type, label, summary, children }: { type: ConfigType; label: string; summary?: string; children?: React.ReactNode }) {
+function Frame({ type, label, summary, meta, children }: { type: ConfigType; label: string; summary?: string; meta?: React.ReactNode; children?: React.ReactNode }) {
     const hasBody = !!children
     return (
-        <div className="border-border/60 bg-card overflow-hidden rounded-lg border">
-            <div className={`bg-muted/30 flex items-center gap-2.5 px-4 ${hasBody ? "border-border/60 border-b py-2.5" : "py-3"}`}>
-                <div className="flex h-4 w-4 shrink-0 items-center justify-center">
+        <div className="px-4 py-2.5">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <div className="flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center">
                     <IconForConfigType type={type} />
                 </div>
-                <span className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">{label}</span>
+                <span className="text-foreground text-sm font-medium">{label}</span>
+                {meta}
                 {summary ? (
-                    <span className="text-foreground ml-auto truncate text-xs font-medium tabular-nums" title={summary}>
+                    <span className="text-muted-foreground ml-1 min-w-0 truncate text-xs tabular-nums" title={summary}>
                         {summary}
                     </span>
                 ) : null}
             </div>
-            {hasBody ? <div className="space-y-3 px-4 py-3.5">{children}</div> : null}
-        </div>
-    )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-        <div className="space-y-1.5">
-            <div className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">{label}</div>
-            <div className="text-foreground text-sm leading-relaxed">{children}</div>
+            {hasBody ? <dl className="mt-2 space-y-1.5 pl-6.5">{children}</dl> : null}
         </div>
     )
 }
@@ -394,7 +381,7 @@ function Chips({ items, mono = false }: { items: string[]; mono?: boolean }) {
 }
 
 function EmptyValue({ text }: { text: string }) {
-    return <p className="text-muted-foreground text-xs">{text}</p>
+    return <div className="text-muted-foreground text-xs">{text}</div>
 }
 
 function CopyButton({ text }: { text: string }) {

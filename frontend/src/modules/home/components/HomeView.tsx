@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, Check, Copy, Terminal } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { Agent } from "terse-types/types"
 
+import { PageFrame } from "@/components/PageFrame"
 import { useSidebar } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAgents } from "@/modules/agents/api/useAgents"
@@ -35,17 +36,17 @@ export default function HomePage() {
 
     if (!agentsLoading && agents.length === 0) {
         return (
-            <div className="h-full overflow-y-auto">
+            <PageFrame>
                 <EmptyState />
-            </div>
+            </PageFrame>
         )
     }
 
     const isLoading = agentsLoading || runsLoading
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8 md:px-6 md:py-10">
+        <PageFrame>
+            <div className="space-y-8">
                 <header>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Home</h1>
                     <p className="mt-1 text-sm text-muted-foreground">Job health across your org.</p>
@@ -67,7 +68,7 @@ export default function HomePage() {
                     </TooltipProvider>
                 )}
             </div>
-        </div>
+        </PageFrame>
     )
 }
 

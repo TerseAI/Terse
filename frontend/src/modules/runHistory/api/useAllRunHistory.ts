@@ -11,9 +11,18 @@ type UseAllRunHistoryParams = {
     dateRange?: { from: Date | undefined; to: Date | undefined }
     selectedStatuses: Set<RunHistoryStatus>
     includeTest?: boolean
+    enabled?: boolean
 }
 
-export function useAllRunHistory({ page = 1, pageSize = 20, searchQuery = "", dateRange = { from: undefined, to: undefined }, selectedStatuses, includeTest = false }: UseAllRunHistoryParams) {
+export function useAllRunHistory({
+    page = 1,
+    pageSize = 20,
+    searchQuery = "",
+    dateRange = { from: undefined, to: undefined },
+    selectedStatuses,
+    includeTest = false,
+    enabled = true
+}: UseAllRunHistoryParams) {
     // Convert date range to ISO strings
     const toLocalStartISOString = (d?: Date) => {
         if (!d) return undefined
@@ -36,7 +45,7 @@ export function useAllRunHistory({ page = 1, pageSize = 20, searchQuery = "", da
         includeTest: includeTest || undefined
     }
 
-    const key = allRunHistoryKey(params)
+    const key = enabled ? allRunHistoryKey(params) : null
 
     const { data, error, isValidating, mutate } = useSWR<GetAllRunHistoryResponse>(key, async () => BackendProvider.getAllRunHistory(params), { keepPreviousData: true })
 
