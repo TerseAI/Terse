@@ -302,15 +302,14 @@ function PeriodToggle({ period, onChange, annualSavingsYearly }: { period: Billi
         { value: TimePeriods.YEARLY, label: annualLabel }
     ]
     return (
-        <div role="radiogroup" aria-label="Billing period" className="relative inline-flex rounded-full border border-border bg-muted p-1 text-sm">
+        <div role="group" aria-label="Billing period" className="relative inline-flex rounded-full border border-border bg-muted p-1 text-sm">
             {options.map(option => {
                 const active = option.value === period
                 return (
                     <button
                         key={option.value}
                         type="button"
-                        role="radio"
-                        aria-checked={active}
+                        aria-pressed={active}
                         onClick={() => onChange(option.value)}
                         className={`relative z-10 rounded-full px-4 py-1 font-medium transition-colors ${active ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
@@ -318,7 +317,7 @@ function PeriodToggle({ period, onChange, annualSavingsYearly }: { period: Billi
                             <motion.span
                                 layoutId="period-toggle-active"
                                 className="absolute inset-0 -z-10 rounded-full bg-background shadow-sm"
-                                transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                             />
                         )}
                         {option.label}

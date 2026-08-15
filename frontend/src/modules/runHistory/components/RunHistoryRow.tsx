@@ -1,43 +1,55 @@
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 
-import { ExternalLink, MessageSquare, Zap } from "lucide-react"
-import { buildRoute } from "terse-types"
+import { ExternalLink, RefreshCcw, Zap } from "lucide-react"
+import { RunHistoryRecord, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
-import { RunHistoryRecordWithAgent, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
+import { TableCell, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+import { useReTriggerRun } from "@/modules/runHistory/api/useReTriggerRun"
 import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 import { formatTimestamp } from "@/utils/time"
 
 import RunHistoryStatusBadge from "./RunHistoryStatusBadge"
 import RunTypeBadge from "./RunTypeBadge"
 import TriggeredBy from "./TriggeredBy"
+import { RUN_HISTORY_COLUMN } from "./runHistoryColumns"
+
+export type RunHistoryRowRecord = RunHistoryRecord & { agentName?: string }
 
 interface RunHistoryRowProps {
-    run: RunHistoryRecordWithAgent
-    onOpenChat: (run: RunHistoryRecordWithAgent) => void
+    run: RunHistoryRowRecord
+    onOpenRun: (runId: string) => void
+    showJobColumn: boolean
     className?: string
 }
 
-export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps) {
-    const navigate = useNavigate()
+export function RunHistoryRow({ run, onOpenRun, showJobColumn, className }: RunHistoryRowProps) {
     const openRun = useOpenRunDeepLink()
+    const { reTriggerRun, isReTriggering } = useReTriggerRun({ agentId: run.agentId, runId: run.id })
     const title = run.trigger.title || run.trigger.source
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
+    const hasRunType = Boolean(run.isTest || run.isManuallyTriggered || run.replayOfRunId)
 
     return (
-        <div role="listitem" onClick={() => onOpenChat(run)} className={cn("group flex cursor-pointer items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-muted/40", className)}>
-            {/* Integration icon */}
-            <div className="shrink-0 w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground">
-                <IconForIntegration integration={run.trigger.integration} />
-            </div>
-
-            {/* Main content */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground truncate">{title}</span>
+        <TableRow onClick={() => onOpenRun(run.id)} className={cn("group cursor-pointer border-border/40", className)}>
+            <TableCell className={cn(RUN_HISTORY_COLUMN.event, "py-2.5 pl-4")}>
+                <div className="flex items-center gap-2.5">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+                        <IconForIntegration integration={run.trigger.integration} />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={e => {
+                            e.stopPropagation()
+                            onOpenRun(run.id)
+                        }}
+                        className="max-w-[260px] truncate rounded-sm text-left text-sm font-medium text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        {title}
+                    </button>
                     {run.trigger.url && (
                         <a
                             href={run.trigger.url}
@@ -45,93 +57,82 @@ export function RunHistoryRow({ run, onOpenChat, className }: RunHistoryRowProps
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
                             aria-label={`Open ${title} in new tab`}
-                            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                            className="shrink-0 rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 group-hover:opacity-100"
                         >
-                            <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                            <ExternalLink className="size-3" aria-hidden="true" />
                         </a>
                     )}
                 </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                    <button
-                        onClick={e => {
-                            e.stopPropagation()
-                            navigate(buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId }))
-                        }}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                        title={run.agentName}
-                    >
-                        {run.agentName}
-                    </button>
-                    {run.trigger.subheader && (
-                        <>
-                            <span className="text-muted-foreground/40 shrink-0">·</span>
-                            <span className="text-xs text-muted-foreground truncate">{run.trigger.subheader}</span>
-                        </>
+            </TableCell>
+
+            {showJobColumn && (
+                <TableCell className={RUN_HISTORY_COLUMN.job}>
+                    {run.agentName ? (
+                        <Link
+                            to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: run.agentId })}
+                            onClick={e => e.stopPropagation()}
+                            title={run.agentName}
+                            className="block max-w-[160px] truncate rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        >
+                            {run.agentName}
+                        </Link>
+                    ) : (
+                        <EmptyCell />
                     )}
-                </div>
-            </div>
+                </TableCell>
+            )}
 
-            {/* Run type + who triggered */}
-            {(run.isTest || run.isManuallyTriggered || run.replayOfRunId) && (
-                <div className="hidden shrink-0 items-center gap-2 sm:flex">
+            <TableCell className={RUN_HISTORY_COLUMN.type}>
+                {hasRunType ? (
                     <RunTypeBadge isTest={run.isTest} isManuallyTriggered={run.isManuallyTriggered} replayOfRunId={run.replayOfRunId} onOpenOriginal={openRun} className="text-[10px]" />
-                    {run.triggeredByUserId && <TriggeredBy userId={run.triggeredByUserId} showLabel={false} className="text-[10px]" />}
-                </div>
-            )}
+                ) : (
+                    <EmptyCell />
+                )}
+            </TableCell>
 
-            {/* Write actions count */}
-            {writeActions.length > 0 && (
-                <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
-                    <Zap className="w-3 h-3" />
-                    <span>
-                        {writeActions.length} action{writeActions.length !== 1 ? "s" : ""}
+            <TableCell className={RUN_HISTORY_COLUMN.triggeredBy}>{run.triggeredByUserId ? <TriggeredBy userId={run.triggeredByUserId} showLabel={false} /> : <EmptyCell />}</TableCell>
+
+            <TableCell className={RUN_HISTORY_COLUMN.actions}>
+                {writeActions.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+                        <Zap className="size-3" aria-hidden="true" />
+                        {writeActions.length}
                     </span>
-                </div>
-            )}
+                ) : (
+                    <EmptyCell />
+                )}
+            </TableCell>
 
-            {/* Status */}
-            <RunHistoryStatusBadge status={run.status} className="hidden sm:flex" />
-            <span className={cn("size-2 shrink-0 rounded-full sm:hidden", statusDot(run.status).className)}>
-                <span className="sr-only">{statusDot(run.status).label}</span>
-            </span>
+            <TableCell className={RUN_HISTORY_COLUMN.status}>
+                <RunHistoryStatusBadge status={run.status} />
+            </TableCell>
 
-            {/* Timestamp */}
-            <span className="text-xs text-muted-foreground whitespace-nowrap w-20 text-right">{formatTimestamp(run.timestamp)}</span>
+            <TableCell className={cn(RUN_HISTORY_COLUMN.time, "text-xs text-muted-foreground")}>{formatTimestamp(run.timestamp)}</TableCell>
 
-            {/* Chat button */}
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={e => {
-                    e.stopPropagation()
-                    onOpenChat(run)
-                }}
-                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                aria-label="View run details"
-            >
-                <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-            </Button>
-        </div>
+            <TableCell className={cn(RUN_HISTORY_COLUMN.retrigger, "pr-2.5")}>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={e => {
+                        e.stopPropagation()
+                        reTriggerRun()
+                    }}
+                    disabled={isReTriggering}
+                    className="size-7 text-muted-foreground/60 transition-colors hover:text-foreground group-hover:text-muted-foreground"
+                    aria-label="Re-trigger run"
+                    title="Re-trigger run"
+                >
+                    <RefreshCcw className={cn("size-3.5", isReTriggering && "animate-spin")} aria-hidden="true" />
+                </Button>
+            </TableCell>
+        </TableRow>
     )
 }
 
-function statusDot(status: RunHistoryStatus): { className: string; label: string } {
-    switch (status) {
-        case RunHistoryStatus.SUCCESS:
-            return { className: "bg-success", label: "Success" }
-        case RunHistoryStatus.SKIPPED:
-            return { className: "bg-success", label: "Filtered" }
-        case RunHistoryStatus.FAILED:
-            return { className: "bg-danger", label: "Failed" }
-        case RunHistoryStatus.CANCELLED:
-            return { className: "bg-warning", label: "Cancelled" }
-        case RunHistoryStatus.AWAITING_APPROVAL:
-            return { className: "bg-warning", label: "Awaiting Approval" }
-        case RunHistoryStatus.SUSPENDED:
-            return { className: "bg-warning", label: "Suspended" }
-        case RunHistoryStatus.IN_PROGRESS:
-            return { className: "bg-muted-foreground animate-pulse", label: "In Progress" }
-        default:
-            throw status satisfies never
-    }
+function EmptyCell() {
+    return (
+        <span className="text-muted-foreground/40" aria-hidden="true">
+            &mdash;
+        </span>
+    )
 }

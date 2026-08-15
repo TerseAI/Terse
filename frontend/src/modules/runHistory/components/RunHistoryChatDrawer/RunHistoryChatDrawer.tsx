@@ -44,6 +44,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
     }
 
     const runId = runs[currentRunIndex].id
+    const agentId = runs[currentRunIndex].agentId
     const runNumber = currentRunIndex + 1
     const totalEvents = runs.length
     const status = runs[currentRunIndex].status
@@ -100,6 +101,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                     <RunHistoryChatDrawerHeader
                                         trigger={trigger}
                                         runId={runId}
+                                        agentId={agentId}
                                         runNumber={runNumber}
                                         totalEvents={totalEvents}
                                         status={currentStatus}

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useId, useState } from "react"
 
 import { CheckCircleIcon, CheckIcon, ClockIcon, NoSymbolIcon, PaperAirplaneIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import { Ban, Check } from "lucide-react"
@@ -8,6 +8,7 @@ import { RunHistoryStatus } from "terse-types"
 import { getToolDisplayFromCall } from "terse-types"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import type { ToolApprovalResponseOptions } from "@/lib/socket"
 import RunHistoryActionItem from "@/modules/runHistory/components/RunHistoryActionItem"
 import { useRunHistoryActions } from "@/modules/runHistory/hooks/useRunHistoryActions"
@@ -88,6 +89,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     const [result, setResult] = useState("")
     const [submitted, setSubmitted] = useState(false)
     const [submittedValue, setSubmittedValue] = useState("")
+    const resultInputId = useId()
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -104,7 +106,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     if (parameters) {
         try {
             parsedParams = JSON.parse(parameters)
-        } catch (error) {
+        } catch {
             // If parsing fails, treat as plain text
             parsedParams = parameters
         }
@@ -140,22 +142,14 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
             )}
 
             <form onSubmit={handleSubmit} className="grid grid-cols-[1fr_auto] gap-2">
-                <input
-                    type="text"
-                    value={result}
-                    onChange={e => setResult(e.target.value)}
-                    placeholder="Enter tool result..."
-                    className="w-full text-foreground text-sm resize-none p-2.5 leading-normal placeholder:italic placeholder:text-muted-foreground rounded-lg transition-all duration-300 focus:outline-none bg-card"
-                    autoFocus
-                />
-                <button
-                    type="submit"
-                    disabled={!result.trim()}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1"
-                >
+                <label htmlFor={resultInputId} className="sr-only">
+                    Result for {toolName}
+                </label>
+                <Input id={resultInputId} name="toolResult" type="text" value={result} onChange={e => setResult(e.target.value)} placeholder="Enter tool result…" autoComplete="off" autoFocus />
+                <Button type="submit" disabled={!result.trim()}>
                     <PaperAirplaneIcon className="w-4 h-4" />
                     Send
-                </button>
+                </Button>
             </form>
         </div>
     )
@@ -163,6 +157,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
 
 export default function FunctionCallItem({ call, isTurnFailure = false, onApprove, onReject, onSendMessage }: FunctionCallItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
+    const detailsId = useId()
 
     // Get display name based on current state
     const phase = call.isWaitingForApproval || call.isRejected ? "approval" : call.isRunning ? "executing" : "complete"
@@ -197,8 +192,12 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
     return (
         <div>
             <button
+                type="button"
                 onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
-                className={`flex items-center gap-2 py-0.5 text-sm text-muted-foreground transition-colors ${hasExpandableContent ? "hover:text-foreground cursor-pointer" : "cursor-default"}`}
+                disabled={!hasExpandableContent}
+                aria-expanded={hasExpandableContent ? isExpanded : undefined}
+                aria-controls={hasExpandableContent ? detailsId : undefined}
+                className={`flex items-center gap-2 rounded-sm py-0.5 text-sm text-muted-foreground transition-colors disabled:opacity-100 ${hasExpandableContent ? "hover:text-foreground cursor-pointer" : "cursor-default"}`}
             >
                 {statusIcon}
                 <span className="text-left">
@@ -211,7 +210,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
             </button>
 
             {isExpanded && (
-                <div className="ml-6 mt-1 space-y-3 border-l border-border pl-3">
+                <div id={detailsId} className="ml-6 mt-1 space-y-3 border-l border-border pl-3">
                     {call.parameters && <ToolCallParameters parameters={call.parameters} label="Input" />}
                     {call.result && <ToolCallParameters parameters={call.result} label="Output" />}
                     {call.errorContext && (

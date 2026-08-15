@@ -1,36 +1,12 @@
-import { useEffect, useState } from "react"
-
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "next-themes"
 
 const WORKOS_FONT_FAMILY =
     'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"'
 
-/** Resolved light/dark for WorkOS theme (handles system preference). */
+/** WorkOS widgets need a concrete appearance, so system resolves to light until next-themes reports. */
 export function useResolvedAppearance(): "dark" | "light" {
-    const { theme } = useTheme()
-    const [resolved, setResolved] = useState<"dark" | "light">(() => {
-        if (theme === "dark") return "dark"
-        if (theme === "light") return "light"
-        return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-    })
-
-    useEffect(() => {
-        if (theme === "dark") {
-            setResolved("dark")
-            return
-        }
-        if (theme === "light") {
-            setResolved("light")
-            return
-        }
-        const m = window.matchMedia("(prefers-color-scheme: dark)")
-        const update = () => setResolved(m.matches ? "dark" : "light")
-        update()
-        m.addEventListener("change", update)
-        return () => m.removeEventListener("change", update)
-    }, [theme])
-
-    return resolved
+    const { resolvedTheme } = useTheme()
+    return resolvedTheme === "dark" ? "dark" : "light"
 }
 
 export type WorkOsThemeConfig = {

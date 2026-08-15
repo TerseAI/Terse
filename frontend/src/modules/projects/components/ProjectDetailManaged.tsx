@@ -1,9 +1,10 @@
 import type { ProjectDetailResponse } from "terse-types/types"
 
+import { PageFrame } from "@/components/PageFrame"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
-import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, PageFrame, SecretsSection } from "./ProjectDetailShared"
+import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, SecretsSection } from "./ProjectDetailShared"
 
 export default function ProjectDetailManaged({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)

@@ -32,7 +32,7 @@ function CompactIntegrationRow({ integration, isConnected = false, summary, conn
 
             {connect && (
                 <Button variant="outline" size="sm" onClick={connect} disabled={isConnecting} className="flex-shrink-0">
-                    {isConnecting ? "Connecting..." : isConnected ? "Manage" : "Connect"}
+                    {isConnecting ? "Connecting…" : isConnected ? "Manage" : "Connect"}
                 </Button>
             )}
         </div>

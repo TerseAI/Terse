@@ -62,12 +62,7 @@ export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
     return (
         <div ref={rootRef}>
             <div className="text-sm font-medium text-muted-foreground">Stdout</div>
-            <div
-                className={cn("relative", isCollapsed && "cursor-pointer")}
-                onClick={() => {
-                    if (isCollapsed) updateExpandedState(true)
-                }}
-            >
+            <div className="relative">
                 <pre
                     ref={contentRef}
                     className={cn(
@@ -84,7 +79,7 @@ export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
 
                 {isCollapsed && (
                     <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent via-background/20 to-background/70 backdrop-blur-[2px]"
+                        className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent via-background/20 to-background/80"
                         style={{ height: `${BLURRED_LINES * ADJ_FACTOR}lh` }}
                     />
                 )}
@@ -101,6 +96,7 @@ export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
                                 updateExpandedState(!isExpanded)
                             }}
                             className="h-6 w-6 rounded-full p-0 shadow-sm"
+                            aria-label={isExpanded ? "Collapse process output" : "Expand process output"}
                         >
                             {isExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                         </Button>

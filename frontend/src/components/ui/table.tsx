@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 function Table({ className, ...props }: React.ComponentProps<"table">) {
     return (
         <div data-slot="table-container" className="relative w-full overflow-x-auto">
-            <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
+            <table data-slot="table" className={cn("w-full caption-bottom text-sm tabular-nums", className)} {...props} />
         </div>
     )
 }
@@ -23,21 +23,24 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
 }
 
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
-    return <tr data-slot="table-row" className={cn("hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors", className)} {...props} />
+    return <tr data-slot="table-row" className={cn("border-b transition-colors duration-150 hover:bg-muted/60 data-[state=selected]:bg-muted", className)} {...props} />
 }
 
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     return (
         <th
             data-slot="table-head"
-            className={cn("text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]", className)}
+            className={cn(
+                "h-10 whitespace-nowrap px-3 text-left align-middle text-xs font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+                className
+            )}
             {...props}
         />
     )
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
-    return <td data-slot="table-cell" className={cn("p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]", className)} {...props} />
+    return <td data-slot="table-cell" className={cn("whitespace-nowrap px-3 py-2.5 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]", className)} {...props} />
 }
 
 function TableCaption({ className, ...props }: React.ComponentProps<"caption">) {

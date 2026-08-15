@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Check, Copy, KeyRound, Pencil, Plus, Trash2 } from "lucide-react"
 import { ApiToken } from "terse-types/types"
 
+import { PageFrame } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -26,10 +27,10 @@ export default function ApiTokensPage() {
     const hasTokens = apiTokens && apiTokens.length > 0
 
     return (
-        <div className="flex h-full flex-col p-4">
+        <PageFrame>
             <PageHeader onCreate={() => setShowCreateDialog(true)} showAction={hasTokens ?? false} />
 
-            <div className="mt-4 flex flex-1 flex-col">
+            <div className="mt-4">
                 {isError ? (
                     <ErrorState onRetry={() => mutate()} />
                 ) : isLoading ? (
@@ -57,7 +58,7 @@ export default function ApiTokensPage() {
             <RenameTokenDialog token={editingToken} onOpenChange={() => setEditingToken(null)} onUpdated={() => mutate()} />
 
             <RevokeTokenDialog token={deletingToken} onOpenChange={() => setDeletingToken(null)} onRevoked={() => mutate()} />
-        </div>
+        </PageFrame>
     )
 }
 
@@ -65,7 +66,7 @@ function PageHeader({ onCreate, showAction }: { onCreate: () => void; showAction
     return (
         <div className="flex items-start justify-between gap-4">
             <div className="flex flex-col gap-1">
-                <h1 className="text-xl font-bold text-foreground">API Tokens</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">API Tokens</h1>
                 <p className="text-sm text-muted-foreground">Create tokens to authenticate with the Terse SDK from your code, CI, or any automated pipeline.</p>
             </div>
             {showAction && (
@@ -330,7 +331,7 @@ function CreateTokenDialog({ open, createdRawToken, onOpenChange, onCreated }: C
                                 <Button variant="outline">Cancel</Button>
                             </DialogClose>
                             <Button onClick={handleCreate} disabled={!name.trim() || isCreating}>
-                                {isCreating ? "Creating..." : "Create token"}
+                                {isCreating ? "Creating…" : "Create token"}
                             </Button>
                         </>
                     )}
@@ -402,7 +403,7 @@ function RenameTokenDialogContent({ token, onOpenChange, onUpdated }: RenameToke
                     <Button variant="outline">Cancel</Button>
                 </DialogClose>
                 <Button onClick={handleSave} disabled={!name.trim() || isSaving}>
-                    {isSaving ? "Saving..." : "Save"}
+                    {isSaving ? "Saving…" : "Save"}
                 </Button>
             </DialogFooter>
         </DialogContent>
@@ -454,7 +455,7 @@ function RevokeTokenDialog({ token, onOpenChange, onRevoked }: RevokeTokenDialog
                         <Button variant="outline">Cancel</Button>
                     </DialogClose>
                     <Button variant="destructive" onClick={handleRevoke} disabled={isRevoking}>
-                        {isRevoking ? "Revoking..." : "Revoke token"}
+                        {isRevoking ? "Revoking…" : "Revoke token"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

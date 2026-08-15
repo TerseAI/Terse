@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { Request, Response } from "express"
 import { SdkRunTriggerEventResponse } from "terse-types"
 
@@ -27,9 +28,14 @@ export async function handleSdkRunTriggerEvent(req: Request, res: Response) {
     return res.json(result)
 }
 
-export async function fetchEventFromRunId(runId: string, organizationId: string): Promise<SdkRunTriggerEventResponse | null> {
+export async function fetchEventFromRunId(runId: string, organizationId: string, automationId?: string): Promise<SdkRunTriggerEventResponse | null> {
+    const where: Prisma.run_history_recordsWhereInput = { id: runId, automation: { organization_id: organizationId } }
+    if (automationId) {
+        where.automation_id = automationId
+    }
+
     const runRecord = await db().run_history_records.findFirst({
-        where: { id: runId, automation: { organization_id: organizationId } },
+        where,
         select: { trigger_payload: true, is_test: true, automation: { select: { name: true } } }
     })
 

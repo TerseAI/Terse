@@ -2,28 +2,30 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Tab, TabGroup, TabList } from "@headlessui/react"
-import { Loader2, MoreVertical, Pause, Play, Server, Trash2, Zap } from "lucide-react"
+import { Loader2, MoreVertical, Play, Server, Trash2, Zap } from "lucide-react"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
-import { CONFIG_DETAILS, ConfigType, FrontendRoutes } from "terse-types"
+import { FrontendRoutes } from "terse-types"
 import type { AgentTrigger, SdkJobServerCheckResponse } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef } from "terse-types"
 import type { Agent } from "terse-types/types"
 
+import { PageFrame } from "@/components/PageFrame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { BackendProvider } from "@/lib/http"
 import { cn } from "@/lib/utils"
 import { useAgent, useAgentMutations } from "@/modules/agents/api/useAgents"
 import { useSampleEvents } from "@/modules/notifications/api/useSampleEvents"
-import { CenteredMessage, Dot, PageFrame, SectionLabel } from "@/modules/projects/components/ProjectDetailShared"
+import { CenteredMessage, DetailField, SectionLabel } from "@/modules/projects/components/ProjectDetailShared"
 import { formatTimestamp } from "@/utils/time"
 
 import { SdkJobServerCheckDialog } from "./SdkJobServerCheckDialog"
-import { TriggerDetailCard } from "./TriggerDetailCard"
+import { TriggerDetailRow } from "./TriggerDetailRow"
 import AgentImprovementsTab, { useAgentPendingCount } from "./tabs/AgentImprovementsTab"
 import AgentRunHistoryTab from "./tabs/AgentRunHistoryTab"
 
@@ -37,6 +39,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isManualTriggering, setIsManualTriggering] = useState(false)
+    const [isTogglingActive, setIsTogglingActive] = useState(false)
     const [isVerifyingServer, setIsVerifyingServer] = useState(false)
     const [serverCheckResult, setServerCheckResult] = useState<SdkJobServerCheckResponse | null>(null)
     const [showServerCheckDialog, setShowServerCheckDialog] = useState(false)
@@ -54,6 +57,7 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
     const handleToggleActive = async () => {
         if (!agent) return
+        setIsTogglingActive(true)
         try {
             await updateAgent({
                 id: agentId,
@@ -63,6 +67,8 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
             toast.success(agent.isActive ? "Job paused" : "Job resumed")
         } catch {
             toast.error("Failed to update job status")
+        } finally {
+            setIsTogglingActive(false)
         }
     }
 
@@ -145,10 +151,10 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
             <PageFrame>
                 <JobHeading
                     agent={agent}
-                    triggerCount={triggerCount}
                     canTrigger={canTrigger}
                     isBusy={isBusy}
                     isFetchingSamples={isFetchingSamples}
+                    isTogglingActive={isTogglingActive}
                     onTriggerNow={handleTriggerNow}
                     onToggleActive={handleToggleActive}
                     onDelete={() => setShowDeleteDialog(true)}
@@ -196,54 +202,41 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
 
 function JobHeading({
     agent,
-    triggerCount,
     canTrigger,
     isBusy,
     isFetchingSamples,
+    isTogglingActive,
     onTriggerNow,
     onToggleActive,
     onDelete
 }: {
     agent: Agent
-    triggerCount: number
     canTrigger: boolean
     isBusy: boolean
     isFetchingSamples: boolean
+    isTogglingActive: boolean
     onTriggerNow: () => void
     onToggleActive: () => void
     onDelete: () => void
 }) {
     const updatedAbsolute = agent.updatedAt ? DateTime.fromISO(agent.updatedAt).toFormat("LLL d, yyyy · h:mm:ss a") : null
     const updatedRelative = agent.updatedAt ? formatTimestamp(agent.updatedAt) : null
-    const primaryTriggerLabel = primaryTriggerSummary(agent.triggers ?? [])
+    const triggerLabel = !canTrigger ? "Requires an active job with at least one trigger" : isFetchingSamples ? "Fetching events…" : "Trigger now"
 
     return (
         <header>
             <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
                 <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <h1 className="text-foreground truncate text-[clamp(1.625rem,2.5vw,2rem)] leading-tight font-semibold tracking-tight">{agent.name}</h1>
-                        {agent.isActive ? <ActiveBadge /> : <PausedBadge />}
-                    </div>
+                    <h1 className="text-foreground truncate text-2xl leading-tight font-semibold tracking-tight">{agent.name}</h1>
 
-                    <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                        <span>Deployed via SDK</span>
-                        {triggerCount === 1 && primaryTriggerLabel ? (
-                            <>
-                                <Dot />
-                                <span>
-                                    Triggered by <span className="text-foreground font-medium">{primaryTriggerLabel}</span>
-                                </span>
-                            </>
-                        ) : triggerCount > 1 ? (
-                            <>
-                                <Dot />
-                                <span className="tabular-nums">{triggerCount} triggers</span>
-                            </>
-                        ) : null}
+                    <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+                        <JobActiveToggle isActive={agent.isActive} isPending={isTogglingActive} onToggle={onToggleActive} />
+
                         {updatedRelative ? (
                             <>
-                                <Dot />
+                                <span aria-hidden className="text-muted-foreground/40">
+                                    ·
+                                </span>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <span className="tabular-nums cursor-default">Updated {updatedRelative}</span>
@@ -255,84 +248,76 @@ function JobHeading({
                     </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={onTriggerNow} disabled={isBusy || !canTrigger} title={!canTrigger ? "Requires an active job with at least one trigger" : undefined}>
-                        {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                        {isFetchingSamples ? "Fetching events…" : "Trigger now"}
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label="Job actions">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={onToggleActive}>
-                                {agent.isActive ? (
-                                    <>
-                                        <Pause className="h-4 w-4" />
-                                        Pause job
-                                    </>
-                                ) : (
-                                    <>
-                                        <Play className="h-4 w-4" />
-                                        Resume job
-                                    </>
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                                <Trash2 className="h-4 w-4" />
-                                Delete job
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                <div className="flex h-8 shrink-0 items-center">
+                    <div className="border-border/60 flex h-8 items-center rounded-md border">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        onClick={onTriggerNow}
+                                        disabled={isBusy || !canTrigger}
+                                        aria-label={triggerLabel}
+                                        className="rounded-r-none max-md:size-8 hover:bg-muted/60"
+                                    >
+                                        {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                                    </Button>
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{triggerLabel}</TooltipContent>
+                        </Tooltip>
+
+                        <span aria-hidden className="bg-border/60 h-4 w-px" />
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-sm" aria-label="Job actions" className="rounded-l-none max-md:size-8 hover:bg-muted/60">
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete job
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
             </div>
         </header>
     )
 }
 
-function ActiveBadge() {
+function JobActiveToggle({ isActive, isPending, onToggle }: { isActive: boolean; isPending: boolean; onToggle: () => void }) {
     return (
-        <Badge variant="secondary" className="text-foreground shrink-0">
-            <span aria-hidden className="bg-success relative flex h-1.5 w-1.5 rounded-full">
-                <span className="bg-success absolute inset-0 animate-ping rounded-full opacity-60" />
-            </span>
-            Active
-        </Badge>
+        <div className="flex shrink-0 items-center gap-2">
+            <Switch
+                id="job-active"
+                checked={isActive}
+                onCheckedChange={onToggle}
+                disabled={isPending}
+                aria-label={isActive ? "Pause job" : "Resume job"}
+                className="h-4.5 w-8 data-[state=checked]:bg-success/85 data-[state=checked]:[&_[data-slot=switch-thumb]]:bg-white [&_[data-slot=switch-thumb]]:size-3.5 [&_[data-slot=switch-thumb]]:data-[state=checked]:translate-x-3.5"
+            />
+            <label htmlFor="job-active" className={cn("cursor-pointer text-xs select-none", isActive ? "text-foreground" : "text-muted-foreground")}>
+                {isActive ? "Active" : "Paused"}
+            </label>
+        </div>
     )
-}
-
-function PausedBadge() {
-    return (
-        <Badge variant="secondary" className="text-muted-foreground shrink-0">
-            <span aria-hidden className="bg-muted-foreground/50 h-1.5 w-1.5 rounded-full" />
-            Paused
-        </Badge>
-    )
-}
-
-function primaryTriggerSummary(triggers: AgentTrigger[]): string | null {
-    const first = triggers[0]
-    if (!first) return null
-    const type = first.config.configType
-    if (type === ConfigType.WEBHOOK_INPUT) return "Webhook"
-    if (type === ConfigType.WEBMONITOR) return "Web monitor"
-    const details = CONFIG_DETAILS[type as keyof typeof CONFIG_DETAILS]
-    return details?.name ?? null
 }
 
 function TriggersSection({ triggers }: { triggers: AgentTrigger[] }) {
     return (
-        <section className="mt-8">
+        <section className="mt-6">
             <SectionLabel>Triggers</SectionLabel>
             {triggers.length === 0 ? (
                 <TriggersEmpty />
             ) : (
-                <div className="space-y-2.5">
+                <div className="divide-border/40 overflow-hidden rounded-lg border bg-card divide-y">
                     {triggers.map(trigger => (
-                        <TriggerDetailCard key={trigger.id} trigger={trigger} />
+                        <TriggerDetailRow key={trigger.id} trigger={trigger} />
                     ))}
                 </div>
             )}
@@ -342,7 +327,7 @@ function TriggersSection({ triggers }: { triggers: AgentTrigger[] }) {
 
 function TriggersEmpty() {
     return (
-        <div className="border-border/60 bg-muted/10 rounded-lg border px-6 py-8 text-center">
+        <div className="border-border/60 rounded-lg border px-4 py-5">
             <p className="text-foreground text-sm">No triggers configured.</p>
             <p className="text-muted-foreground mt-1 text-xs">Add a trigger in your SDK project to connect this job to events or schedules.</p>
         </div>
@@ -351,7 +336,7 @@ function TriggersEmpty() {
 
 function EnvironmentSection({ remoteServerUrl, isVerifying, onVerify }: { remoteServerUrl: string | null; isVerifying: boolean; onVerify: () => void }) {
     return (
-        <section className="mt-8">
+        <section className="mt-6">
             <div className="mb-3 flex items-center justify-between gap-4">
                 <SectionLabel className="mb-0">Environment</SectionLabel>
                 <Button variant="outline" size="sm" onClick={onVerify} disabled={isVerifying}>
@@ -359,28 +344,25 @@ function EnvironmentSection({ remoteServerUrl, isVerifying, onVerify }: { remote
                     Verify server
                 </Button>
             </div>
-            <div className="border-border/60 bg-muted/10 overflow-hidden rounded-lg border">
-                <div className="px-4 py-3">
-                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">Remote server</div>
-                    <div className="mt-1.5 text-sm">
-                        {remoteServerUrl ? <code className="text-foreground font-mono text-[13px] break-all">{remoteServerUrl}</code> : <span className="text-muted-foreground">—</span>}
-                    </div>
-                </div>
-            </div>
+            <dl>
+                <DetailField label="Remote server">
+                    {remoteServerUrl ? <code className="font-mono text-[13px] break-all">{remoteServerUrl}</code> : <span className="text-muted-foreground">—</span>}
+                </DetailField>
+            </dl>
         </section>
     )
 }
 
 function ActivitySection({ agentId, pendingCount, selectedTab, onTabChange }: { agentId: string; pendingCount: number; selectedTab: number; onTabChange: (i: number) => void }) {
     return (
-        <section className="mt-10">
+        <section className="mt-6">
             <TabGroup selectedIndex={selectedTab} onChange={onTabChange}>
                 <TabList className="border-border/60 flex items-baseline gap-6 border-b">
                     <StreamTab label="Activity" />
                     <StreamTab label="Improvements" badge={pendingCount} />
                 </TabList>
 
-                <div className="pt-5">{selectedTab === 0 ? <AgentRunHistoryTab agentId={agentId} /> : <AgentImprovementsTab agentId={agentId} />}</div>
+                <div className="pt-3">{selectedTab === 0 ? <AgentRunHistoryTab agentId={agentId} /> : <AgentImprovementsTab agentId={agentId} />}</div>
             </TabGroup>
         </section>
     )
@@ -391,9 +373,8 @@ function StreamTab({ label, badge }: { label: string; badge?: number }) {
         <Tab
             className={({ selected }) =>
                 cn(
-                    "group rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                    "relative -mb-px inline-flex items-center gap-2 border-b-2 pb-3 text-[10px] font-semibold tracking-[0.18em] uppercase transition-colors",
-                    selected ? "text-foreground border-foreground" : "text-muted-foreground hover:text-foreground border-transparent"
+                    "group relative -mb-px inline-flex items-center gap-2 rounded-sm px-1 pb-3 text-sm font-medium outline-none transition-colors duration-150 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:scale-x-0 after:bg-foreground after:transition-transform focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    selected ? "text-foreground after:scale-x-100" : "text-muted-foreground hover:text-foreground"
                 )
             }
         >
@@ -441,6 +422,7 @@ function SampleEventsDialog({
                         {events.map((event, i) => (
                             <button
                                 key={i}
+                                type="button"
                                 className="border-border/60 hover:bg-muted/40 w-full space-y-1.5 rounded-lg border p-3 text-left transition-colors disabled:opacity-50"
                                 onClick={() => onSelect(event)}
                                 disabled={isTriggering}

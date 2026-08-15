@@ -14,7 +14,7 @@ export function CreditBalanceWidget({ balance, plan }: { balance: BalanceSummary
             <div aria-busy="true" aria-live="polite" role="status">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <Skeleton className="h-5 w-48 max-w-full" />
-                    <span className="text-xs text-muted-foreground">{balance ? "Updating credit balance..." : "Loading credit balance..."}</span>
+                    <span className="text-xs text-muted-foreground">{balance ? "Updating credit balance…" : "Loading credit balance…"}</span>
                 </div>
                 <Skeleton className="mt-3 h-3 w-full rounded-full" />
                 <Skeleton className="mt-2 h-4 w-36" />

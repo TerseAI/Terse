@@ -8,8 +8,14 @@ import { RunHistoryChatDrawerProvider } from "@/modules/runHistory/context/RunHi
 export function AppLayout() {
     return (
         <SidebarProvider>
+            <a
+                href="#main-content"
+                className="fixed left-3 top-3 z-50 -translate-y-20 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-transform duration-150 focus:translate-y-0"
+            >
+                Skip to content
+            </a>
             <AppSidebar />
-            <main className="flex-1 flex flex-col h-full min-w-0 bg-background">
+            <main id="main-content" tabIndex={-1} className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background focus:outline-none">
                 <BreadCrumb />
                 <div className="flex-1 min-h-0">
                     <RunHistoryChatDrawerProvider>

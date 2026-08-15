@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom"
 
-import { ChevronUp, User2 } from "lucide-react"
+import { ChevronUp, CreditCard, KeyRound, LogOut, Moon, Sun, User2, UserCog } from "lucide-react"
+import { useTheme } from "next-themes"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
-import { useTheme } from "@/components/theme-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import { useAuth } from "@/modules/auth/context/AuthProvider"
 import { User } from "@/types/User"
@@ -13,7 +13,9 @@ import { User } from "@/types/User"
 export function AppSidebarFooter() {
     const { user, logout } = useAuth()
     const navigate = useNavigate()
-    const { setTheme, theme } = useTheme()
+    const { setTheme, resolvedTheme } = useTheme()
+    const isDark = resolvedTheme === "dark"
+    const isAdmin = user?.roles.includes("admin") ?? false
 
     const handleLogout = () => {
         logout()
@@ -33,13 +35,31 @@ export function AppSidebarFooter() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent side="top" className="min-w-56" align="start">
                             <DropdownMenuItem onClick={() => navigate(FrontendRoutes.PROFILE)}>
-                                <span>Account Settings</span>
+                                <UserCog className="size-4" />
+                                <span>Account</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
-                                <span>{theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}</span>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Settings</DropdownMenuLabel>
+                            {isAdmin && (
+                                <DropdownMenuItem onClick={() => navigate(FrontendRoutes.BILLING)}>
+                                    <CreditCard className="size-4" />
+                                    <span>Billing</span>
+                                </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => navigate(FrontendRoutes.API_TOKENS)}>
+                                <KeyRound className="size-4" />
+                                <span>API tokens</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
+                                {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                                <span>{isDark ? "Light mode" : "Dark mode"}</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={handleLogout}>
-                                <span>Logout</span>
+                                <LogOut className="size-4" />
+                                <span>Log out</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

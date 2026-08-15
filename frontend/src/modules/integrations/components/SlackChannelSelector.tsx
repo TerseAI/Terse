@@ -88,14 +88,14 @@ export function SlackConfigurationSelector({
     }
 
     if (isLoading || (showUserFilter && usersLoading)) {
-        return <div className="text-sm text-[theme(text-secondary)]">Loading...</div>
+        return <div className="text-sm text-muted-foreground">Loading…</div>
     }
 
     if (errorMessage) {
         return (
             <div className="space-y-2">
                 <div className="text-sm text-danger">{String(errorMessage)}</div>
-                <RefreshButton onClick={handleChannelsRefresh} isRefreshing={false} label="Try again" variant="link" size="sm" className="h-auto px-0 text-xs text-[theme(--color-accent)]" />
+                <RefreshButton onClick={handleChannelsRefresh} isRefreshing={false} label="Try again" variant="link" size="sm" className="h-auto px-0 text-xs text-foreground" />
             </div>
         )
     }
@@ -120,15 +120,20 @@ export function SlackConfigurationSelector({
         <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-medium text-[theme(text-secondary)]">
+                    <label className="text-xs font-medium text-muted-foreground">
                         Select Channel or DMs
                         <span className="text-danger ml-1">*</span>
                     </label>
                     {isBotToken && (
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" onClick={e => e.preventDefault()}>
-                                    <Info className="w-3.5 h-3.5" />
+                                <button
+                                    type="button"
+                                    aria-label="About available Slack channels"
+                                    className="grid size-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                    onClick={e => e.preventDefault()}
+                                >
+                                    <Info className="w-3.5 h-3.5" aria-hidden="true" />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent side="right" className="max-w-xs">
@@ -181,7 +186,7 @@ export function SlackConfigurationSelector({
                 </SelectContent>
             </Select>
             {channels.length > 0 && (
-                <div className="text-xs text-foreground-muted">
+                <div className="text-xs text-muted-foreground">
                     {channels.length} channel{channels.length !== 1 ? "s" : ""} available
                 </div>
             )}
@@ -189,7 +194,7 @@ export function SlackConfigurationSelector({
             {showUserFilter && (selectedChannelId || listenToUserDms) && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-[theme(text-secondary)]">
+                        <label className="text-xs font-medium text-muted-foreground">
                             {mode === "output" && listenToUserDms ? "DM User Filter (Optional)" : listenToUserDms ? "Only DMs from these users (optional)" : "Select Users (Optional)"}
                         </label>
                         <RefreshButton onClick={handleUsersRefresh} isRefreshing={usersIsValidating && !usersLoading} title="Refresh user list" />
@@ -204,15 +209,11 @@ export function SlackConfigurationSelector({
                             onSelectUsers?.(ids as string[])
                         }}
                         placeholder={
-                            mode === "output" && listenToUserDms
-                                ? "All DMs (leave empty) or select users..."
-                                : listenToUserDms
-                                  ? "All DMs (leave empty) or select users..."
-                                  : "Select users (optional)..."
+                            mode === "output" && listenToUserDms ? "All DMs (leave empty) or select users…" : listenToUserDms ? "All DMs (leave empty) or select users…" : "Select users (optional)…"
                         }
-                        searchPlaceholder="Search users..."
+                        searchPlaceholder="Search users…"
                         emptyMessage="No users found."
-                        displayText={(count, selected) => (count === 0 ? "Select users..." : count === 1 ? selected[0].label : `${count} users selected`)}
+                        displayText={(count, selected) => (count === 0 ? "Select users…" : count === 1 ? selected[0].label : `${count} users selected`)}
                     />
                     {listenToUserDms && <p className="text-xs text-muted-foreground">Leave empty to include all DMs. Select users to scope to direct messages with those users.</p>}
                     {users.length > 0 && (
@@ -258,7 +259,7 @@ export const formatMPIMChannelName = (name: string): string => {
     const formattedNames = names.map(capitalize)
 
     // Add "..." if there are more than 3 names
-    const suffix = totalNames > 3 ? "..." : ""
+    const suffix = totalNames > 3 ? "…" : ""
 
     return formattedNames.join(", ") + suffix
 }

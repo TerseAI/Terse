@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { FileText } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
+import { PageFrame } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { useIntegrations } from "@/modules/integrations/api/useIntegrations"
@@ -17,10 +18,14 @@ function IntegrationPage() {
     const hasInactive = inactiveIntegrations && inactiveIntegrations.length > 0
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="px-6 py-10 space-y-10">
+        <PageFrame>
+            <div className="space-y-10">
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Integrations</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">Manage the services your jobs use.</p>
+                </div>
                 <section className="space-y-6">
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Active Integrations</h1>
+                    <h2 className="text-lg font-semibold tracking-tight text-foreground">Active Integrations</h2>
                     {isLoading ? (
                         <div className={GRID_COLS}>
                             {Array.from({ length: 3 }).map((_, index) => (
@@ -40,7 +45,7 @@ function IntegrationPage() {
 
                 {hasInactive && (
                     <section className="space-y-6">
-                        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Inactive Integrations</h1>
+                        <h2 className="text-lg font-semibold tracking-tight text-foreground">Available Integrations</h2>
                         <div className={GRID_COLS}>
                             {inactiveIntegrations.map(integration => (
                                 <IntegrationCard key={integration} integration={integration} isActive={false} />
@@ -49,7 +54,7 @@ function IntegrationPage() {
                     </section>
                 )}
             </div>
-        </div>
+        </PageFrame>
     )
 }
 

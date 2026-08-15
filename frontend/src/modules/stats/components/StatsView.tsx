@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 
 import { BarChart3, Clock } from "lucide-react"
 import { DateTime } from "luxon"
@@ -9,6 +9,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { AgentActivityItem, CountByString, StatsInterval } from "terse-types/types"
 
 import { FetchErrorCard } from "@/components/FetchErrorCard"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -80,7 +81,7 @@ function StatCard({ label, value, change }: { label: string; value: string; chan
     return (
         <Card className="py-4 gap-2">
             <CardHeader className="pb-0">
-                <CardDescription className="text-xs font-medium tracking-wide uppercase">{label}</CardDescription>
+                <CardDescription className="text-xs font-medium">{label}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex items-baseline gap-2.5">
@@ -98,20 +99,18 @@ function StatsIntervalSelector({ selectedInterval, onSelectInterval }: { selecte
             {STATS_INTERVAL_OPTIONS.map(interval => {
                 const isSelected = interval.value === selectedInterval
                 return (
-                    <button
+                    <Button
                         key={interval.value}
                         type="button"
                         onClick={() => onSelectInterval(interval.value)}
-                        className={cn(
-                            "h-9 px-3 rounded-md border text-sm transition-colors",
-                            isSelected ? "border-primary/40 bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-                        )}
+                        variant={isSelected ? "secondary" : "ghost"}
+                        size="sm"
                         aria-pressed={isSelected}
                         aria-label={interval.longLabel}
                         title={interval.longLabel}
                     >
                         {interval.label}
-                    </button>
+                    </Button>
                 )
             })}
         </div>
@@ -183,8 +182,6 @@ function DailyEventsSection({ eventsPerDay, timezone }: { eventsPerDay: { date: 
 }
 
 function AgentLeaderboard({ agents }: { agents: AgentActivityItem[] }) {
-    const navigate = useNavigate()
-
     if (agents.length === 0) return null
 
     const max = agents[0]?.runCount ?? 1
@@ -202,17 +199,17 @@ function AgentLeaderboard({ agents }: { agents: AgentActivityItem[] }) {
                         return (
                             <div key={agent.agentId} className="group">
                                 <div className="flex items-center justify-between mb-1">
-                                    <button
-                                        onClick={() => navigate(buildRoute(FrontendRoutes.JOBS.BY_ID, { id: agent.agentId }))}
+                                    <Link
+                                        to={buildRoute(FrontendRoutes.JOBS.BY_ID, { id: agent.agentId })}
                                         className="text-sm font-medium text-foreground hover:underline underline-offset-4 transition-colors truncate max-w-[200px]"
                                     >
                                         {agent.agentName}
-                                    </button>
+                                    </Link>
                                     <span className="text-sm text-muted-foreground tabular-nums">{agent.runCount.toLocaleString()} runs</span>
                                 </div>
                                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                                     <div
-                                        className="h-full rounded-full transition-all duration-500"
+                                        className="h-full rounded-full transition-[width] duration-500 ease-out"
                                         style={{
                                             width: `${pct}%`,
                                             backgroundColor: CHART_COLORS[i % CHART_COLORS.length]
@@ -316,7 +313,7 @@ function HorizontalBarSection({ title, description, data }: { title: string; des
 // Loading Skeleton
 // ---------------------------------------------------------------------------
 
-function StatsPageSkeleton() {
+function StatsOverviewSkeleton() {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -365,60 +362,53 @@ function StatsPageSkeleton() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-function StatsPage() {
+function StatsOverview() {
     const [selectedInterval, setSelectedInterval] = useState<StatsInterval>("1mo")
     const { stats, isLoading, isError, mutate } = useStats(selectedInterval)
 
     const dailyEvents = useMemo(() => stats?.dailyEvents ?? [], [stats])
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="mx-auto w-full w-full px-6 py-8 space-y-6">
-                {/* ── Header ──────────────────────────────────────────── */}
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Stats</h1>
-                </div>
-
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide uppercase text-muted-foreground">Time Range</p>
-                    <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
-                </div>
-
-                {isError && !stats ? (
-                    <FetchErrorCard message="Couldn't load stats." onRetry={() => void mutate()} />
-                ) : isLoading || !stats ? (
-                    <StatsPageSkeleton />
-                ) : (
-                    <>
-                        {/* ── Top-level KPIs ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <StatCard label="Events Processed" value={formatNumber(stats.totalEventsProcessed)} change={stats.totalEventsProcessedChange} />
-                            <StatCard label="Actions Taken" value={formatNumber(stats.actionsTaken)} change={stats.actionsTakenChange} />
-                            <StatCard label="Active Jobs" value={formatNumber(stats.numberOfAgents)} change={stats.numberOfAgentsChange} />
-                        </div>
-
-                        {/* ── Daily Events Chart ──────────────────────────── */}
-                        <DailyEventsSection eventsPerDay={dailyEvents} timezone={stats.timezone} />
-
-                        {/* ── Insights Row 1 ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <AgentLeaderboard agents={stats.agentActivity ?? []} />
-                            <StatusBreakdownChart data={stats.statusBreakdown ?? []} />
-                        </div>
-
-                        {/* ── Insights Row 2 ──────────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <HorizontalBarSection title="Trigger Sources" description="Where your events originate from" data={stats.triggerIntegrations ?? []} />
-                            <HorizontalBarSection title="Action Integrations" description="Where your jobs take action" data={stats.actionIntegrations ?? []} />
-                        </div>
-
-                        {/* ── Action Types ────────────────────────────────── */}
-                        {(stats.actionTypes?.length ?? 0) > 0 && <HorizontalBarSection title="Action Types" description="Types of actions your jobs perform" data={stats.actionTypes ?? []} />}
-                    </>
-                )}
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Time range</p>
+                <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
             </div>
+
+            {isError && !stats ? (
+                <FetchErrorCard message="Couldn't load stats." onRetry={() => void mutate()} />
+            ) : isLoading || !stats ? (
+                <StatsOverviewSkeleton />
+            ) : (
+                <>
+                    {/* ── Top-level KPIs ──────────────────────────────── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <StatCard label="Events Processed" value={formatNumber(stats.totalEventsProcessed)} change={stats.totalEventsProcessedChange} />
+                        <StatCard label="Actions Taken" value={formatNumber(stats.actionsTaken)} change={stats.actionsTakenChange} />
+                        <StatCard label="Active Jobs" value={formatNumber(stats.numberOfAgents)} change={stats.numberOfAgentsChange} />
+                    </div>
+
+                    {/* ── Daily Events Chart ──────────────────────────── */}
+                    <DailyEventsSection eventsPerDay={dailyEvents} timezone={stats.timezone} />
+
+                    {/* ── Insights Row 1 ──────────────────────────────── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <AgentLeaderboard agents={stats.agentActivity ?? []} />
+                        <StatusBreakdownChart data={stats.statusBreakdown ?? []} />
+                    </div>
+
+                    {/* ── Insights Row 2 ──────────────────────────────── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <HorizontalBarSection title="Trigger Sources" description="Where your events originate from" data={stats.triggerIntegrations ?? []} />
+                        <HorizontalBarSection title="Action Integrations" description="Where your jobs take action" data={stats.actionIntegrations ?? []} />
+                    </div>
+
+                    {/* ── Action Types ────────────────────────────────── */}
+                    {(stats.actionTypes?.length ?? 0) > 0 && <HorizontalBarSection title="Action Types" description="Types of actions your jobs perform" data={stats.actionTypes ?? []} />}
+                </>
+            )}
         </div>
     )
 }
 
-export default StatsPage
+export default StatsOverview

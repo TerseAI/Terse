@@ -39,13 +39,28 @@ export async function captureRunSnapshot(params: { runId: string; projectId: str
     }
 }
 
-export async function restoreRunSnapshotInto(params: { originalRunId: string; projectId: string; targetMemorySubtreeKey: string; targetStateSubtreeKey: string }): Promise<boolean> {
-    const { originalRunId, projectId, targetMemorySubtreeKey, targetStateSubtreeKey } = params
+export async function restoreRunSnapshotInto(params: {
+    originalRunId: string
+    projectId: string
+    automationId: string
+    targetMemorySubtreeKey: string
+    targetStateSubtreeKey: string
+}): Promise<boolean> {
+    const { originalRunId, projectId, automationId, targetMemorySubtreeKey, targetStateSubtreeKey } = params
     const snapshot = await db().memory_snapshots.findUnique({
         where: { run_id: originalRunId },
-        select: { automation_id: true, is_test: true, entries: { select: { subtree_key: true, path: true, blob_hash: true } } }
+        select: { project_id: true, automation_id: true, is_test: true, entries: { select: { subtree_key: true, path: true, blob_hash: true } } }
     })
     if (!snapshot) return false
+
+    if (snapshot.automation_id !== automationId || snapshot.project_id !== projectId) {
+        logger.warn("memory snapshot: refusing cross-automation restore", {
+            originalRunId,
+            snapshotAutomationId: snapshot.automation_id,
+            targetAutomationId: automationId
+        })
+        return false
+    }
 
     const originalStateSubtree = stateSubtreeKey(snapshot.automation_id, snapshot.is_test)
     const hashes = [...new Set(snapshot.entries.map(e => e.blob_hash))]

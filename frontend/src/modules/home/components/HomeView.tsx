@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, Check, Copy, Terminal } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { Agent } from "terse-types/types"
 
+import { PageFrame } from "@/components/PageFrame"
 import { useSidebar } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAgents } from "@/modules/agents/api/useAgents"
@@ -35,17 +36,17 @@ export default function HomePage() {
 
     if (!agentsLoading && agents.length === 0) {
         return (
-            <div className="h-full overflow-y-auto">
+            <PageFrame>
                 <EmptyState />
-            </div>
+            </PageFrame>
         )
     }
 
     const isLoading = agentsLoading || runsLoading
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="mx-auto w-full max-w-6xl px-6 py-10 space-y-8">
+        <PageFrame>
+            <div className="space-y-8">
                 <header>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Home</h1>
                     <p className="mt-1 text-sm text-muted-foreground">Job health across your org.</p>
@@ -67,7 +68,7 @@ export default function HomePage() {
                     </TooltipProvider>
                 )}
             </div>
-        </div>
+        </PageFrame>
     )
 }
 
@@ -106,7 +107,7 @@ function ProjectGroup({ group }: { group: AgentGroupData }) {
     return (
         <section>
             <div className="flex items-baseline justify-between mb-3 px-1">
-                <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{group.projectName}</h2>
+                <h2 className="text-sm font-medium text-foreground">{group.projectName}</h2>
                 <span className="text-xs text-muted-foreground tabular-nums">
                     {group.agents.length} {group.agents.length === 1 ? "job" : "jobs"}
                 </span>
@@ -176,14 +177,14 @@ function EmptyState() {
                         type="button"
                         onClick={() => handleCopy("install", INSTALL_LINES.join("\n"))}
                         aria-label="Copy commands"
-                        className="absolute top-2 right-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
+                        className="absolute right-1.5 top-1.5 inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors before:absolute before:-inset-1.5 hover:bg-background hover:text-foreground"
                     >
                         {copied === "install" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                         {copied === "install" ? "Copied" : "Copy"}
                     </button>
                 </div>
 
-                <p className="mt-6 text-xs font-medium uppercase tracking-wider text-muted-foreground">Then, in Claude Code</p>
+                <p className="mt-6 text-xs font-medium text-muted-foreground">Then, in Claude Code</p>
                 <div className="mt-2 group relative">
                     <div className="rounded-md bg-muted/60 border border-border/60 px-4 py-3 pr-20 font-mono text-sm leading-relaxed text-foreground">
                         <div className="flex">
@@ -197,7 +198,7 @@ function EmptyState() {
                         type="button"
                         onClick={() => handleCopy("create", CREATE_PROMPT)}
                         aria-label="Copy create command"
-                        className="absolute top-2 right-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
+                        className="absolute right-1.5 top-1.5 inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors before:absolute before:-inset-1.5 hover:bg-background hover:text-foreground"
                     >
                         {copied === "create" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                         {copied === "create" ? "Copied" : "Copy"}

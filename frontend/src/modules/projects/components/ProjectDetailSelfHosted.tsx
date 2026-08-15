@@ -4,6 +4,7 @@ import { AlertTriangle, Check, CheckCircle2, Circle, Copy, KeyRound, Loader2, Ro
 import { toast } from "sonner"
 import type { ProjectDetailResponse, SdkJobServerCheckResponse } from "terse-types/types"
 
+import { PageFrame } from "@/components/PageFrame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils"
 import { SdkJobServerCheckDialog } from "@/modules/agents/components/SdkJobServerCheckDialog"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
-import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, PageFrame, SectionLabel } from "./ProjectDetailShared"
+import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, SectionLabel } from "./ProjectDetailShared"
 
 export default function ProjectDetailSelfHosted({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
@@ -124,7 +125,7 @@ function EnvironmentSection({
 function EnvRow({ label, children, className, rotate }: { label: string; children: React.ReactNode; className?: string; rotate?: () => void }) {
     return (
         <div className={cn("px-4 py-3", className)}>
-            <div className="text-muted-foreground flex items-center justify-between gap-2 text-[10px] font-medium tracking-[0.14em] uppercase">
+            <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
                 <span>{label}</span>
                 {rotate && (
                     <Tooltip>
@@ -164,7 +165,12 @@ function RemoteServerValue({ url }: { url: string | null }) {
     return (
         <div className="flex min-w-0 items-center gap-2">
             <code className="text-foreground min-w-0 flex-1 truncate font-mono text-[13px]">{url}</code>
-            <button type="button" onClick={handleCopy} className="text-muted-foreground hover:text-foreground hover:bg-muted/50 shrink-0 rounded-md p-1 transition-colors" aria-label="Copy server URL">
+            <button
+                type="button"
+                onClick={handleCopy}
+                className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                aria-label="Copy server URL"
+            >
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
         </div>
@@ -234,7 +240,7 @@ function RotateCredentialDialog({ kind, projectId, onClose, onRotated }: { kind:
                         </Button>
                     </DialogClose>
                     <Button variant="destructive" onClick={handleRotate} disabled={isRotating}>
-                        {isRotating ? "Rotating..." : `Rotate ${config?.label}`}
+                        {isRotating ? "Rotating…" : `Rotate ${config?.label}`}
                     </Button>
                 </DialogFooter>
             </DialogContent>
