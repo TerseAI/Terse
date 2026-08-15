@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom"
 
 import { ChevronUp, CreditCard, KeyRound, LogOut, Moon, Sun, User2, UserCog } from "lucide-react"
+import { useTheme } from "next-themes"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
-import { useTheme } from "@/components/theme-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
@@ -13,8 +13,8 @@ import { User } from "@/types/User"
 export function AppSidebarFooter() {
     const { user, logout } = useAuth()
     const navigate = useNavigate()
-    const { setTheme, theme } = useTheme()
-    const isDark = theme === "dark"
+    const { setTheme, resolvedTheme } = useTheme()
+    const isDark = resolvedTheme === "dark"
     const isAdmin = user?.roles.includes("admin") ?? false
 
     const handleLogout = () => {
