@@ -303,7 +303,10 @@ function FailureReason({ reason }: { reason: string }) {
             type="button"
             aria-expanded={expanded}
             onClick={() => setExpanded(prev => !prev)}
-            className={cn("text-muted-foreground cursor-pointer rounded-sm text-left text-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50", expanded ? "whitespace-pre-wrap" : "line-clamp-2")}
+            className={cn(
+                "text-muted-foreground cursor-pointer rounded-sm text-left text-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                expanded ? "whitespace-pre-wrap" : "line-clamp-2"
+            )}
         >
             {reason}
         </button>
