@@ -126,9 +126,19 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
     const organizationId = session.user.organizationId
 
     const triggerWithEventRequest = triggerWithEventRequestSchema.parse(req.body)
+
+    const prisma = db()
+    const automation = await prisma.automations.findFirst({
+        where: { id: automationId, organization_id: session.user.organizationId }
+    })
+
+    if (!automation) {
+        return res.status(404).json({ error: "Automation not found" })
+    }
+
     let event: Trigger | null
     try {
-        event = await resolveEvent(triggerWithEventRequest, organizationId)
+        event = await resolveEvent(triggerWithEventRequest, organizationId, automationId)
     } catch (error) {
         logger.error("Failed to resolve trigger event", {
             automationId,
@@ -139,15 +149,6 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
     }
     if (!event) {
         return res.status(404).json({ error: "Event not found" })
-    }
-
-    const prisma = db()
-    const automation = await prisma.automations.findFirst({
-        where: { id: automationId, organization_id: session.user.organizationId }
-    })
-
-    if (!automation) {
-        return res.status(404).json({ error: "Automation not found" })
     }
 
     const user = await resolveUserInOrg(session.user.id, session.user.organizationId)
@@ -166,13 +167,13 @@ export async function handleTriggerWithEvent(req: Request, res: Response) {
     })
 }
 
-async function resolveEvent(triggerWithEventRequest: TriggerWithEventRequest, organizationId: string): Promise<Trigger | null> {
+async function resolveEvent(triggerWithEventRequest: TriggerWithEventRequest, organizationId: string, automationId: string): Promise<Trigger | null> {
     if (triggerWithEventRequest.event) {
         return triggerWithEventRequest.event
     }
 
     if (triggerWithEventRequest.runId) {
-        const serializedEvent = await fetchEventFromRunId(triggerWithEventRequest.runId, organizationId)
+        const serializedEvent = await fetchEventFromRunId(triggerWithEventRequest.runId, organizationId, automationId)
         if (!serializedEvent) {
             return null
         }

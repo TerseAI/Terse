@@ -197,6 +197,7 @@ export class EventProcessor {
             await restoreRunSnapshotInto({
                 originalRunId: this.replayOfRunId,
                 projectId: agent.project.id,
+                automationId: agent.id,
                 targetMemorySubtreeKey: replayMemorySubtreeKey(runId),
                 targetStateSubtreeKey: replayStateSubtreeKey(runId)
             })
