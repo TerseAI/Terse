@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 
-import { ChevronUp, CreditCard, KeyRound, LogOut, Moon, Plug, Sun, User2, UserCog } from "lucide-react"
+import { ChevronUp, CreditCard, KeyRound, LogOut, Moon, Sun, User2, UserCog } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { useTheme } from "@/components/theme-provider"
@@ -41,10 +41,6 @@ export function AppSidebarFooter() {
 
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Settings</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => navigate(FrontendRoutes.INTEGRATIONS)}>
-                                <Plug className="size-4" />
-                                <span>Integrations</span>
-                            </DropdownMenuItem>
                             {isAdmin && (
                                 <DropdownMenuItem onClick={() => navigate(FrontendRoutes.BILLING)}>
                                     <CreditCard className="size-4" />

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom"
 
 import type { LucideIcon } from "lucide-react"
-import { Activity, Home, Inbox } from "lucide-react"
+import { Activity, Home, Inbox, Plug } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
@@ -54,6 +54,7 @@ function WorkspaceNavigation() {
             <NavItem title="Home" url={FrontendRoutes.HOME} icon={Home} />
             <NavItem title="Activity" url={FrontendRoutes.ACTIVITY} icon={Activity} />
             <NavItem title="Inbox" url={FrontendRoutes.NOTIFICATIONS} icon={Inbox} badge={pendingCount} badgeLabel={`${pendingCount} pending approval${pendingCount === 1 ? "" : "s"}`} />
+            <NavItem title="Integrations" url={FrontendRoutes.INTEGRATIONS} icon={Plug} />
         </SidebarMenu>
     )
 }
