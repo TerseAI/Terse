@@ -3,7 +3,6 @@ import { Link } from "react-router-dom"
 import { ExternalLink, RefreshCcw, Zap } from "lucide-react"
 import { RunHistoryRecord, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
-import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
 import { TableCell, TableRow } from "@/components/ui/table"
@@ -105,10 +104,7 @@ export function RunHistoryRow({ run, onOpenRun, showJobColumn, className }: RunH
             </TableCell>
 
             <TableCell className={RUN_HISTORY_COLUMN.status}>
-                <RunHistoryStatusBadge status={run.status} className="hidden sm:inline-flex" />
-                <span className={cn("size-2 shrink-0 rounded-full sm:hidden", statusDot(run.status).className)}>
-                    <span className="sr-only">{statusDot(run.status).label}</span>
-                </span>
+                <RunHistoryStatusBadge status={run.status} />
             </TableCell>
 
             <TableCell className={cn(RUN_HISTORY_COLUMN.time, "text-xs text-muted-foreground")}>{formatTimestamp(run.timestamp)}</TableCell>
@@ -139,25 +135,4 @@ function EmptyCell() {
             &mdash;
         </span>
     )
-}
-
-function statusDot(status: RunHistoryStatus): { className: string; label: string } {
-    switch (status) {
-        case RunHistoryStatus.SUCCESS:
-            return { className: "bg-success", label: "Success" }
-        case RunHistoryStatus.SKIPPED:
-            return { className: "bg-success", label: "Filtered" }
-        case RunHistoryStatus.FAILED:
-            return { className: "bg-danger", label: "Failed" }
-        case RunHistoryStatus.CANCELLED:
-            return { className: "bg-warning", label: "Cancelled" }
-        case RunHistoryStatus.AWAITING_APPROVAL:
-            return { className: "bg-warning", label: "Awaiting Approval" }
-        case RunHistoryStatus.SUSPENDED:
-            return { className: "bg-warning", label: "Suspended" }
-        case RunHistoryStatus.IN_PROGRESS:
-            return { className: "bg-muted-foreground animate-pulse", label: "In Progress" }
-        default:
-            throw status satisfies never
-    }
 }
