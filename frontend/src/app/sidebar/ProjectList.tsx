@@ -6,7 +6,17 @@ import { FrontendRoutes, buildRoute } from "terse-types"
 import { Agent } from "terse-types/types"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar"
+import {
+    SidebarMenu,
+    SidebarMenuAction,
+    SidebarMenuBadge,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarMenuSkeleton,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem
+} from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
