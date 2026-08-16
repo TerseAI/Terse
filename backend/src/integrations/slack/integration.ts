@@ -18,6 +18,7 @@ import { trackIntegrationAdded } from "../../common/analytics"
 import logger, { runWithUserContext } from "../../common/logger"
 import { Identifiable } from "../../hydrators/Hydrator"
 import { extractImagesFromMessage, pickSlackFileUrl } from "../../integrations/slack/blockKitHelpers"
+import { resolveSlackMentions } from "../../integrations/slack/helpers"
 import { db } from "../../loaders/prisma"
 import { EventProcessor } from "../../modules/agents/AgentRunner/EventProcessor"
 import { mintOAuthState, verifyOAuthState } from "../../modules/auth/helpers/oauth"
@@ -1344,7 +1345,7 @@ async function fetchEnrichedSlackMessageData(client: WebClient, message: SlackMe
         channelName,
         userName,
         permalink,
-        text,
+        text: await resolveSlackMentions(client, text),
         blocks,
         attachments,
         files
