@@ -140,12 +140,7 @@ function GitHubBody({ config, label, type }: { config: GitHubConfigData; label: 
     const events = config.eventTypes ?? []
 
     return (
-        <Frame
-            type={type}
-            label={label}
-            meta={repoLabels.length > 0 ? <Chips items={repoLabels} mono max={2} /> : undefined}
-            summary={joinSummary(events.map(formatGitHubEvent).join(", ") || null)}
-        />
+        <Frame type={type} label={label} meta={repoLabels.length > 0 ? <Chips items={repoLabels} mono max={2} /> : undefined} summary={joinSummary(events.map(formatGitHubEvent).join(", ") || null)} />
     )
 }
 
@@ -155,14 +150,7 @@ function LinearBody({ config, label, type }: { config: LinearInputConfigData; la
     const teamLabel = team ? (team.key ? `${team.name} (${team.key})` : team.name) : config.teamId
     const events = config.eventTypes ?? []
 
-    return (
-        <Frame
-            type={type}
-            label={label}
-            meta={teamLabel ? <Chips items={[teamLabel]} /> : undefined}
-            summary={joinSummary(config.projectId, events.map(formatLinearEvent).join(", ") || null)}
-        />
-    )
+    return <Frame type={type} label={label} meta={teamLabel ? <Chips items={[teamLabel]} /> : undefined} summary={joinSummary(config.projectId, events.map(formatLinearEvent).join(", ") || null)} />
 }
 
 function GmailBody({ config, label, type }: { config: GmailConfigData; label: string; type: ConfigType }) {
@@ -310,8 +298,8 @@ function joinSummary(...parts: Array<string | null | undefined>): string | undef
     return kept.length > 0 ? kept.join(" · ") : undefined
 }
 
-function describeList(items: string[], noun: string): string | null {
-    if (items.length === 0) return null
+function describeList(items: string[], noun: string): string | undefined {
+    if (items.length === 0) return undefined
     if (items.length <= 2) return items.join(", ")
     return `${items.length} ${noun}s`
 }

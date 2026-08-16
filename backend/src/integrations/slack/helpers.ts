@@ -59,7 +59,9 @@ export async function resolveSlackMentions(client: WebClient, text: string): Pro
 
     const [userNames, channelNames] = await Promise.all([resolveSlackUserNames(client, userIds), resolveSlackChannelNames(client, channelIds)])
 
-    return labelled.replace(BARE_USER_MENTION, (raw, id: string) => (userNames.has(id) ? `@${userNames.get(id)}` : raw)).replace(BARE_CHANNEL_MENTION, (raw, id: string) => (channelNames.has(id) ? `#${channelNames.get(id)}` : raw))
+    return labelled
+        .replace(BARE_USER_MENTION, (raw, id: string) => (userNames.has(id) ? `@${userNames.get(id)}` : raw))
+        .replace(BARE_CHANNEL_MENTION, (raw, id: string) => (channelNames.has(id) ? `#${channelNames.get(id)}` : raw))
 }
 
 export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<{ success: boolean; permalink?: string; error?: string }> {
