@@ -5,8 +5,8 @@ export const RUN_HISTORY_COLUMN = {
     job: "",
     type: "",
     triggeredBy: "",
-    actions: "text-right",
+    actions: "",
     status: "",
-    time: "text-right",
+    time: "",
     retrigger: "w-11"
 } as const

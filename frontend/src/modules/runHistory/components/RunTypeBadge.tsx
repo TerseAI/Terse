@@ -1,6 +1,11 @@
 import { FlaskConical, RotateCcw } from "lucide-react"
+import { INTEGRATION_METADATA, IntegrationType } from "terse-types/Integrations"
 
 import { cn } from "@/lib/utils"
+
+export function TriggerSourceLabel({ integration, className }: { integration: IntegrationType; className?: string }) {
+    return <span className={cn("text-xs text-muted-foreground", className)}>{INTEGRATION_METADATA[integration].name}</span>
+}
 
 type Props = {
     isTest?: boolean

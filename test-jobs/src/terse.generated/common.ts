@@ -9,6 +9,7 @@ export interface RunHistoryAction {
         | "github"
         | "hey_reach"
         | "resend"
+        | "apollo"
         | "gmail"
         | "linear"
         | "slack"
@@ -23,6 +24,9 @@ export interface RunHistoryAction {
         | "snowflake"
         | "webhook"
         | "webmonitor"
+        | "google_search_console"
+        | "meta_ads"
+        | "higgsfield"
     target: string
     details: string
     url?: string
@@ -57,5 +61,9 @@ export interface RunHistoryAction {
             | "webmonitor"
             | "hey_reach_input"
             | "resend_output"
+            | "apollo_output"
+            | "google_search_console_output"
+            | "meta_ads_output"
+            | "higgsfield_output"
     }[]
 }
