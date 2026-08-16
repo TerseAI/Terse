@@ -745,7 +745,7 @@ export class SlackIntegrationManager
         const events: TriggerRuntime[] = []
         for (const msg of messages) {
             const enrichedMessage = await fetchEnrichedSlackMessageData(client, msg)
-            const inferredEventType = selectedEventTypes.includes(SlackEventType.APP_MENTION) && enrichedMessage.text.includes("<@") ? SlackEventType.APP_MENTION : SlackEventType.MESSAGE
+            const inferredEventType = selectedEventTypes.includes(SlackEventType.APP_MENTION) && enrichedMessage.rawText.includes("<@") ? SlackEventType.APP_MENTION : SlackEventType.MESSAGE
             if (!selectedEventTypes.includes(inferredEventType)) {
                 continue
             }
@@ -1270,6 +1270,7 @@ type EnrichedSlackMessageData = {
     userName?: string
     permalink?: string
     text: string
+    rawText: string
     blocks?: SlackBlocks
     attachments?: SlackAttachments
     files?: SlackFiles
@@ -1346,6 +1347,7 @@ async function fetchEnrichedSlackMessageData(client: WebClient, message: SlackMe
         userName,
         permalink,
         text: await resolveSlackMentions(client, text),
+        rawText: text,
         blocks,
         attachments,
         files
