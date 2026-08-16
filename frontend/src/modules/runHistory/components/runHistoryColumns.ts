@@ -7,6 +7,5 @@ export const RUN_HISTORY_COLUMN = {
     triggeredBy: "",
     actions: "",
     status: "",
-    time: "",
-    retrigger: "w-11"
+    time: ""
 } as const

@@ -1,14 +1,12 @@
 import { Link } from "react-router-dom"
 
-import { ExternalLink, RefreshCcw, Zap } from "lucide-react"
+import { ExternalLink, Zap } from "lucide-react"
 import { RunHistoryRecord, buildRoute } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
-import { Button } from "@/components/ui/button"
 import { TableCell, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
-import { useReTriggerRun } from "@/modules/runHistory/api/useReTriggerRun"
 import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 import { formatTimestamp } from "@/utils/time"
 
@@ -28,7 +26,6 @@ interface RunHistoryRowProps {
 
 export function RunHistoryRow({ run, onOpenRun, showJobColumn, className }: RunHistoryRowProps) {
     const openRun = useOpenRunDeepLink()
-    const { reTriggerRun, isReTriggering } = useReTriggerRun({ agentId: run.agentId, runId: run.id })
     const title = run.trigger.title || run.trigger.source
     const writeActions = (run.actions ?? []).filter(a => a.type !== "read")
     const hasRunType = Boolean(run.isTest || run.isManuallyTriggered || run.replayOfRunId)
@@ -36,10 +33,10 @@ export function RunHistoryRow({ run, onOpenRun, showJobColumn, className }: RunH
     return (
         <TableRow onClick={() => onOpenRun(run.id)} className={cn("group cursor-pointer border-border/40", className)}>
             <TableCell className={cn(RUN_HISTORY_COLUMN.event, "py-2.5 pl-4")}>
-                <div className="flex items-center gap-2.5">
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+                <div className="flex items-center gap-2">
+                    <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
                         <IconForIntegration integration={run.trigger.integration} />
-                    </div>
+                    </span>
                     <button
                         type="button"
                         onClick={e => {
@@ -117,24 +114,7 @@ export function RunHistoryRow({ run, onOpenRun, showJobColumn, className }: RunH
                 <RunHistoryStatusBadge status={run.status} />
             </TableCell>
 
-            <TableCell className={cn(RUN_HISTORY_COLUMN.time, "text-xs text-muted-foreground")}>{formatTimestamp(run.timestamp)}</TableCell>
-
-            <TableCell className={cn(RUN_HISTORY_COLUMN.retrigger, "pr-2.5")}>
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={e => {
-                        e.stopPropagation()
-                        reTriggerRun()
-                    }}
-                    disabled={isReTriggering}
-                    className="size-7 text-muted-foreground/60 transition-colors hover:text-foreground group-hover:text-muted-foreground"
-                    aria-label="Re-trigger run"
-                    title="Re-trigger run"
-                >
-                    <RefreshCcw className={cn("size-3.5", isReTriggering && "animate-spin")} aria-hidden="true" />
-                </Button>
-            </TableCell>
+            <TableCell className={cn(RUN_HISTORY_COLUMN.time, "pr-4 text-xs text-muted-foreground")}>{formatTimestamp(run.timestamp)}</TableCell>
         </TableRow>
     )
 }

@@ -102,10 +102,7 @@ function RunHistoryTableHeader({ showJobColumn }: { showJobColumn: boolean }) {
                 <TableHead className={RUN_HISTORY_COLUMN.triggeredBy}>Triggered by</TableHead>
                 <TableHead className={RUN_HISTORY_COLUMN.actions}>Actions</TableHead>
                 <TableHead className={RUN_HISTORY_COLUMN.status}>Status</TableHead>
-                <TableHead className={RUN_HISTORY_COLUMN.time}>Time</TableHead>
-                <TableHead className={cn(RUN_HISTORY_COLUMN.retrigger, "pr-2.5")}>
-                    <span className="sr-only">Re-trigger</span>
-                </TableHead>
+                <TableHead className={cn(RUN_HISTORY_COLUMN.time, "pr-4")}>Time</TableHead>
             </TableRow>
         </TableHeader>
     )
@@ -119,8 +116,8 @@ function LoadingSkeleton() {
                 {Array.from({ length: 8 }).map((_, i) => (
                     <TableRow key={i} className="border-border/40 hover:bg-transparent">
                         <TableCell className={cn(RUN_HISTORY_COLUMN.event, "py-2.5 pl-4")}>
-                            <div className="flex items-center gap-2.5">
-                                <Skeleton className="size-7 shrink-0 rounded-lg" />
+                            <div className="flex items-center gap-2">
+                                <Skeleton className="size-4 shrink-0 rounded" />
                                 <Skeleton className="h-4 w-40" />
                             </div>
                         </TableCell>
@@ -131,16 +128,13 @@ function LoadingSkeleton() {
                             <Skeleton className="h-4 w-24" />
                         </TableCell>
                         <TableCell className={RUN_HISTORY_COLUMN.actions}>
-                            <Skeleton className="ml-auto h-3 w-6" />
+                            <Skeleton className="h-3 w-6" />
                         </TableCell>
                         <TableCell className={RUN_HISTORY_COLUMN.status}>
                             <Skeleton className="h-5 w-20 rounded-full" />
                         </TableCell>
-                        <TableCell className={RUN_HISTORY_COLUMN.time}>
-                            <Skeleton className="ml-auto h-3 w-16" />
-                        </TableCell>
-                        <TableCell className={cn(RUN_HISTORY_COLUMN.retrigger, "pr-2.5")}>
-                            <Skeleton className="size-7 rounded-md" />
+                        <TableCell className={cn(RUN_HISTORY_COLUMN.time, "pr-4")}>
+                            <Skeleton className="h-3 w-16" />
                         </TableCell>
                     </TableRow>
                 ))}

@@ -6,7 +6,6 @@ import type {
     AgentTrigger,
     AttioFilter,
     AttioInputConfigData,
-    AttioSubscription,
     DatadogConfigData,
     FrequencyUnit,
     GitHubConfigData,
@@ -22,14 +21,12 @@ import type {
 } from "terse-types"
 
 import { describeCron, formatNextRun, getNextRun } from "@/lib/cron"
-import ToolCallParameters from "@/modules/chat/components/ToolCallParameters"
 import { useAttioObjects } from "@/modules/integrations/api/useAttioObjects"
 import { useGithubIntegrations } from "@/modules/integrations/api/useGithubIntegrations"
 import { useGithubResources } from "@/modules/integrations/api/useGithubResources"
 import { useHeyReachCampaigns } from "@/modules/integrations/api/useHeyReachCampaigns"
 import { useLinearTeams } from "@/modules/integrations/api/useLinearTeams"
 import { useSlackUsers } from "@/modules/integrations/api/useSlackUsers"
-import { DetailField as Field } from "@/modules/projects/components/ProjectDetailShared"
 import { getUserTimezone } from "@/utils/timezone"
 
 import { IconForConfigType } from "./Integration"
@@ -77,57 +74,39 @@ export function TriggerDetailRow({ trigger }: { trigger: AgentTrigger }) {
 }
 
 function WebhookBody({ webhookUrl, label, type }: { webhookUrl: string | undefined; label: string; type: ConfigType }) {
-    const curlCommand = webhookUrl ? `curl -X POST ${webhookUrl} \\\n  -H "Content-Type: application/json" \\\n  -d '{"hello": "world"}'` : null
+    if (!webhookUrl) {
+        return <Frame type={type} label={label} meta={<EmptyValue text="Webhook URL unavailable" />} />
+    }
 
     return (
-        <Frame type={type} label={label} summary="POST">
-            {webhookUrl ? (
+        <Frame
+            type={type}
+            label={label}
+            meta={
                 <>
-                    <Field label="URL">
-                        <div className="flex items-start gap-2">
-                            <code className="bg-muted/60 text-foreground flex-1 rounded-md px-2.5 py-2 font-mono text-xs leading-relaxed break-all select-all">{webhookUrl}</code>
-                            <CopyButton text={webhookUrl} />
-                        </div>
-                    </Field>
-                    {curlCommand ? (
-                        <Field label="Example">
-                            <div className="flex items-start gap-2">
-                                <pre className="bg-muted/60 text-foreground flex-1 overflow-x-auto rounded-md px-2.5 py-2 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap">
-                                    {curlCommand}
-                                </pre>
-                                <CopyButton text={curlCommand} />
-                            </div>
-                        </Field>
-                    ) : null}
-                    <div className="text-muted-foreground text-xs leading-relaxed">Send a POST request to this URL to trigger the job. The request body is delivered as the event payload.</div>
+                    <code className="bg-muted/60 text-foreground min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-xs select-all" title={webhookUrl}>
+                        {webhookUrl}
+                    </code>
+                    <CopyButton text={webhookUrl} />
                 </>
-            ) : (
-                <EmptyValue text="Webhook URL unavailable" />
-            )}
-        </Frame>
+            }
+            summary="POST"
+        />
     )
 }
 
 function WebMonitorBody({ config, label, type }: { config: WebMonitorConfigData; label: string; type: ConfigType }) {
-    const hasSchema = !!config.outputSchema
-    const schemaJson = hasSchema
-        ? JSON.stringify({
-              ...(config.outputSchema?.jsonSchema.properties ? { properties: config.outputSchema.jsonSchema.properties } : {}),
-              ...(config.outputSchema?.jsonSchema.required ? { required: config.outputSchema.jsonSchema.required } : {})
-          })
-        : null
-
     return (
-        <Frame type={type} label={label} summary={formatFrequency(config.frequency)}>
-            <Field label="Query">
-                <p className="text-foreground text-sm leading-relaxed break-words">{config.query}</p>
-            </Field>
-            {schemaJson ? (
-                <Field label="Structured output">
-                    <ToolCallParameters parameters={schemaJson} label="Structured output" collapsed={true} />
-                </Field>
-            ) : null}
-        </Frame>
+        <Frame
+            type={type}
+            label={label}
+            meta={
+                <span className="text-foreground min-w-0 truncate text-xs" title={config.query}>
+                    {config.query}
+                </span>
+            }
+            summary={joinSummary(formatFrequency(config.frequency), config.outputSchema ? "Structured output" : null)}
+        />
     )
 }
 
@@ -139,19 +118,12 @@ function SlackBody({ config, label, type }: { config: SlackConfigData; label: st
     const userNames = userIds.map(id => users.find(u => u.id === id)?.name ?? id)
 
     return (
-        <Frame type={type} label={label} summary={target ?? undefined}>
-            {target ? <Field label={config.channelName || config.channelId ? "Channel" : "Source"}>{target}</Field> : null}
-            {userIds.length > 0 ? (
-                <Field label="Users">
-                    <Chips items={userNames} />
-                </Field>
-            ) : null}
-            {eventTypes.length > 0 ? (
-                <Field label="Events">
-                    <Chips items={eventTypes.map(formatSlackEvent)} />
-                </Field>
-            ) : null}
-        </Frame>
+        <Frame
+            type={type}
+            label={label}
+            meta={eventTypes.length > 0 ? <Chips items={eventTypes.map(formatSlackEvent)} max={3} /> : undefined}
+            summary={joinSummary(target, describeList(userNames, "user"))}
+        />
     )
 }
 
@@ -168,18 +140,12 @@ function GitHubBody({ config, label, type }: { config: GitHubConfigData; label: 
     const events = config.eventTypes ?? []
 
     return (
-        <Frame type={type} label={label} summary={repoIds.length > 0 ? `${repoIds.length} ${repoIds.length === 1 ? "repo" : "repos"}` : undefined}>
-            {repoIds.length > 0 ? (
-                <Field label="Repositories">
-                    <Chips items={repoLabels} mono />
-                </Field>
-            ) : null}
-            {events.length > 0 ? (
-                <Field label="Events">
-                    <Chips items={events.map(formatGitHubEvent)} />
-                </Field>
-            ) : null}
-        </Frame>
+        <Frame
+            type={type}
+            label={label}
+            meta={repoLabels.length > 0 ? <Chips items={repoLabels} mono max={2} /> : undefined}
+            summary={joinSummary(events.map(formatGitHubEvent).join(", ") || null)}
+        />
     )
 }
 
@@ -190,33 +156,18 @@ function LinearBody({ config, label, type }: { config: LinearInputConfigData; la
     const events = config.eventTypes ?? []
 
     return (
-        <Frame type={type} label={label} summary={team?.name ?? undefined}>
-            {config.teamId ? <Field label="Team">{teamLabel}</Field> : null}
-            {config.projectId ? (
-                <Field label="Project">
-                    <code className="bg-muted/60 text-foreground inline-block rounded-md px-2 py-0.5 font-mono text-xs">{config.projectId}</code>
-                </Field>
-            ) : null}
-            {events.length > 0 ? (
-                <Field label="Events">
-                    <Chips items={events.map(formatLinearEvent)} />
-                </Field>
-            ) : null}
-        </Frame>
+        <Frame
+            type={type}
+            label={label}
+            meta={teamLabel ? <Chips items={[teamLabel]} /> : undefined}
+            summary={joinSummary(config.projectId, events.map(formatLinearEvent).join(", ") || null)}
+        />
     )
 }
 
 function GmailBody({ config, label, type }: { config: GmailConfigData; label: string; type: ConfigType }) {
     const events = config.eventTypes ?? []
-    return (
-        <Frame type={type} label={label} summary={events.length > 0 ? formatGmailEvent(events[0]) : undefined}>
-            {events.length > 0 ? (
-                <Field label="Events">
-                    <Chips items={events.map(formatGmailEvent)} />
-                </Field>
-            ) : null}
-        </Frame>
-    )
+    return <Frame type={type} label={label} meta={events.length > 0 ? <Chips items={events.map(formatGmailEvent)} max={3} /> : undefined} />
 }
 
 function TimeBody({ config, label, type }: { config: TimeTriggerConfigData; label: string; type: ConfigType }) {
@@ -230,9 +181,9 @@ function TimeBody({ config, label, type }: { config: TimeTriggerConfigData; labe
     const anchoredDescription = description && timezone !== getUserTimezone() ? `${description} · ${timezone}` : description
     const schedule = (
         <>
-            <code className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 font-mono text-xs select-all">{config.cronExpression}</code>
-            {anchoredDescription ? <span className="text-muted-foreground text-xs">{anchoredDescription}</span> : null}
-            {!description && !nextRun ? <span className="text-muted-foreground text-xs">Unrecognized cron expression</span> : null}
+            <code className="bg-muted/60 text-foreground shrink-0 rounded-md px-1.5 py-0.5 font-mono text-xs select-all">{config.cronExpression}</code>
+            {anchoredDescription ? <span className="text-muted-foreground shrink-0 text-xs">{anchoredDescription}</span> : null}
+            {!description && !nextRun ? <span className="text-muted-foreground shrink-0 text-xs">Unrecognized cron expression</span> : null}
         </>
     )
 
@@ -241,36 +192,16 @@ function TimeBody({ config, label, type }: { config: TimeTriggerConfigData; labe
 
 function WorkOSBody({ config, label, type }: { config: WorkOSInputConfigData; label: string; type: ConfigType }) {
     const events = config.eventTypes ?? []
-    return (
-        <Frame type={type} label={label} summary={events.length > 0 ? `${events.length} ${events.length === 1 ? "event" : "events"}` : undefined}>
-            {events.length > 0 ? (
-                <Field label="Events">
-                    <Chips items={events.map(e => e)} />
-                </Field>
-            ) : null}
-        </Frame>
-    )
+    return <Frame type={type} label={label} meta={events.length > 0 ? <Chips items={events} max={3} /> : undefined} />
 }
 
 function PosthogBody({ config, label, type }: { config: PosthogConfigData; label: string; type: ConfigType }) {
-    return (
-        <Frame type={type} label={label} summary={config.projectName ?? undefined}>
-            <Field label="Project">{config.projectName ?? config.projectId}</Field>
-        </Frame>
-    )
+    return <Frame type={type} label={label} summary={config.projectName ?? config.projectId} />
 }
 
 function DatadogBody({ config, label, type }: { config: DatadogConfigData; label: string; type: ConfigType }) {
     const indexes = config.defaultIndexes ?? []
-    return (
-        <Frame type={type} label={label}>
-            {indexes.length > 0 ? (
-                <Field label="Default indexes">
-                    <Chips items={indexes} mono />
-                </Field>
-            ) : null}
-        </Frame>
-    )
+    return <Frame type={type} label={label} meta={indexes.length > 0 ? <Chips items={indexes} mono max={3} /> : undefined} />
 }
 
 function AttioBody({ config, label, type }: { config: AttioInputConfigData; label: string; type: ConfigType }) {
@@ -278,36 +209,17 @@ function AttioBody({ config, label, type }: { config: AttioInputConfigData; labe
     const subscriptions = config.subscriptions ?? []
     const objectNameById = new Map(objects.filter(o => o.id?.object_id).map(o => [o.id!.object_id, o.singular_noun || o.api_slug]))
 
-    const summary = subscriptions.length > 0 ? `${subscriptions.length} ${subscriptions.length === 1 ? "subscription" : "subscriptions"}` : undefined
+    const subscriptionLabels = subscriptions.map(sub => {
+        const parentObjectId = parentObjectIdFromFilter(sub.filter ?? null)
+        const objectName = parentObjectId ? (objectNameById.get(parentObjectId) ?? parentObjectId) : null
+        return objectName ? `${formatAttioEvent(sub.eventType)} on ${objectName}` : formatAttioEvent(sub.eventType)
+    })
 
-    return (
-        <Frame type={type} label={label} summary={summary}>
-            {subscriptions.length > 0 ? (
-                <Field label="Subscriptions">
-                    <div className="flex flex-col gap-1.5">
-                        {subscriptions.map((sub, i) => (
-                            <AttioSubscriptionRow key={`${sub.eventType}-${i}`} subscription={sub} objectNameById={objectNameById} />
-                        ))}
-                    </div>
-                </Field>
-            ) : (
-                <EmptyValue text="No subscriptions" />
-            )}
-        </Frame>
-    )
-}
+    if (subscriptionLabels.length === 0) {
+        return <Frame type={type} label={label} meta={<EmptyValue text="No subscriptions" />} />
+    }
 
-function AttioSubscriptionRow({ subscription, objectNameById }: { subscription: AttioSubscription; objectNameById: Map<string, string> }) {
-    const parentObjectId = parentObjectIdFromFilter(subscription.filter ?? null)
-    const objectName = parentObjectId ? objectNameById.get(parentObjectId) : null
-
-    return (
-        <div className="flex flex-wrap items-center gap-1.5">
-            <span className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs font-medium">{formatAttioEvent(subscription.eventType)}</span>
-            {parentObjectId ? <span className="text-muted-foreground text-xs">on</span> : null}
-            {parentObjectId ? <span className="bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs font-medium">{objectName ?? parentObjectId}</span> : null}
-        </div>
-    )
+    return <Frame type={type} label={label} meta={<Chips items={subscriptionLabels} max={2} />} />
 }
 
 function parentObjectIdFromFilter(filter: AttioFilter | null): string | null {
@@ -323,65 +235,58 @@ function HeyReachBody({ config, label, type }: { config: HeyReachInputConfigData
     const campaignLabels = campaignIds.map(id => campaigns.find(c => c.id === id)?.name ?? id)
 
     return (
-        <Frame type={type} label={label}>
-            <Field label="Event">
-                <Chips items={[formatHeyReachEvent(config.eventType)]} />
-            </Field>
-            <Field label="Campaigns">{campaignIds.length > 0 ? <Chips items={campaignLabels} /> : <span className="text-muted-foreground text-xs">All campaigns</span>}</Field>
-        </Frame>
+        <Frame
+            type={type}
+            label={label}
+            meta={<Chips items={[formatHeyReachEvent(config.eventType)]} />}
+            summary={campaignLabels.length > 0 ? describeList(campaignLabels, "campaign") : "All campaigns"}
+        />
     )
 }
 
 function LaunchDarklyBody({ config, label, type }: { config: LaunchDarklyConfigData; label: string; type: ConfigType }) {
-    return (
-        <Frame type={type} label={label} summary={config.projectKey}>
-            <Field label="Project">
-                <code className="bg-muted/60 text-foreground inline-block rounded-md px-2 py-0.5 font-mono text-xs">{config.projectKey}</code>
-            </Field>
-            {config.environmentKeys.length > 0 ? (
-                <Field label="Environments">
-                    <Chips items={config.environmentKeys} mono />
-                </Field>
-            ) : null}
-        </Frame>
-    )
+    return <Frame type={type} label={label} meta={<Chips items={[config.projectKey]} mono />} summary={joinSummary(config.environmentKeys.join(", ") || null)} />
 }
 
-function Frame({ type, label, summary, meta, children }: { type: ConfigType; label: string; summary?: string; meta?: React.ReactNode; children?: React.ReactNode }) {
-    const hasBody = !!children
+function Frame({ type, label, summary, meta }: { type: ConfigType; label: string; summary?: string; meta?: React.ReactNode }) {
     return (
-        <div className="px-4 py-2.5">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <div className="flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center">
-                    <IconForConfigType type={type} />
-                </div>
-                <span className="text-foreground text-sm font-medium">{label}</span>
-                {meta}
-                {summary ? (
-                    <span className="text-muted-foreground ml-1 min-w-0 truncate text-xs tabular-nums" title={summary}>
-                        {summary}
-                    </span>
-                ) : null}
+        <div className="flex items-baseline gap-x-2 overflow-hidden px-4 py-2.5">
+            <div className="flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center">
+                <IconForConfigType type={type} />
             </div>
-            {hasBody ? <dl className="mt-2 space-y-1.5 pl-6.5">{children}</dl> : null}
+            <span className="text-foreground shrink-0 text-sm font-medium">{label}</span>
+            {meta}
+            {summary ? (
+                <span className="text-muted-foreground ml-1 min-w-0 truncate text-xs tabular-nums" title={summary}>
+                    {summary}
+                </span>
+            ) : null}
         </div>
     )
 }
 
-function Chips({ items, mono = false }: { items: string[]; mono?: boolean }) {
+function Chips({ items, mono = false, max }: { items: string[]; mono?: boolean; max?: number }) {
+    const shown = max ? items.slice(0, max) : items
+    const hidden = items.length - shown.length
+
     return (
-        <div className="flex flex-wrap gap-1.5">
-            {items.map((item, i) => (
+        <div className="flex shrink-0 items-baseline gap-1.5">
+            {shown.map((item, i) => (
                 <span key={`${item}-${i}`} className={`bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs ${mono ? "font-mono" : "font-medium"}`}>
                     {item}
                 </span>
             ))}
+            {hidden > 0 ? (
+                <span className="text-muted-foreground text-xs" title={items.slice(shown.length).join(", ")}>
+                    +{hidden}
+                </span>
+            ) : null}
         </div>
     )
 }
 
 function EmptyValue({ text }: { text: string }) {
-    return <div className="text-muted-foreground text-xs">{text}</div>
+    return <div className="text-muted-foreground shrink-0 text-xs">{text}</div>
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -394,10 +299,21 @@ function CopyButton({ text }: { text: string }) {
     }
 
     return (
-        <button onClick={handleCopy} className="hover:bg-muted/80 mt-0.5 shrink-0 rounded-md p-1.5 transition-colors" aria-label="Copy to clipboard">
+        <button onClick={handleCopy} className="hover:bg-muted/80 shrink-0 self-center rounded-md p-1 transition-colors" aria-label="Copy to clipboard">
             {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="text-muted-foreground size-3.5" />}
         </button>
     )
+}
+
+function joinSummary(...parts: Array<string | null | undefined>): string | undefined {
+    const kept = parts.filter((part): part is string => !!part)
+    return kept.length > 0 ? kept.join(" · ") : undefined
+}
+
+function describeList(items: string[], noun: string): string | null {
+    if (items.length === 0) return null
+    if (items.length <= 2) return items.join(", ")
+    return `${items.length} ${noun}s`
 }
 
 function formatFrequency(frequency: { number: number; unit: FrequencyUnit }): string {
