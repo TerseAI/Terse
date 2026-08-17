@@ -146,7 +146,7 @@ These rules apply when the job sets `durable: true`. The mechanics (replay model
 **When to be durable.** Two kinds of signal, treated differently:
 
 - **Forcing signals** — human input or approval (`waitForInput`) or timed waits (`sleep`). These primitives only exist in durable mode, so their presence *requires* `durable: true`; there is no decision to put to the user, only a consequence to state.
-- **Judgment signal** — three or more side-effecting milestones where a mid-run failure would leave visible half-done work. This is a genuine trade-off: recommend `durable: true` and let the user decide.
+- **Judgment signal** — three or more side-effecting stages where a mid-run failure would leave visible half-done work. This is a genuine trade-off: recommend `durable: true` and let the user decide.
 
 With neither signal, default to non-durable.
 
@@ -169,13 +169,6 @@ Method and constant names in both examples come from your project's generated fi
 ### Durable
 
 The job below shows the target durable shape: the handler at the top reading as sequential blocks, an exhaustive switch dispatching to side-effecting branch helpers, schemas and types at the bottom.
-
-It was built milestone by milestone, each proven green (`tsc --noEmit` passes, `terse test run` on the pinned sample event completes, agentic output inspected) before the next began:
-
-- **Milestone 0** — trigger + filter + a stub handler logging the event
-- **Milestone 1** — classify the issue (`generateText` with `outputSchema`)
-- **Milestone 2** — the routine branch (`fileRoutine`)
-- **Milestone 3** — the critical branch with approval and wait (`escalateCritical`)
 
 ```typescript
 import { createJob, generateText, slack, sleep, waitForInput } from "terse-sdk"
