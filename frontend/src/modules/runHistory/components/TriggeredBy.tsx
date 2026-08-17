@@ -10,7 +10,7 @@ export default function TriggeredBy({ userId, showLabel = true, className }: Pro
 
     if (!userId) return null
 
-    const wrapperClass = cn("inline-flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground", className)
+    const wrapperClass = cn("inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground", className)
 
     if (isLoading) {
         return (

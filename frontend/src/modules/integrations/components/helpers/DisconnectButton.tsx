@@ -4,11 +4,76 @@ import { AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { type Key, useSWRConfig } from "swr"
 import { IntegrationType } from "terse-types/Integrations"
-import { integrationsKey } from "terse-types/InvalidationKeys"
+import {
+    apolloIntegrationsKey,
+    attioIntegrationsKey,
+    datadogIntegrationsKey,
+    githubIntegrationsKey,
+    gmailIntegrationsKey,
+    googleSearchConsoleIntegrationsKey,
+    heyReachIntegrationsKey,
+    higgsfieldIntegrationsKey,
+    integrationsKey,
+    launchdarklyIntegrationsKey,
+    linearIntegrationsKey,
+    metaAdsIntegrationsKey,
+    notionIntegrationsKey,
+    posthogIntegrationsKey,
+    resendIntegrationsKey,
+    slackIntegrationsKey,
+    snowflakeIntegrationsKey,
+    workosIntegrationsKey
+} from "terse-types/InvalidationKeys"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { BackendProvider } from "@/lib/http"
+
+export function revalidateKeysForIntegration(integrationType: IntegrationType): Key[] {
+    switch (integrationType) {
+        case IntegrationType.SLACK:
+            return [slackIntegrationsKey()]
+        case IntegrationType.GMAIL:
+            return [gmailIntegrationsKey()]
+        case IntegrationType.GOOGLE_SEARCH_CONSOLE:
+            return [googleSearchConsoleIntegrationsKey()]
+        case IntegrationType.NOTION:
+            return [notionIntegrationsKey()]
+        case IntegrationType.LINEAR:
+            return [linearIntegrationsKey()]
+        case IntegrationType.GITHUB:
+            return [githubIntegrationsKey()]
+        case IntegrationType.POSTHOG:
+            return [posthogIntegrationsKey()]
+        case IntegrationType.DATADOG:
+            return [datadogIntegrationsKey()]
+        case IntegrationType.LAUNCHDARKLY:
+            return [launchdarklyIntegrationsKey()]
+        case IntegrationType.WORKOS:
+            return [workosIntegrationsKey()]
+        case IntegrationType.ATTIO:
+            return [attioIntegrationsKey()]
+        case IntegrationType.SNOWFLAKE:
+            return [snowflakeIntegrationsKey()]
+        case IntegrationType.HEY_REACH:
+            return [heyReachIntegrationsKey()]
+        case IntegrationType.RESEND:
+            return [resendIntegrationsKey()]
+        case IntegrationType.APOLLO:
+            return [apolloIntegrationsKey()]
+        case IntegrationType.META_ADS:
+            return [metaAdsIntegrationsKey()]
+        case IntegrationType.HIGGSFIELD:
+            return [higgsfieldIntegrationsKey()]
+        case IntegrationType.TERSE:
+        case IntegrationType.CRON_JOB:
+        case IntegrationType.WEBHOOK:
+        case IntegrationType.WEBMONITOR:
+            return []
+        default:
+            throw integrationType satisfies never
+    }
+}
 
 interface DisconnectButtonProps {
     integrationType: IntegrationType

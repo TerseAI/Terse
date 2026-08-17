@@ -14,10 +14,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useAgents } from "@/modules/agents/api/useAgents"
-import { ALL_RUN_STATUSES, AgentRow, HEALTH_RANK, computeHealth, groupRunsByAgent } from "@/modules/agents/components/AgentHealthRow"
+import { ALL_RUN_STATUSES, AgentRow, compareByMostRecentRun, computeHealth, groupRunsByAgent } from "@/modules/agents/components/AgentHealthRow"
 import { useProjectMutations } from "@/modules/projects/api/useProject"
 import { useProjectSecrets } from "@/modules/projects/api/useProjectSecrets"
 import { useAllRunHistory } from "@/modules/runHistory/api/useAllRunHistory"
@@ -93,8 +94,7 @@ export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
 
     if (jobs.length === 0) {
         return (
-            <section className="mt-8">
-                <SectionLabel>Jobs</SectionLabel>
+            <section>
                 <Empty className="mx-auto w-full max-w-lg border-solid border-border/60 bg-muted/10 p-6 md:p-8">
                     <EmptyHeader className="max-w-lg">
                         <EmptyMedia variant="icon">
@@ -113,17 +113,10 @@ export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
 
     const agents = allAgents.filter(a => jobIds.has(a.id))
     const runsByAgent = groupRunsByAgent(runs)
-    const agentsWithHealth = agents
-        .map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) }))
-        .sort((a, b) => {
-            const rank = HEALTH_RANK[a.health.status] - HEALTH_RANK[b.health.status]
-            if (rank !== 0) return rank
-            return a.agent.name.localeCompare(b.agent.name)
-        })
+    const agentsWithHealth = agents.map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) })).sort(compareByMostRecentRun)
 
     return (
-        <section className="mt-8">
-            <SectionLabel>Jobs</SectionLabel>
+        <section>
             <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
                 {isLoading ? (
                     <JobsSkeleton count={Math.min(jobs.length, 3)} />
@@ -162,9 +155,7 @@ export function DeploymentsSection({ projectId, deploys, isLoading }: { projectI
     const allDeploysHref = buildRoute(FrontendRoutes.PROJECTS.DEPLOYS, { id: projectId })
 
     return (
-        <section className="mt-8">
-            <SectionLabel>Deployments</SectionLabel>
-
+        <section>
             {isLoading ? (
                 <DeploysSkeleton />
             ) : !deploys || deploys.length === 0 ? (
@@ -408,7 +399,6 @@ export function SecretsSection({ projectId }: { projectId: string }) {
     const { secrets, isLoading, deleteSecret } = useProjectSecrets(projectId)
     const [pendingDelete, setPendingDelete] = useState<ProjectSecretSummary | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
-    const total = secrets?.length ?? 0
 
     const handleDelete = async () => {
         if (!pendingDelete) return
@@ -425,12 +415,7 @@ export function SecretsSection({ projectId }: { projectId: string }) {
     }
 
     return (
-        <section className="mt-8">
-            <SectionLabel className="flex items-center gap-1.5">
-                <KeyRound className="h-3 w-3" />
-                Secrets{total > 0 ? ` · ${total}` : ""}
-            </SectionLabel>
-
+        <section>
             {isLoading ? (
                 <SecretsSkeleton />
             ) : !secrets || secrets.length === 0 ? (
@@ -524,6 +509,46 @@ function SecretsSkeleton() {
                 </div>
             ))}
         </div>
+    )
+}
+
+export function ProjectSectionsTabs({
+    project,
+    deploys,
+    isLoadingDeploys,
+    secretsExtra
+}: {
+    project: Pick<ProjectDetailResponse, "id" | "name" | "jobs">
+    deploys: ProjectDeploy[] | undefined
+    isLoadingDeploys: boolean
+    secretsExtra?: ReactNode
+}) {
+    return (
+        <Tabs defaultValue="jobs" className="mt-8">
+            <TabsList variant="line" className="mb-6 justify-start gap-6">
+                <TabsTrigger variant="line" value="jobs" className="flex-none px-0 after:inset-x-0">
+                    Jobs
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="deployments" className="flex-none px-0 after:inset-x-0">
+                    Deployments
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="secrets" className="flex-none px-0 after:inset-x-0">
+                    Secrets
+                </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="jobs" className="mt-0">
+                <JobsSection jobs={project.jobs} />
+            </TabsContent>
+            <TabsContent value="deployments" className="mt-0">
+                <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
+            </TabsContent>
+            <TabsContent value="secrets" className="mt-0">
+                {secretsExtra ? <div className="mb-8">{secretsExtra}</div> : null}
+                <SecretsSection projectId={project.id} />
+                <DeleteProjectAction project={project} />
+            </TabsContent>
+        </Tabs>
     )
 }
 

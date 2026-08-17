@@ -50,6 +50,20 @@ export function describeSlackPostMessageError(error: unknown): string | null {
     }
 }
 
+export async function resolveSlackMentions(client: WebClient, text: string): Promise<string> {
+    const labelled = text.replace(/<@[UWB][A-Z0-9]*\|([^>]+)>/g, "@$1").replace(/<#C[A-Z0-9]*\|([^>]+)>/g, "#$1")
+
+    const userIds = uniqueMentionIds(labelled, BARE_USER_MENTION)
+    const channelIds = uniqueMentionIds(labelled, BARE_CHANNEL_MENTION)
+    if (userIds.length === 0 && channelIds.length === 0) return labelled
+
+    const [userNames, channelNames] = await Promise.all([resolveSlackUserNames(client, userIds), resolveSlackChannelNames(client, channelIds)])
+
+    return labelled
+        .replace(BARE_USER_MENTION, (raw, id: string) => (userNames.has(id) ? `@${userNames.get(id)}` : raw))
+        .replace(BARE_CHANNEL_MENTION, (raw, id: string) => (channelNames.has(id) ? `#${channelNames.get(id)}` : raw))
+}
+
 export async function sendSlackMessage(userSlackIntegrationId: string, channelId: string, message: SlackMessage): Promise<{ success: boolean; permalink?: string; error?: string }> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
@@ -434,4 +448,40 @@ export async function updateSlackApprovalMessage(
         logger.error(`[updateSlackApprovalMessage] Failed to update message:`, { error })
         return false
     }
+}
+
+const BARE_USER_MENTION = /<@([UWB][A-Z0-9]*)>/g
+const BARE_CHANNEL_MENTION = /<#(C[A-Z0-9]*)>/g
+
+function uniqueMentionIds(text: string, pattern: RegExp): string[] {
+    return [...new Set([...text.matchAll(pattern)].map(match => match[1]))]
+}
+
+async function resolveSlackUserNames(client: WebClient, userIds: string[]): Promise<Map<string, string>> {
+    const names = new Map<string, string>()
+    const results = await Promise.allSettled(userIds.map(userId => client.users.info({ user: userId })))
+    results.forEach((result, index) => {
+        if (result.status !== "fulfilled" || !result.value.ok) {
+            logger.warn(`[resolveSlackMentions] Could not resolve user mention`, { userId: userIds[index] })
+            return
+        }
+        const user = result.value.user
+        const name = user?.profile?.display_name || user?.real_name || user?.name
+        if (name) names.set(userIds[index], name)
+    })
+    return names
+}
+
+async function resolveSlackChannelNames(client: WebClient, channelIds: string[]): Promise<Map<string, string>> {
+    const names = new Map<string, string>()
+    const results = await Promise.allSettled(channelIds.map(channelId => client.conversations.info({ channel: channelId })))
+    results.forEach((result, index) => {
+        if (result.status !== "fulfilled" || !result.value.ok) {
+            logger.warn(`[resolveSlackMentions] Could not resolve channel mention`, { channelId: channelIds[index] })
+            return
+        }
+        const name = result.value.channel?.name
+        if (name) names.set(channelIds[index], name)
+    })
+    return names
 }

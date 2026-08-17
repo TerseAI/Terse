@@ -9,7 +9,7 @@ import { PageFrame } from "@/components/PageFrame"
 import { useSidebar } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAgents } from "@/modules/agents/api/useAgents"
-import { ALL_RUN_STATUSES, AgentHealth, AgentRow, AgentRowsSkeleton, HEALTH_RANK, computeHealth, groupRunsByAgent } from "@/modules/agents/components/AgentHealthRow"
+import { ALL_RUN_STATUSES, AgentHealth, AgentRow, AgentRowsSkeleton, HEALTH_RANK, compareByMostRecentRun, computeHealth, groupRunsByAgent } from "@/modules/agents/components/AgentHealthRow"
 import { usePendingApprovals } from "@/modules/notifications/api/usePendingApprovals"
 import { useAllRunHistory } from "@/modules/runHistory/api/useAllRunHistory"
 
@@ -26,13 +26,7 @@ export default function HomePage() {
 
     const agents = allAgents
     const runsByAgent = groupRunsByAgent(runs)
-    const agentsWithHealth = agents
-        .map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) }))
-        .sort((a, b) => {
-            const rank = HEALTH_RANK[a.health.status] - HEALTH_RANK[b.health.status]
-            if (rank !== 0) return rank
-            return a.agent.name.localeCompare(b.agent.name)
-        })
+    const agentsWithHealth = agents.map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) })).sort(compareByMostRecentRun)
 
     if (!agentsLoading && agents.length === 0) {
         return (

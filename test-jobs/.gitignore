@@ -3,3 +3,7 @@ dist
 .env
 /.swc
 .terse
+
+# Codegen output from `terse generate`
+src/terse.generated.ts
+src/terse.generated/

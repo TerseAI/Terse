@@ -105,7 +105,7 @@ export default function RunHistoryChatDrawerHeader({
             </div>
             {(isTest || isManuallyTriggered || replayOfRunId) && (
                 <div className="flex items-center gap-2">
-                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} replayOfRunId={replayOfRunId} onOpenOriginal={openRun} className="text-[11px]" />
+                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} replayOfRunId={replayOfRunId} onOpenOriginal={openRun} className="text-xs" />
                     <TriggeredBy userId={triggeredByUserId} />
                 </div>
             )}

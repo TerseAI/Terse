@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
 import { SdkJobServerCheckDialog } from "@/modules/agents/components/SdkJobServerCheckDialog"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
-import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, SectionLabel } from "./ProjectDetailShared"
+import { Heading, ProjectSectionsTabs, SectionLabel } from "./ProjectDetailShared"
 
 export default function ProjectDetailSelfHosted({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
@@ -47,21 +47,22 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
             <PageFrame>
                 <Heading project={project} activeDeploy={activeDeploy} latestDeploy={latestDeploy} />
 
-                <JobsSection jobs={project.jobs} />
-
-                <EnvironmentSection
-                    remoteServerUrl={project.remoteServerUrl}
-                    hasSigningSecret={project.hasSigningSecret}
-                    hasProjectApiKey={project.hasProjectApiKey}
-                    onVerifyServer={handleVerifyServer}
-                    isVerifyingServer={isVerifying}
-                    canVerify={!!firstJobId}
-                    onRotate={setPendingRotate}
+                <ProjectSectionsTabs
+                    project={project}
+                    deploys={deploys}
+                    isLoadingDeploys={isLoadingDeploys}
+                    secretsExtra={
+                        <EnvironmentSection
+                            remoteServerUrl={project.remoteServerUrl}
+                            hasSigningSecret={project.hasSigningSecret}
+                            hasProjectApiKey={project.hasProjectApiKey}
+                            onVerifyServer={handleVerifyServer}
+                            isVerifyingServer={isVerifying}
+                            canVerify={!!firstJobId}
+                            onRotate={setPendingRotate}
+                        />
+                    }
                 />
-
-                <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
-
-                <DeleteProjectAction project={project} />
             </PageFrame>
 
             <SdkJobServerCheckDialog open={!!verifyResult} result={verifyResult} onClose={() => setVerifyResult(null)} />
@@ -99,7 +100,7 @@ function EnvironmentSection({
     onRotate: (kind: RotateKind) => void
 }) {
     return (
-        <section className="mt-6">
+        <section>
             <div className="mb-3 flex items-center justify-between gap-4">
                 <SectionLabel className="mb-0">Environment</SectionLabel>
                 <Button variant="outline" size="sm" onClick={onVerifyServer} disabled={isVerifyingServer || !canVerify} title={canVerify ? undefined : "Deploy a job first to verify the server"}>
