@@ -47,15 +47,15 @@ Use computer-use tools whenever the environment exposes them and the task can be
 
 **Narrate the run.** Speak to the user in casual first person about the work itself: "I'm going to check if the project is set up", "I need some help understanding this use case better", "I'm launching some research agents to figure out how to build this for you", "Based on the research, I have a few more questions". The steps below group into phases — bootstrap (step 0), interview (1), research (2), shared understanding (3), design (4–8), build (9), swap and verify (10–11), deploy (12). Step numbers are internal and never spoken, but the phases are not: at every phase transition, say in plain casual words which phase just finished and which comes next, with its place in the overall sequence — "Research is done — that's 1 of 5 for this build. Next up: agreeing on the design." The user should always know where the build stands from the prose alone.
 
-If your harness has a task-tracking tool the user can see (a todo/task list), keep a checklist too: create it right after step 0 with casually worded items — research how to build this, agree on the design, build the job, swap test targets and verify, ask about deploying — and check items off as phases complete. When the milestone plan lands in step 9, replace the build item with one item per milestone. The checklist supplements the spoken phase transitions; it never replaces them.
+If your harness has a task-tracking tool the user can see (a todo/task list), keep a checklist too: create it right after step 0 with casually worded items — research how to build this, agree on the design, build the job, swap test targets and verify, ask about deploying — and check items off as phases complete. The checklist supplements the spoken phase transitions; it never replaces them.
 
 **Mark every CLI run.** The `terse` CLI doing something is an event the user must be able to see; harnesses often collapse tool calls, so the narration carries it. Immediately before each `terse` command, emit a marker line:
 
-> ⏵ `terse test run pr-triage --id 3f2c` — proving the trigger wiring fires
+> ⏵ `terse test run pr-triage --id 3f2c` — running the job on a sample PR event
 
 One marker per command: the command verbatim in backticks, then the why in a few words. Back-to-back cheap reads (`terse test list`, `terse test show`) may share a single marker. When a state-changing or long-running command finishes (`integrate connect`/`wait`, `generate`, `deploy`, `test run`), report its outcome in the normal narration voice. Never bury a `terse` invocation inside a pipeline, subshell, or script where the user can't see it ran.
 
-**Explain every test before it runs.** A marker line is not enough for `terse test run` or `terse replay`: immediately before one, say in one to three casual sentences what the run exercises, why now, and what a good result looks like — "Now I want to prove the trigger wiring fires before writing any real logic: I'll run the pinned sample PR through the stub handler and expect it to log the event with no errors." When it finishes, give the verdict against that stated expectation in the same voice. Cheap reads (`terse test list`, `terse test show`) keep just the marker.
+**Explain every test before it runs.** A marker line is not enough for `terse test run` or `terse replay`: immediately before one, say in one to three casual sentences what the run exercises, why now, and what a good result looks like — "I'll run a sample PR event through the job now and expect a triage summary posted to the test channel with no errors." When it finishes, give the verdict against that stated expectation in the same voice. Cheap reads (`terse test list`, `terse test show`) keep just the marker.
 
 If `terse test run` prints a `TERSE TEST REPORT`, surface it immediately in your own message. Your first sentence must be either "The test ran as expected" or "The test did not run as expected." Then list the reported side effects exactly and explain any mismatch with your stated expectation.
 
@@ -203,7 +203,7 @@ Once the decisions are resolved, draw the workflow as an ASCII diagram: one box 
 └──────────────────────────────────────────────┘
 ```
 
-The diagram is a separate step from the design questions: resolve every remaining decision through the question batches first, and only then draw it. Send it as its own message with the confirmation ask in plain prose ("Does this match what you have in mind?") and end the turn there, with no tool call in that turn — a question dialog takes over the screen and buries same-turn text, and its preview pane clips tall content on small terminals, so the question tool is never used for this confirmation. The diagram is the shared understanding made visible, and the overall goal every later milestone works toward. Do not start building until the user replies confirming a diagram they have actually seen.
+The diagram is a separate step from the design questions: resolve every remaining decision through the question batches first, and only then draw it. Send it as its own message with the confirmation ask in plain prose ("Does this match what you have in mind?") and end the turn there, with no tool call in that turn — a question dialog takes over the screen and buries same-turn text, and its preview pane clips tall content on small terminals, so the question tool is never used for this confirmation. The diagram is the shared understanding made visible, and the spec the build is written against. Do not start building until the user replies confirming a diagram they have actually seen.
 
 ### 4. Open the entry file
 
@@ -224,7 +224,7 @@ Durability changes how the handler is structured, so settle it before writing an
 
 **A forcing signal is present** (the design waits on human input or time): durability is not a decision, so never ask. State it as a consequence in one line and move on: "This job waits for \<approval/the timer\>, so it runs durable."
 
-**Only the judgment signal is present** (three or more side-effecting milestones, no waits): this is a real trade-off, so ask, presenting your recommendation as the default. Use this copy:
+**Only the judgment signal is present** (three or more side-effecting stages, no waits): this is a real trade-off, so ask, presenting your recommendation as the default. Use this copy:
 
 > **Should this job be durable?**
 >
@@ -283,31 +283,15 @@ Add a `filter` function if the job should skip certain events:
 
 Filters prevent unnecessary agent runs and save cost.
 
-### 9. Build the handler in milestones
+### 9. Build the handler
 
 The "Terse Job Code Conventions" section at the bottom of this file governs every line of handler code below. Exact names and signatures come from your step 2 read of the generated files, never from memory of the design discussion; reopen them only if `terse generate` has rerun since the scan (step 7 reruns it after connecting an integration).
 
-Never build the whole handler and test at the end. Slice the workflow into milestones — logical groupings like gather context, decide, act — and prove each one green before starting the next. The worked examples in the conventions section (durable and non-durable) show the target shape; the durable one is sliced into milestones — anchor your slicing on it.
+The worked examples in the conventions section (durable and non-durable) show the target shape.
 
-Present the milestone plan before writing Milestone 0: one line per milestone naming what it does and whether it is deterministic or agentic — as checklist items when a task tool is active, plain text otherwise. Each milestone should map to a recognizable region of the step 3 diagram, so the user can see the goal being approached slice by slice. Milestone numbers are internal; name the slices by what they do. Do not wait for approval — step 3 already confirmed the design — but this roadmap is what every green report below tracks against.
+Which primitive a piece of work belongs in:
 
-**Milestone 0 — tracer bullet.** Wire the trigger, the filter, and a stub handler that just logs the event. Then pin a sample event and prove the wiring fires:
-
-```bash
-terse test list "<job-name>" --json
-terse test show <id> "<job-name>" --json
-terse test run "<job-name>" --id <id>
-```
-
-Use `terse test show` to pick a representative event, then reuse that same `--id` for every later run so runs stay comparable. Use `terse test run --event-file <path>` or `--event <json>` when you already have the exact serialized trigger payload. If multiple jobs exist, pass the job name explicitly — non-interactive job loading cannot prompt. Reserve bare `terse test` for manual sessions with a TTY.
-
-To test a specific payload, or when the sample buffer is empty (a fresh webhook has no stored deliveries), hand-write the event file and run it: on a shape mismatch, `terse test run` prints the expected envelope and the exact validation issues — correct the file from that error output rather than guessing fields.
-
-**Test targets.** Before the first milestone that writes to an external surface, ask the user once: "Which channel/repo should I use for test runs? (I'll swap to the real targets at the end.)" In the same ask, when an involved API bills or has customer-visible effects, ask whether it has a test-mode key to use while building (`terse secrets add <NAME>`). Point side-effecting calls at those test resources while building. If the user says to use the real ones, proceed live. The "Testing Safety Conventions" section at the bottom of this file governs every test run — real data, test keys, production writes, probing.
-
-**Each following milestone.** Plan the pipeline deterministic-first, agent-last:
-
-- **Deterministic milestones** — map each known action to `toolbox` (no agent):
+- **Deterministic work** — map each known action to `toolbox` (no agent):
 
   ```typescript
   import { toolbox, SlackChannel } from "./terse.generated"
@@ -320,36 +304,40 @@ To test a specific payload, or when the sample buffer is empty (a fresh webhook 
   })
   ```
 
-- **Agentic milestones** — use `generateText` wherever judgment is required (summarize, triage, draft). Include full event context via `event.formatForAgentRunner()`; write specific prompts, and pass an `outputSchema` (a Zod schema) to get a typed, validated object back. Reach for `TerseAgent.create()` only for streaming with `run()` or reusing one agent instance across calls.
+- **Agentic work** — use `generateText` wherever judgment is required (summarize, triage, draft). Include full event context via `event.formatForAgentRunner()`; write specific prompts, and pass an `outputSchema` (a Zod schema) to get a typed, validated object back. Reach for `TerseAgent.create()` only for streaming with `run()` or reusing one agent instance across calls.
 
 - If the user's request is fully deterministic (e.g. "post X to Slack when Y happens"), do not create an agent at all.
 
-After adding each milestone, take it to **green** — all three, in order:
+**Test targets.** Before the first test run, if the job writes to an external surface, ask the user once: "Which channel/repo should I use for test runs? (I'll swap to the real targets at the end.)" In the same ask, when an involved API bills or has customer-visible effects, ask whether it has a test-mode key to use while building (`terse secrets add <NAME>`). Point side-effecting calls at those test resources while building. If the user says to use the real ones, proceed live. The "Testing Safety Conventions" section at the bottom of this file governs every test run — real data, test keys, production writes, probing.
 
-1. `pnpm exec tsc --noEmit` passes (use `npx tsc --noEmit` if that matches the project).
-2. `terse test run "<job-name>" --id <pinned-id>` completes without error.
-3. For agentic milestones, read the actual output (the message text, the summary) and judge it against the prompt's intent. Exit code 0 is not green on its own.
+**Running the job locally.** `terse test` replays a stored trigger event through the real handler:
 
-When a milestone goes green, tell the user before starting the next one — casually, by what it does, never as "milestone N complete", carrying the three green checks as evidence:
+```bash
+terse test list "<job-name>" --json
+terse test show <id> "<job-name>" --json
+terse test run "<job-name>" --id <id>
+```
 
-> Triage agent just finished: typecheck and the test run both pass, and the summary it wrote reads well.
+`terse test list` lists the stored sample events and `terse test show` prints one. `terse test run --id <id>` runs that event; `--event-file <path>` or `--event <json>` runs a payload you supply. If multiple jobs exist, pass the job name explicitly — non-interactive job loading cannot prompt. Reserve bare `terse test` for manual sessions with a TTY.
 
-If the milestone deviated from the presented plan, say what changed and why in the same breath. Do not wait for a reply; if a checklist is active, also check the item off.
+When the sample buffer is empty (a fresh webhook has no stored deliveries), hand-write the event file: on a shape mismatch, `terse test run` prints the expected envelope and the exact validation issues — correct the file from that error output rather than guessing fields.
 
-Re-runs re-execute every earlier milestone, including its `generateText` calls; that cost is what makes green trustworthy. The test targets absorb the repeated side effects.
+Exit code 0 only means the handler ran. Where an agent produced text, read the output and judge it against the prompt's intent.
+
+If the build deviated from the confirmed design, say what changed and why. Do not wait for a reply; if a checklist is active, check the item off.
 
 ### 10. Swap to real targets
 
-The swap is the final milestone. 
-Enumerate every test resource and test-mode secret you pointed at in step 9 and switch each back to the real one — list them explicitly so none is missed. 
+Enumerate every test resource and test-mode secret you pointed at in step 9 and switch each back to the real one — list them explicitly so none is missed.
 
-Ask the user if they want to run a full green check one last time with real production data or just deploy the workflow. 
+Ask the user if they want one last run against real production data or just deploy the workflow. 
 
 This run fires the real side effects once; tell the user before running it.
 
 ### 11. Final check
 
 Verify the things that are easy to get wrong:
+- `pnpm exec tsc --noEmit` passes (use `npx tsc --noEmit` if that matches the project).
 - Every `Triggers.<integration>.…`, `Skills.<integration>(…)`, resource constant, and tool call exists in the generated files. Inventing constants that aren't there is the most common failure.
 - Known calls use `toolbox`; only steps that need judgment use `generateText`. `TerseAgent.create()` appears only when streaming or reusing an agent.
 - `skills` lists every integration the model must call during a `generateText` run.
@@ -571,7 +559,7 @@ These rules apply when the job sets `durable: true`. The mechanics (replay model
 **When to be durable.** Two kinds of signal, treated differently:
 
 - **Forcing signals** — human input or approval (`waitForInput`) or timed waits (`sleep`). These primitives only exist in durable mode, so their presence *requires* `durable: true`; there is no decision to put to the user, only a consequence to state.
-- **Judgment signal** — three or more side-effecting milestones where a mid-run failure would leave visible half-done work. This is a genuine trade-off: recommend `durable: true` and let the user decide.
+- **Judgment signal** — three or more side-effecting stages where a mid-run failure would leave visible half-done work. This is a genuine trade-off: recommend `durable: true` and let the user decide.
 
 With neither signal, default to non-durable.
 
@@ -594,13 +582,6 @@ Method and constant names in both examples come from your project's generated fi
 ### Durable
 
 The job below shows the target durable shape: the handler at the top reading as sequential blocks, an exhaustive switch dispatching to side-effecting branch helpers, schemas and types at the bottom.
-
-It was built milestone by milestone, each proven green (`tsc --noEmit` passes, `terse test run` on the pinned sample event completes, agentic output inspected) before the next began:
-
-- **Milestone 0** — trigger + filter + a stub handler logging the event
-- **Milestone 1** — classify the issue (`generateText` with `outputSchema`)
-- **Milestone 2** — the routine branch (`fileRoutine`)
-- **Milestone 3** — the critical branch with approval and wait (`escalateCritical`)
 
 ```typescript
 import { createJob, generateText, slack, sleep, waitForInput } from "terse-sdk"
