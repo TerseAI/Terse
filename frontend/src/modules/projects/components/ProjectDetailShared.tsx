@@ -113,9 +113,7 @@ export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
 
     const agents = allAgents.filter(a => jobIds.has(a.id))
     const runsByAgent = groupRunsByAgent(runs)
-    const agentsWithHealth = agents
-        .map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) }))
-        .sort(compareByMostRecentRun)
+    const agentsWithHealth = agents.map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) })).sort(compareByMostRecentRun)
 
     return (
         <section>
@@ -515,14 +513,12 @@ function SecretsSkeleton() {
 }
 
 export function ProjectSectionsTabs({
-    projectId,
-    jobs,
+    project,
     deploys,
     isLoadingDeploys,
     secretsExtra
 }: {
-    projectId: string
-    jobs: ProjectDetailResponse["jobs"]
+    project: Pick<ProjectDetailResponse, "id" | "name" | "jobs">
     deploys: ProjectDeploy[] | undefined
     isLoadingDeploys: boolean
     secretsExtra?: ReactNode
@@ -542,14 +538,15 @@ export function ProjectSectionsTabs({
             </TabsList>
 
             <TabsContent value="jobs" className="mt-0">
-                <JobsSection jobs={jobs} />
+                <JobsSection jobs={project.jobs} />
             </TabsContent>
             <TabsContent value="deployments" className="mt-0">
-                <DeploymentsSection projectId={projectId} deploys={deploys} isLoading={isLoadingDeploys} />
+                <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
             </TabsContent>
             <TabsContent value="secrets" className="mt-0">
                 {secretsExtra ? <div className="mb-8">{secretsExtra}</div> : null}
-                <SecretsSection projectId={projectId} />
+                <SecretsSection projectId={project.id} />
+                <DeleteProjectAction project={project} />
             </TabsContent>
         </Tabs>
     )

@@ -26,9 +26,7 @@ export default function HomePage() {
 
     const agents = allAgents
     const runsByAgent = groupRunsByAgent(runs)
-    const agentsWithHealth = agents
-        .map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) }))
-        .sort(compareByMostRecentRun)
+    const agentsWithHealth = agents.map(agent => ({ agent, health: computeHealth(agent, runsByAgent.get(agent.id) ?? []) })).sort(compareByMostRecentRun)
 
     if (!agentsLoading && agents.length === 0) {
         return (

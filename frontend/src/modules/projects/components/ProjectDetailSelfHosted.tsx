@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
 import { SdkJobServerCheckDialog } from "@/modules/agents/components/SdkJobServerCheckDialog"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
-import { DeleteProjectAction, Heading, ProjectSectionsTabs, SectionLabel } from "./ProjectDetailShared"
+import { Heading, ProjectSectionsTabs, SectionLabel } from "./ProjectDetailShared"
 
 export default function ProjectDetailSelfHosted({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
@@ -48,8 +48,7 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
                 <Heading project={project} activeDeploy={activeDeploy} latestDeploy={latestDeploy} />
 
                 <ProjectSectionsTabs
-                    projectId={project.id}
-                    jobs={project.jobs}
+                    project={project}
                     deploys={deploys}
                     isLoadingDeploys={isLoadingDeploys}
                     secretsExtra={
@@ -64,8 +63,6 @@ export default function ProjectDetailSelfHosted({ project }: { project: ProjectD
                         />
                     }
                 />
-
-                <DeleteProjectAction project={project} />
             </PageFrame>
 
             <SdkJobServerCheckDialog open={!!verifyResult} result={verifyResult} onClose={() => setVerifyResult(null)} />
