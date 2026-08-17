@@ -2,6 +2,7 @@ import { IntegrationType } from "terse-types/Integrations"
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 
 import ApolloIntegrationCard from "./ApolloIntegrationCard"
 import AttioIntegrationCard from "./AttioIntegrationCard"
@@ -21,8 +22,20 @@ import SlackIntegrationCard from "./SlackIntegrationCard"
 import SnowflakeIntegrationCard from "./SnowflakeIntegrationCard"
 import WorkOSIntegrationCard from "./WorkOSIntegrationCard"
 
-function IntegrationCard({ integration, isActive = true, stateToken, compact = false }: { integration: IntegrationType; isActive?: boolean; stateToken?: string; compact?: boolean }) {
-    const cardClassName = compact ? "w-full max-w-sm" : "w-full"
+function IntegrationCard({
+    integration,
+    isActive = true,
+    stateToken,
+    compact = false,
+    className
+}: {
+    integration: IntegrationType
+    isActive?: boolean
+    stateToken?: string
+    compact?: boolean
+    className?: string
+}) {
+    const cardClassName = cn(compact ? "w-full max-w-sm" : "w-full", className)
 
     switch (integration) {
         case IntegrationType.NOTION:
@@ -71,7 +84,20 @@ function IntegrationCard({ integration, isActive = true, stateToken, compact = f
     }
 }
 
-export function IntegrationCardSkeleton() {
+export function IntegrationCardSkeleton({ compact = false }: { compact?: boolean }) {
+    if (compact) {
+        return (
+            <div className="flex items-center gap-3 px-3 py-3.5">
+                <Skeleton className="size-5 shrink-0 rounded-md" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-28 rounded" />
+                    <Skeleton className="h-3 w-48 rounded" />
+                </div>
+                <Skeleton className="h-8 w-20 shrink-0 rounded-md" />
+            </div>
+        )
+    }
+
     return (
         <Card className="w-full">
             {/* Header: matches IntegrationCardHeader with lg icon + title + badge */}

@@ -4,7 +4,7 @@ import { PageFrame } from "@/components/PageFrame"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useProjectDeploys } from "@/modules/projects/api/useProjectDeploys"
 
-import { DeleteProjectAction, DeploymentsSection, Heading, JobsSection, SecretsSection } from "./ProjectDetailShared"
+import { DeleteProjectAction, Heading, ProjectSectionsTabs } from "./ProjectDetailShared"
 
 export default function ProjectDetailManaged({ project }: { project: ProjectDetailResponse }) {
     const { deploys, isLoading: isLoadingDeploys } = useProjectDeploys(project.id)
@@ -16,11 +16,7 @@ export default function ProjectDetailManaged({ project }: { project: ProjectDeta
             <PageFrame>
                 <Heading project={project} activeDeploy={activeDeploy} latestDeploy={latestDeploy} />
 
-                <JobsSection jobs={project.jobs} />
-
-                <DeploymentsSection projectId={project.id} deploys={deploys} isLoading={isLoadingDeploys} />
-
-                <SecretsSection projectId={project.id} />
+                <ProjectSectionsTabs projectId={project.id} jobs={project.jobs} deploys={deploys} isLoadingDeploys={isLoadingDeploys} />
 
                 <DeleteProjectAction project={project} />
             </PageFrame>

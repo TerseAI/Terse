@@ -43,6 +43,17 @@ export const HEALTH_RANK: Record<HealthStatus, number> = {
     healthy: 3
 }
 
+export function compareByMostRecentRun(a: { agent: Agent; health: AgentHealth }, b: { agent: Agent; health: AgentHealth }): number {
+    const aTime = a.health.lastRun?.timestamp
+    const bTime = b.health.lastRun?.timestamp
+    if (!aTime && !bTime) return a.agent.name.localeCompare(b.agent.name)
+    if (!aTime) return 1
+    if (!bTime) return -1
+    const byTime = bTime.localeCompare(aTime)
+    if (byTime !== 0) return byTime
+    return a.agent.name.localeCompare(b.agent.name)
+}
+
 export function AgentRow({ agent, health }: { agent: Agent; health: AgentHealth }) {
     const agentRoute = buildRoute(FrontendRoutes.JOBS.BY_ID, { id: agent.id })
     const isUnhealthy = health.status === "failing"

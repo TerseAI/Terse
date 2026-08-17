@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 
 import { FileText } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
+import { IntegrationType } from "terse-types/Integrations"
 
 import { PageFrame } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,8 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { useIntegrations } from "@/modules/integrations/api/useIntegrations"
 import IntegrationCard, { IntegrationCardSkeleton } from "@/modules/integrations/components/IntegrationCard"
 
-const GRID_COLS = "grid gap-6 [grid-template-columns:repeat(auto-fill,minmax(min(20rem,100%),1fr))]"
+const LIST = "divide-y divide-border/60 border-y border-border/60"
+const ROW_CLASS = "max-w-none rounded-none border-0 bg-transparent hover:bg-muted/50"
 
 function IntegrationPage() {
     const { integrations: activeIntegrations, inactiveIntegrations, isLoading } = useIntegrations({ showOnlyForUI: true })
@@ -22,39 +24,43 @@ function IntegrationPage() {
             <div className="space-y-10">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Integrations</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">Manage the services your jobs use.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">The Terse Agent will automatically prompt for the correct integrations as needed</p>
                 </div>
-                <section className="space-y-6">
-                    <h2 className="text-lg font-semibold tracking-tight text-foreground">Active Integrations</h2>
+                <section>
+                    <h2 className="mb-3 px-1 text-sm font-medium text-foreground">Active</h2>
                     {isLoading ? (
-                        <div className={GRID_COLS}>
+                        <div className={LIST}>
                             {Array.from({ length: 3 }).map((_, index) => (
-                                <IntegrationCardSkeleton key={index} />
+                                <IntegrationCardSkeleton key={index} compact />
                             ))}
                         </div>
                     ) : hasActive ? (
-                        <div className={GRID_COLS}>
-                            {activeIntegrations.map(integration => (
-                                <IntegrationCard key={integration} integration={integration} isActive />
-                            ))}
-                        </div>
+                        <IntegrationList integrations={activeIntegrations} isActive />
                     ) : (
                         <NoIntegrations />
                     )}
                 </section>
 
                 {hasInactive && (
-                    <section className="space-y-6">
-                        <h2 className="text-lg font-semibold tracking-tight text-foreground">Available Integrations</h2>
-                        <div className={GRID_COLS}>
-                            {inactiveIntegrations.map(integration => (
-                                <IntegrationCard key={integration} integration={integration} isActive={false} />
-                            ))}
-                        </div>
+                    <section>
+                        <h2 className="mb-3 px-1 text-sm font-medium text-foreground">Available</h2>
+                        <IntegrationList integrations={inactiveIntegrations} isActive={false} />
                     </section>
                 )}
             </div>
         </PageFrame>
+    )
+}
+
+function IntegrationList({ integrations, isActive }: { integrations: IntegrationType[]; isActive: boolean }) {
+    return (
+        <ul className={LIST}>
+            {integrations.map(integration => (
+                <li key={integration}>
+                    <IntegrationCard integration={integration} isActive={isActive} compact className={ROW_CLASS} />
+                </li>
+            ))}
+        </ul>
     )
 }
 

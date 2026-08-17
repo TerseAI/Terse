@@ -1,10 +1,11 @@
 import { BadgeCheckIcon } from "lucide-react"
-import { IntegrationType } from "terse-types/Integrations"
-import { INTEGRATION_METADATA } from "terse-types/Integrations"
+import { INTEGRATION_METADATA, IntegrationType } from "terse-types/Integrations"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
+
+import { DisconnectButton, revalidateKeysForIntegration } from "./helpers/DisconnectButton"
 
 interface CompactIntegrationRowProps {
     integration: IntegrationType
@@ -16,25 +17,31 @@ interface CompactIntegrationRowProps {
 }
 
 function CompactIntegrationRow({ integration, isConnected = false, summary, connect, isConnecting = false, className }: CompactIntegrationRowProps) {
+    const metadata = INTEGRATION_METADATA[integration]
+    const subtitle = isConnected ? summary : metadata.description
+
     return (
-        <div className={cn("flex items-center gap-3 w-full px-3 py-2.5 rounded-lg", "border border-border bg-card/50", className)}>
-            <div className="w-5 h-5 flex-shrink-0">
+        <div className={cn("flex w-full items-center gap-3 rounded-lg border border-border bg-card/50 px-3 py-3.5", className)}>
+            <div className="size-5 shrink-0">
                 <IconForIntegration integration={integration} />
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">{INTEGRATION_METADATA[integration].name}</span>
-                    {isConnected && <BadgeCheckIcon className="w-3.5 h-3.5 text-success flex-shrink-0" />}
+                    <span className="text-sm font-medium text-foreground">{metadata.name}</span>
+                    {isConnected && <BadgeCheckIcon className="size-3.5 shrink-0 text-success" />}
                 </div>
-                {isConnected && summary && <p className="text-xs text-muted-foreground truncate">{summary}</p>}
+                {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
             </div>
 
-            {connect && (
-                <Button variant="outline" size="sm" onClick={connect} disabled={isConnecting} className="flex-shrink-0">
-                    {isConnecting ? "Connecting…" : isConnected ? "Manage" : "Connect"}
-                </Button>
-            )}
+            <div className="flex shrink-0 items-center gap-1">
+                {isConnected && <DisconnectButton integrationType={integration} revalidateKeys={revalidateKeysForIntegration(integration)} size="sm" />}
+                {connect && (
+                    <Button variant="outline" size="sm" onClick={connect} disabled={isConnecting}>
+                        {isConnecting ? "Connecting…" : isConnected ? "Manage" : "Connect"}
+                    </Button>
+                )}
+            </div>
         </div>
     )
 }
