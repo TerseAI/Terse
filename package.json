@@ -2,7 +2,7 @@
     "name": "terse",
     "private": true,
     "scripts": {
-        "build": "pnpm -r run build",
+        "build": "pnpm -r --filter '!test-jobs' run build",
         "dev": "pnpm run dev:setup && pnpm -r --parallel --stream run dev",
         "dev:setup": "pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli run build",
         "format": "pnpm -r run format && pnpm --dir terse-probot-app run format",
