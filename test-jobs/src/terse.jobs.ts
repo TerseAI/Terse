@@ -174,8 +174,14 @@ createJob({
 createJob({
     name: "Basic Test - Slack Mention",
     triggers: [Triggers.slack.onAppMention({ channel: SlackChannel.AllTerseInc })],
-    durable: true,
     onTrigger: async event => {
         console.log("Slack mention received", event)
+
+        const summary = await generateText({
+            prompt: "Summarize the following text: " + event.text,
+            skills: []
+        })
+
+        console.log("summary", summary)
     }
 })

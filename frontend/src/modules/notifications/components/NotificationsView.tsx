@@ -35,7 +35,6 @@ import { AddNotificationDestination } from "@/modules/notifications/components/A
 import ApprovalRequestItem from "@/modules/notifications/components/ApprovalRequestItem"
 import { NotificationDestinationItem } from "@/modules/notifications/components/NotificationDestination"
 import { NOTIFICATION_ACTION_OPTIONS } from "@/modules/notifications/constants/notificationActions"
-import { SectionLabel } from "@/modules/projects/components/ProjectDetailShared"
 import RunHistoryPagination from "@/modules/runHistory/components/RunHistoryPagination"
 import { useRunHistoryChatDrawer } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 import { formatRelativeTime } from "@/utils/time"
@@ -48,12 +47,34 @@ const APPROVAL_FILTER_OPTIONS: Array<{ value: ApprovalRequestFilter; label: stri
     { value: "completed", label: "Completed" }
 ]
 const ADD_DESTINATION_QUERY_PARAM = "addDestination"
+const INBOX_VIEW_PARAM = "view"
+const INBOX_TABS = ["approvals", "sent", "defaults"] as const
+type InboxTab = (typeof INBOX_TABS)[number]
+
+function isInboxTab(value: string | null): value is InboxTab {
+    return INBOX_TABS.includes(value as InboxTab)
+}
 
 function NotificationsPage() {
     const [searchParams, setSearchParams] = useSearchParams()
     const { notificationDestinations, isError: isDestinationsError, isValidating: isDestinationsValidating, mutate: mutateDestinations } = useNotificationDestinations()
+    const viewParam = searchParams.get(INBOX_VIEW_PARAM)
+    const activeTab: InboxTab = isInboxTab(viewParam) ? viewParam : "approvals"
+
+    const selectTab = (next: string) => {
+        const params = new URLSearchParams(searchParams)
+        if (next === "approvals") {
+            params.delete(INBOX_VIEW_PARAM)
+        } else if (isInboxTab(next)) {
+            params.set(INBOX_VIEW_PARAM, next)
+        }
+        setSearchParams(params, { replace: true })
+    }
+
     const [approvalFilter, setApprovalFilter] = useState<ApprovalRequestFilter>("pending")
     const { approvals, isLoading: isApprovalsLoading, isError: isApprovalsError, mutate: mutateApprovals } = usePendingApprovals({ status: approvalFilter })
+    const { approvals: pendingApprovals } = usePendingApprovals({ status: "pending" })
+    const pendingCount = pendingApprovals.length
     const [notificationsPage, setNotificationsPage] = useState(1)
     const [isAddDestinationDialogOpen, setIsAddDestinationDialogOpen] = useState(false)
     const {
@@ -86,6 +107,7 @@ function NotificationsPage() {
 
         const nextSearchParams = new URLSearchParams(searchParams)
         nextSearchParams.delete(ADD_DESTINATION_QUERY_PARAM)
+        nextSearchParams.set(INBOX_VIEW_PARAM, "defaults")
         setSearchParams(nextSearchParams, { replace: true })
     }, [searchParams, setSearchParams])
 
@@ -148,10 +170,7 @@ function NotificationsPage() {
 
     return (
         <PageFrame>
-            <header className="mb-8">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Inbox</h1>
-                <p className="mt-1 text-sm text-muted-foreground">Approvals waiting on you, and every notification Terse has sent.</p>
-            </header>
+            <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">Inbox</h1>
 
             {hasDestinationData && (
                 <AddNotificationDestination
@@ -161,87 +180,102 @@ function NotificationsPage() {
                 />
             )}
 
-            <section>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                    <SectionLabel className="mb-0">
+            <Tabs value={activeTab} onValueChange={selectTab}>
+                <TabsList variant="line" className="mb-6 justify-start gap-6">
+                    <TabsTrigger variant="line" value="approvals" className="flex-none px-0 after:inset-x-0">
                         Approvals
-                        {approvals.length > 0 && <span className="ml-2 font-normal text-muted-foreground tabular-nums">{approvals.length}</span>}
-                    </SectionLabel>
-                    <Select value={approvalFilter} onValueChange={value => setApprovalFilter(value as ApprovalRequestFilter)}>
-                        <SelectTrigger className="h-8 w-[140px]">
-                            <SelectValue placeholder="Filter" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {APPROVAL_FILTER_OPTIONS.map(option => (
-                                <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </SelectItem>
+                        {pendingCount > 0 ? <InboxTabBadge count={pendingCount} /> : null}
+                    </TabsTrigger>
+                    <TabsTrigger variant="line" value="sent" className="flex-none px-0 after:inset-x-0">
+                        Sent
+                    </TabsTrigger>
+                    <TabsTrigger variant="line" value="defaults" className="flex-none px-0 after:inset-x-0">
+                        Defaults
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="approvals" className="mt-0">
+                    <div className="mb-3 flex justify-end">
+                        <Select value={approvalFilter} onValueChange={value => setApprovalFilter(value as ApprovalRequestFilter)}>
+                            <SelectTrigger className="h-8 w-[140px]">
+                                <SelectValue placeholder="Filter" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {APPROVAL_FILTER_OPTIONS.map(option => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {isApprovalsLoading && <LoadingApprovalsList />}
+
+                    {!isApprovalsLoading && isApprovalsError && <ErrorApprovalsList onRetry={() => mutateApprovals()} />}
+
+                    {!isApprovalsLoading && !isApprovalsError && approvals.length === 0 && <EmptyApprovalsList />}
+
+                    {!isApprovalsLoading && !isApprovalsError && approvals.length > 0 && (
+                        <div className="space-y-3">
+                            {approvals.map(approval => (
+                                <ApprovalRequestItem key={approval.id} approval={approval} onAction={deepLink => void handleDeepLinkAction(deepLink)} />
                             ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                        </div>
+                    )}
+                </TabsContent>
 
-                {isApprovalsLoading && <LoadingApprovalsList />}
-
-                {!isApprovalsLoading && isApprovalsError && <ErrorApprovalsList onRetry={() => mutateApprovals()} />}
-
-                {!isApprovalsLoading && !isApprovalsError && approvals.length === 0 && <EmptyApprovalsList />}
-
-                {!isApprovalsLoading && !isApprovalsError && approvals.length > 0 && (
-                    <div className="space-y-3">
-                        {approvals.map(approval => (
-                            <ApprovalRequestItem key={approval.id} approval={approval} onAction={deepLink => void handleDeepLinkAction(deepLink)} />
-                        ))}
+                <TabsContent value="sent" className="mt-0">
+                    <div className="divide-y divide-border/40 overflow-hidden rounded-lg border border-border/60 bg-card">
+                        {isNotificationsLoading && <LoadingSentNotifications />}
+                        {!isNotificationsLoading && isNotificationsError && <SentNotificationsError />}
+                        {!isNotificationsLoading && !isNotificationsError && notifications.length === 0 && <SentNotificationsEmpty />}
+                        {!isNotificationsLoading && !isNotificationsError && notifications.map(notification => <SentNotificationRow key={notification.id} notification={notification} />)}
                     </div>
-                )}
-            </section>
+                    {totalNotificationPages > 1 && (
+                        <div className="mt-4 flex justify-end">
+                            <RunHistoryPagination currentPage={notificationsPage} totalPages={totalNotificationPages} onPageChange={setNotificationsPage} />
+                        </div>
+                    )}
+                </TabsContent>
 
-            <section className="mt-8">
-                <SectionLabel>Sent</SectionLabel>
-                <div className="divide-y divide-border/40 overflow-hidden rounded-lg border bg-card">
-                    {isNotificationsLoading && <LoadingSentNotifications />}
-                    {!isNotificationsLoading && isNotificationsError && <SentNotificationsError />}
-                    {!isNotificationsLoading && !isNotificationsError && notifications.length === 0 && <SentNotificationsEmpty />}
-                    {!isNotificationsLoading && !isNotificationsError && notifications.map(notification => <SentNotificationRow key={notification.id} notification={notification} />)}
-                </div>
-                {totalNotificationPages > 1 && (
-                    <div className="mt-4 flex justify-end">
-                        <RunHistoryPagination currentPage={notificationsPage} totalPages={totalNotificationPages} onPageChange={setNotificationsPage} />
-                    </div>
-                )}
-            </section>
+                <TabsContent value="defaults" className="mt-0">
+                    <Tabs defaultValue="destinations">
+                        <TabsList variant="line" className="mb-4 justify-start gap-6">
+                            <TabsTrigger variant="line" value="destinations" className="flex-none px-0 after:inset-x-0">
+                                Destinations
+                            </TabsTrigger>
+                            <TabsTrigger variant="line" value="types" className="flex-none px-0 after:inset-x-0">
+                                Event types
+                            </TabsTrigger>
+                        </TabsList>
 
-            <section className="mt-8">
-                <SectionLabel>Defaults</SectionLabel>
-                <Tabs defaultValue="destinations">
-                    <TabsList variant="line" className="mb-4 justify-start gap-6">
-                        <TabsTrigger variant="line" value="destinations" className="flex-none px-0 after:inset-x-0">
-                            Destinations
-                        </TabsTrigger>
-                        <TabsTrigger variant="line" value="types" className="flex-none px-0 after:inset-x-0">
-                            Event types
-                        </TabsTrigger>
-                    </TabsList>
+                        <TabsContent value="destinations" className="mt-0">
+                            {shouldShowDestinationsLoading && <LoadingNotificationChannelList />}
+                            {!shouldShowDestinationsLoading && (isDestinationsError || notificationDestinations === undefined) && (
+                                <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />
+                            )}
+                            {!shouldShowDestinationsLoading && !isDestinationsError && notificationDestinations !== undefined && (
+                                <NotificationChannelList
+                                    notificationDestinations={notificationDestinations}
+                                    addDestinationDialogOpen={isAddDestinationDialogOpen}
+                                    onAddDestinationDialogOpenChange={setIsAddDestinationDialogOpen}
+                                />
+                            )}
+                        </TabsContent>
 
-                    <TabsContent value="destinations" className="mt-0">
-                        {shouldShowDestinationsLoading && <LoadingNotificationChannelList />}
-                        {!shouldShowDestinationsLoading && (isDestinationsError || notificationDestinations === undefined) && <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />}
-                        {!shouldShowDestinationsLoading && !isDestinationsError && notificationDestinations !== undefined && (
-                            <NotificationChannelList
-                                notificationDestinations={notificationDestinations}
-                                addDestinationDialogOpen={isAddDestinationDialogOpen}
-                                onAddDestinationDialogOpenChange={setIsAddDestinationDialogOpen}
-                            />
-                        )}
-                    </TabsContent>
-
-                    <TabsContent value="types" className="mt-0">
-                        <NotificationSettings />
-                    </TabsContent>
-                </Tabs>
-            </section>
+                        <TabsContent value="types" className="mt-0">
+                            <NotificationSettings />
+                        </TabsContent>
+                    </Tabs>
+                </TabsContent>
+            </Tabs>
         </PageFrame>
     )
+}
+
+function InboxTabBadge({ count }: { count: number }) {
+    return <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">{count > 99 ? "99+" : count}</span>
 }
 
 function NotificationChannelList({

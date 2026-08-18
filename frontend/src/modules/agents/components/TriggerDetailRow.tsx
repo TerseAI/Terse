@@ -101,7 +101,7 @@ function WebMonitorBody({ config, label, type }: { config: WebMonitorConfigData;
             type={type}
             label={label}
             meta={
-                <span className="text-foreground min-w-0 truncate text-xs" title={config.query}>
+                <span className="text-foreground min-w-0 truncate text-xs leading-none" title={config.query}>
                     {config.query}
                 </span>
             }
@@ -238,14 +238,14 @@ function LaunchDarklyBody({ config, label, type }: { config: LaunchDarklyConfigD
 
 function Frame({ type, label, summary, meta }: { type: ConfigType; label: string; summary?: string; meta?: React.ReactNode }) {
     return (
-        <div className="flex items-baseline gap-x-2 overflow-hidden px-4 py-2.5">
-            <div className="flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center">
+        <div className="flex items-center gap-x-2 overflow-hidden px-4 py-2.5">
+            <div className="flex size-4 shrink-0 items-center justify-center [&_svg]:size-4">
                 <IconForConfigType type={type} />
             </div>
-            <span className="text-foreground shrink-0 text-sm font-medium">{label}</span>
+            <span className="text-foreground shrink-0 text-sm leading-none font-medium">{label}</span>
             {meta}
             {summary ? (
-                <span className="text-muted-foreground ml-1 min-w-0 truncate text-xs tabular-nums" title={summary}>
+                <span className="text-muted-foreground ml-1 min-w-0 truncate text-xs leading-none tabular-nums" title={summary}>
                     {summary}
                 </span>
             ) : null}
@@ -258,7 +258,7 @@ function Chips({ items, mono = false, max }: { items: string[]; mono?: boolean; 
     const hidden = items.length - shown.length
 
     return (
-        <div className="flex shrink-0 items-baseline gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
             {shown.map((item, i) => (
                 <span key={`${item}-${i}`} className={`bg-muted/60 text-foreground rounded-md px-1.5 py-0.5 text-xs ${mono ? "font-mono" : "font-medium"}`}>
                     {item}

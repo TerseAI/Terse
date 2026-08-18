@@ -31,7 +31,7 @@ export function Heading({
     activeDeploy,
     latestDeploy
 }: {
-    project: Pick<ProjectDetailResponse, "name" | "isSelfHosted">
+    project: Pick<ProjectDetailResponse, "name">
     activeDeploy: ProjectDeploy | null
     latestDeploy: ProjectDeploy | null
 }) {
@@ -39,12 +39,7 @@ export function Heading({
 
     return (
         <header>
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h1 className="text-foreground text-[clamp(1.625rem,2.5vw,2rem)] leading-tight font-semibold tracking-tight">{project.name}</h1>
-                <Badge variant="outline" className="text-muted-foreground border-border/80 shrink-0 text-[11px] font-medium">
-                    {project.isSelfHosted ? "Self-hosted" : "Managed"}
-                </Badge>
-            </div>
+            <h1 className="text-foreground text-[clamp(1.625rem,2.5vw,2rem)] leading-tight font-semibold tracking-tight">{project.name}</h1>
 
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 {isDeploying ? (
@@ -117,7 +112,7 @@ export function JobsSection({ jobs }: { jobs: ProjectDetailResponse["jobs"] }) {
 
     return (
         <section>
-            <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+            <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border bg-card">
                 {isLoading ? (
                     <JobsSkeleton count={Math.min(jobs.length, 3)} />
                 ) : (
@@ -190,7 +185,7 @@ const DEPLOY_COLUMN = {
 
 export function DeploysTable({ deploys, footer }: { deploys: ProjectDeploy[]; footer?: ReactNode }) {
     return (
-        <div className="border-border/60 overflow-hidden rounded-lg border">
+        <div className="border-border/60 overflow-hidden rounded-lg border bg-card">
             <Table>
                 <DeploysTableHeader />
                 <TableBody>
@@ -363,7 +358,7 @@ export function DeploysEmpty() {
 
 export function DeploysSkeleton() {
     return (
-        <div className="border-border/60 overflow-hidden rounded-lg border">
+        <div className="border-border/60 overflow-hidden rounded-lg border bg-card">
             <Table>
                 <DeploysTableHeader />
                 <TableBody>
@@ -421,7 +416,7 @@ export function SecretsSection({ projectId }: { projectId: string }) {
             ) : !secrets || secrets.length === 0 ? (
                 <SecretsEmpty />
             ) : (
-                <ul className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+                <ul className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border bg-card">
                     {secrets.map(secret => (
                         <SecretRow key={secret.name} secret={secret} onDelete={() => setPendingDelete(secret)} />
                     ))}
@@ -500,7 +495,7 @@ function SecretsEmpty() {
 
 function SecretsSkeleton() {
     return (
-        <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border">
+        <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-lg border bg-card">
             {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 py-3">
                     <Skeleton className="h-3.5 w-48" />

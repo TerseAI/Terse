@@ -132,7 +132,6 @@ export default function PricingPage() {
                         Back
                     </Button>
                     <h1 className="text-4xl font-semibold tracking-tight">Pricing</h1>
-                    <p className="mt-2 max-w-xl text-sm text-muted-foreground">Choose a plan, add credits when you need them, or keep using Free.</p>
                 </header>
 
                 <section id="plans" className="space-y-5">

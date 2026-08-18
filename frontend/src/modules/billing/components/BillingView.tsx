@@ -71,11 +71,8 @@ export default function BillingPage() {
     return (
         <PageFrame>
             <div className="flex flex-col gap-6">
-                <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Billing</h1>
-                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Track your credit usage, change plans, and manage payment details.</p>
-                    </div>
+                <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <h1 className="text-3xl font-semibold tracking-tight text-foreground">Billing</h1>
                     {!billingDisabled && !billingStatusLoading && billingStatus?.canManageBilling && (
                         <Button variant="outline" onClick={manageBilling}>
                             <CreditCard className="size-4" />

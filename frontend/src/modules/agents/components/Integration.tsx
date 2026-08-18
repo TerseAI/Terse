@@ -56,9 +56,9 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.SNOWFLAKE_OUTPUT:
             return <SnowflakeIcon />
         case ConfigType.WEBHOOK_INPUT:
-            return <WebhookIcon />
+            return <WebhookIcon className="size-4" />
         case ConfigType.WEBMONITOR:
-            return <RadarIcon />
+            return <RadarIcon className="size-4" />
         case ConfigType.WEB:
         case ConfigType.IMAGE_EDIT:
         case ConfigType.MEMORY:
@@ -99,9 +99,9 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
         case IntegrationType.CRON_JOB:
             return <CalendarClockIcon />
         case IntegrationType.WEBHOOK:
-            return <WebhookIcon />
+            return <WebhookIcon className="size-4" />
         case IntegrationType.WEBMONITOR:
-            return <RadarIcon />
+            return <RadarIcon className="size-4" />
         case IntegrationType.POSTHOG:
             return <PosthogIcon />
         case IntegrationType.LAUNCHDARKLY:

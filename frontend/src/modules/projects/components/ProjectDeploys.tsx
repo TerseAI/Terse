@@ -58,7 +58,6 @@ function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
                         </Link>
                     </Button>
                     <h1 className="text-foreground text-[clamp(1.5rem,2vw,1.75rem)] leading-tight font-semibold tracking-tight">Deployments</h1>
-                    <p className="text-muted-foreground mt-1 text-xs">Browse, search, and filter every deployment for this project.</p>
                 </header>
 
                 <section className="mt-6">

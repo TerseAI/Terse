@@ -64,11 +64,8 @@ export default function ApiTokensPage() {
 
 function PageHeader({ onCreate, showAction }: { onCreate: () => void; showAction: boolean }) {
     return (
-        <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">API Tokens</h1>
-                <p className="text-sm text-muted-foreground">Create tokens to authenticate with the Terse SDK from your code, CI, or any automated pipeline.</p>
-            </div>
+        <div className="flex items-center justify-between gap-4">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">API Tokens</h1>
             {showAction && (
                 <Button size="sm" onClick={onCreate} className="shrink-0">
                     <Plus className="h-4 w-4" />

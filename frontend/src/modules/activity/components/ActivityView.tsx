@@ -84,11 +84,7 @@ export default function ActivityPage() {
 
     return (
         <PageFrame>
-            {/* ── Header ──────────────────────────────────────────── */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-semibold text-foreground tracking-tight">Activity</h1>
-                <p className="text-muted-foreground mt-1 text-sm">A complete record of activity across your jobs.</p>
-            </div>
+            <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">Activity</h1>
 
             <Tabs value={activeTab} onValueChange={selectTab}>
                 <TabsList variant="line" className="mb-6 justify-start gap-6">

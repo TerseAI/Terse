@@ -41,10 +41,7 @@ export default function HomePage() {
     return (
         <PageFrame>
             <div className="space-y-8">
-                <header>
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Home</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">Job health across your org.</p>
-                </header>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Home</h1>
 
                 {!approvalsLoading && approvals.length > 0 && <ApprovalsStrip count={approvals.length} />}
 
@@ -100,13 +97,13 @@ type AgentGroupData = {
 function ProjectGroup({ group }: { group: AgentGroupData }) {
     return (
         <section>
-            <div className="flex items-baseline justify-between mb-3 px-1">
-                <h2 className="text-sm font-medium text-foreground">{group.projectName}</h2>
-                <span className="text-xs text-muted-foreground tabular-nums">
+            <div className="mb-3 flex items-baseline justify-between">
+                <h2 className="text-foreground text-sm font-medium">{group.projectName}</h2>
+                <span className="text-muted-foreground text-xs tabular-nums">
                     {group.agents.length} {group.agents.length === 1 ? "job" : "jobs"}
                 </span>
             </div>
-            <ul className="divide-y divide-border/60 border-y border-border/60">
+            <ul className="divide-border/60 overflow-hidden rounded-lg border border-border/60 bg-card divide-y">
                 {group.agents.map(({ agent, health }) => (
                     <AgentRow key={agent.id} agent={agent} health={health} />
                 ))}
