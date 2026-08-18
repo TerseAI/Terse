@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { UserSession } from "terse-types/types"
-import { SdkCreateProjectResponseBody, sdkCreateProjectRequestBodySchema } from "terse-types/types"
+import { SdkCreateProjectResponseBody, projectEnsureCredentialsRequestSchema, sdkCreateProjectRequestBodySchema } from "terse-types/types"
 
 import { AnalyticsEvent, analytics } from "../../common/analytics"
 import logger from "../../common/logger"
@@ -114,8 +114,10 @@ export async function handleEnsureProjectCredentials(req: Request, res: Response
     if (!user) return
     const { id } = req.params
     if (!id) return res.status(400).json({ error: "Project id is required" })
+    const body = projectEnsureCredentialsRequestSchema.safeParse(req.body ?? {})
+    if (!body.success) return res.status(400).json({ error: "Invalid request body" })
     try {
-        const response = await ensureSelfHostedCredentials(id, user.organizationId, user.id)
+        const response = await ensureSelfHostedCredentials(id, user.organizationId, user.id, body.data.selfHosted)
         res.status(200).json(response)
     } catch (error) {
         return handleServiceError(error, res, { projectId: id, userId: user.id })

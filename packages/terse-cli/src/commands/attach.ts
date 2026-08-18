@@ -3,9 +3,10 @@ import { confirm, select } from "@inquirer/prompts"
 import chalk from "chalk"
 import fs from "node:fs"
 import path from "node:path"
-import type { ProjectEnsureCredentialsResponse, SdkOrganizationsListResponse } from "terse-types"
+import type { ProjectEnsureCredentialsResponse, SdkOrganizationsListResponse, TerseProjectConfig } from "terse-types"
 
 import { fetchWithAuth } from "../api.js"
+import { CliError, ErrorCode } from "../cliError.js"
 import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { createSpinner, logNextSteps, printSelfHostedCredentials } from "../cliUi.js"
 import {
@@ -34,7 +35,9 @@ export async function attach(provider: LanguageProvider = resolveProvider(), opt
 
     const existingUserName = await getProjectAttachedUserName(cwd)
 
-    if (existingUserName) {
+    // Regenerating is the one reason to re-run attach on a project that is already set up, so the
+    // flag has to survive this shortcut or it can never reach the code it was added for.
+    if (existingUserName && !opts?.regenerateCredentials) {
         log.step(`Already set up for ${chalk.bold(existingUserName)}`)
         log.info("This project already has valid CLI credentials, so attach does not need to run again.")
         logNextSteps([
@@ -82,6 +85,7 @@ export async function attach(provider: LanguageProvider = resolveProvider(), opt
 
     if (attachApiKey && existingConfig) {
         const backfilled = await backfillCredentials(attachApiKey, existingConfig.projectId)
+        enableSelfHostedMode(cwd, existingConfig)
         signingSecret = backfilled.signingSecret
         projectApiKey = backfilled.projectApiKey
 
@@ -150,6 +154,19 @@ async function pickOrgForAttach(currentApiKey: string, nonInteractive: boolean):
     return resolveApiKeyForOrg(chosen.id, chosen.name, currentApiKey)
 }
 
+/**
+ * Attach is the command that opts a project into self-hosting, so a config written by `terse init`
+ * (managed) is converted here. Keeping the file in sync with the control plane matters: the
+ * credentials attach provisions mark the project self-hosted server-side.
+ */
+function enableSelfHostedMode(cwd: string, config: TerseProjectConfig): void {
+    if (config.selfHosted) return
+
+    writeProjectConfig(cwd, { ...config, selfHosted: true, remoteServerUrl: config.remoteServerUrl ?? "" })
+    log.step(`Enabled self-hosted mode in ${PROJECT_CONFIG_FILENAME}`)
+    log.info(`This project now runs on your own data plane. Set ${chalk.cyan("remoteServerUrl")} in ${PROJECT_CONFIG_FILENAME} before running ${chalk.cyan("terse deploy")}.`)
+}
+
 async function backfillCredentials(apiKey: string, projectId: string): Promise<ProjectEnsureCredentialsResponse> {
     const s = createSpinner()
     s.start("Checking data plane credentials")
@@ -158,9 +175,18 @@ async function backfillCredentials(apiKey: string, projectId: string): Promise<P
         s.stop(Object.keys(result).length > 0 ? "Generated the missing data plane credentials" : "Data plane credentials already provisioned")
         return result
     } catch (error) {
-        s.stop(`Could not check data plane credentials: ${(error as Error).message}`)
-        return {}
+        s.stop("Could not check data plane credentials")
+        throw toCredentialsError(error)
     }
+}
+
+/** An empty response means "already provisioned", so a swallowed failure would read as success and
+ * send the caller on to regenerate credentials whose state was never established. */
+function toCredentialsError(error: unknown): CliError {
+    return new CliError("credentials_unavailable", "Could not provision this project's data plane credentials.", {
+        detail: `${(error as Error).message}\n  Re-run \`terse attach\` once the control plane is reachable.`,
+        exitCode: ErrorCode.GENERIC_ERROR
+    })
 }
 
 /**

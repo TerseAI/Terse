@@ -9,7 +9,7 @@ import {
     sdkCreateProjectResponseBodySchema,
     terseProjectConfigSchema
 } from "terse-types"
-import type { ProjectEnsureCredentialsResponse, TerseProjectConfig } from "terse-types"
+import type { ProjectEnsureCredentialsRequest, ProjectEnsureCredentialsResponse, TerseProjectConfig } from "terse-types"
 
 import { fetchWithAuth } from "./api.js"
 import { CliError } from "./cliError.js"
@@ -70,7 +70,10 @@ export async function rotateRemoteProjectSigningSecret(apiKey: string, projectId
 }
 
 export async function ensureRemoteProjectCredentials(apiKey: string, projectId: string): Promise<ProjectEnsureCredentialsResponse> {
-    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ENSURE_CREDENTIALS, { id: projectId }), apiKey, {}, "POST")
+    // Attach is the command that opts a project into self-hosting, so this call always declares
+    // that intent; without it the control plane refuses to mint credentials for a managed project.
+    const body: ProjectEnsureCredentialsRequest = { selfHosted: true }
+    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ENSURE_CREDENTIALS, { id: projectId }), apiKey, body, "POST")
     return projectEnsureCredentialsResponseSchema.parse(response)
 }
 

@@ -172,9 +172,13 @@ export async function rotateProjectApiKey(projectId: string, organizationId: str
     return { projectApiKey: rawToken }
 }
 
-export async function ensureSelfHostedCredentials(projectId: string, organizationId: string, userId: string): Promise<EnsureCredentialsResult> {
+export async function ensureSelfHostedCredentials(projectId: string, organizationId: string, userId: string, selfHosted?: boolean): Promise<EnsureCredentialsResult> {
     const project = await findProjectForCredentialEnsure(projectId, organizationId)
     if (!project) throw new ProjectNotFoundError()
+    // A signing secret is itself a self-hosted marker, so minting one for a project that is not
+    // self-hosted (and whose caller did not ask to make it so) would silently move a managed
+    // project onto the self-hosted UI and rotation paths.
+    if (!isProjectSelfHosted(project) && !selfHosted) throw new ProjectBadRequestError("Data plane credentials are only used by self-hosted projects.")
 
     const needsSigningSecret = !project.signing_secret
     const needsProjectApiKey = project.api_tokens.length === 0

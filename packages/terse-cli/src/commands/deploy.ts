@@ -139,11 +139,11 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
 
             printSelfHostedCredentials({
-                apiKey: deployResult.projectApiKey,
+                // A project created by stale-project recovery already carries both credentials, so
+                // the deploy that follows reports neither as newly generated.
+                apiKey: deployResult.projectApiKey ?? recovery?.projectApiKey,
                 apiKeyVar: "TERSE_PROJECT_KEY",
                 apiKeyLabel: "project API key",
-                // A project created by stale-project recovery already carries its secret, so the
-                // deploy that follows never reports one as newly generated.
                 signingSecret: deployResult.signingSecret ?? recovery?.signingSecret
             })
             log.info(`Mode: user infrastructure  ${chalk.dim(remoteServerUrl!)}`)
@@ -201,10 +201,10 @@ async function tryRecoverStaleProject(error: unknown, args: { apiKey: string; co
     const proceed = await confirm({ message: `Create a new project named "${args.config.name}" and re-link this directory?`, default: false })
     if (!proceed) process.exit(1)
 
-    const { config: newProject, signingSecret } = await createRemoteProject(args.apiKey, args.config.name, args.config.selfHosted)
+    const { config: newProject, signingSecret, projectApiKey } = await createRemoteProject(args.apiKey, args.config.name, args.config.selfHosted)
     writeProjectConfig(process.cwd(), { ...args.config, projectId: newProject.projectId })
     console.log(chalk.green(`  Re-linked to ${newProject.projectId}. Retrying deploy…\n`))
-    return { signingSecret }
+    return { signingSecret, projectApiKey }
 }
 
 function collectFiles(dir: string, baseDir: string, provider: LanguageProvider): Record<string, Uint8Array> {
@@ -438,4 +438,4 @@ function formatDuration(seconds: number): string {
     return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
 }
 
-export type StaleProjectRecovery = { signingSecret?: string }
+export type StaleProjectRecovery = { signingSecret?: string; projectApiKey?: string }
