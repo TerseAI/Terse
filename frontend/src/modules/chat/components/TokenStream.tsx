@@ -4,22 +4,25 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
 const markdownComponents = {
-    h1: ({ children }: { children?: React.ReactNode }) => <h1 className="text-2xl font-bold mb-4 mt-8">{children}</h1>,
-    h2: ({ children }: { children?: React.ReactNode }) => <h2 className="text-xl font-bold mb-3 mt-6">{children}</h2>,
-    h3: ({ children }: { children?: React.ReactNode }) => <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>,
-    h4: ({ children }: { children?: React.ReactNode }) => <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>,
-    strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-bold">{children}</strong>,
+    h1: ({ children }: { children?: React.ReactNode }) => <h1 className="mb-3 mt-7 text-2xl font-semibold tracking-[-0.02em] first:mt-0">{children}</h1>,
+    h2: ({ children }: { children?: React.ReactNode }) => <h2 className="mb-2.5 mt-6 text-xl font-semibold tracking-[-0.015em] first:mt-0">{children}</h2>,
+    h3: ({ children }: { children?: React.ReactNode }) => <h3 className="mb-2 mt-5 text-lg font-semibold first:mt-0">{children}</h3>,
+    h4: ({ children }: { children?: React.ReactNode }) => <h4 className="mb-2 mt-5 font-semibold first:mt-0">{children}</h4>,
+    p: ({ children }: { children?: React.ReactNode }) => <p className="my-3 first:mt-0 last:mb-0">{children}</p>,
+    strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold">{children}</strong>,
     em: ({ children }: { children?: React.ReactNode }) => <em className="italic">{children}</em>,
     code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
         const isBlock = (className ?? "").includes("language-")
         if (isBlock) {
             return <code className={className}>{children}</code>
         }
-        return <code className="px-1 rounded font-mono text-sm">{children}</code>
+        return <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.875em]">{children}</code>
     },
-    pre: ({ children }: { children?: React.ReactNode }) => <pre className="rounded p-4 overflow-x-auto my-4 font-mono">{children}</pre>,
-    ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside">{children}</ul>,
-    ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside">{children}</ol>
+    pre: ({ children }: { children?: React.ReactNode }) => (
+        <pre className="my-4 overflow-x-auto rounded-xl border border-[var(--code-border)] bg-[var(--code-bg)] p-4 font-mono text-[0.8125rem] leading-5">{children}</pre>
+    ),
+    ul: ({ children }: { children?: React.ReactNode }) => <ul className="my-3 list-disc space-y-1 pl-5">{children}</ul>,
+    ol: ({ children }: { children?: React.ReactNode }) => <ol className="my-3 list-decimal space-y-1 pl-5">{children}</ol>
 }
 
 // Reveal pacing in characters per tick. Tuned to feel like the previous
@@ -74,7 +77,7 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
     }, [text, visibleText, disableAnimation])
 
     return (
-        <div className="text-foreground text-md leading-relaxed text-wrap-pretty select-text">
+        <div className="max-w-[72ch] text-[0.9375rem] leading-7 text-foreground text-wrap-pretty select-text">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {visibleText}
             </ReactMarkdown>

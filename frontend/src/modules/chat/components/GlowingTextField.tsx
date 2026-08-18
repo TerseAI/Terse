@@ -87,15 +87,14 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
     const hasSubstantialContent = inputValue.length > 100
 
     const getSizeClasses = () => {
-        // Explicit line-height matching font size, with padding for vertical centering
         switch (size) {
             case Size.Small:
-                return "text-sm leading-[14px] py-[13px] px-3"
+                return "min-h-12 px-4 py-3 text-[0.9375rem] leading-6"
             case Size.Large:
-                return "text-lg leading-[18px] p-4"
+                return "min-h-28 p-4 text-lg leading-7"
             case Size.Medium:
             default:
-                return "text-base leading-[16px] py-[14px] px-4"
+                return "min-h-16 px-4 py-3.5 text-base leading-6"
         }
     }
 
@@ -188,10 +187,10 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
     const chipPlaceholders = placeholders.filter((_, idx) => idx !== currentPlaceholderIndex)
     const showStopButton = Boolean(onStop) && isGenerating
     const hasActionButton = Boolean(onSend) || showStopButton
-    const actionRightPadding = hasActionButton ? "pr-14" : ""
+    const actionRightPadding = hasActionButton ? "pr-16" : ""
 
     return (
-        <div className={`flex flex-col w-full max-w-full overflow-visible`}>
+        <div className="flex w-full max-w-full flex-col overflow-visible">
             <div className="grid place-items-center overflow-visible">
                 {isLoading && (
                     <div className="absolute inset-0 pointer-events-none overflow-visible">
@@ -202,29 +201,22 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                 )}
 
                 <div
-                    className={`
-                            relative
-                            w-full
-                            rounded-lg
-                            transition-[border-color]
-                            duration-400
-                            bg-card
-                            ${showBorder ? "border-2 border-border focus-within:border-primary/50" : ""}
-                        `}
+                    className={`relative w-full overflow-hidden rounded-2xl bg-card transition-[border-color,box-shadow] duration-200 ${
+                        showBorder ? "border border-border focus-within:border-foreground/45 focus-within:shadow-[var(--shadow-control)]" : ""
+                    }`}
                 >
                     <TextareaAutosize
                         ref={textareaRef}
                         className={`
-                                w-full
+                                block w-full
                                 text-foreground
                                 resize-none
                                 ${getSizeClasses()}
                                 ${actionRightPadding}
                                 placeholder:text-muted-foreground
-                                rounded-lg
                                 focus:outline-none
                                 bg-transparent
-                                m-2 block
+                                disabled:cursor-not-allowed disabled:opacity-60
                             `}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDownInternal}
@@ -253,7 +245,7 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                             size="icon"
                             onClick={onStop}
                             disabled={isCancelling}
-                            className={`absolute right-3 ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
+                            className={`absolute right-2.5 ${isLarge ? "bottom-2.5" : "inset-y-0 my-auto"}`}
                             aria-label={isCancelling ? "Stopping generation" : "Stop generation"}
                         >
                             <CircleStop className="h-5 w-5 [&_rect]:fill-current [&_rect]:stroke-none" />
@@ -265,8 +257,8 @@ const GlowingTextField = forwardRef<GlowingTextFieldHandle, GlowingTextFieldProp
                             type="button"
                             size="icon"
                             onClick={onSend}
-                            disabled={disabled}
-                            className={`absolute right-3 ${inputValue.trim() ? "" : "opacity-50"} ${isLarge ? "bottom-3" : "top-1/2 -translate-y-1/2"}`}
+                            disabled={disabled || !inputValue.trim()}
+                            className={`absolute right-2.5 ${isLarge ? "bottom-2.5" : "inset-y-0 my-auto"}`}
                             aria-label="Send message"
                         >
                             <Send className="w-5 h-5" />

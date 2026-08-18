@@ -85,7 +85,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
     const { size: textFieldSize, minRows, showBorder } = sizeMapping[inputSize]
 
     return (
-        <div>
+        <div className="w-full">
             <GlowingTextField
                 ref={glowingTextFieldRef}
                 isLoading={false}

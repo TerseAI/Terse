@@ -110,10 +110,10 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     }
 
     return (
-        <div className="h-full w-full bg-background rounded-lg flex flex-col relative">
-            <div ref={scrollContainerRef} data-chat-scroll-container="true" className="flex-1 flex flex-col-reverse overflow-y-auto p-4 select-text">
+        <div className="relative flex h-full w-full flex-col overflow-hidden bg-background">
+            <div ref={scrollContainerRef} data-chat-scroll-container="true" className="chat-scrollbar flex flex-1 flex-col-reverse overflow-y-auto px-4 pb-7 pt-5 select-text sm:px-6 sm:pb-9 sm:pt-7">
                 <div className="flex-grow" />
-                <div ref={contentRef} className="space-y-1">
+                <div ref={contentRef} className="mx-auto w-full max-w-3xl space-y-4 sm:space-y-5">
                     {turns.map(turn => (
                         <TurnView key={turn.id} turn={turn} onApprove={onApprove} onReject={onReject} onSendMessage={onSendMessage} onMultipleChoiceAnswer={onMultipleChoiceAnswer} />
                     ))}
@@ -134,36 +134,35 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
                         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                         type="button"
                         onClick={handleScrollButtonClick}
-                        className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 
+                        className="absolute bottom-24 left-1/2 z-10 -translate-x-1/2
                             flex items-center justify-center
-                            size-10 max-md:size-11 rounded-full
-                            bg-card
-                            border border-border
-                            hover:bg-accent 
-                            hover:scale-105
-                            transition-colors duration-200 ease-out
-                            cursor-pointer"
+                            size-10 max-md:size-11 rounded-full border border-border bg-card
+                            text-muted-foreground shadow-[var(--shadow-popover)]
+                            transition-[background-color,color,transform] duration-200 ease-out
+                            hover:-translate-y-0.5 hover:bg-accent hover:text-foreground"
                         aria-label="Scroll to bottom"
                     >
-                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                        <ChevronDown className="size-5" />
                     </motion.button>
                 )}
             </AnimatePresence>
 
-            <div className="flex-shrink-0">
-                <ChatInput
-                    ref={chatInputRef}
-                    sendMessage={onSendMessage}
-                    input={input}
-                    setInput={setInput}
-                    placeholders={placeholders}
-                    disabled={isPendingAssistantResponse || isCancelling}
-                    isGenerating={isPendingAssistantResponse}
-                    isCancelling={isCancelling}
-                    onCancel={onCancel}
-                    inputSize={inputSize}
-                    showPlaceholderChips={showPlaceholderChips}
-                />
+            <div className="flex-shrink-0 border-t border-border/70 bg-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-5 sm:pt-4">
+                <div className="mx-auto w-full max-w-3xl">
+                    <ChatInput
+                        ref={chatInputRef}
+                        sendMessage={onSendMessage}
+                        input={input}
+                        setInput={setInput}
+                        placeholders={placeholders}
+                        disabled={isPendingAssistantResponse || isCancelling}
+                        isGenerating={isPendingAssistantResponse}
+                        isCancelling={isCancelling}
+                        onCancel={onCancel}
+                        inputSize={inputSize}
+                        showPlaceholderChips={showPlaceholderChips}
+                    />
+                </div>
             </div>
         </div>
     )

@@ -36,13 +36,9 @@ export function TurnView({ turn, disableAnimation = false, onApprove, onReject, 
 
     if (isUser) {
         return (
-            <div className="flex rounded-lg justify-end animate-in fade-in-0">
-                <div className="max-w-[90%] space-y-2.5">
-                    <div className="text-foreground text-md py-2 rounded-8xl select-text">
-                        <div className="prose prose-invert bg-muted rounded-lg p-3">
-                            <span className="select-text">{turn.userMessage}</span>
-                        </div>
-                    </div>
+            <div className="flex justify-end animate-in fade-in-0">
+                <div className="max-w-[min(86%,38rem)] rounded-2xl rounded-br-sm bg-secondary px-4 py-3 text-[0.9375rem] leading-6 text-secondary-foreground shadow-[var(--shadow-control)] sm:max-w-[78%]">
+                    <span className="select-text">{turn.userMessage}</span>
                 </div>
             </div>
         )
@@ -50,21 +46,17 @@ export function TurnView({ turn, disableAnimation = false, onApprove, onReject, 
 
     if (turn.status === "failed") {
         return (
-            <div className="flex rounded-lg justify-start">
-                <div className="max-w-[90%] space-y-2.5">
-                    <div className="text-foreground text-md py-2 rounded-8xl select-text">
-                        <div className="prose prose-invert">
-                            <RunErrorView error={turn.error?.message ?? "Run failed"} errorCode={turn.error?.code} />
-                        </div>
-                    </div>
+            <div className="flex justify-start">
+                <div className="min-w-0 w-full max-w-[42rem]">
+                    <RunErrorView error={turn.error?.message ?? "Run failed"} errorCode={turn.error?.code} />
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="flex rounded-lg justify-start">
-            <div className="max-w-[90%] space-y-2.5">
+        <div className="group/turn flex justify-start">
+            <div className="min-w-0 w-full max-w-[42rem] space-y-3">
                 {turn.units.map((unit, index) => {
                     switch (unit.kind) {
                         case "text":
@@ -86,7 +78,7 @@ export function TurnView({ turn, disableAnimation = false, onApprove, onReject, 
                         case "process_output":
                             return <ProcessOutputUnit key={unit.unitId} unit={unit} />
                         case "thinking":
-                            return <ThinkingUnit key={unit.unitId} unit={unit} />
+                            return turn.status === "generating" ? <ThinkingUnit key={unit.unitId} unit={unit} /> : null
                         default: {
                             const exhaustive: never = unit
                             return exhaustive
@@ -95,7 +87,7 @@ export function TurnView({ turn, disableAnimation = false, onApprove, onReject, 
                 })}
 
                 {showAssistantActions && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within/turn:opacity-100 sm:group-hover/turn:opacity-100">
                         <CopyButton text={textForActions} />
                         <FeedbackButtons />
                     </div>
