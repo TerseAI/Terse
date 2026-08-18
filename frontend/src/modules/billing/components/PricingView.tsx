@@ -124,7 +124,7 @@ export default function PricingPage() {
     const isDowngrading = loadingPlan === PlanKey.FREE
 
     return (
-        <div className="min-h-full overflow-auto bg-background px-4 py-12 text-foreground md:py-16">
+        <div className="min-h-full overflow-auto bg-background px-16 py-12 text-foreground md:py-16">
             <main className="mx-auto flex w-full max-w-3xl flex-col gap-10">
                 <header>
                     <Button variant="ghost" size="sm" className="-ml-2 mb-5 text-muted-foreground hover:text-foreground" onClick={goBack}>

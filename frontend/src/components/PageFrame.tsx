@@ -2,10 +2,13 @@ import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
 
+/** Clears the overlay sidebar trigger; equal left/right keeps the column centered. */
+export const PAGE_SHELL = "px-16 pt-3 pb-10"
+
 /** Gutters and measure for pages that scroll as a document. */
 export function PageFrame({ children }: { children: ReactNode }) {
     return (
-        <div className="h-full min-w-0 overflow-y-auto overscroll-contain px-4 pt-3 pb-10">
+        <div className={cn("h-full min-w-0 overflow-y-auto overscroll-contain", PAGE_SHELL)}>
             <div className={PAGE_COLUMN}>{children}</div>
         </div>
     )
