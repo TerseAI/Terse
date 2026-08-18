@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { type BalanceSummary, FrontendRoutes, type Plan, isPurchasablePlan } from "terse-types"
 
 import { FetchErrorCard } from "@/components/FetchErrorCard"
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -70,20 +70,16 @@ export default function BillingPage() {
 
     return (
         <PageFrame>
+            <PageHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <PageTitle>Billing</PageTitle>
+                {!billingDisabled && !billingStatusLoading && billingStatus?.canManageBilling && (
+                    <Button variant="outline" onClick={manageBilling}>
+                        <CreditCard className="size-4" />
+                        Manage billing
+                    </Button>
+                )}
+            </PageHeader>
             <div className="flex flex-col gap-6">
-                <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Billing</h1>
-                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Track your credit usage, change plans, and manage payment details.</p>
-                    </div>
-                    {!billingDisabled && !billingStatusLoading && billingStatus?.canManageBilling && (
-                        <Button variant="outline" onClick={manageBilling}>
-                            <CreditCard className="size-4" />
-                            Manage billing
-                        </Button>
-                    )}
-                </header>
-
                 {billingDisabled ? (
                     <BillingDisabledState />
                 ) : showError ? (

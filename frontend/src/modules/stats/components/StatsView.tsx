@@ -9,10 +9,10 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { AgentActivityItem, CountByString, StatsInterval } from "terse-types/types"
 
 import { FetchErrorCard } from "@/components/FetchErrorCard"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { useStats } from "@/modules/stats/api/useStats"
@@ -35,13 +35,13 @@ const CHART_COLORS = [
     "var(--chart-10)"
 ]
 
-const STATS_INTERVAL_OPTIONS: Array<{ value: StatsInterval; label: string; longLabel: string }> = [
-    { value: "1h", label: "1H", longLabel: "Last hour" },
-    { value: "24h", label: "24H", longLabel: "Last 24 hours" },
-    { value: "7d", label: "7D", longLabel: "Last 7 days" },
-    { value: "1mo", label: "1M", longLabel: "Last month" },
-    { value: "3mo", label: "3M", longLabel: "Last 3 months" },
-    { value: "1y", label: "1Y", longLabel: "Last year" }
+const STATS_INTERVAL_OPTIONS: Array<{ value: StatsInterval; label: string }> = [
+    { value: "1h", label: "Last hour" },
+    { value: "24h", label: "Last 24 hours" },
+    { value: "7d", label: "Last 7 days" },
+    { value: "1mo", label: "Last month" },
+    { value: "3mo", label: "Last 3 months" },
+    { value: "1y", label: "Last year" }
 ]
 
 // ---------------------------------------------------------------------------
@@ -95,25 +95,18 @@ function StatCard({ label, value, change }: { label: string; value: string; chan
 
 function StatsIntervalSelector({ selectedInterval, onSelectInterval }: { selectedInterval: StatsInterval; onSelectInterval: (interval: StatsInterval) => void }) {
     return (
-        <div className="flex flex-wrap items-center gap-1">
-            {STATS_INTERVAL_OPTIONS.map(interval => {
-                const isSelected = interval.value === selectedInterval
-                return (
-                    <Button
-                        key={interval.value}
-                        type="button"
-                        onClick={() => onSelectInterval(interval.value)}
-                        variant={isSelected ? "secondary" : "ghost"}
-                        size="sm"
-                        aria-pressed={isSelected}
-                        aria-label={interval.longLabel}
-                        title={interval.longLabel}
-                    >
+        <Select value={selectedInterval} onValueChange={value => onSelectInterval(value as StatsInterval)}>
+            <SelectTrigger size="sm" aria-label="Time range" className="min-w-40">
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+                {STATS_INTERVAL_OPTIONS.map(interval => (
+                    <SelectItem key={interval.value} value={interval.value}>
                         {interval.label}
-                    </Button>
-                )
-            })}
-        </div>
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
     )
 }
 
@@ -370,10 +363,7 @@ function StatsOverview() {
 
     return (
         <div className="space-y-6">
-            <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Time range</p>
-                <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
-            </div>
+            <StatsIntervalSelector selectedInterval={selectedInterval} onSelectInterval={setSelectedInterval} />
 
             {isError && !stats ? (
                 <FetchErrorCard message="Couldn't load stats." onRetry={() => void mutate()} />

@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowRight, Check, Copy, Terminal } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import type { Agent } from "terse-types/types"
 
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { useSidebar } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAgents } from "@/modules/agents/api/useAgents"
@@ -40,28 +40,29 @@ export default function HomePage() {
 
     return (
         <PageFrame>
-            <div className="space-y-8">
-                <header>
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Home</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">Job health across your org.</p>
-                </header>
+            <PageHeader>
+                <PageTitle>Home</PageTitle>
+            </PageHeader>
 
-                {!approvalsLoading && approvals.length > 0 && <ApprovalsStrip count={approvals.length} />}
+            {!approvalsLoading && approvals.length > 0 && (
+                <div className="mb-6">
+                    <ApprovalsStrip count={approvals.length} />
+                </div>
+            )}
 
-                {isLoading ? (
-                    <section>
-                        <AgentRowsSkeleton />
-                    </section>
-                ) : (
-                    <TooltipProvider delayDuration={150}>
-                        <div className="space-y-8">
-                            {groupAgents(agentsWithHealth).map(group => (
-                                <ProjectGroup key={group.key} group={group} />
-                            ))}
-                        </div>
-                    </TooltipProvider>
-                )}
-            </div>
+            {isLoading ? (
+                <section>
+                    <AgentRowsSkeleton />
+                </section>
+            ) : (
+                <TooltipProvider delayDuration={150}>
+                    <div className="space-y-6">
+                        {groupAgents(agentsWithHealth).map(group => (
+                            <ProjectGroup key={group.key} group={group} />
+                        ))}
+                    </div>
+                </TooltipProvider>
+            )}
         </PageFrame>
     )
 }
@@ -100,13 +101,13 @@ type AgentGroupData = {
 function ProjectGroup({ group }: { group: AgentGroupData }) {
     return (
         <section>
-            <div className="flex items-baseline justify-between mb-3 px-1">
-                <h2 className="text-sm font-medium text-foreground">{group.projectName}</h2>
-                <span className="text-xs text-muted-foreground tabular-nums">
+            <div className="mb-2 flex items-baseline justify-between">
+                <h2 className="text-foreground text-sm font-medium">{group.projectName}</h2>
+                <span className="text-muted-foreground text-xs tabular-nums">
                     {group.agents.length} {group.agents.length === 1 ? "job" : "jobs"}
                 </span>
             </div>
-            <ul className="divide-y divide-border/60 border-y border-border/60">
+            <ul className="divide-border/60 overflow-hidden rounded-lg border border-border/60 bg-card divide-y">
                 {group.agents.map(({ agent, health }) => (
                     <AgentRow key={agent.id} agent={agent} health={health} />
                 ))}

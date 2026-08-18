@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Check, Copy, KeyRound, Pencil, Plus, Trash2 } from "lucide-react"
 import { ApiToken } from "terse-types/types"
 
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -28,19 +28,25 @@ export default function ApiTokensPage() {
 
     return (
         <PageFrame>
-            <PageHeader onCreate={() => setShowCreateDialog(true)} showAction={hasTokens ?? false} />
-
-            <div className="mt-4">
-                {isError ? (
-                    <ErrorState onRetry={() => mutate()} />
-                ) : isLoading ? (
-                    <LoadingState />
-                ) : hasTokens ? (
-                    <TokensTable tokens={apiTokens} onRename={setEditingToken} onDelete={setDeletingToken} />
-                ) : (
-                    <EmptyState onCreate={() => setShowCreateDialog(true)} />
+            <PageHeader className="flex items-center justify-between gap-4">
+                <PageTitle>API Tokens</PageTitle>
+                {hasTokens && (
+                    <Button size="sm" onClick={() => setShowCreateDialog(true)} className="shrink-0">
+                        <Plus className="h-4 w-4" />
+                        New token
+                    </Button>
                 )}
-            </div>
+            </PageHeader>
+
+            {isError ? (
+                <ErrorState onRetry={() => mutate()} />
+            ) : isLoading ? (
+                <LoadingState />
+            ) : hasTokens ? (
+                <TokensTable tokens={apiTokens} onRename={setEditingToken} onDelete={setDeletingToken} />
+            ) : (
+                <EmptyState onCreate={() => setShowCreateDialog(true)} />
+            )}
 
             <CreateTokenDialog
                 open={showCreateDialog}
@@ -59,23 +65,6 @@ export default function ApiTokensPage() {
 
             <RevokeTokenDialog token={deletingToken} onOpenChange={() => setDeletingToken(null)} onRevoked={() => mutate()} />
         </PageFrame>
-    )
-}
-
-function PageHeader({ onCreate, showAction }: { onCreate: () => void; showAction: boolean }) {
-    return (
-        <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">API Tokens</h1>
-                <p className="text-sm text-muted-foreground">Create tokens to authenticate with the Terse SDK from your code, CI, or any automated pipeline.</p>
-            </div>
-            {showAction && (
-                <Button size="sm" onClick={onCreate} className="shrink-0">
-                    <Plus className="h-4 w-4" />
-                    New token
-                </Button>
-            )}
-        </div>
     )
 }
 

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom"
 
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ACTIVITY_OVERVIEW_VIEW, ACTIVITY_VIEW_PARAM } from "@/modules/activity/activityRoutes"
 import { useAllRunHistory } from "@/modules/runHistory/api/useAllRunHistory"
@@ -84,11 +84,9 @@ export default function ActivityPage() {
 
     return (
         <PageFrame>
-            {/* ── Header ──────────────────────────────────────────── */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-semibold text-foreground tracking-tight">Activity</h1>
-                <p className="text-muted-foreground mt-1 text-sm">A complete record of activity across your jobs.</p>
-            </div>
+            <PageHeader>
+                <PageTitle>Activity</PageTitle>
+            </PageHeader>
 
             <Tabs value={activeTab} onValueChange={selectTab}>
                 <TabsList variant="line" className="mb-6 justify-start gap-6">

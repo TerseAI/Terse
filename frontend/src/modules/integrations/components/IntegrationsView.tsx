@@ -4,13 +4,13 @@ import { FileText } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { IntegrationType } from "terse-types/Integrations"
 
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { useIntegrations } from "@/modules/integrations/api/useIntegrations"
 import IntegrationCard, { IntegrationCardSkeleton } from "@/modules/integrations/components/IntegrationCard"
 
-const LIST = "divide-y divide-border/60 border-y border-border/60"
+const LIST = "divide-y divide-border/60 overflow-hidden rounded-lg border border-border/60 bg-card"
 const ROW_CLASS = "max-w-none rounded-none border-0 bg-transparent hover:bg-muted/50"
 
 function IntegrationPage() {
@@ -21,13 +21,12 @@ function IntegrationPage() {
 
     return (
         <PageFrame>
+            <PageHeader>
+                <PageTitle>Integrations</PageTitle>
+            </PageHeader>
             <div className="space-y-10">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Integrations</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">The Terse Agent will automatically prompt for the correct integrations as needed</p>
-                </div>
                 <section>
-                    <h2 className="mb-3 px-1 text-sm font-medium text-foreground">Active</h2>
+                    <h2 className="text-foreground mb-3 text-sm font-medium">Active</h2>
                     {isLoading ? (
                         <div className={LIST}>
                             {Array.from({ length: 3 }).map((_, index) => (
@@ -43,7 +42,7 @@ function IntegrationPage() {
 
                 {hasInactive && (
                     <section>
-                        <h2 className="mb-3 px-1 text-sm font-medium text-foreground">Available</h2>
+                        <h2 className="text-foreground mb-3 text-sm font-medium">Available</h2>
                         <IntegrationList integrations={inactiveIntegrations} isActive={false} />
                     </section>
                 )}

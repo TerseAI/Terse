@@ -126,7 +126,7 @@ function RunDot({ run, agentId }: { run: RunHistoryRecordWithAgent | undefined; 
 
 export function AgentRowsSkeleton({ count = 6 }: { count?: number }) {
     return (
-        <div className="divide-border/60 border-border/60 divide-y border-y">
+        <div className="divide-border/60 overflow-hidden rounded-lg border border-border/60 bg-card divide-y">
             {Array.from({ length: count }).map((_, i) => (
                 <div key={i} className="flex items-center gap-4 px-3 py-3.5">
                     <div className="min-w-0 flex-1 space-y-2">
