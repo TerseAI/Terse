@@ -12,7 +12,7 @@ import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { ApiError, fetchWithAuth, fetchWithAuthAndSession, readApiKeyOrBail } from "../api.js"
 import { CliError } from "../cliError.js"
 import { isNonInteractive } from "../cliHelpers.js"
-import { createSpinner } from "../cliUi.js"
+import { createSpinner, printSelfHostedCredentials } from "../cliUi.js"
 import { getCliVersion } from "../cliVersion.js"
 import { FRONTEND_URL } from "../config.js"
 import { loadJobRegistry } from "../loadJob.js"
@@ -24,7 +24,7 @@ import { openSessionStream } from "../providers/shared/sessionStream.js"
 // Base64 in a JSON body: fine for a source-only project, not for one carrying data files.
 const MAX_INLINE_ARCHIVE_BYTES = 8 * 1024 * 1024
 
-export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, hasRetried = false) {
+export async function deploy(provider: LanguageProvider = resolveProvider(), entryFile?: string, recovery?: StaleProjectRecovery) {
     const apiKey = readApiKeyOrBail({
         title: "Error: Not authenticated.",
         detail: "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment."
@@ -138,19 +138,13 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             console.log(chalk.dim(`  Mode: user infrastructure`))
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
 
-            const signingSecret = deployResult.signingSecret
-            const projectApiKey = deployResult.projectApiKey
-            if (signingSecret || projectApiKey) {
-                const labels: string[] = []
-                if (signingSecret) labels.push("signing secret")
-                if (projectApiKey) labels.push("project API key")
-                console.log(chalk.yellow(`\n  ${chalk.bold(`New ${labels.join(" and ")} generated.`)} Save now, will not be shown again.`))
-                console.log(chalk.dim(`  If lost, rotate from the Terse dashboard to issue a new one.\n`))
-                console.log(`  Add to your ${chalk.bold(".env")} file:\n`)
-                if (projectApiKey) console.log(`TERSE_API_KEY=${projectApiKey}`)
-                if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
-                console.log("")
-            }
+            printSelfHostedCredentials({
+                apiKey: deployResult.projectApiKey,
+                apiKeyLabel: "project API key",
+                // A project created by stale-project recovery already carries its secret, so the
+                // deploy that follows never reports one as newly generated.
+                signingSecret: deployResult.signingSecret ?? recovery?.signingSecret
+            })
             log.info(`Mode: user infrastructure  ${chalk.dim(remoteServerUrl!)}`)
         } else {
             log.info(`${fileCount} files  ${chalk.dim(`${(zipSizeBytes / 1024).toFixed(1)} KB`)}`)
@@ -164,8 +158,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
     } catch (error) {
         const reason = extractDeployFailureReason(error)
         s.stop("Deploy failed")
-        if (await tryRecoverStaleProject(error, { apiKey, config, hasRetried })) {
-            return deploy(provider, entryFile, true)
+        const recovered = await tryRecoverStaleProject(error, { apiKey, config, hasRetried: !!recovery })
+        if (recovered) {
+            return deploy(provider, entryFile, recovered)
         }
 
         if (isProjectGoneError(error)) {
@@ -194,10 +189,10 @@ function extractDeployFailureReason(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
 }
 
-async function tryRecoverStaleProject(error: unknown, args: { apiKey: string; config: TerseProjectConfig; hasRetried: boolean }): Promise<boolean> {
-    if (!isProjectGoneError(error)) return false
-    if (args.hasRetried) return false
-    if (!process.stdout.isTTY || !process.stdin.isTTY) return false
+async function tryRecoverStaleProject(error: unknown, args: { apiKey: string; config: TerseProjectConfig; hasRetried: boolean }): Promise<StaleProjectRecovery | null> {
+    if (!isProjectGoneError(error)) return null
+    if (args.hasRetried) return null
+    if (!process.stdout.isTTY || !process.stdin.isTTY) return null
 
     console.log(chalk.yellow(`\n  The project linked in ${PROJECT_CONFIG_FILENAME} no longer exists.`))
     console.log(`  This usually means it was deleted from the dashboard, or this config came from another machine.`)
@@ -205,10 +200,10 @@ async function tryRecoverStaleProject(error: unknown, args: { apiKey: string; co
     const proceed = await confirm({ message: `Create a new project named "${args.config.name}" and re-link this directory?`, default: false })
     if (!proceed) process.exit(1)
 
-    const { config: newProject } = await createRemoteProject(args.apiKey, args.config.name, args.config.selfHosted)
+    const { config: newProject, signingSecret } = await createRemoteProject(args.apiKey, args.config.name, args.config.selfHosted)
     writeProjectConfig(process.cwd(), { ...args.config, projectId: newProject.projectId })
     console.log(chalk.green(`  Re-linked to ${newProject.projectId}. Retrying deploy…\n`))
-    return true
+    return { signingSecret }
 }
 
 function collectFiles(dir: string, baseDir: string, provider: LanguageProvider): Record<string, Uint8Array> {
@@ -441,3 +436,5 @@ function formatDuration(seconds: number): string {
     if (seconds < 60) return `${Math.round(seconds)}s`
     return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
 }
+
+export type StaleProjectRecovery = { signingSecret?: string }

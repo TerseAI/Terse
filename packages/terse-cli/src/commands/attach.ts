@@ -7,7 +7,7 @@ import type { SdkOrganizationsListResponse } from "terse-types"
 
 import { fetchWithAuth } from "../api.js"
 import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
-import { createSpinner, logNextSteps } from "../cliUi.js"
+import { createSpinner, logNextSteps, printSelfHostedCredentials } from "../cliUi.js"
 import { PROJECT_CONFIG_FILENAME, createRemoteProject, readProjectConfig, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
@@ -68,16 +68,7 @@ export async function attach(provider: LanguageProvider = resolveProvider(), opt
         }
     }
 
-    if (attachApiKey) {
-        const labels = ["API key"]
-        if (signingSecret) labels.push("signing secret")
-        console.log(chalk.yellow(`\n  ${chalk.bold(`New ${labels.join(" and ")} generated.`)} Save now, will not be shown again.`))
-        console.log(chalk.dim(`  If lost, rotate from the Terse dashboard to issue a new one.\n`))
-        console.log(`  Add to your ${chalk.bold(".env")} file:\n`)
-        console.log(`TERSE_API_KEY=${attachApiKey}`)
-        if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
-        console.log("")
-    }
+    printSelfHostedCredentials({ apiKey: attachApiKey ?? undefined, signingSecret })
 
     log.info("Reviewing integrations")
     await listAndPromptIntegrations({

@@ -54,6 +54,22 @@ export function createRunIndicator(title: string) {
     }
 }
 
+export function printSelfHostedCredentials(args: { apiKey?: string; apiKeyLabel?: string; signingSecret?: string }): void {
+    const { apiKey, signingSecret, apiKeyLabel = "API key" } = args
+    if (!apiKey && !signingSecret) return
+
+    const labels: string[] = []
+    if (apiKey) labels.push(apiKeyLabel)
+    if (signingSecret) labels.push("signing secret")
+
+    console.log(chalk.yellow(`\n  ${chalk.bold(`New ${labels.join(" and ")} generated.`)} Save now, will not be shown again.`))
+    console.log(chalk.dim(`  If lost, rotate from the Terse dashboard to issue a new one.\n`))
+    console.log(`  Add to your ${chalk.bold(".env")} file:\n`)
+    if (apiKey) console.log(`TERSE_API_KEY=${apiKey}`)
+    if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
+    console.log("")
+}
+
 export function logNextSteps(steps: string[]): void {
     steps.forEach((step, index) => {
         log.step(`${index + 1}. ${step}`)
