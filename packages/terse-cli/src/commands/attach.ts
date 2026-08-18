@@ -43,11 +43,10 @@ export async function attach(provider: LanguageProvider = resolveProvider(), opt
 
     const result = await loginAndPersist(opts)
     let attachApiKey: string | null = result?.apiKey ?? null
+    let signingSecret: string | undefined
 
     if (result?.apiKey) {
         attachApiKey = await pickOrgForAttach(result.apiKey, nonInteractive)
-        log.info(`Add ${chalk.cyan("TERSE_API_KEY")} to your server environment so your app can authenticate at runtime.`)
-        log.step(`TERSE_API_KEY=${attachApiKey}`)
     } else {
         log.info("You can run `terse auth login` later to authenticate.")
     }
@@ -56,16 +55,28 @@ export async function attach(provider: LanguageProvider = resolveProvider(), opt
         const s = createSpinner()
         s.start("Creating Terse project")
         try {
-            const config = await createRemoteProject(attachApiKey, projectName)
-            const selfHostedConfig = { ...config, selfHosted: true, remoteServerUrl: "" }
+            const created = await createRemoteProject(attachApiKey, projectName, true)
+            signingSecret = created.signingSecret
+            const selfHostedConfig = { ...created.config, selfHosted: true, remoteServerUrl: "" }
             writeProjectConfig(cwd, selfHostedConfig)
-            s.stop(`Created Terse project (${config.projectId})`)
+            s.stop(`Created Terse project (${created.config.projectId})`)
             log.step(`Created ${PROJECT_CONFIG_FILENAME}`)
             log.info(`Self-hosted mode enabled. Set ${chalk.cyan("remoteServerUrl")} in ${PROJECT_CONFIG_FILENAME} before running ${chalk.cyan("terse deploy")}.`)
         } catch (error) {
             s.stop(`Failed to create Terse project: ${(error as Error).message}`)
             log.warn(`You'll need to create a ${PROJECT_CONFIG_FILENAME} manually before running ${chalk.cyan("terse deploy")}.`)
         }
+    }
+
+    if (attachApiKey) {
+        const labels = ["API key"]
+        if (signingSecret) labels.push("signing secret")
+        console.log(chalk.yellow(`\n  ${chalk.bold(`New ${labels.join(" and ")} generated.`)} Save now, will not be shown again.`))
+        console.log(chalk.dim(`  If lost, rotate from the Terse dashboard to issue a new one.\n`))
+        console.log(`  Add to your ${chalk.bold(".env")} file:\n`)
+        console.log(`TERSE_API_KEY=${attachApiKey}`)
+        if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
+        console.log("")
     }
 
     log.info("Reviewing integrations")

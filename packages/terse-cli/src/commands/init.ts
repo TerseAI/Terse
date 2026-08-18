@@ -76,7 +76,7 @@ export async function init(projectName?: string, provider: LanguageProvider = re
         if (loginResult?.apiKey) {
             s.start("Creating Terse project")
             try {
-                const config = await createRemoteProject(loginResult.apiKey, resolvedName)
+                const { config } = await createRemoteProject(loginResult.apiKey, resolvedName)
                 writeProjectConfig(targetDir, config)
                 s.stop(`Created Terse project (${config.projectId})`)
             } catch (error) {

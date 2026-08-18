@@ -89,8 +89,8 @@ Use `terse attach` when you already have an application repo and want the contro
 What it does:
 
 1. Authenticates with the control plane, prompting you to pick which organization owns this project when your account belongs to more than one
-2. Prints the `TERSE_API_KEY` for the chosen organization so you can add it to your data plane environment
-3. Creates a Terse project if the repo is not already linked
+2. Creates a Terse project if the repo is not already linked
+3. Prints the `TERSE_API_KEY` for the chosen organization and a `TERSE_SIGNING_SECRET` so you can add them to your data plane environment. Save them now; they will not be shown again
 4. Writes `terse.config.json` with the self-hosted data plane enabled
 5. Reviews existing integrations and, in an interactive terminal, lets you connect more
 6. Runs `terse generate` when the current directory matches a supported project layout
@@ -252,7 +252,7 @@ What happens:
 Data plane targets:
 
 - Managed (Terse Cloud data plane): the CLI zips the current project directory, uploads it, and the control plane builds a source image (including the durable workflow bundle when needed) before running workflows on Terse Cloud sandboxes
-- Self-hosted data plane: the CLI reads `remoteServerUrl` from `terse.config.json` and configures the control plane to call your own server instead of uploading source. On the first deploy with a self-hosted data plane, the CLI prints a new `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` — save these into your data plane environment, they will not be shown again.
+- Self-hosted data plane: the CLI reads `remoteServerUrl` from `terse.config.json` and configures the control plane to call your own server instead of uploading source. `terse attach` prints `TERSE_SIGNING_SECRET` when it creates the project. On the first deploy, the CLI prints a project-scoped `TERSE_API_KEY` (and reprints the signing secret only if the project was created without one) — save these into your data plane environment, they will not be shown again.
 
 ### `terse build`
 
@@ -896,6 +896,6 @@ Those values are **user** API tokens (the same kind you create in the Terse app)
 
 After `terse init` or `terse auth login`, you usually don't need a project `.env` file for the CLI either, because authentication is stored per user on your machine.
 
-For a **self-hosted data plane**, your own server needs `TERSE_API_KEY` in its environment so it can authenticate with the control plane at runtime. `terse attach` prints the per-organization key, and `terse deploy` prints a project-scoped key and `TERSE_SIGNING_SECRET` the first time you deploy against a self-hosted data plane — copy these into your data plane secret store. `terse secrets` is for your own application secrets (database URLs, third-party API keys); it intentionally refuses any name that starts with `TERSE_`.
+For a **self-hosted data plane**, your own server needs `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` in its environment. `terse attach` prints the per-organization key and the signing secret. The first `terse deploy` prints a project-scoped key — copy these into your data plane secret store. `terse secrets` is for your own application secrets (database URLs, third-party API keys); it intentionally refuses any name that starts with `TERSE_`.
 
 To point the CLI at a **self-hosted control plane**, set `TERSE_BACKEND_URL` (default `https://api.useterse.ai`) in your shell before running any `terse` command.

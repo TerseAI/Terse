@@ -37,7 +37,7 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
         terse attach
         ```
 
-        This authenticates, links the repo to a Terse project, and writes `terse.config.json` with the self-hosted data plane enabled. See [`terse attach`](/reference/cli#terse-attach) for the full flow.
+        This authenticates, links the repo to a Terse project, writes `terse.config.json` with the self-hosted data plane enabled, and prints `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` once. Save them into your data plane environment before you start the server. See [`terse attach`](/reference/cli#terse-attach) for the full flow.
     </Step>
     <Step title="Point Terse at your server">
         Set `remoteServerUrl` to the public URL of your service:
@@ -52,7 +52,7 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
         ```
     </Step>
     <Step title="Set the required environment variables">
-        Your data plane needs two values from the control plane, both available in the dashboard under your project's settings:
+        Your data plane needs two values that `terse attach` prints once. Copy them into your environment before you start the server:
 
         ```bash .env
         TERSE_API_KEY=terse_...
@@ -61,10 +61,10 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
 
         | Variable               | Purpose                                                                                                                  |
         | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-        | `TERSE_API_KEY`        | Authenticates outbound calls from your data plane to the control plane: opening a session, executing tools, requesting approvals. |
-        | `TERSE_SIGNING_SECRET` | Verifies that incoming trigger requests really came from the control plane. Used as the HMAC key for the `x-terse-signature` header. |
+        | `TERSE_API_KEY`        | Authenticates outbound calls from your data plane to the control plane: opening a session, executing tools, requesting approvals. `terse attach` prints the organization key. The first `terse deploy` may print a project-scoped key — replace the organization key with that when it appears. |
+        | `TERSE_SIGNING_SECRET` | Verifies that incoming trigger requests really came from the control plane. Used as the HMAC key for the `x-terse-signature` header. Printed by `terse attach`; `terse deploy` reprints it only if the project was created without one. |
 
-        <Warning>Treat `TERSE_SIGNING_SECRET` like any other webhook secret. Never log it, never ship it to the client, never commit it. Rotate it from the dashboard if it leaks.</Warning>
+        <Warning>Treat `TERSE_SIGNING_SECRET` like any other webhook secret. Never log it, never ship it to the client, never commit it. If you lose it, rotate from the dashboard after `remoteServerUrl` is set.</Warning>
 
         Load both into your process the same way you load any other secret — `.env` for local development, your platform's secret store in production.
     </Step>

@@ -171,11 +171,12 @@ export async function rotateProjectApiKey(projectId: string, organizationId: str
     return { projectApiKey: rawToken }
 }
 
-export async function createProject(name: string, organizationId: string): Promise<{ projectId: string; name: string }> {
+export async function createProject(name: string, organizationId: string, selfHosted?: boolean): Promise<{ projectId: string; name: string; signingSecret?: string }> {
     try {
-        const project = await createProjectRow(organizationId, name)
+        const signingSecret = selfHosted ? generateWebhookSecret() : undefined
+        const project = await createProjectRow(organizationId, name, signingSecret)
         emitCacheInvalidationWithKey(organizationId, "organization-projects")
-        return { projectId: project.id, name: project.name }
+        return { projectId: project.id, name: project.name, signingSecret }
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
             throw new ProjectConflictError(`A project named "${name}" already exists in this organization.`)
