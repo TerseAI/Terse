@@ -22,6 +22,7 @@
 - Use "generated helpers" for the typed exports written to `src/terse.generated.ts` and the `src/terse.generated/` folder.
 - Use "deploy" for syncing local code to Terse. Do not say "publish" unless the product UI does.
 - Use "API token" when referring to the token users create in the UI. Use `TERSE_API_KEY` when referring to the environment variable.
+- Use "user token" for the credential `terse auth login` stores (env var `TERSE_API_KEY`, used by the CLI) and "project key" for the runtime credential (env var `TERSE_PROJECT_KEY`, used by running workflow code). Never describe one as a substitute for the other.
 
 ## Style preferences
 

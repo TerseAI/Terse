@@ -25,7 +25,7 @@ import {
 import type { Trigger as _RawTrigger } from "terse-types"
 import { z } from "zod"
 
-import { buildSdkRequestHeaders, resolveApiBaseUrl, resolveTerseBackendUrl } from "./backendRequest.js"
+import { buildSdkRequestHeaders, resolveApiBaseUrl, resolveProjectKey, resolveTerseBackendUrl } from "./backendRequest.js"
 import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
 import { DurableOnlyError, isDurableExecution, isLocalTestRun } from "./execution.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
@@ -276,10 +276,7 @@ export class Terse {
             )
         }
 
-        const apiKey = process.env.TERSE_API_KEY
-        if (!apiKey) {
-            throw new Error("TERSE_API_KEY is not set. " + "Add it to your .env file or export it before starting your server.")
-        }
+        const projectKey = resolveProjectKey()
 
         await verifyIncomingRequest(signingSecret, headers, JSON.stringify(body))
 
@@ -310,7 +307,7 @@ export class Terse {
         }
 
         const apiBaseUrl = resolveTerseBackendUrl()
-        const session = await openSessionStream(apiBaseUrl, apiKey)
+        const session = await openSessionStream(apiBaseUrl, projectKey)
 
         try {
             const inputEvent = createSDKTrigger(event)
@@ -478,12 +475,8 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     private static async buildHeaders(): Promise<Record<string, string>> {
-        const apiKey = process.env.TERSE_API_KEY
-        if (!apiKey) {
-            throw new Error("TERSE_API_KEY environment variable is not set.")
-        }
         const headers: Record<string, string> = {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${resolveProjectKey()}`,
             "Content-Type": "application/json",
             Accept: "text/event-stream"
         }

@@ -2,7 +2,7 @@ import chalk from "chalk"
 import fs from "fs"
 import type { SerializedEvent } from "terse-types"
 
-import { readApiKeyOrBail, readRunId, resolveEventFromRunId } from "../api.js"
+import { readRunId, readRuntimeKeyOrBail, resolveEventFromRunId } from "../api.js"
 import { CliError } from "../cliError.js"
 import { getLocalHoistMarker } from "../cliVersion.js"
 import { parseEventFixtureJson } from "../eventFixture.js"
@@ -29,10 +29,7 @@ export async function run(jobName?: string, eventJson?: string, eventFile?: stri
         }
     }
 
-    const apiKey = readApiKeyOrBail({
-        title: "Error: Not authenticated.",
-        detail: "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment."
-    })
+    const apiKey = readRuntimeKeyOrBail()
     const runId = readRunId()
 
     const { job } = await loadJob(provider, jobName, entryFile)

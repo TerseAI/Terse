@@ -880,7 +880,8 @@ export type SdkCreateProjectRequestBody = z.infer<typeof sdkCreateProjectRequest
 export const sdkCreateProjectResponseBodySchema = z.object({
     projectId: z.string(),
     name: z.string(),
-    signingSecret: z.string().optional()
+    signingSecret: z.string().optional(),
+    projectApiKey: z.string().optional()
 })
 export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
 
@@ -927,6 +928,13 @@ export const projectRotateApiKeyResponseSchema = z.object({
     projectApiKey: z.string()
 })
 export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
+
+/** Only carries the credentials the call just created; an already-provisioned project returns an empty object. */
+export const projectEnsureCredentialsResponseSchema = z.object({
+    signingSecret: z.string().optional(),
+    projectApiKey: z.string().optional()
+})
+export type ProjectEnsureCredentialsResponse = z.infer<typeof projectEnsureCredentialsResponseSchema>
 
 export const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
 export const MAX_SECRET_VALUE_BYTES = 32 * 1024

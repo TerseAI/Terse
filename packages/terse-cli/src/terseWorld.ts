@@ -5,7 +5,7 @@ import path from "path"
 import { ApiRoutes } from "terse-types"
 import type { SdkJobSuspendRequestBody, SdkJobSuspendResponseBody } from "terse-types"
 
-import { fetchWithAuth, readApiKeyOrBail } from "./api.js"
+import { fetchWithAuth, readRuntimeKeyOrBail } from "./api.js"
 
 export type TerseWorld = LocalWorld
 
@@ -47,7 +47,7 @@ async function scheduleTerseTimer(name: ValidQueueName, opts: QueueOptions): Pro
         throw new Error(`scheduleTerseTimer requires a positive delaySeconds (queue "${name}").`)
     }
 
-    const apiKey = readApiKeyOrBail()
+    const apiKey = readRuntimeKeyOrBail()
     const body: SdkJobSuspendRequestBody = {
         runId,
         name,

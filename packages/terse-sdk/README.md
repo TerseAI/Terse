@@ -72,4 +72,5 @@ Full reference: [docs.useterse.ai/reference/typescript-sdk](https://docs.useters
 
 | Variable | Description |
 |---|---|
-| `TERSE_API_KEY` | Required at runtime. The CLI also stores a key per user via `terse login`. |
+| `TERSE_PROJECT_KEY` | Required at runtime. The control plane injects it into Terse Cloud sandboxes; on a self-hosted data plane, `terse attach` prints one to put in your server's environment. |
+| `TERSE_API_KEY` | Your user token, used by the CLI. Stored per user by `terse login`. Local runs fall back to it when no project key is set. |

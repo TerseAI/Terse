@@ -2,6 +2,13 @@ import { resolveRunIdentity } from "./runIdentity/index.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
+export class MissingProjectKeyError extends Error {
+    constructor() {
+        super("TERSE_PROJECT_KEY is not set. Add it to your .env file or export it before starting your server.")
+        this.name = "MissingProjectKeyError"
+    }
+}
+
 export function resolveTerseBackendUrl(): string {
     return process.env.TERSE_BACKEND_URL || "https://api.useterse.ai"
 }
@@ -10,13 +17,17 @@ export function resolveApiBaseUrl(): string {
     return resolveTerseBackendUrl()
 }
 
-export async function buildSdkRequestHeaders(): Promise<Record<string, string>> {
-    const apiKey = process.env.TERSE_API_KEY
-    if (!apiKey) {
-        throw new Error("TERSE_API_KEY environment variable is not set.")
+export function resolveProjectKey(): string {
+    const projectKey = process.env.TERSE_PROJECT_KEY
+    if (!projectKey) {
+        throw new MissingProjectKeyError()
     }
+    return projectKey
+}
+
+export async function buildSdkRequestHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${resolveProjectKey()}`,
         "Content-Type": "application/json",
         Accept: "text/event-stream"
     }

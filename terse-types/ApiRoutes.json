@@ -154,6 +154,7 @@
         "LIST": "/projects",
         "BY_ID": "/projects/:id",
         "DEPLOYS": "/projects/:id/deploys",
+        "ENSURE_CREDENTIALS": "/projects/:id/ensure-credentials",
         "ROTATE_SIGNING_SECRET": "/projects/:id/rotate-signing-secret",
         "ROTATE_API_KEY": "/projects/:id/rotate-api-key"
     },

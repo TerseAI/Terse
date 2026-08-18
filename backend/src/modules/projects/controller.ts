@@ -11,6 +11,7 @@ import {
     ProjectNotFoundError,
     createProject,
     deleteProjectForOrganization,
+    ensureSelfHostedCredentials,
     getProjectDeploysForOrganization,
     getProjectDetail,
     listProjects,
@@ -108,14 +109,27 @@ export async function handleRotateProjectApiKey(req: Request, res: Response) {
     }
 }
 
+export async function handleEnsureProjectCredentials(req: Request, res: Response) {
+    const user = requireUser(req, res)
+    if (!user) return
+    const { id } = req.params
+    if (!id) return res.status(400).json({ error: "Project id is required" })
+    try {
+        const response = await ensureSelfHostedCredentials(id, user.organizationId, user.id)
+        res.status(200).json(response)
+    } catch (error) {
+        return handleServiceError(error, res, { projectId: id, userId: user.id })
+    }
+}
+
 export async function handleProjectCreate(req: Request, res: Response) {
     const user = requireUser(req, res)
     if (!user) return
     const { name, selfHosted } = sdkCreateProjectRequestBodySchema.parse(req.body)
     try {
-        const { projectId, name: projectName, signingSecret } = await createProject(name, user.organizationId, selfHosted)
+        const { projectId, name: projectName, signingSecret, projectApiKey } = await createProject(name, user.organizationId, user.id, selfHosted)
         analytics.capture(user.id, AnalyticsEvent.PROJECT_CREATED, { projectId, projectName, organizationId: user.organizationId })
-        const response: SdkCreateProjectResponseBody = { projectId, name: projectName, signingSecret }
+        const response: SdkCreateProjectResponseBody = { projectId, name: projectName, signingSecret, projectApiKey }
         res.status(200).json(response)
     } catch (error) {
         return handleServiceError(error, res, { name, userId: user.id })

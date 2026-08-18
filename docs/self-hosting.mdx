@@ -37,7 +37,7 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
         terse attach
         ```
 
-        This authenticates, links the repo to a Terse project, writes `terse.config.json` with the self-hosted data plane enabled, and prints `TERSE_API_KEY` and `TERSE_SIGNING_SECRET` once. Save them into your data plane environment before you start the server. See [`terse attach`](/reference/cli#terse-attach) for the full flow.
+        This authenticates, links the repo to a Terse project, writes `terse.config.json` with the self-hosted data plane enabled, and prints `TERSE_PROJECT_KEY` and `TERSE_SIGNING_SECRET` once. Save both into your data plane environment before you start the server. See [`terse attach`](/reference/cli#terse-attach) for the full flow.
     </Step>
     <Step title="Point Terse at your server">
         Set `remoteServerUrl` to the public URL of your service:
@@ -52,19 +52,21 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
         ```
     </Step>
     <Step title="Set the required environment variables">
-        Your data plane needs two values that `terse attach` prints once. Copy them into your environment before you start the server:
+        Your data plane needs two values, both printed by `terse attach` exactly once. If your project predates them, the next `terse attach` generates and prints whichever is missing. Lost them? Re-run `terse attach` and confirm the regeneration prompt, or rotate from the project's page in the dashboard. Copy them into your environment before you start the server:
 
         ```bash .env
-        TERSE_API_KEY=terse_...
+        TERSE_PROJECT_KEY=terse_...
         TERSE_SIGNING_SECRET=whsec_...
         ```
 
         | Variable               | Purpose                                                                                                                  |
         | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-        | `TERSE_API_KEY`        | Authenticates outbound calls from your data plane to the control plane: opening a session, executing tools, requesting approvals. `terse attach` prints the organization key. The first `terse deploy` may print a project-scoped key — replace the organization key with that when it appears. |
+        | `TERSE_PROJECT_KEY`    | Authenticates outbound calls from your data plane to the control plane: opening a session, executing tools, requesting approvals. Printed by `terse attach` when it creates the project. It is scoped to runtime routes for this project, so it cannot deploy, manage integrations, or read organization settings. |
         | `TERSE_SIGNING_SECRET` | Verifies that incoming trigger requests really came from the control plane. Used as the HMAC key for the `x-terse-signature` header. Printed by `terse attach`; `terse deploy` reprints it only if the project was created without one. |
 
-        <Warning>Treat `TERSE_SIGNING_SECRET` like any other webhook secret. Never log it, never ship it to the client, never commit it. If you lose it, rotate from the dashboard after `remoteServerUrl` is set.</Warning>
+        <Note>`TERSE_API_KEY` is a separate credential: your own user token, used by the CLI to deploy and manage integrations. Keep it out of your data plane environment, and do not put a project key in it.</Note>
+
+        <Warning>Treat `TERSE_SIGNING_SECRET` like any other webhook secret. Never log it, never ship it to the client, never commit it. If you lose it, rotate it from the project's page in the dashboard.</Warning>
 
         Load both into your process the same way you load any other secret — `.env` for local development, your platform's secret store in production.
     </Step>
@@ -93,7 +95,7 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
         app.listen(3000)
         ```
 
-        The side-effect import of `./terse.jobs` (or whichever entry file holds your `createJob()` calls) is what makes the registry available at request time. `handleTrigger` reads `TERSE_SIGNING_SECRET` and `TERSE_API_KEY` from the process env on every call. See [`Terse`](/reference/typescript-sdk#terse) in the SDK reference for the full client surface.
+        The side-effect import of `./terse.jobs` (or whichever entry file holds your `createJob()` calls) is what makes the registry available at request time. `handleTrigger` reads `TERSE_SIGNING_SECRET` and `TERSE_PROJECT_KEY` from the process env on every call. See [`Terse`](/reference/typescript-sdk#terse) in the SDK reference for the full client surface.
     </Step>
     <Step title="Deploy your code, then sync workflows">
         Ship your data plane the way you normally ship Node code (Render, Fly, ECS, your own Kubernetes, …). Once it's reachable at `remoteServerUrl`, run:

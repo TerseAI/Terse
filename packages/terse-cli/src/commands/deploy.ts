@@ -140,6 +140,7 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
 
             printSelfHostedCredentials({
                 apiKey: deployResult.projectApiKey,
+                apiKeyVar: "TERSE_PROJECT_KEY",
                 apiKeyLabel: "project API key",
                 // A project created by stale-project recovery already carries its secret, so the
                 // deploy that follows never reports one as newly generated.

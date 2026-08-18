@@ -62,6 +62,30 @@ export function readApiKeyOrBail(options?: { title?: string; detail?: string }):
     })
 }
 
+/** Credential for job execution, which only ever reaches `/sdk/*`. Sandboxes get a project-scoped key;
+ * local runs fall back to the operator key because no project key exists on a laptop. Assigns
+ * `TERSE_PROJECT_KEY` so the SDK, which executes jobs in this process, has one env var to read. */
+export function readRuntimeKey(): string | null {
+    ensureDotenvLoaded()
+
+    const runtimeKey = process.env.TERSE_PROJECT_KEY || readApiKey()
+    if (!runtimeKey) return null
+
+    process.env.TERSE_PROJECT_KEY = runtimeKey
+    return runtimeKey
+}
+
+export function readRuntimeKeyOrBail(): string {
+    const runtimeKey = readRuntimeKey()
+    if (runtimeKey) return runtimeKey
+
+    throw new CliError("not_authenticated", "Not authenticated. Run `terse auth login` first.", {
+        detail: "Run `terse auth login` to authenticate, or set TERSE_API_KEY in your environment.",
+        actionRequired: true,
+        exitCode: ErrorCode.BAD_ARGUMENTS
+    })
+}
+
 export function readRunId(): string | null {
     return readEnvVar("TERSE_RUN_ID")
 }

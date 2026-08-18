@@ -487,6 +487,8 @@ Work down this ladder and stop at the first rung that can do the job:
 
 **Credentials** for anything past rung 2 go through project secrets: store with `terse secrets add <NAME>`, read `process.env.<NAME>` at the top of the job, and fail fast with a custom error when missing.
 
+Terse's own two credentials are not your business to set. `TERSE_PROJECT_KEY` is what running job code authenticates with; the platform injects it into every run, and `terse run` / `terse test` derive it locally, so never write it into `.env` or a secret. `TERSE_API_KEY` is the user token the CLI uses to deploy, generate, and manage integrations; it never belongs in a data plane's environment, and a project key must never be put in it. `terse secrets` refuses any name starting with `TERSE_`, so if you find yourself reaching for one of these, the design is wrong.
+
 Scalar credentials (API keys, tokens) are stored as-is. File-shaped credentials — a Google service account JSON, a PEM key, anything multiline — are stored base64-encoded under a `_B64`-suffixed name, never pasted raw: raw JSON mangles the interactive prompt and turns shell quoting into a minefield, while base64 makes the value one safe token. Ask the user for the file's path and encode straight from the file, so the plaintext never appears in the conversation:
 
 ```bash

@@ -1,7 +1,15 @@
 import fs from "node:fs"
 import path from "node:path"
-import { ApiRoutes, sdkCreateProjectResponseBodySchema, terseProjectConfigSchema } from "terse-types"
-import type { TerseProjectConfig } from "terse-types"
+import {
+    ApiRoutes,
+    buildRoute,
+    projectEnsureCredentialsResponseSchema,
+    projectRotateApiKeyResponseSchema,
+    projectRotateSigningSecretResponseSchema,
+    sdkCreateProjectResponseBodySchema,
+    terseProjectConfigSchema
+} from "terse-types"
+import type { ProjectEnsureCredentialsResponse, TerseProjectConfig } from "terse-types"
 
 import { fetchWithAuth } from "./api.js"
 import { CliError } from "./cliError.js"
@@ -51,8 +59,23 @@ export function writeProjectConfig(cwd: string, config: TerseProjectConfig): voi
     fs.writeFileSync(filePath, serialized)
 }
 
-export async function createRemoteProject(apiKey: string, name: string, selfHosted?: boolean): Promise<{ config: TerseProjectConfig; signingSecret?: string }> {
+export async function rotateRemoteProjectApiKey(apiKey: string, projectId: string): Promise<string> {
+    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ROTATE_API_KEY, { id: projectId }), apiKey, {}, "POST")
+    return projectRotateApiKeyResponseSchema.parse(response).projectApiKey
+}
+
+export async function rotateRemoteProjectSigningSecret(apiKey: string, projectId: string): Promise<string> {
+    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, { id: projectId }), apiKey, {}, "POST")
+    return projectRotateSigningSecretResponseSchema.parse(response).signingSecret
+}
+
+export async function ensureRemoteProjectCredentials(apiKey: string, projectId: string): Promise<ProjectEnsureCredentialsResponse> {
+    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ENSURE_CREDENTIALS, { id: projectId }), apiKey, {}, "POST")
+    return projectEnsureCredentialsResponseSchema.parse(response)
+}
+
+export async function createRemoteProject(apiKey: string, name: string, selfHosted?: boolean): Promise<{ config: TerseProjectConfig; signingSecret?: string; projectApiKey?: string }> {
     const response = await fetchWithAuth(ApiRoutes.SDK.CREATE_PROJECT, apiKey, { name, selfHosted }, "POST")
     const parsed = sdkCreateProjectResponseBodySchema.parse(response)
-    return { config: { projectId: parsed.projectId, name: parsed.name }, signingSecret: parsed.signingSecret }
+    return { config: { projectId: parsed.projectId, name: parsed.name }, signingSecret: parsed.signingSecret, projectApiKey: parsed.projectApiKey }
 }
