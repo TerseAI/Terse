@@ -6,7 +6,7 @@ import { FrontendRoutes, buildRoute } from "terse-types"
 import type { ProjectDeploy, ProjectDeployStatus } from "terse-types/types"
 
 import { FetchErrorCard } from "@/components/FetchErrorCard"
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -50,17 +50,16 @@ function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
     return (
         <TooltipProvider delayDuration={200}>
             <PageFrame>
-                <header>
-                    <Button asChild variant="ghost" size="sm" className="text-muted-foreground -ml-2 mb-2 h-7 px-2">
-                        <Link to={projectHref}>
+                <PageHeader className="flex items-center gap-1">
+                    <Button asChild variant="ghost" size="icon" className="text-muted-foreground -ml-2 size-8 shrink-0">
+                        <Link to={projectHref} aria-label={`Back to ${isLoadingProject ? "project" : (project?.name ?? "project")}`}>
                             <ArrowLeft className="h-3.5 w-3.5" />
-                            {isLoadingProject ? "Project" : (project?.name ?? "Project")}
                         </Link>
                     </Button>
-                    <h1 className="text-foreground text-[clamp(1.5rem,2vw,1.75rem)] leading-tight font-semibold tracking-tight">Deployments</h1>
-                </header>
+                    <PageTitle>Deployments</PageTitle>
+                </PageHeader>
 
-                <section className="mt-6">
+                <section>
                     <div className="mb-3 flex items-baseline justify-between gap-4">
                         <SectionLabel className="mb-0">All deployments</SectionLabel>
                         <span className="text-muted-foreground text-[11px] tabular-nums">

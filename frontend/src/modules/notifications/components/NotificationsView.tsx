@@ -13,7 +13,7 @@ import { type SentNotification, SentNotificationEventType, SentNotificationStatu
 import z from "zod"
 
 import { MultiSelect } from "@/components/MultiSelect"
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import StatusBadge from "@/components/StatusBadge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -170,7 +170,9 @@ function NotificationsPage() {
 
     return (
         <PageFrame>
-            <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">Inbox</h1>
+            <PageHeader>
+                <PageTitle>Inbox</PageTitle>
+            </PageHeader>
 
             {hasDestinationData && (
                 <AddNotificationDestination

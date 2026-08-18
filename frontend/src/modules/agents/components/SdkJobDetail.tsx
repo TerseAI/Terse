@@ -10,7 +10,7 @@ import type { AgentTrigger, SdkJobServerCheckResponse } from "terse-types"
 import type { SdkSampleEventRef as SampleEventRef } from "terse-types"
 import type { Agent } from "terse-types/types"
 
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -160,11 +160,13 @@ export default function SdkJobDetail({ agentId }: { agentId: string }) {
                     onDelete={() => setShowDeleteDialog(true)}
                 />
 
-                <TriggersSection triggers={triggers} />
+                <div className="space-y-6">
+                    <TriggersSection triggers={triggers} />
 
-                {hasSelfHostedJobUrl ? <EnvironmentSection remoteServerUrl={agent.metadata?.remoteServerUrl ?? null} isVerifying={isVerifyingServer} onVerify={handleVerifyServer} /> : null}
+                    {hasSelfHostedJobUrl ? <EnvironmentSection remoteServerUrl={agent.metadata?.remoteServerUrl ?? null} isVerifying={isVerifyingServer} onVerify={handleVerifyServer} /> : null}
 
-                <ActivitySection agentId={agentId} pendingCount={pendingCount} selectedTab={selectedTab} onTabChange={setSelectedTab} />
+                    <ActivitySection agentId={agentId} pendingCount={pendingCount} selectedTab={selectedTab} onTabChange={setSelectedTab} />
+                </div>
             </PageFrame>
 
             <Dialog open={showDeleteDialog} onOpenChange={open => !open && setShowDeleteDialog(false)}>
@@ -224,10 +226,10 @@ function JobHeading({
     const triggerLabel = !canTrigger ? "Requires an active job with at least one trigger" : isFetchingSamples ? "Fetching events…" : "Trigger now"
 
     return (
-        <header>
+        <PageHeader>
             <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
                 <div className="min-w-0 flex-1">
-                    <h1 className="text-foreground truncate text-2xl leading-tight font-semibold tracking-tight">{agent.name}</h1>
+                    <PageTitle className="truncate">{agent.name}</PageTitle>
 
                     <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
                         <JobActiveToggle isActive={agent.isActive} isPending={isTogglingActive} onToggle={onToggleActive} />
@@ -248,7 +250,7 @@ function JobHeading({
                     </div>
                 </div>
 
-                <div className="flex h-8 shrink-0 items-center">
+                <div className="flex h-12 shrink-0 items-center">
                     <div className="border-border/60 flex h-8 items-center rounded-md border">
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -286,7 +288,7 @@ function JobHeading({
                     </div>
                 </div>
             </div>
-        </header>
+        </PageHeader>
     )
 }
 
@@ -310,7 +312,7 @@ function JobActiveToggle({ isActive, isPending, onToggle }: { isActive: boolean;
 
 function TriggersSection({ triggers }: { triggers: AgentTrigger[] }) {
     return (
-        <section className="mt-6">
+        <section>
             <SectionLabel>Triggers</SectionLabel>
             {triggers.length === 0 ? (
                 <TriggersEmpty />
@@ -336,7 +338,7 @@ function TriggersEmpty() {
 
 function EnvironmentSection({ remoteServerUrl, isVerifying, onVerify }: { remoteServerUrl: string | null; isVerifying: boolean; onVerify: () => void }) {
     return (
-        <section className="mt-6">
+        <section>
             <div className="mb-3 flex items-center justify-between gap-4">
                 <SectionLabel className="mb-0">Environment</SectionLabel>
                 <Button variant="outline" size="sm" onClick={onVerify} disabled={isVerifying}>
@@ -355,7 +357,7 @@ function EnvironmentSection({ remoteServerUrl, isVerifying, onVerify }: { remote
 
 function ActivitySection({ agentId, pendingCount, selectedTab, onTabChange }: { agentId: string; pendingCount: number; selectedTab: number; onTabChange: (i: number) => void }) {
     return (
-        <section className="mt-6">
+        <section>
             <TabGroup selectedIndex={selectedTab} onChange={onTabChange}>
                 <TabList className="border-border/60 flex items-baseline gap-6 border-b">
                     <StreamTab label="Activity" />

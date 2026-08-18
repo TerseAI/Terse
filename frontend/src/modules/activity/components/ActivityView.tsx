@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom"
 
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ACTIVITY_OVERVIEW_VIEW, ACTIVITY_VIEW_PARAM } from "@/modules/activity/activityRoutes"
 import { useAllRunHistory } from "@/modules/runHistory/api/useAllRunHistory"
@@ -84,7 +84,9 @@ export default function ActivityPage() {
 
     return (
         <PageFrame>
-            <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">Activity</h1>
+            <PageHeader>
+                <PageTitle>Activity</PageTitle>
+            </PageHeader>
 
             <Tabs value={activeTab} onValueChange={selectTab}>
                 <TabsList variant="line" className="mb-6 justify-start gap-6">

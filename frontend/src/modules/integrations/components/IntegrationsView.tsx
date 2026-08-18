@@ -4,7 +4,7 @@ import { FileText } from "lucide-react"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import { IntegrationType } from "terse-types/Integrations"
 
-import { PageFrame } from "@/components/PageFrame"
+import { PageFrame, PageHeader, PageTitle } from "@/components/PageFrame"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { useIntegrations } from "@/modules/integrations/api/useIntegrations"
@@ -21,8 +21,10 @@ function IntegrationPage() {
 
     return (
         <PageFrame>
+            <PageHeader>
+                <PageTitle>Integrations</PageTitle>
+            </PageHeader>
             <div className="space-y-10">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Integrations</h1>
                 <section>
                     <h2 className="text-foreground mb-3 text-sm font-medium">Active</h2>
                     {isLoading ? (

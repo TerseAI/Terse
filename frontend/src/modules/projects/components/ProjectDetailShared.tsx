@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { FrontendRoutes, buildRoute } from "terse-types"
 import type { ProjectDeploy, ProjectDeployJobsDelta, ProjectDeployStatus, ProjectDetailResponse, ProjectSecretSummary } from "terse-types/types"
 
+import { PageHeader, PageTitle } from "@/components/PageFrame"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -30,8 +31,8 @@ export function Heading({ project, activeDeploy, latestDeploy }: { project: Pick
     const isDeploying = latestDeploy?.status === "IN_PROGRESS"
 
     return (
-        <header>
-            <h1 className="text-foreground text-[clamp(1.625rem,2.5vw,2rem)] leading-tight font-semibold tracking-tight">{project.name}</h1>
+        <PageHeader>
+            <PageTitle className="text-[clamp(1.625rem,2.5vw,2rem)] leading-tight">{project.name}</PageTitle>
 
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 {isDeploying ? (
@@ -56,7 +57,7 @@ export function Heading({ project, activeDeploy, latestDeploy }: { project: Pick
                     </Badge>
                 )}
             </div>
-        </header>
+        </PageHeader>
     )
 }
 
@@ -511,7 +512,7 @@ export function ProjectSectionsTabs({
     secretsExtra?: ReactNode
 }) {
     return (
-        <Tabs defaultValue="jobs" className="mt-8">
+        <Tabs defaultValue="jobs">
             <TabsList variant="line" className="mb-6 justify-start gap-6">
                 <TabsTrigger variant="line" value="jobs" className="flex-none px-0 after:inset-x-0">
                     Jobs

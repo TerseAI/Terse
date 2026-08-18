@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom"
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react"
 import { Shield, User2, Users } from "lucide-react"
 
-import { PageColumn } from "@/components/PageFrame"
+import { PageColumn, PageHeader, PageTitle } from "@/components/PageFrame"
 import { useAuth } from "@/modules/auth/context/AuthProvider"
 import { UserTable } from "@/modules/users/components/UserManagement"
 import { UserProfileWidget } from "@/modules/users/components/UserProfileWidget"
@@ -29,8 +29,10 @@ export default function ProfilePage() {
     const selectedIndex = Math.max(0, visibleTabs.indexOf(tabParam as (typeof TAB_KEYS)[number]))
 
     return (
-        <PageColumn className="flex h-full flex-col px-4 pt-6 pb-10">
-            <h1 className="mb-5 text-xl font-semibold tracking-tight text-foreground">Account Settings</h1>
+        <PageColumn className="flex h-full flex-col px-4 pt-3 pb-10">
+            <PageHeader>
+                <PageTitle>Account Settings</PageTitle>
+            </PageHeader>
             <TabGroup
                 selectedIndex={selectedIndex}
                 onChange={index => setSearchParams(previous => ({ ...Object.fromEntries(previous), tab: visibleTabs[index] }), { replace: true })}
