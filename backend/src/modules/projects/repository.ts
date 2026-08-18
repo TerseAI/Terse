@@ -54,13 +54,6 @@ export async function findProjectForRotation(projectId: string, organizationId: 
     })
 }
 
-export async function findProjectForCredentialEnsure(projectId: string, organizationId: string) {
-    return db().projects.findFirst({
-        where: { id: projectId, organization_id: organizationId },
-        select: { id: true, name: true, remote_server_url: true, signing_secret: true, api_tokens: { select: { id: true }, take: 1 } }
-    })
-}
-
 export async function findFirstActiveRunForAutomations(automationIds: string[], statuses: string[]) {
     return db().run_history_records.findFirst({
         where: {

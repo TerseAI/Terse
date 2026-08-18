@@ -929,23 +929,12 @@ export const projectRotateApiKeyResponseSchema = z.object({
 })
 export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
 
-/**
- * `selfHosted` carries the caller's intent to run this project on its own data plane. It is the
- * only signal for a project attached before self-hosted projects were given credentials at
- * creation: with no remote server URL or signing secret yet, the control plane cannot tell it
- * from a managed one — and minting credentials for a managed project would flip it to self-hosted.
- */
-export const projectEnsureCredentialsRequestSchema = z.object({
-    selfHosted: z.boolean().optional()
+/** Marks a project self-hosted and replaces both data plane credentials, returning them exactly once. */
+export const projectEnableSelfHostedResponseSchema = z.object({
+    signingSecret: z.string(),
+    projectApiKey: z.string()
 })
-export type ProjectEnsureCredentialsRequest = z.infer<typeof projectEnsureCredentialsRequestSchema>
-
-/** Only carries the credentials the call just created; an already-provisioned project returns an empty object. */
-export const projectEnsureCredentialsResponseSchema = z.object({
-    signingSecret: z.string().optional(),
-    projectApiKey: z.string().optional()
-})
-export type ProjectEnsureCredentialsResponse = z.infer<typeof projectEnsureCredentialsResponseSchema>
+export type ProjectEnableSelfHostedResponse = z.infer<typeof projectEnableSelfHostedResponseSchema>
 
 export const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
 export const MAX_SECRET_VALUE_BYTES = 32 * 1024

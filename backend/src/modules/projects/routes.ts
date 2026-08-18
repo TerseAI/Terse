@@ -4,7 +4,7 @@ import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
 import {
-    handleEnsureProjectCredentials,
+    handleEnableSelfHosted,
     handleGetProjectById,
     handleGetProjectDeploys,
     handleListProjects,
@@ -22,7 +22,7 @@ router.get("/", limit, auth, handleListProjects)
 router.get("/:id", limit, auth, handleGetProjectById)
 router.delete("/:id", limit, auth, handleProjectDelete)
 router.get("/:id/deploys", limit, auth, handleGetProjectDeploys)
-router.post("/:id/ensure-credentials", limit, auth, handleEnsureProjectCredentials)
+router.post("/:id/enable-self-hosted", limit, auth, handleEnableSelfHosted)
 router.post("/:id/rotate-signing-secret", limit, auth, handleRotateProjectSigningSecret)
 router.post("/:id/rotate-api-key", limit, auth, handleRotateProjectApiKey)
 

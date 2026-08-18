@@ -1,15 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
-import {
-    ApiRoutes,
-    buildRoute,
-    projectEnsureCredentialsResponseSchema,
-    projectRotateApiKeyResponseSchema,
-    projectRotateSigningSecretResponseSchema,
-    sdkCreateProjectResponseBodySchema,
-    terseProjectConfigSchema
-} from "terse-types"
-import type { ProjectEnsureCredentialsRequest, ProjectEnsureCredentialsResponse, TerseProjectConfig } from "terse-types"
+import { ApiRoutes, buildRoute, projectDetailResponseSchema, projectEnableSelfHostedResponseSchema, sdkCreateProjectResponseBodySchema, terseProjectConfigSchema } from "terse-types"
+import type { ProjectDetailResponse, ProjectEnableSelfHostedResponse, TerseProjectConfig } from "terse-types"
 
 import { fetchWithAuth } from "./api.js"
 import { CliError } from "./cliError.js"
@@ -59,22 +51,14 @@ export function writeProjectConfig(cwd: string, config: TerseProjectConfig): voi
     fs.writeFileSync(filePath, serialized)
 }
 
-export async function rotateRemoteProjectApiKey(apiKey: string, projectId: string): Promise<string> {
-    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ROTATE_API_KEY, { id: projectId }), apiKey, {}, "POST")
-    return projectRotateApiKeyResponseSchema.parse(response).projectApiKey
+export async function fetchRemoteProjectDetail(apiKey: string, projectId: string): Promise<ProjectDetailResponse> {
+    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.BY_ID, { id: projectId }), apiKey)
+    return projectDetailResponseSchema.parse(response)
 }
 
-export async function rotateRemoteProjectSigningSecret(apiKey: string, projectId: string): Promise<string> {
-    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ROTATE_SIGNING_SECRET, { id: projectId }), apiKey, {}, "POST")
-    return projectRotateSigningSecretResponseSchema.parse(response).signingSecret
-}
-
-export async function ensureRemoteProjectCredentials(apiKey: string, projectId: string): Promise<ProjectEnsureCredentialsResponse> {
-    // Attach is the command that opts a project into self-hosting, so this call always declares
-    // that intent; without it the control plane refuses to mint credentials for a managed project.
-    const body: ProjectEnsureCredentialsRequest = { selfHosted: true }
-    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ENSURE_CREDENTIALS, { id: projectId }), apiKey, body, "POST")
-    return projectEnsureCredentialsResponseSchema.parse(response)
+export async function enableRemoteSelfHosted(apiKey: string, projectId: string): Promise<ProjectEnableSelfHostedResponse> {
+    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ENABLE_SELF_HOSTED, { id: projectId }), apiKey, {}, "POST")
+    return projectEnableSelfHostedResponseSchema.parse(response)
 }
 
 export async function createRemoteProject(apiKey: string, name: string, selfHosted?: boolean): Promise<{ config: TerseProjectConfig; signingSecret?: string; projectApiKey?: string }> {

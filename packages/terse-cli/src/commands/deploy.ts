@@ -139,8 +139,6 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             console.log(chalk.dim(`  Server URL: ${remoteServerUrl}`))
 
             printSelfHostedCredentials({
-                // A project created by stale-project recovery already carries both credentials, so
-                // the deploy that follows reports neither as newly generated.
                 apiKey: deployResult.projectApiKey ?? recovery?.projectApiKey,
                 apiKeyVar: "TERSE_PROJECT_KEY",
                 apiKeyLabel: "project API key",

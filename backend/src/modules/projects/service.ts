@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { RunHistoryStatus } from "terse-types/RunHistoryTypes"
-import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectsListResponse } from "terse-types/types"
+import { ProjectDeploy, ProjectDeployUser, ProjectDeploysResponse, ProjectDetailResponse, ProjectEnableSelfHostedResponse, ProjectsListResponse } from "terse-types/types"
 
 import logger from "../../common/logger"
 import { generateWebhookSecret } from "../../common/webhookSecrets"
@@ -19,7 +19,6 @@ import {
     findFirstActiveRunForAutomations,
     findProjectBasic,
     findProjectDeploys,
-    findProjectForCredentialEnsure,
     findProjectForRotation,
     findProjectWithAutomations,
     findProjectWithDetail,
@@ -172,31 +171,20 @@ export async function rotateProjectApiKey(projectId: string, organizationId: str
     return { projectApiKey: rawToken }
 }
 
-export async function ensureSelfHostedCredentials(projectId: string, organizationId: string, userId: string, selfHosted?: boolean): Promise<EnsureCredentialsResult> {
-    const project = await findProjectForCredentialEnsure(projectId, organizationId)
+export async function enableSelfHostedProject(projectId: string, organizationId: string, userId: string): Promise<ProjectEnableSelfHostedResponse> {
+    const project = await findProjectForRotation(projectId, organizationId)
     if (!project) throw new ProjectNotFoundError()
-    // A signing secret is itself a self-hosted marker, so minting one for a project that is not
-    // self-hosted (and whose caller did not ask to make it so) would silently move a managed
-    // project onto the self-hosted UI and rotation paths.
-    if (!isProjectSelfHosted(project) && !selfHosted) throw new ProjectBadRequestError("Data plane credentials are only used by self-hosted projects.")
 
-    const needsSigningSecret = !project.signing_secret
-    const needsProjectApiKey = project.api_tokens.length === 0
-    if (!needsSigningSecret && !needsProjectApiKey) return {}
-
-    const result = await db().$transaction(async tx => {
-        const signingSecret = needsSigningSecret ? generateWebhookSecret() : undefined
-        if (signingSecret) await updateProjectSigningSecret(projectId, signingSecret, tx)
-
-        if (!needsProjectApiKey) return { signingSecret }
-
-        const { rawToken } = await createProjectScopedToken({ projectId, projectName: project.name, organizationId, createdByUserId: userId }, tx)
-        return { signingSecret, projectApiKey: rawToken }
+    const signingSecret = generateWebhookSecret()
+    const { rawToken } = await db().$transaction(async tx => {
+        await updateProjectSigningSecret(projectId, signingSecret, tx)
+        await tx.api_tokens.deleteMany({ where: { project_id: projectId, organization_id: organizationId } })
+        return createProjectScopedToken({ projectId, projectName: project.name, organizationId, createdByUserId: userId }, tx)
     })
 
     emitCacheInvalidationWithWildcard(organizationId, "project", projectId)
-    logger.info("Self-hosted project credentials backfilled", { projectId, organizationId, userId, mintedSigningSecret: needsSigningSecret, mintedProjectApiKey: needsProjectApiKey })
-    return result
+    logger.info("Self-hosted project credentials issued", { projectId, organizationId, userId })
+    return { signingSecret, projectApiKey: rawToken }
 }
 
 export async function createProject(name: string, organizationId: string, userId: string, selfHosted?: boolean): Promise<CreateProjectResult> {
@@ -221,11 +209,6 @@ export async function createProject(name: string, organizationId: string, userId
 
 function isProjectSelfHosted(project: { remote_server_url: string | null; signing_secret: string | null }): boolean {
     return !!project.remote_server_url || !!project.signing_secret
-}
-
-export type EnsureCredentialsResult = {
-    signingSecret?: string
-    projectApiKey?: string
 }
 
 export type CreateProjectResult = {

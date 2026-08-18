@@ -3,21 +3,13 @@ import { confirm, select } from "@inquirer/prompts"
 import chalk from "chalk"
 import fs from "node:fs"
 import path from "node:path"
-import type { ProjectEnsureCredentialsResponse, SdkOrganizationsListResponse, TerseProjectConfig } from "terse-types"
+import type { ProjectEnableSelfHostedResponse, SdkOrganizationsListResponse, TerseProjectConfig } from "terse-types"
 
 import { fetchWithAuth } from "../api.js"
 import { CliError, ErrorCode } from "../cliError.js"
 import { type NonInteractiveOpts, isNonInteractive } from "../cliHelpers.js"
 import { createSpinner, logNextSteps, printSelfHostedCredentials } from "../cliUi.js"
-import {
-    PROJECT_CONFIG_FILENAME,
-    createRemoteProject,
-    ensureRemoteProjectCredentials,
-    readProjectConfig,
-    rotateRemoteProjectApiKey,
-    rotateRemoteProjectSigningSecret,
-    writeProjectConfig
-} from "../projectConfig.js"
+import { PROJECT_CONFIG_FILENAME, createRemoteProject, enableRemoteSelfHosted, fetchRemoteProjectDetail, readProjectConfig, writeProjectConfig } from "../projectConfig.js"
 import type { LanguageProvider } from "../providers/LanguageProvider.js"
 import { resolveProvider } from "../providers/resolveProvider.js"
 
@@ -35,8 +27,6 @@ export async function attach(provider: LanguageProvider = resolveProvider(), opt
 
     const existingUserName = await getProjectAttachedUserName(cwd)
 
-    // Regenerating is the one reason to re-run attach on a project that is already set up, so the
-    // flag has to survive this shortcut or it can never reach the code it was added for.
     if (existingUserName && !opts?.regenerateCredentials) {
         log.step(`Already set up for ${chalk.bold(existingUserName)}`)
         log.info("This project already has valid CLI credentials, so attach does not need to run again.")
@@ -84,19 +74,13 @@ export async function attach(provider: LanguageProvider = resolveProvider(), opt
     }
 
     if (attachApiKey && existingConfig) {
-        const backfilled = await backfillCredentials(attachApiKey, existingConfig.projectId)
-        enableSelfHostedMode(cwd, existingConfig)
-        signingSecret = backfilled.signingSecret
-        projectApiKey = backfilled.projectApiKey
-
-        const regenerated = await regenerateExistingCredentials(attachApiKey, existingConfig.projectId, {
-            hasProjectApiKey: !projectApiKey,
-            hasSigningSecret: !signingSecret,
+        const credentials = await provisionSelfHostedCredentials(attachApiKey, existingConfig.projectId, {
             requested: opts?.regenerateCredentials,
             nonInteractive
         })
-        projectApiKey = regenerated.projectApiKey ?? projectApiKey
-        signingSecret = regenerated.signingSecret ?? signingSecret
+        enableSelfHostedMode(cwd, existingConfig)
+        signingSecret = credentials?.signingSecret
+        projectApiKey = credentials?.projectApiKey
     }
 
     printSelfHostedCredentials({ apiKey: projectApiKey, apiKeyVar: "TERSE_PROJECT_KEY", apiKeyLabel: "project API key", signingSecret })
@@ -154,11 +138,6 @@ async function pickOrgForAttach(currentApiKey: string, nonInteractive: boolean):
     return resolveApiKeyForOrg(chosen.id, chosen.name, currentApiKey)
 }
 
-/**
- * Attach is the command that opts a project into self-hosting, so a config written by `terse init`
- * (managed) is converted here. Keeping the file in sync with the control plane matters: the
- * credentials attach provisions mark the project self-hosted server-side.
- */
 function enableSelfHostedMode(cwd: string, config: TerseProjectConfig): void {
     if (config.selfHosted) return
 
@@ -167,70 +146,66 @@ function enableSelfHostedMode(cwd: string, config: TerseProjectConfig): void {
     log.info(`This project now runs on your own data plane. Set ${chalk.cyan("remoteServerUrl")} in ${PROJECT_CONFIG_FILENAME} before running ${chalk.cyan("terse deploy")}.`)
 }
 
-async function backfillCredentials(apiKey: string, projectId: string): Promise<ProjectEnsureCredentialsResponse> {
+/**
+ * The two credentials are only ever issued as a pair, so a project missing either one gets both
+ * replaced. Anything the project already holds stops working the moment this runs, which is why an
+ * already-provisioned project needs explicit consent.
+ */
+async function provisionSelfHostedCredentials(apiKey: string, projectId: string, params: { requested?: boolean; nonInteractive: boolean }): Promise<ProjectEnableSelfHostedResponse | null> {
+    const detail = await fetchProjectDetail(apiKey, projectId)
+    const holdsCredentials = detail.hasSigningSecret || detail.hasProjectApiKey
+
+    if (holdsCredentials && !params.requested && !(await confirmReplacement(params.nonInteractive))) return null
+
+    const s = createSpinner()
+    s.start(holdsCredentials ? "Replacing data plane credentials" : "Generating data plane credentials")
+    try {
+        const credentials = await enableRemoteSelfHosted(apiKey, projectId)
+        s.stop(holdsCredentials ? "Replaced the data plane credentials" : "Generated the data plane credentials")
+        return credentials
+    } catch (error) {
+        s.stop("Could not generate the data plane credentials")
+        throw toCredentialsError(error)
+    }
+}
+
+async function fetchProjectDetail(apiKey: string, projectId: string) {
     const s = createSpinner()
     s.start("Checking data plane credentials")
     try {
-        const result = await ensureRemoteProjectCredentials(apiKey, projectId)
-        s.stop(Object.keys(result).length > 0 ? "Generated the missing data plane credentials" : "Data plane credentials already provisioned")
-        return result
+        const detail = await fetchRemoteProjectDetail(apiKey, projectId)
+        s.stop("Checked data plane credentials")
+        return detail
     } catch (error) {
         s.stop("Could not check data plane credentials")
         throw toCredentialsError(error)
     }
 }
 
-/** An empty response means "already provisioned", so a swallowed failure would read as success and
- * send the caller on to regenerate credentials whose state was never established. */
+async function confirmReplacement(nonInteractive: boolean): Promise<boolean> {
+    const preamble = "This project already has data plane credentials, and Terse cannot show them again."
+    if (nonInteractive) {
+        log.info(`${preamble} Re-run with ${chalk.cyan("--regenerate-credentials")} to replace them.`)
+        return false
+    }
+
+    const approved = await confirm({ message: `${preamble} Replace them now?`, default: false })
+    if (!approved) {
+        log.info("Kept the existing credentials.")
+        return false
+    }
+
+    log.warn("The current credentials stop working immediately. Update your data plane before its next trigger.")
+    return true
+}
+
+/** An "already provisioned" answer is indistinguishable from a swallowed failure, so this never
+ * degrades to a warning: attach would go on to report credentials it never confirmed. */
 function toCredentialsError(error: unknown): CliError {
     return new CliError("credentials_unavailable", "Could not provision this project's data plane credentials.", {
         detail: `${(error as Error).message}\n  Re-run \`terse attach\` once the control plane is reachable.`,
         exitCode: ErrorCode.GENERIC_ERROR
     })
-}
-
-/**
- * Credentials can only be shown once, so a re-run offers to replace whichever ones already exist.
- * Regenerating revokes the current values immediately, which is why it needs explicit consent.
- */
-async function regenerateExistingCredentials(
-    apiKey: string,
-    projectId: string,
-    params: { hasProjectApiKey: boolean; hasSigningSecret: boolean; requested?: boolean; nonInteractive: boolean }
-): Promise<ProjectEnsureCredentialsResponse> {
-    const targets = [params.hasProjectApiKey ? "project API key" : null, params.hasSigningSecret ? "signing secret" : null].filter((label): label is string => label !== null)
-    if (targets.length === 0) return {}
-
-    const labels = targets.join(" and ")
-    if (!params.requested) {
-        if (params.nonInteractive) {
-            const pronoun = targets.length > 1 ? "them" : "it"
-            log.info(`This project already has a ${labels}, and Terse cannot show ${pronoun} again. Re-run with ${chalk.cyan("--regenerate-credentials")} to replace ${pronoun}.`)
-            return {}
-        }
-
-        const approved = await confirm({
-            message: `This project already has a ${labels}, and Terse cannot show ${targets.length > 1 ? "them" : "it"} again. Regenerate now?`,
-            default: false
-        })
-        if (!approved) {
-            log.info(`Kept the existing ${labels}.`)
-            return {}
-        }
-        log.warn(`The current ${labels} stop${targets.length > 1 ? "" : "s"} working immediately. Update your data plane before its next trigger.`)
-    }
-
-    const s = createSpinner()
-    s.start(`Regenerating ${labels}`)
-    try {
-        const projectApiKey = params.hasProjectApiKey ? await rotateRemoteProjectApiKey(apiKey, projectId) : undefined
-        const signingSecret = params.hasSigningSecret ? await rotateRemoteProjectSigningSecret(apiKey, projectId) : undefined
-        s.stop(`Regenerated ${labels}`)
-        return { projectApiKey, signingSecret }
-    } catch (error) {
-        s.stop(`Could not regenerate the ${labels}: ${(error as Error).message}`)
-        return {}
-    }
 }
 
 function canGenerateFromCurrentDirectory(provider: LanguageProvider, cwd: string): boolean {

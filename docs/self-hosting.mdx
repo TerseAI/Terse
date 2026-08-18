@@ -9,7 +9,8 @@ In the Hybrid deployment, Terse Cloud runs the control plane and you run the dat
 If you want to run the control plane in your network as well, see [Self-hosting the control plane](/self-hosting-control-plane). For an overview of all three deployment options, see [Hosting overview](/hosting).
 
 <Note>
-    Self-hosting the data plane is about where handlers execute, not about running your own event processor. Trigger ingestion, webhook URLs, scheduling, integration auth, signing, retries, and run history all stay on the Terse Cloud control plane.
+    Self-hosting the data plane is about where handlers execute, not about running your own event processor. Trigger ingestion, webhook URLs, scheduling, integration auth, signing, retries, and run
+    history all stay on the Terse Cloud control plane.
 </Note>
 
 ## When the Hybrid deployment is the right choice
@@ -52,7 +53,7 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
         ```
     </Step>
     <Step title="Set the required environment variables">
-        Your data plane needs two values, both printed by `terse attach` exactly once. If your project predates them, the next `terse attach` generates and prints whichever is missing. Lost them? Re-run `terse attach` and confirm the regeneration prompt, or rotate from the project's page in the dashboard. Copy them into your environment before you start the server:
+        Your data plane needs two values, both printed by `terse attach` exactly once. They are always issued as a pair: if your project is missing either one, the next `terse attach` replaces both. Lost them? Re-run `terse attach` and confirm the replacement prompt, or rotate from the project's page in the dashboard. Copy them into your environment before you start the server:
 
         ```bash .env
         TERSE_PROJECT_KEY=terse_...
@@ -62,7 +63,7 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
         | Variable               | Purpose                                                                                                                  |
         | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
         | `TERSE_PROJECT_KEY`    | Authenticates outbound calls from your data plane to the control plane: opening a session, executing tools, requesting approvals. Printed by `terse attach` when it creates the project. It is scoped to runtime routes for this project, so it cannot deploy, manage integrations, or read organization settings. |
-        | `TERSE_SIGNING_SECRET` | Verifies that incoming trigger requests really came from the control plane. Used as the HMAC key for the `x-terse-signature` header. Printed by `terse attach`; `terse deploy` reprints it only if the project was created without one. |
+        | `TERSE_SIGNING_SECRET` | Verifies that incoming trigger requests really came from the control plane. Used as the HMAC key for the `x-terse-signature` header. Printed by `terse attach` alongside the project key. |
 
         <Note>`TERSE_API_KEY` is a separate credential: your own user token, used by the CLI to deploy and manage integrations. Keep it out of your data plane environment, and do not put a project key in it.</Note>
 
@@ -125,14 +126,14 @@ If none of those apply, the default [Managed deployment](/hosting#managed) is si
 
 ## Who runs what
 
-| Your data plane                                       | Terse Cloud control plane                              |
-| ----------------------------------------------------- | ------------------------------------------------------ |
-| The Node process that loads `src/terse.jobs.ts`       | Trigger ingestion from integrations (Attio, Slack, …)  |
-| Every `createJob()` registration                      | Webhook URLs, signing, and delivery                    |
-| Every `onTrigger` handler closure                     | Cron and interval scheduling                           |
-| Every `agent.tools.*` call your handler makes         | Integration auth and tool definitions                  |
-| Internal clients, DB drivers, or SDKs you import      | Run history, action traces, and approvals              |
-| The HTTP endpoint that receives signed payloads       | The dashboard                                          |
+| Your data plane                                  | Terse Cloud control plane                             |
+| ------------------------------------------------ | ----------------------------------------------------- |
+| The Node process that loads `src/terse.jobs.ts`  | Trigger ingestion from integrations (Attio, Slack, …) |
+| Every `createJob()` registration                 | Webhook URLs, signing, and delivery                   |
+| Every `onTrigger` handler closure                | Cron and interval scheduling                          |
+| Every `agent.tools.*` call your handler makes    | Integration auth and tool definitions                 |
+| Internal clients, DB drivers, or SDKs you import | Run history, action traces, and approvals             |
+| The HTTP endpoint that receives signed payloads  | The dashboard                                         |
 
 When a trigger fires, the control plane signs the event and POSTs it to your data plane. Your server verifies the signature with `handleTrigger`, looks up the registered workflow by name, and runs your `onTrigger` closure in your process. Tool calls, agent runs, and approvals flow back to the control plane so Activity, Notifications, and history all keep working.
 

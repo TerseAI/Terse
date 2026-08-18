@@ -90,7 +90,7 @@ What it does:
 
 1. Authenticates with the control plane, prompting you to pick which organization owns this project when your account belongs to more than one
 2. Creates a Terse project if the repo is not already linked
-3. Prints the `TERSE_PROJECT_KEY` and `TERSE_SIGNING_SECRET` your data plane needs when it creates the project, and generates and prints whichever is missing on a project that predates them. Save them now; they will not be shown again
+3. Prints the `TERSE_PROJECT_KEY` and `TERSE_SIGNING_SECRET` your data plane needs. The two are always issued together, so a project holding neither gets both generated, and a project already holding either one is asked before both are replaced. Save them now; they will not be shown again
 4. Offers to regenerate any credential the project already has, since neither value can be shown twice. Declining changes nothing
 5. Writes `terse.config.json` with the self-hosted data plane enabled
 6. Reviews existing integrations and, in an interactive terminal, lets you connect more
@@ -100,9 +100,9 @@ Re-running `terse attach` on an attached project is safe and repeatable: it neve
 
 Options:
 
-| Flag                       | Description                                                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `-y, --non-interactive`    | Fail fast instead of prompting. Requires a prior `terse auth login`. Implied automatically when stdin is not a TTY. |
+| Flag                       | Description                                                                                                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `-y, --non-interactive`    | Fail fast instead of prompting. Requires a prior `terse auth login`. Implied automatically when stdin is not a TTY.                       |
 | `--regenerate-credentials` | Replace the project key and signing secret the project already has, without prompting. The only way to regenerate them non-interactively. |
 
 Before you run `terse deploy`, set `remoteServerUrl` in `terse.config.json` to the URL where your Terse SDK server is running.
@@ -256,7 +256,7 @@ What happens:
 Data plane targets:
 
 - Managed (Terse Cloud data plane): the CLI zips the current project directory, uploads it, and the control plane builds a source image (including the durable workflow bundle when needed) before running workflows on Terse Cloud sandboxes
-- Self-hosted data plane: the CLI reads `remoteServerUrl` from `terse.config.json` and configures the control plane to call your own server instead of uploading source. `terse attach` prints `TERSE_PROJECT_KEY` and `TERSE_SIGNING_SECRET` when it creates the project. Deploy prints either one only for a project created without it, so a project that predates them gets its credentials from the next `terse attach` or `terse deploy`.
+- Self-hosted data plane: the CLI reads `remoteServerUrl` from `terse.config.json` and configures the control plane to call your own server instead of uploading source. `terse attach` is where `TERSE_PROJECT_KEY` and `TERSE_SIGNING_SECRET` are issued and printed. Deploy prints either one only as a fallback, for a project that somehow reached deploy without it.
 
 ### `terse build`
 
