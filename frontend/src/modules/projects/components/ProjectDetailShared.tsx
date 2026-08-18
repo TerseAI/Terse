@@ -26,15 +26,7 @@ import { formatDuration, formatTimestamp } from "@/utils/time"
 
 const DEPLOYS_PREVIEW_LIMIT = 5
 
-export function Heading({
-    project,
-    activeDeploy,
-    latestDeploy
-}: {
-    project: Pick<ProjectDetailResponse, "name">
-    activeDeploy: ProjectDeploy | null
-    latestDeploy: ProjectDeploy | null
-}) {
+export function Heading({ project, activeDeploy, latestDeploy }: { project: Pick<ProjectDetailResponse, "name">; activeDeploy: ProjectDeploy | null; latestDeploy: ProjectDeploy | null }) {
     const isDeploying = latestDeploy?.status === "IN_PROGRESS"
 
     return (

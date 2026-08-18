@@ -23,7 +23,7 @@ export default function RunHistoryEmptyState({ hasActiveFilters, onClearAll }: P
                 <EmptyDescription>
                     {hasActiveFilters
                         ? "Try adjusting your filters or search query."
-                        : "Every job run lands here— successes, failures, approvals, and skips— so you can audit what happened and open the chat transcript when available."}
+                        : "Job runs show up here. Open one to see the transcript."}
                 </EmptyDescription>
             </EmptyHeader>
             {hasActiveFilters ? (

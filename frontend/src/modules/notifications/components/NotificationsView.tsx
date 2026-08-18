@@ -252,9 +252,7 @@ function NotificationsPage() {
 
                         <TabsContent value="destinations" className="mt-0">
                             {shouldShowDestinationsLoading && <LoadingNotificationChannelList />}
-                            {!shouldShowDestinationsLoading && (isDestinationsError || notificationDestinations === undefined) && (
-                                <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />
-                            )}
+                            {!shouldShowDestinationsLoading && (isDestinationsError || notificationDestinations === undefined) && <ErrorNotificationChannelList onRetry={() => mutateDestinations()} />}
                             {!shouldShowDestinationsLoading && !isDestinationsError && notificationDestinations !== undefined && (
                                 <NotificationChannelList
                                     notificationDestinations={notificationDestinations}
@@ -275,7 +273,11 @@ function NotificationsPage() {
 }
 
 function InboxTabBadge({ count }: { count: number }) {
-    return <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">{count > 99 ? "99+" : count}</span>
+    return (
+        <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">
+            {count > 99 ? "99+" : count}
+        </span>
+    )
 }
 
 function NotificationChannelList({
