@@ -337,7 +337,7 @@ const ROTATE: Record<RotateKind, RotateConfig> = {
     },
     api_key: {
         label: "project API key",
-        envVar: "TERSE_API_KEY",
+        envVar: "TERSE_PROJECT_KEY",
         icon: <KeyRound className="text-primary h-4 w-4" />,
         rotate: async id => (await BackendProvider.rotateProjectApiKey(id)).projectApiKey,
         confirmDescription:

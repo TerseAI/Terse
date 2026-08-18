@@ -872,13 +872,16 @@ export const sdkInputResponsePayloadSchema = z.object({
 export type SdkInputResponsePayload = z.infer<typeof sdkInputResponsePayloadSchema>
 
 export const sdkCreateProjectRequestBodySchema = z.object({
-    name: z.string().min(1)
+    name: z.string().min(1),
+    selfHosted: z.boolean().optional()
 })
 export type SdkCreateProjectRequestBody = z.infer<typeof sdkCreateProjectRequestBodySchema>
 
 export const sdkCreateProjectResponseBodySchema = z.object({
     projectId: z.string(),
-    name: z.string()
+    name: z.string(),
+    signingSecret: z.string().optional(),
+    projectApiKey: z.string().optional()
 })
 export type SdkCreateProjectResponseBody = z.infer<typeof sdkCreateProjectResponseBodySchema>
 
@@ -925,6 +928,13 @@ export const projectRotateApiKeyResponseSchema = z.object({
     projectApiKey: z.string()
 })
 export type ProjectRotateApiKeyResponse = z.infer<typeof projectRotateApiKeyResponseSchema>
+
+/** Marks a project self-hosted and replaces both data plane credentials, returning them exactly once. */
+export const projectEnableSelfHostedResponseSchema = z.object({
+    signingSecret: z.string(),
+    projectApiKey: z.string()
+})
+export type ProjectEnableSelfHostedResponse = z.infer<typeof projectEnableSelfHostedResponseSchema>
 
 export const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
 export const MAX_SECRET_VALUE_BYTES = 32 * 1024

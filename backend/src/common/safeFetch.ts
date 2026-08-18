@@ -16,8 +16,8 @@ export async function safeFetch(validated: ValidatedRemoteUrl, init?: SafeFetchI
                           callback(new Error(`safeFetch: refused to connect to ${hostname}; only ${validated.hostname} was validated`), "", 0)
                           return
                       }
-                      const family = net.isIPv4(validated.pinnedAddress!) ? 4 : 6
-                      callback(null, validated.pinnedAddress!, family)
+                      const address = validated.pinnedAddress!
+                      callback(null, [{ address, family: net.isIPv4(address) ? 4 : 6 }])
                   }
               }
           })

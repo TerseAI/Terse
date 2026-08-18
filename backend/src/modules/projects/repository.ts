@@ -3,6 +3,7 @@ import { RunHistoryStatus as PrismaRunHistoryStatus } from "@prisma/client"
 
 import { getInputConfigInclude } from "../../common/prismaIncludes"
 import { db } from "../../loaders/prisma"
+import { PrismaTransaction } from "../../types/prisma"
 
 export async function findProjectsForOrganization(organizationId: string) {
     return db().projects.findMany({
@@ -49,7 +50,7 @@ export async function findProjectBasic(projectId: string, organizationId: string
 export async function findProjectForRotation(projectId: string, organizationId: string) {
     return db().projects.findFirst({
         where: { id: projectId, organization_id: organizationId },
-        select: { remote_server_url: true, name: true }
+        select: { remote_server_url: true, signing_secret: true, name: true }
     })
 }
 
@@ -67,13 +68,13 @@ export async function deleteProject(projectId: string): Promise<void> {
     await db().projects.delete({ where: { id: projectId } })
 }
 
-export async function updateProjectSigningSecret(projectId: string, signingSecret: string): Promise<void> {
-    await db().projects.update({ where: { id: projectId }, data: { signing_secret: signingSecret } })
+export async function updateProjectSigningSecret(projectId: string, signingSecret: string, tx?: PrismaTransaction): Promise<void> {
+    await (tx ?? db()).projects.update({ where: { id: projectId }, data: { signing_secret: signingSecret } })
 }
 
-export async function createProjectRow(organizationId: string, name: string) {
-    return db().projects.create({
-        data: { name, organization_id: organizationId }
+export async function createProjectRow(organizationId: string, name: string, signingSecret?: string, tx?: PrismaTransaction) {
+    return (tx ?? db()).projects.create({
+        data: { name, organization_id: organizationId, signing_secret: signingSecret }
     })
 }
 

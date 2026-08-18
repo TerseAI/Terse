@@ -44,7 +44,7 @@ my-project/
   .gitignore
 ```
 
-`terse auth login` during init stores CLI credentials in your **user config**, not in the project folder. Copy **`.env.example`** to **`.env`** when you want `TERSE_API_KEY` (or other secrets) available to your app or tooling as environment variables.
+`terse auth login` during init stores CLI credentials in your **user config**, not in the project folder, so **`.env.example`** starts empty: copy it to **`.env`** and add whatever your own code needs. Neither Terse credential belongs there. Your workflow code receives a project-scoped `TERSE_PROJECT_KEY` automatically on every run, and the CLI reads `TERSE_API_KEY` from your user config. See [API key resolution](/reference/cli#api-key-resolution).
 
 In a coding agent with the Terse skills installed, you can also describe what you want (for example, `/terse-create build a workflow that summarizes new PRs and posts to Slack`) and let the agent scaffold, write, test, and deploy for you.
 

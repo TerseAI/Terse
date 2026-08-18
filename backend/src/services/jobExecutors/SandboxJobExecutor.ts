@@ -88,6 +88,9 @@ export class SandboxJobExecutor implements JobExecutor {
                 // Make sure to keep this first as the sandbox env,
                 // so that the following env variables take precedence.
                 ...projectSecretValues,
+                TERSE_PROJECT_KEY: sandboxApiKey,
+                // Images from deploys that predate TERSE_PROJECT_KEY bake an SDK that only reads
+                // TERSE_API_KEY. Drop this once every active project has redeployed.
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,

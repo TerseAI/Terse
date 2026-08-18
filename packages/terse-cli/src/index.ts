@@ -6,7 +6,7 @@ import { Command } from "commander"
 import { CliError, emitCliError, isCliError, setErrorOutputJson } from "./cliError.js"
 import { NonInteractiveOpts, collectKeyValue, parseIntFlag } from "./cliHelpers.js"
 import { getCliVersion } from "./cliVersion.js"
-import { attach } from "./commands/attach.js"
+import { type AttachOpts, attach } from "./commands/attach.js"
 import { loginAndPersist, logout } from "./commands/auth.js"
 import { authOrgList, authOrgSwitch } from "./commands/authOrg.js"
 import { authStatus } from "./commands/authStatus.js"
@@ -96,7 +96,8 @@ program
     .command("attach")
     .description("Add Terse to an existing project (self-hosted)")
     .option(...NON_INTERACTIVE_OPTION)
-    .action(async (opts?: NonInteractiveOpts) => {
+    .option("--regenerate-credentials", "Replace the project key and signing secret this project already has")
+    .action(async (opts?: AttachOpts) => {
         await attach(resolveProvider(), opts)
     })
 

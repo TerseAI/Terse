@@ -54,6 +54,21 @@ export function createRunIndicator(title: string) {
     }
 }
 
+export function printSelfHostedCredentials(args: { apiKey?: string; apiKeyVar?: SelfHostedKeyVar; apiKeyLabel?: string; signingSecret?: string }): void {
+    const { apiKey, signingSecret, apiKeyVar = "TERSE_API_KEY", apiKeyLabel = "API key" } = args
+    if (!apiKey && !signingSecret) return
+
+    const labels: string[] = []
+    if (apiKey) labels.push(apiKeyLabel)
+    if (signingSecret) labels.push("signing secret")
+
+    console.log(chalk.yellow(`\n  ${chalk.bold(`New ${labels.join(" and ")} generated.`)} Save now, will not be shown again.`))
+    console.log(`\n  Add to your ${chalk.bold(".env")} file:\n`)
+    if (apiKey) console.log(`${apiKeyVar}=${apiKey}`)
+    if (signingSecret) console.log(`TERSE_SIGNING_SECRET=${signingSecret}`)
+    console.log("")
+}
+
 export function logNextSteps(steps: string[]): void {
     steps.forEach((step, index) => {
         log.step(`${index + 1}. ${step}`)
@@ -101,3 +116,5 @@ class StaticSpinner implements SpinnerResult {
         return this.cancelled
     }
 }
+
+export type SelfHostedKeyVar = "TERSE_API_KEY" | "TERSE_PROJECT_KEY"

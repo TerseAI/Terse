@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
-import { ApiRoutes, sdkCreateProjectResponseBodySchema, terseProjectConfigSchema } from "terse-types"
-import type { TerseProjectConfig } from "terse-types"
+import { ApiRoutes, buildRoute, projectDetailResponseSchema, projectEnableSelfHostedResponseSchema, sdkCreateProjectResponseBodySchema, terseProjectConfigSchema } from "terse-types"
+import type { ProjectDetailResponse, ProjectEnableSelfHostedResponse, TerseProjectConfig } from "terse-types"
 
 import { fetchWithAuth } from "./api.js"
 import { CliError } from "./cliError.js"
@@ -51,8 +51,18 @@ export function writeProjectConfig(cwd: string, config: TerseProjectConfig): voi
     fs.writeFileSync(filePath, serialized)
 }
 
-export async function createRemoteProject(apiKey: string, name: string): Promise<TerseProjectConfig> {
-    const response = await fetchWithAuth(ApiRoutes.SDK.CREATE_PROJECT, apiKey, { name }, "POST")
+export async function fetchRemoteProjectDetail(apiKey: string, projectId: string): Promise<ProjectDetailResponse> {
+    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.BY_ID, { id: projectId }), apiKey)
+    return projectDetailResponseSchema.parse(response)
+}
+
+export async function enableRemoteSelfHosted(apiKey: string, projectId: string): Promise<ProjectEnableSelfHostedResponse> {
+    const response = await fetchWithAuth(buildRoute(ApiRoutes.PROJECTS.ENABLE_SELF_HOSTED, { id: projectId }), apiKey, {}, "POST")
+    return projectEnableSelfHostedResponseSchema.parse(response)
+}
+
+export async function createRemoteProject(apiKey: string, name: string, selfHosted?: boolean): Promise<{ config: TerseProjectConfig; signingSecret?: string; projectApiKey?: string }> {
+    const response = await fetchWithAuth(ApiRoutes.SDK.CREATE_PROJECT, apiKey, { name, selfHosted }, "POST")
     const parsed = sdkCreateProjectResponseBodySchema.parse(response)
-    return { projectId: parsed.projectId, name: parsed.name }
+    return { config: { projectId: parsed.projectId, name: parsed.name }, signingSecret: parsed.signingSecret, projectApiKey: parsed.projectApiKey }
 }

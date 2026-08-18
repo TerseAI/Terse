@@ -1,7 +1,7 @@
 import chalk from "chalk"
 import path from "node:path"
 
-import { readApiKeyOrBail } from "../../../api.js"
+import { readRuntimeKeyOrBail } from "../../../api.js"
 import { CliError } from "../../../cliError.js"
 import { BACKEND_URL } from "../../../config.js"
 import { isCliRunCommandEnabled } from "../../../env.js"
@@ -15,7 +15,7 @@ export const durableJobRuntime: JobRuntime = {
     async executeJob(job, runId, event, opts) {
         const isVerbose = opts?.verbose ?? true
         const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
-        const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
+        const apiKey = readRuntimeKeyOrBail()
 
         try {
             await withSession(
@@ -53,7 +53,7 @@ export const durableJobRuntime: JobRuntime = {
 async function driveResume(runId: string, opts: ResumeRunOptions | undefined, input?: ResumeHookInput): Promise<void> {
     const isVerbose = opts?.verbose ?? true
     const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
-    const apiKey = readApiKeyOrBail({ title: "TERSE_API_KEY is not set.", detail: "Please set it in your environment variables." })
+    const apiKey = readRuntimeKeyOrBail()
 
     const dataDir = resolveDataDir()
     const workflowRunId = resolveWorkflowRunId(dataDir, runId)

@@ -41,6 +41,15 @@ See the [full quickstart](https://docs.useterse.ai/quickstart) for a guided walk
 
 Full flag reference for every command: [docs.useterse.ai/reference/cli](https://docs.useterse.ai/reference/cli).
 
+## Environment
+
+| Variable | Description |
+|---|---|
+| `TERSE_API_KEY` | Your user token. Every command that talks to the control plane uses it. Resolved from the process environment (including a project `.env`) first, then from the credentials `terse auth login` stores per user. |
+| `TERSE_PROJECT_KEY` | Project-scoped token used only by running workflow code. Injected automatically in Terse Cloud sandboxes; printed by `terse attach` for a self-hosted data plane. `terse run` and `terse test` derive it from your user token, so you never set it locally. |
+| `TERSE_SIGNING_SECRET` | Self-hosted data planes only. HMAC key used to verify that incoming triggers came from the control plane. |
+| `TERSE_BACKEND_URL` | Point the CLI at a self-hosted control plane. Defaults to `https://api.useterse.ai`. |
+
 ## Self-hosted layouts
 
 If your app keeps workflow definitions outside the default entry file (`src/terse.jobs.ts`), pass `--entry-file` to `terse test` and `terse deploy`:

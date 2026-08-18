@@ -3,7 +3,15 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
-import { handleGetProjectById, handleGetProjectDeploys, handleListProjects, handleProjectDelete, handleRotateProjectApiKey, handleRotateProjectSigningSecret } from "./controller"
+import {
+    handleEnableSelfHosted,
+    handleGetProjectById,
+    handleGetProjectDeploys,
+    handleListProjects,
+    handleProjectDelete,
+    handleRotateProjectApiKey,
+    handleRotateProjectSigningSecret
+} from "./controller"
 
 const router = Router()
 
@@ -14,6 +22,7 @@ router.get("/", limit, auth, handleListProjects)
 router.get("/:id", limit, auth, handleGetProjectById)
 router.delete("/:id", limit, auth, handleProjectDelete)
 router.get("/:id/deploys", limit, auth, handleGetProjectDeploys)
+router.post("/:id/enable-self-hosted", limit, auth, handleEnableSelfHosted)
 router.post("/:id/rotate-signing-secret", limit, auth, handleRotateProjectSigningSecret)
 router.post("/:id/rotate-api-key", limit, auth, handleRotateProjectApiKey)
 
