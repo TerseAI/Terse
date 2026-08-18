@@ -1,8 +1,13 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { bumpVersion } from "./publish-release.mjs"
+import { bumpVersion, parsePorcelainPaths } from "./publish-release.mjs"
 import { parseVersion, readReleaseVersion } from "./release.mjs"
+
+test("patch releases increment only the patch version", () => {
+    assert.equal(bumpVersion("0.4.3", "patch"), "0.4.4")
+    assert.equal(bumpVersion("2.9.8", "patch"), "2.9.9")
+})
 
 test("minor releases reset the patch version", () => {
     assert.equal(bumpVersion("0.4.3", "minor"), "0.5.0")
@@ -22,4 +27,9 @@ test("release versions must be complete numeric semver versions", () => {
 
 test("all checked-in release manifests agree", () => {
     assert.match(readReleaseVersion(), /^\d+\.\d+\.\d+$/)
+})
+
+test("porcelain parsing preserves a leading dot on the first path", () => {
+    const output = " M .claude-plugin/marketplace.json\0 M packages/terse-cli/package.json\0"
+    assert.deepEqual(parsePorcelainPaths(output), [".claude-plugin/marketplace.json", "packages/terse-cli/package.json"])
 })

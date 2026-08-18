@@ -98,24 +98,28 @@ function assertCurrentVersionIsLatestRelease(version) {
 }
 
 async function askReleaseVersion(prompts, currentVersion) {
+    const patch = bumpVersion(currentVersion, "patch")
     const minor = bumpVersion(currentVersion, "minor")
     const major = bumpVersion(currentVersion, "major")
     console.log("\nRelease type:")
-    console.log(`  1) minor  v${minor}`)
-    console.log(`  2) major  v${major}`)
+    console.log(`  1) patch  v${patch}`)
+    console.log(`  2) minor  v${minor}`)
+    console.log(`  3) major  v${major}`)
 
     for (;;) {
-        const answer = (await prompts.question("Choose 1 or 2 [1]: ")).trim().toLowerCase()
-        if (!answer || answer === "1" || answer === "minor") return minor
-        if (answer === "2" || answer === "major") return major
-        console.log("Enter 1 for minor or 2 for major.")
+        const answer = (await prompts.question("Choose 1, 2, or 3 [1]: ")).trim().toLowerCase()
+        if (!answer || answer === "1" || answer === "patch") return patch
+        if (answer === "2" || answer === "minor") return minor
+        if (answer === "3" || answer === "major") return major
+        console.log("Enter 1 for patch, 2 for minor, or 3 for major.")
     }
 }
 
 export function bumpVersion(version, releaseType) {
-    const [major, minor] = version.split(".").map(Number)
+    const [major, minor, patch] = version.split(".").map(Number)
     if (releaseType === "major") return `${major + 1}.0.0`
     if (releaseType === "minor") return `${major}.${minor + 1}.0`
+    if (releaseType === "patch") return `${major}.${minor}.${patch + 1}`
     throw new Error(`Unsupported release type '${releaseType}'.`)
 }
 
@@ -204,15 +208,19 @@ function assertReleaseCommit() {
 }
 
 function assertOnlyReleaseFilesChanged() {
-    const changed = capture("git", ["status", "--porcelain", "--untracked-files=no"])
-        .split("\n")
-        .filter(Boolean)
-        .map(line => line.slice(3))
+    const changed = parsePorcelainPaths(captureRaw("git", ["status", "--porcelain=v1", "-z", "--untracked-files=no", "--no-renames"]))
     const unexpected = changed.filter(path => !releaseManifestPaths.includes(path))
     const missing = releaseManifestPaths.filter(path => !changed.includes(path))
     if (unexpected.length || missing.length) {
         throw new Error(formatChangedFilesError(unexpected, missing))
     }
+}
+
+export function parsePorcelainPaths(output) {
+    return output
+        .split("\0")
+        .filter(Boolean)
+        .map(entry => entry.slice(3))
 }
 
 function formatChangedFilesError(unexpected, missing) {
@@ -240,7 +248,11 @@ function cleanup(path) {
 }
 
 function capture(command, args) {
-    return execute(command, args, { capture: true }).trim()
+    return captureRaw(command, args).trim()
+}
+
+function captureRaw(command, args) {
+    return execute(command, args, { capture: true })
 }
 
 function run(command, args) {
