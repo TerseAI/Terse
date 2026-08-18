@@ -27,7 +27,7 @@ async function main() {
     fetchLatestMain()
     const releaseSha = assertAtLatestMain()
     const currentVersion = readReleaseVersion()
-    assertCurrentVersionWasReleased(currentVersion)
+    assertCurrentVersionIsLatestRelease(currentVersion)
 
     console.log(`\nReady to release from ${branch} at ${releaseSha.slice(0, 12)} (currently v${currentVersion}).`)
 
@@ -72,29 +72,29 @@ function assertGitHubAdmin() {
 }
 
 function fetchLatestMain() {
-    console.log(`↓ Fetching origin/${branch} and release tags...`)
-    run("git", ["fetch", "--quiet", "origin", "--tags"])
+    console.log(`↓ Fetching origin/${branch}...`)
+    run("git", ["fetch", "--no-tags", "origin", branch])
 }
 
 function assertAtLatestMain() {
     const local = capture("git", ["rev-parse", "HEAD"])
-    const remote = capture("git", ["rev-parse", `origin/${branch}`])
+    const remote = capture("git", ["rev-parse", "FETCH_HEAD"])
     if (local === remote) {
         console.log(`✓ Local ${branch} exactly matches origin/${branch}`)
         return local
     }
 
-    const [ahead, behind] = capture("git", ["rev-list", "--left-right", "--count", `HEAD...origin/${branch}`]).split(/\s+/)
+    const [ahead, behind] = capture("git", ["rev-list", "--left-right", "--count", `HEAD...${remote}`]).split(/\s+/)
     throw new Error(`Local ${branch} must exactly match origin/${branch} (ahead ${ahead}, behind ${behind}). Update it and retry.`)
 }
 
-function assertCurrentVersionWasReleased(version) {
+function assertCurrentVersionIsLatestRelease(version) {
     const expectedTag = `v${version}`
-    const latestTag = capture("git", ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD"])
+    const { tagName: latestTag } = JSON.parse(capture("gh", ["release", "view", "--json", "tagName"]))
     if (latestTag !== expectedTag) {
-        throw new Error(`Release manifests say ${expectedTag}, but the latest release tag on ${branch} is ${latestTag}.`)
+        throw new Error(`Release manifests say ${expectedTag}, but GitHub's latest release is ${latestTag}.`)
     }
-    console.log(`✓ Release manifests match ${expectedTag}`)
+    console.log(`✓ Release manifests match GitHub's latest release (${expectedTag})`)
 }
 
 async function askReleaseVersion(prompts, currentVersion) {
@@ -121,7 +121,7 @@ export function bumpVersion(version, releaseType) {
 
 function assertTagDoesNotExist(version) {
     const tag = `v${version}`
-    const existing = capture("git", ["tag", "--list", tag])
+    const existing = capture("git", ["ls-remote", "--tags", "origin", `refs/tags/${tag}`])
     if (existing) throw new Error(`Tag ${tag} already exists.`)
 }
 
