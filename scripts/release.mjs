@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { verifyWorkflowShim } from "./verifyWorkflowShim.mjs"
@@ -21,14 +21,18 @@ const manifests = [
     }
 ]
 
-const [command, rawVersion] = process.argv.slice(2)
-const version = parseVersion(rawVersion?.replace(/^v/, ""))
+export const releaseManifestPaths = manifests.map(manifest => manifest.path)
 
-if (command === "prepare") prepare(version)
-else if (command === "verify") verify(version)
-else throw new Error("Usage: release.mjs <prepare|verify> <version>")
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    const [command, rawVersion] = process.argv.slice(2)
+    const version = parseVersion(rawVersion?.replace(/^v/, ""))
 
-function prepare(nextVersion) {
+    if (command === "prepare") prepare(version)
+    else if (command === "verify") verify(version)
+    else throw new Error("Usage: release.mjs <prepare|verify> <version>")
+}
+
+export function prepare(nextVersion, { printNextSteps = true } = {}) {
     verifyWorkflowShim()
     manifests.forEach(manifest => {
         const path = join(root, manifest.path)
@@ -37,7 +41,7 @@ function prepare(nextVersion) {
         writeFileSync(path, stampVersion(source, manifest, nextVersion))
         console.log(`${manifest.path}: ${previous} → ${nextVersion}`)
     })
-    console.log(`\nOpen a PR with these changes, then publish GitHub Release v${nextVersion} from its merge commit.`)
+    if (printNextSteps) console.log(`\nOpen a PR with these changes, then publish GitHub Release v${nextVersion} from its merge commit.`)
 }
 
 // Rewrites the single version line rather than reserializing: JSON.stringify
@@ -48,7 +52,7 @@ function stampVersion(source, manifest, nextVersion) {
     return source.replace(manifest.versionLine, `$1${nextVersion}$2`)
 }
 
-function verify(expected) {
+export function verify(expected) {
     verifyWorkflowShim()
     const mismatched = manifests
         .map(manifest => {
@@ -63,11 +67,22 @@ function verify(expected) {
     process.exit(1)
 }
 
+export function readReleaseVersion() {
+    const versions = manifests.map(manifest => {
+        const json = JSON.parse(readFileSync(join(root, manifest.path), "utf8"))
+        return { path: manifest.path, version: manifest.read(json) }
+    })
+    const uniqueVersions = new Set(versions.map(result => result.version))
+    if (uniqueVersions.size === 1) return parseVersion(versions[0].version)
+
+    throw new Error(`Release manifests disagree:\n${versions.map(result => `  ${result.path}: ${result.version}`).join("\n")}`)
+}
+
 function packageManifest(path) {
     return { path, read: json => json.version, versionLine: /^( {4}"version": ")[^"]+(")/m }
 }
 
-function parseVersion(value) {
+export function parseVersion(value) {
     if (!/^\d+\.\d+\.\d+$/.test(value ?? "")) throw new Error(`Version must look like 1.2.3 (got '${value}')`)
     return value
 }

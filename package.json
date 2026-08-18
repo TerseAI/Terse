@@ -8,6 +8,7 @@
         "format": "pnpm -r run format && pnpm --dir terse-probot-app run format",
         "format:check": "pnpm -r run format:check && pnpm --dir terse-probot-app run format:check",
         "install-global": "pnpm -r --filter terse-sdk --filter terse-cli --filter create-terse run install-global",
+        "release": "node scripts/publish-release.mjs",
         "release:prepare": "node scripts/release.mjs prepare"
     },
     "devDependencies": {
