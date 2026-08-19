@@ -213,9 +213,13 @@ export class SandboxJobExecutor implements JobExecutor {
     }): Promise<SandboxCommandResult> {
         const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId, telemetry } = params
 
-        const sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, telemetry))
+        // Resuming boots the suspension snapshot itself, so the run picks up every filesystem
+        // edit it made before parking. A fresh run boots the active deploy's source image.
+        let sb: Sandbox
         if (restoreImageId) {
-            await telemetry.measure("restoreSnapshotMs", () => sandboxService.restoreDirectory(sb, runJournalDir(runId), restoreImageId))
+            sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSandboxFromImage(sandboxService, restoreImageId, projectId, runId, telemetry))
+        } else {
+            sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, telemetry))
         }
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
@@ -273,8 +277,12 @@ export class SandboxJobExecutor implements JobExecutor {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
         }
 
+        return this.createSandboxFromImage(sandboxService, source.imageId, projectId, runId, telemetry)
+    }
+
+    private async createSandboxFromImage(sandboxService: SandboxService, imageId: string, projectId: string, runId: string, telemetry: SandboxRuntimeTelemetry): Promise<Sandbox> {
         const app = await telemetry.measure("sandboxAppReadyMs", () => sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME))
-        const image = await telemetry.measure("sourceImageLoadMs", () => sandboxService.getImageFromId(source.imageId))
+        const image = await telemetry.measure("sourceImageLoadMs", () => sandboxService.getImageFromId(imageId))
         const uniqueName = runtimeSandboxUniqueName(projectId, runId)
         return telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS))
     }

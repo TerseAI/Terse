@@ -30,7 +30,7 @@ import { markRunCancelledAndInvalidate } from "../../../modules/agents/cancellat
 import { RateLimiterClient } from "../../../rateLimit/RateLimiterClient"
 import { type BillingService, billingServiceProxyForOrganization } from "../../../services/BillingService"
 import { readStashedInputResponse, registerInputRequest } from "../../../services/InputRequestService"
-import { snapshotRunJournalForSuspend } from "../../../services/resolveRunStatus"
+import { snapshotSandboxForSuspend } from "../../../services/resolveRunStatus"
 import { enqueueRunExecution } from "../../../tasks/queues/runExecutionQueue"
 import { resolveApprovalDecision, waitForApprovalDecision } from "../approval-gate/queue"
 
@@ -414,7 +414,7 @@ export async function handleJobSuspension(req: Request, res: Response) {
         delaySeconds
     })
     try {
-        const imageId = await telemetry.measure("snapshotRunJournalMs", () => snapshotRunJournalForSuspend(runId))
+        const imageId = await telemetry.measure("snapshotSandboxMs", () => snapshotSandboxForSuspend(runId))
         if (!imageId) {
             throw new Error("No live sandbox to snapshot; the run cannot be suspended")
         }

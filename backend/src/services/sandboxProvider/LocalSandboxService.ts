@@ -145,12 +145,9 @@ export class LocalSandboxService implements SandboxService<SandboxImage, LocalSa
         return existsSync(workingDir) ? new LocalSandbox(uniqueName, workingDir) : null
     }
 
-    async snapshotDirectory(_sandbox: LocalSandbox, _path: string): Promise<string> {
-        throw new Error("LocalSandboxService does not support directory snapshots")
-    }
-
-    async restoreDirectory(_sandbox: LocalSandbox, _path: string, _imageId: string): Promise<void> {
-        throw new Error("LocalSandboxService does not support directory snapshots")
+    async snapshotForSuspension(sandbox: LocalSandbox): Promise<string> {
+        const image = await sandbox.snapshotFilesystem()
+        return image.imageId
     }
 }
 

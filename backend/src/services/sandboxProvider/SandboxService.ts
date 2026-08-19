@@ -25,8 +25,7 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     getCliCachePath(sandbox: S): string
     getScratchPath(sandbox: S, filename: string): string
 
-    snapshotDirectory(sandbox: S, path: string): Promise<string>
-    restoreDirectory(sandbox: S, path: string, imageId: string): Promise<void>
+    snapshotForSuspension(sandbox: S): Promise<string>
 }
 
 export interface SandboxApp {

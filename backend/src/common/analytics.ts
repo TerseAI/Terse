@@ -162,11 +162,10 @@ export interface SandboxRuntimeLatencyProperties extends BaseEventProperties {
     sandboxAppReadyMs?: number
     sourceImageLoadMs?: number
     sandboxReadyMs?: number
-    restoreSnapshotMs?: number
     runtimeCommandMs?: number
     resolveRunStatusMs?: number
     readRunJournalMs?: number
-    snapshotRunJournalMs?: number
+    snapshotSandboxMs?: number
     terminateRunSandboxMs?: number
 }
 
@@ -177,7 +176,7 @@ export interface SandboxSuspendLatencyProperties extends BaseEventProperties {
     suspensionKind: "timer" | "input"
     success: boolean
     delaySeconds?: number
-    snapshotRunJournalMs?: number
+    snapshotSandboxMs?: number
     markRunSuspendedMs?: number
     enqueueRunResumptionMs?: number
     totalSuspendMs?: number

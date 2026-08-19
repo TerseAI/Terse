@@ -17,11 +17,10 @@ type DurationKey = Extract<
     | "sandboxAppReadyMs"
     | "sourceImageLoadMs"
     | "sandboxReadyMs"
-    | "restoreSnapshotMs"
     | "runtimeCommandMs"
     | "resolveRunStatusMs"
     | "readRunJournalMs"
-    | "snapshotRunJournalMs"
+    | "snapshotSandboxMs"
     | "terminateRunSandboxMs"
 >
 
@@ -77,7 +76,7 @@ export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
     }
 }
 
-type SandboxSuspendDurationKey = "snapshotRunJournalMs" | "markRunSuspendedMs" | "enqueueRunResumptionMs" | "totalSuspendMs"
+type SandboxSuspendDurationKey = "snapshotSandboxMs" | "markRunSuspendedMs" | "enqueueRunResumptionMs" | "totalSuspendMs"
 
 type SandboxSuspendTelemetryParams = {
     userId: string
