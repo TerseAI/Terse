@@ -26,6 +26,17 @@
 @import "@radix-ui/themes/styles.css";
 @import "@workos-inc/widgets/styles.css";
 
+@media (hover: hover) and (pointer: fine) {
+    [data-chat-turn] .chat-turn-actions {
+        opacity: 0;
+    }
+
+    [data-chat-turn]:hover .chat-turn-actions,
+    [data-chat-turn]:focus-within .chat-turn-actions {
+        opacity: 1;
+    }
+}
+
 /* React Markdown styling - simple, no prose wrapper needed */
 .react-markdown {
     overflow-wrap: break-word;

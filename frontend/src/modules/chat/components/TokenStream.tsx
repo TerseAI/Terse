@@ -77,7 +77,7 @@ function TokenStream({ text, disableAnimation = false }: { text: string; disable
     }, [text, visibleText, disableAnimation])
 
     return (
-        <div className="max-w-[72ch] text-[0.9375rem] leading-7 text-foreground text-wrap-pretty select-text">
+        <div className="min-w-0 max-w-[72ch] text-[0.9375rem] leading-7 text-foreground text-wrap-pretty select-text [overflow-wrap:anywhere]">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {visibleText}
             </ReactMarkdown>

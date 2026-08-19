@@ -37,7 +37,7 @@ export function TurnView({ turn, disableAnimation = false, onApprove, onReject, 
     if (isUser) {
         return (
             <div className="flex justify-end animate-in fade-in-0">
-                <div className="max-w-[min(86%,38rem)] rounded-2xl rounded-br-sm bg-secondary px-4 py-3 text-[0.9375rem] leading-6 text-secondary-foreground shadow-[var(--shadow-control)] sm:max-w-[78%]">
+                <div className="min-w-0 max-w-[min(86%,38rem)] rounded-2xl rounded-br-sm bg-secondary px-4 py-3 text-[0.9375rem] leading-6 text-secondary-foreground shadow-[var(--shadow-control)] [overflow-wrap:anywhere] sm:max-w-[78%]">
                     <span className="select-text">{turn.userMessage}</span>
                 </div>
             </div>
@@ -55,7 +55,7 @@ export function TurnView({ turn, disableAnimation = false, onApprove, onReject, 
     }
 
     return (
-        <div className="group/turn flex justify-start">
+        <div data-chat-turn className="group/turn flex justify-start">
             <div className="min-w-0 w-full max-w-[42rem] space-y-3">
                 {turn.units.map((unit, index) => {
                     switch (unit.kind) {
@@ -87,7 +87,7 @@ export function TurnView({ turn, disableAnimation = false, onApprove, onReject, 
                 })}
 
                 {showAssistantActions && (
-                    <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within/turn:opacity-100 sm:group-hover/turn:opacity-100">
+                    <div className="chat-turn-actions flex gap-1 opacity-100 transition-opacity">
                         <CopyButton text={textForActions} />
                         <FeedbackButtons />
                     </div>
