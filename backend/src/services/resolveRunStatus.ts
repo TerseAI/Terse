@@ -32,7 +32,7 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
             return { status: "failed", cause: new Error("Durable run failed; see the run output for details") }
         }
         case "parked_on_input": {
-            const imageId = await snapshotRunJournalForSuspend(runId, telemetry)
+            const imageId = await snapshotSandboxForSuspend(runId, telemetry)
             if (!imageId) {
                 logger.error("SDK sandbox: parked run could not be snapshotted", { runId, agentId: agent.id })
                 return { status: "failed", cause: new Error("Could not snapshot the parked run journal") }
@@ -55,9 +55,9 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
     }
 }
 
-// Snapshots a suspending run's journal directory off its live sandbox and returns the
-// resulting image id. Returns undefined when the run has no live sandbox.
-export async function snapshotRunJournalForSuspend(runId: string, telemetry?: SandboxRuntimeTelemetry): Promise<string | undefined> {
+// Snapshots a suspending run's filesystem off its live sandbox and returns the resulting
+// image id, which the resuming run boots from. Returns undefined when there is no live sandbox.
+export async function snapshotSandboxForSuspend(runId: string, telemetry?: SandboxRuntimeTelemetry): Promise<string | undefined> {
     const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
     const projectId = run?.automation?.project_id
     if (!projectId) return undefined
@@ -68,9 +68,9 @@ export async function snapshotRunJournalForSuspend(runId: string, telemetry?: Sa
     if (!sandbox) return undefined
 
     if (telemetry) {
-        return telemetry.measure("snapshotRunJournalMs", () => provider.snapshotDirectory(sandbox, runJournalDir(runId)))
+        return telemetry.measure("snapshotSandboxMs", () => provider.snapshotForSuspension(sandbox))
     }
-    return provider.snapshotDirectory(sandbox, runJournalDir(runId))
+    return provider.snapshotForSuspension(sandbox)
 }
 
 // helpers

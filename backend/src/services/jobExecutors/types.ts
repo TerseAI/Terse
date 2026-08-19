@@ -11,7 +11,7 @@ export interface JobExecutionContext {
     readonly userId: string
     readonly user: UserSession
     readonly jobName: string
-    /** Journal snapshot image to restore when resuming a suspended run. */
+    /** Filesystem snapshot image to boot when resuming a suspended run. */
     readonly restoreImageId?: string
     /** Input response to inject when resuming a run parked on a workflow hook. */
     readonly hookResume?: HookResume

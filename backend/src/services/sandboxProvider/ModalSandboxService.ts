@@ -43,14 +43,9 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return `/tmp/${filename}`
     }
 
-    async snapshotDirectory(sandbox: ModalSandbox, path: string): Promise<string> {
-        const image = await sandbox.snapshotDirectory(path)
+    async snapshotForSuspension(sandbox: ModalSandbox): Promise<string> {
+        const image = await sandbox.snapshotFilesystem()
         return image.imageId
-    }
-
-    async restoreDirectory(sandbox: ModalSandbox, path: string, imageId: string): Promise<void> {
-        const image = await this.modal.images.fromId(imageId)
-        await sandbox.mountImage(path, image)
     }
 
     async getOrCreateApp(name: string): Promise<ModalApp> {
