@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react"
+import { useId, useRef, useState } from "react"
 
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export interface ProcessOutputEvent {
@@ -17,29 +16,12 @@ interface ProcessOutputItemProps {
     events: ProcessOutputEvent[]
 }
 
-const VISIBLE_LINES = 4
-const BLURRED_LINES = 2
-const ADJ_FACTOR = 0.8 // Adjustment factor to account for spacing between lines
-
 export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
-    const [isCollapsible, setIsCollapsible] = useState(false)
     const rootRef = useRef<HTMLDivElement>(null)
-    const contentRef = useRef<HTMLPreElement>(null)
-
-    useEffect(() => {
-        const element = contentRef.current
-        if (!element) return
-
-        const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
-        const collapsedHeight = lineHeight * VISIBLE_LINES
-
-        setIsCollapsible(element.scrollHeight > collapsedHeight + 1)
-    }, [events])
+    const detailsId = useId()
 
     if (events.length === 0) return null
-
-    const isCollapsed = isCollapsible && !isExpanded
 
     // Key to preserve scroll position when collapsing/expanding the process output
     const updateExpandedState = (nextExpanded: boolean) => {
@@ -59,50 +41,42 @@ export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
         })
     }
 
+    const hasStderr = events.some(event => event.stream === "stderr")
+    const outputLabel = events[0]?.label || (hasStderr ? "Process output" : "Stdout")
+    const lineCount = events.reduce((count, event) => {
+        const content = event.content.endsWith("\n") ? event.content.slice(0, -1) : event.content
+        return content ? count + content.split("\n").length : count
+    }, 0)
+
     return (
-        <div ref={rootRef}>
-            <div className="text-sm font-medium text-muted-foreground">Stdout</div>
-            <div className="relative">
+        <div ref={rootRef} className="min-w-0">
+            <button
+                type="button"
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => updateExpandedState(!isExpanded)}
+                aria-expanded={isExpanded}
+                aria-controls={detailsId}
+                className="-ml-1 flex min-h-8 max-w-full items-center gap-1.5 rounded-md px-1 py-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            >
+                <ChevronRight className={cn("size-3.5 shrink-0 transition-transform duration-150", isExpanded && "rotate-90")} aria-hidden="true" />
+                <span className="min-w-0 truncate font-medium text-foreground/80">{outputLabel}</span>
+                <span aria-hidden="true">·</span>
+                <span className="shrink-0 tabular-nums">{lineCount === 1 ? "1 line" : `${lineCount} lines`}</span>
+                {hasStderr && <span className="shrink-0 text-danger">Errors</span>}
+            </button>
+
+            {isExpanded && (
                 <pre
-                    ref={contentRef}
-                    className={cn(
-                        "m-0 min-w-0 overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-foreground/10 px-3 py-2 font-satoshi text-sm leading-6 tracking-[0.015em] select-text transition-[max-height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                        !isExpanded && "max-h-[4lh]"
-                    )}
+                    id={detailsId}
+                    className="chat-scrollbar m-0 ml-1 mt-1 max-h-72 min-w-0 overflow-auto whitespace-pre-wrap break-words border-l border-border py-2 pl-4 pr-2 font-mono text-xs leading-5 text-foreground/75 [overflow-wrap:anywhere] select-text"
                 >
                     {events.map(event => (
-                        <span key={event.id} className={cn(event.stream === "stderr" ? "text-danger" : "text-white")}>
+                        <span key={event.id} className={cn(event.stream === "stderr" && "text-danger")}>
                             {event.content}
                         </span>
                     ))}
                 </pre>
-
-                {isCollapsed && (
-                    <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent via-background/20 to-background/80"
-                        style={{ height: `${BLURRED_LINES * ADJ_FACTOR}lh` }}
-                    />
-                )}
-
-                {isCollapsible && (
-                    <div className="absolute right-1.5 top-1.5">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onMouseDown={event => event.preventDefault()}
-                            onClick={event => {
-                                event.stopPropagation()
-                                updateExpandedState(!isExpanded)
-                            }}
-                            className="h-6 w-6 rounded-full p-0 shadow-sm"
-                            aria-label={isExpanded ? "Collapse process output" : "Expand process output"}
-                        >
-                            {isExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-                        </Button>
-                    </div>
-                )}
-            </div>
+            )}
         </div>
     )
 }

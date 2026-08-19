@@ -197,7 +197,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, onApprov
                 disabled={!hasExpandableContent}
                 aria-expanded={hasExpandableContent ? isExpanded : undefined}
                 aria-controls={hasExpandableContent ? detailsId : undefined}
-                className={`flex items-center gap-2 rounded-sm py-0.5 text-sm text-muted-foreground transition-colors disabled:opacity-100 ${hasExpandableContent ? "hover:text-foreground cursor-pointer" : "cursor-default"}`}
+                className={`-ml-2 flex min-h-8 items-center gap-2 rounded-lg px-2 py-1 text-sm text-muted-foreground transition-colors disabled:opacity-100 ${hasExpandableContent ? "cursor-pointer hover:bg-muted/60 hover:text-foreground" : "cursor-default"}`}
             >
                 {statusIcon}
                 <span className="text-left">

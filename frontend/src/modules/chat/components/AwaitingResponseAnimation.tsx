@@ -1,14 +1,13 @@
 function AwaitingResponseAnimation() {
     return (
-        <div className="my-2 flex justify-start" role="status" aria-live="polite">
+        <div className="flex h-8 items-center gap-2.5 text-sm text-muted-foreground" role="status" aria-live="polite">
             <span className="sr-only">Waiting for a response…</span>
-            <div className="rounded-md py-2" aria-hidden="true">
-                <div className="flex items-center space-x-1.5">
-                    <div className="size-1.5 animate-pulse rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
-                    <div className="size-1.5 animate-pulse rounded-full bg-muted-foreground" style={{ animationDelay: "120ms" }} />
-                    <div className="size-1.5 animate-pulse rounded-full bg-muted-foreground" style={{ animationDelay: "240ms" }} />
-                </div>
+            <div className="flex items-center gap-1" aria-hidden="true">
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" style={{ animationDelay: "140ms" }} />
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" style={{ animationDelay: "280ms" }} />
             </div>
+            <span aria-hidden="true">Working…</span>
         </div>
     )
 }

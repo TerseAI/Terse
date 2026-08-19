@@ -94,6 +94,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
 
     switch (event.type) {
         case "UserMessage":
+            stopPreviousGeneratingAssistant(next)
             return [
                 ...next,
                 {
@@ -109,6 +110,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
 
         case "TextDelta": {
             const turn = getOrCreateAssistantTurn(next, event.response_id, event.timestamp, disableAnimation)
+            markThinkingInactive(turn)
             const unit = getOrCreateUnit(turn, event.id, () => ({
                 kind: "text",
                 unitId: event.id,
@@ -122,6 +124,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
 
         case "ToolCall": {
             const turn = getOrCreateAssistantTurn(next, event.response_id, event.timestamp, disableAnimation)
+            markThinkingInactive(turn)
             const unit = getOrCreateUnit<ToolCallUnit>(turn, event.id, () => ({
                 kind: "tool_call",
                 unitId: event.id,
@@ -140,6 +143,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
 
         case "ToolApprovalRequest": {
             const turn = findTurnWithToolCall(next, event.id) ?? getOrCreateAssistantTurn(next, event.response_id, event.timestamp, disableAnimation)
+            markThinkingInactive(turn)
             const unit = getOrCreateUnit<ToolCallUnit>(turn, event.id, () => ({
                 kind: "tool_call",
                 unitId: event.id,
@@ -158,6 +162,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
 
         case "ToolApprovalResponse": {
             const turn = findTurnWithToolCall(next, event.id) ?? getOrCreateAssistantTurn(next, event.response_id, event.timestamp, disableAnimation)
+            markThinkingInactive(turn)
             const unit = getOrCreateUnit<ToolCallUnit>(turn, event.id, () => ({
                 kind: "tool_call",
                 unitId: event.id,
@@ -173,6 +178,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
 
         case "ToolCallComplete": {
             const turn = findTurnWithToolCall(next, event.id) ?? getOrCreateAssistantTurn(next, event.response_id, event.timestamp, disableAnimation)
+            markThinkingInactive(turn)
             const unit = getOrCreateUnit<ToolCallUnit>(turn, event.id, () => ({
                 kind: "tool_call",
                 unitId: event.id,
@@ -200,6 +206,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
                 event.response_id && next.some(candidate => candidate.role === "assistant" && candidate.id === event.response_id)
                     ? getOrCreateAssistantTurn(next, event.response_id, event.timestamp, disableAnimation)
                     : (findLastAssistantTurn(next) ?? getOrCreateAssistantTurn(next, event.response_id || `snippet-fallback-${event.id}`, event.timestamp, disableAnimation))
+            markThinkingInactive(turn)
             const unit = getOrCreateUnit<SnippetUnit>(turn, unitId, () => ({
                 kind: "snippet",
                 unitId,
@@ -218,6 +225,7 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
             const tailUnit = existingTailTurn?.units[existingTailTurn.units.length - 1]
             const shouldAppendToTail = !!existingTailTurn && tailUnit?.kind === "process_output" && tailUnit.label === event.label && existingTailTurn.id !== event.response_id
             const turn = shouldAppendToTail ? existingTailTurn : getOrCreateAssistantTurn(next, event.response_id, event.timestamp, disableAnimation)
+            markThinkingInactive(turn)
             const unit = getOrCreateUnit<ProcessOutputUnit>(turn, event.label, () => ({
                 kind: "process_output",
                 unitId: event.label,

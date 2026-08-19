@@ -74,9 +74,8 @@ export function AgentRow({ agent, health }: { agent: Agent; health: AgentHealth 
                                     Paused
                                 </span>
                             )}
-                            {health.status === "no_runs" && <span className="text-muted-foreground text-xs">No runs yet</span>}
                         </div>
-                        {health.lastRun && <div className="text-muted-foreground mt-0.5 text-xs tabular-nums">Last run {formatTimestamp(health.lastRun.timestamp)}</div>}
+                        <div className="text-muted-foreground mt-0.5 text-xs tabular-nums">{describeActivity(health)}</div>
                     </div>
                 </div>
 
@@ -100,6 +99,11 @@ export function AgentRow({ agent, health }: { agent: Agent; health: AgentHealth 
             </div>
         </li>
     )
+}
+
+function describeActivity(health: AgentHealth): string {
+    if (health.lastRun) return `Last run ${formatTimestamp(health.lastRun.timestamp)}`
+    return "No runs yet"
 }
 
 function RunDot({ run, agentId }: { run: RunHistoryRecordWithAgent | undefined; agentId: string }) {
