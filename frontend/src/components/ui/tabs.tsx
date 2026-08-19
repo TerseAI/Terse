@@ -25,7 +25,7 @@ const TabsList = React.forwardRef<React.ElementRef<typeof TabsPrimitive.List>, R
 TabsList.displayName = TabsPrimitive.List.displayName
 
 const tabsTriggerVariants = cva(
-    "relative inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium outline-none transition-[background-color,color,box-shadow] duration-150 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "relative inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap text-sm font-medium outline-none transition-[background-color,color,box-shadow] duration-150 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     {
         variants: {
             variant: {

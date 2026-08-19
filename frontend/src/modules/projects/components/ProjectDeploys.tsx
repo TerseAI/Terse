@@ -76,12 +76,12 @@ function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                                 placeholder="Search by id, deployer, or status…"
-                                className="h-9 pl-8"
+                                className="h-8 pl-8 max-sm:min-h-11"
                                 disabled={isLoadingDeploys}
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={v => setStatusFilter(v as DeployStatusFilter)} disabled={isLoadingDeploys}>
-                            <SelectTrigger size="sm" className="sm:w-[170px]">
+                            <SelectTrigger size="sm" className="max-sm:min-h-11 sm:w-[170px]">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -93,7 +93,7 @@ function ProjectDeploysPageInner({ projectId }: { projectId: string }) {
                             </SelectContent>
                         </Select>
                         <Select value={sort} onValueChange={v => setSort(v as DeploySortKey)} disabled={isLoadingDeploys}>
-                            <SelectTrigger size="sm" className="sm:w-[160px]">
+                            <SelectTrigger size="sm" className="max-sm:min-h-11 sm:w-[160px]">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

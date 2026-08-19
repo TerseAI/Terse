@@ -16,10 +16,14 @@ export function useIntegrations({ showOnlyForUI = false }: { showOnlyForUI?: boo
     let inactiveIntegrations = allIntegrations?.filter(integration => !integration.isActive).map(integration => integration.integrationType) ?? []
     const isLoading = !data && !error
 
-    // Don't show TERSE and CRON_JOB integrations in the UI
+    // Hide system-only integrations that do not have user-facing cards.
     if (showOnlyForUI) {
-        activeIntegrations = activeIntegrations.filter(integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB && integration !== IntegrationType.WEBHOOK)
-        inactiveIntegrations = inactiveIntegrations.filter(integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB && integration !== IntegrationType.WEBHOOK)
+        activeIntegrations = activeIntegrations.filter(
+            integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB && integration !== IntegrationType.WEBHOOK && integration !== IntegrationType.WEBMONITOR
+        )
+        inactiveIntegrations = inactiveIntegrations.filter(
+            integration => integration !== IntegrationType.TERSE && integration !== IntegrationType.CRON_JOB && integration !== IntegrationType.WEBHOOK && integration !== IntegrationType.WEBMONITOR
+        )
     }
 
     return {
