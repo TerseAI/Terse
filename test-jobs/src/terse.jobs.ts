@@ -315,15 +315,25 @@ createJob({
     triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
     durable: true,
     onTrigger: async () => {
-        const survey = await step(runClaudeCode("Summarize in two sentences what this project is."))
+        const survey = await step(surveyProjectWithClaudeCode())
 
         await log("claude code survey:", survey.text)
         await log(`turns: ${survey.turns}, cost: $${survey.costUsd}`)
 
         // The sleep suspends the run. On resume the step above replays from the
-        // journal instead of re-running Claude Code, and the follow-up picks the
-        // same Claude Code session back up.
+        // journal instead of re-running Claude Code, so the files exist after the
+        // pause only if the filesystem itself was restored.
         await sleep("2m")
+
+        const summary = await step(readMarker("claude-summary.md"))
+        const files = await step(readMarker("claude-files.txt"))
+
+        if (summary === null || files === null) {
+            throw new Error(`Claude Code's files did not survive the suspend (summary: ${summary === null}, files: ${files === null})`)
+        }
+
+        await log("claude-summary.md after resume:", summary)
+        await log("claude-files.txt after resume:", files)
 
         const followUp = await step(runClaudeCode("Now name the single riskiest file in that project and say why.", survey.sessionId))
 
@@ -400,6 +410,14 @@ async function fileSize(name: string): Promise<number> {
     return stat?.size ?? 0
 }
 
+async function surveyProjectWithClaudeCode() {
+    const summaryFile = testFilePath("claude-summary.md")
+    const filesFile = testFilePath("claude-files.txt")
+    await fs.mkdir(path.dirname(summaryFile), { recursive: true })
+
+    return runClaudeCode(`Summarize in two sentences what this project is. Write that summary to ${summaryFile}, and write the list of top-level files to ${filesFile}. Reply with the summary.`)
+}
+
 async function runClaudeCode(prompt: string, resumeSessionId?: string) {
     let text = ""
     let sessionId = resumeSessionId ?? ""
@@ -411,7 +429,7 @@ async function runClaudeCode(prompt: string, resumeSessionId?: string) {
         options: {
             model: "claude-sonnet-5",
             resume: resumeSessionId,
-            allowedTools: ["Read", "Glob", "Grep"],
+            allowedTools: ["Read", "Glob", "Grep", "Write"],
             permissionMode: "bypassPermissions",
             // Sandboxes run as root, and the CLI refuses bypassPermissions as root
             // unless it is told it is already sandboxed.
