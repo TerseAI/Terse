@@ -7,6 +7,7 @@
         "dev": "tsc --watch"
     },
     "dependencies": {
+        "@anthropic-ai/claude-agent-sdk": "^0.2.141",
         "terse-sdk": "workspace:*",
         "zod": "^4.3.6",
         "@workflow/core": "5.0.0-beta.19"

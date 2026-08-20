@@ -26,7 +26,15 @@ export async function closeDurableRuntime(): Promise<void> {
     await runtime.close()
 }
 
+// @workflow/core's formatter drops errorStack from the retry-exhaustion log as
+// redundant, but that message carries no stack of its own, so a failed step
+// prints without its cause. The debug namespace still logs the full metadata.
+function enableWorkflowStepDebugLogging(): void {
+    process.env.DEBUG ??= "workflow:step:*"
+}
+
 async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
+    enableWorkflowStepDebugLogging()
     const out = path.join(cwd, ".terse", "wf")
 
     const workflowFnByJob = isBuildFresh(out, cwd) ? loadWorkflowArtifacts(out) : await buildWorkflowArtifacts(cwd)

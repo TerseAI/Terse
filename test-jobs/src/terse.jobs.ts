@@ -1,3 +1,4 @@
+import { query } from "@anthropic-ai/claude-agent-sdk"
 import { randomFillSync } from "node:crypto"
 import fs from "node:fs/promises"
 import os from "node:os"
@@ -309,6 +310,27 @@ createJob({
     }
 })
 
+createJob({
+    name: "Basic Test - Claude Code SDK in a durable job",
+    triggers: [Triggers.schedule.cron({ expression: "0 9 * * 1" })],
+    durable: true,
+    onTrigger: async () => {
+        const survey = await step(runClaudeCode("Summarize in two sentences what this project is."))
+
+        await log("claude code survey:", survey.text)
+        await log(`turns: ${survey.turns}, cost: $${survey.costUsd}`)
+
+        // The sleep suspends the run. On resume the step above replays from the
+        // journal instead of re-running Claude Code, and the follow-up picks the
+        // same Claude Code session back up.
+        await sleep("2m")
+
+        const followUp = await step(runClaudeCode("Now name the single riskiest file in that project and say why.", survey.sessionId))
+
+        await log("claude code follow-up after resume:", followUp.text)
+    }
+})
+
 // ─────────────── helpers ───────────────
 //
 // Everything below runs inside step functions, where Node modules are available.
@@ -376,6 +398,38 @@ async function countLines(name: string): Promise<number> {
 async function fileSize(name: string): Promise<number> {
     const stat = await fs.stat(testFilePath(name)).catch(() => null)
     return stat?.size ?? 0
+}
+
+async function runClaudeCode(prompt: string, resumeSessionId?: string) {
+    let text = ""
+    let sessionId = resumeSessionId ?? ""
+    let turns = 0
+    let costUsd = 0
+
+    for await (const message of query({
+        prompt,
+        options: {
+            model: "claude-sonnet-5",
+            resume: resumeSessionId,
+            allowedTools: ["Read", "Glob", "Grep"],
+            permissionMode: "bypassPermissions",
+            // Sandboxes run as root, and the CLI refuses bypassPermissions as root
+            // unless it is told it is already sandboxed.
+            env: { ...process.env, IS_SANDBOX: "1" },
+            // The SDK reports a non-zero exit without the child's own message.
+            stderr: data => console.error("[claude-code stderr]", data)
+        }
+    })) {
+        if (message.type !== "result") continue
+
+        sessionId = message.session_id
+        turns = message.num_turns
+        costUsd = message.total_cost_usd
+        if (message.subtype !== "success") throw new Error(`Claude Code failed: ${message.subtype}`)
+        text = message.result
+    }
+
+    return { text, sessionId, turns, costUsd }
 }
 
 async function writeLargeFile(name: string, megabytes: number): Promise<number> {

@@ -10,12 +10,17 @@ import path from "node:path"
 // `scanDir` (relative to workingDir) holds the macro-transformed sources, so the
 // builder discovers the `"use workflow"` functions the job macro injected into
 // each createJob's onTrigger.
+// Packages that locate a sibling platform binary by resolving relative to their
+// own module path. Inlining them into the steps bundle moves that path to the
+// build output, where no node_modules exists, and the lookup fails at runtime.
+const EXTERNAL_PACKAGES = ["@anthropic-ai/claude-agent-sdk"]
+
 export class TerseWorkflowBuilder extends BaseBuilder {
     private readonly outDir: string
 
     constructor(workingDir: string, scanDir: string, outDir: string) {
         super({
-            ...createBaseBuilderConfig({ workingDir, dirs: [scanDir], watch: false }),
+            ...createBaseBuilderConfig({ workingDir, dirs: [scanDir], watch: false, externalPackages: EXTERNAL_PACKAGES }),
             buildTarget: "standalone",
             stepsBundlePath: path.join(outDir, "steps.cjs"),
             workflowsBundlePath: path.join(outDir, "workflows.cjs"),
