@@ -431,9 +431,6 @@ async function runClaudeCode(prompt: string, resumeSessionId?: string) {
             resume: resumeSessionId,
             allowedTools: ["Read", "Glob", "Grep", "Write"],
             permissionMode: "bypassPermissions",
-            // Sandboxes run as root, and the CLI refuses bypassPermissions as root
-            // unless it is told it is already sandboxed.
-            env: { ...process.env, IS_SANDBOX: "1" },
             // The SDK reports a non-zero exit without the child's own message.
             stderr: data => console.error("[claude-code stderr]", data)
         }

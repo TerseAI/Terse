@@ -97,7 +97,8 @@ export class SandboxJobExecutor implements JobExecutor {
                 WORKFLOW_LOCAL_DATA_DIR: runJournalDir(runId),
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
-                NO_UPDATE_NOTIFIER: "1"
+                NO_UPDATE_NOTIFIER: "1",
+                IS_SANDBOX: "1"
             }
             // Interim transport: the response payload rides sandbox env vars because there is no
             // server-side store for it yet. Once the shared Redis cache lands, stash the payload
