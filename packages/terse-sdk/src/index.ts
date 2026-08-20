@@ -591,7 +591,8 @@ export function step<T>(promise: Promise<T>): Promise<T> {
  */
 export async function log(...args: unknown[]): Promise<void> {
     "use step"
-    console.log(...args)
+    const prefix = process.env.NO_COLOR ? "[job]" : "[1m[36m[job][0m"
+    console.log(prefix, ...args)
 }
 
 export function sleep(duration: string | number | Date): Promise<void> {

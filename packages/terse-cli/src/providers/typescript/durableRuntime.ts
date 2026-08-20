@@ -30,7 +30,7 @@ export async function closeDurableRuntime(): Promise<void> {
 // redundant, but that message carries no stack of its own, so a failed step
 // prints without its cause. The debug namespace still logs the full metadata.
 function enableWorkflowStepDebugLogging(): void {
-    process.env.DEBUG ??= "workflow:step:*"
+    process.env.DEBUG ??= "workflow:step:error"
 }
 
 async function startDurableRuntime(cwd: string): Promise<DurableRuntime> {
