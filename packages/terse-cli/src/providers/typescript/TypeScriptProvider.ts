@@ -17,8 +17,12 @@ import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenHooks, CodegenResult, CodegenRunInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 
-import type { IntegrationModule, ModuleOutput } from "./modules/IntegrationModule.js"
+import { type IntegrationModule, type ModuleOutput, RUN_HISTORY_ACTION_HOIST } from "./modules/IntegrationModule.js"
+import { integrationModuleRegistry, terseModule } from "./modules/registry.js"
+import { directJobRuntime } from "./runtimes/directJobRuntime.js"
 import type { JobRuntime } from "./runtimes/index.js"
+import { assembleGeneratedFiles } from "./templateEngine.js"
+import { printHoistedShape } from "./typePrinter.js"
 import { expectedWorkflowCoreVersion } from "./workflowCoreVersion.js"
 
 const execAsync = promisify(exec)
@@ -82,11 +86,6 @@ class TypeScriptProvider implements LanguageProvider {
     }
 
     async renderGeneratedFiles(input: CodegenRunInput, hooks?: CodegenHooks): Promise<CodegenResult> {
-        const { RUN_HISTORY_ACTION_HOIST } = await import("./modules/IntegrationModule.js")
-        const { integrationModuleRegistry, terseModule } = await import("./modules/registry.js")
-        const { assembleGeneratedFiles } = await import("./templateEngine.js")
-        const { printHoistedShape } = await import("./typePrinter.js")
-
         const activeSet = new Set(input.activeTypes)
         const pins = input.activeConnections
 
@@ -238,7 +237,7 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        const { durableJobRuntime } = await import("./runtimes/index.js")
+        const { durableJobRuntime } = await import("./runtimes/durableJobRuntime.js")
         return durableJobRuntime.resumeRun(runId, opts)
     }
 
@@ -250,7 +249,7 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        const { durableJobRuntime } = await import("./runtimes/index.js")
+        const { durableJobRuntime } = await import("./runtimes/durableJobRuntime.js")
         return durableJobRuntime.resumeRunWithInput(runId, input, opts)
     }
 }
@@ -284,8 +283,8 @@ async function selectRuntime(job: CreateJobParameters): Promise<JobRuntime> {
     }
     const durable = isDurableJob(job)
     console.log(chalk.dim(`  Runtime: ${durable ? "durable" : "direct"}`))
-    if (durable) return (await import("./runtimes/durableJobRuntime.js")).durableJobRuntime
-    return (await import("./runtimes/directJobRuntime.js")).directJobRuntime
+    if (!durable) return directJobRuntime
+    return (await import("./runtimes/durableJobRuntime.js")).durableJobRuntime
 }
 
 function isDurableJob(job: CreateJobParameters): boolean {

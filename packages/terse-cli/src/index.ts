@@ -6,9 +6,34 @@ import { Command } from "commander"
 import { CliError, emitCliError, isCliError, setErrorOutputJson } from "./cliError.js"
 import { NonInteractiveOpts, collectKeyValue, parseIntFlag } from "./cliHelpers.js"
 import { getCliVersion } from "./cliVersion.js"
-import type { AttachOpts } from "./commands/attach.js"
+import { type AttachOpts, attach } from "./commands/attach.js"
+import { loginAndPersist, logout } from "./commands/auth.js"
+import { authOrgList, authOrgSwitch } from "./commands/authOrg.js"
+import { authStatus } from "./commands/authStatus.js"
+import { completionHandler, completionInstall, completionUninstall } from "./commands/completion.js"
+import { openDashboard } from "./commands/dashboard.js"
+import { deploy } from "./commands/deploy.js"
+import { openDocs } from "./commands/docs.js"
+import { generate } from "./commands/generate.js"
+import { history } from "./commands/history.js"
+import { applyImprovement, listImprovements } from "./commands/improvements.js"
+import { init } from "./commands/init.js"
+import { install, update } from "./commands/install.js"
+import { integrate, integrateConnect, integrateDescribe, integrateDisconnect, integrateList, integrateTool, integrateWait } from "./commands/integrate.js"
+import { integrateConnections, integrateUse } from "./commands/integrateUse.js"
+import { listen } from "./commands/listen.js"
+import { memoryGet, memoryList, memoryPut, memoryRemove } from "./commands/memory.js"
+import { replay } from "./commands/replay.js"
+import { resume } from "./commands/resume.js"
+import { run } from "./commands/run.js"
+import { secretsAdd, secretsImport, secretsList, secretsRemove } from "./commands/secrets.js"
+import { stateGet, stateList, stateRemove, stateReset } from "./commands/state.js"
+import { targetClear, targetStatus, targetUse } from "./commands/target.js"
+import { test, testList, testRun, testShow } from "./commands/test.js"
+import { integrateToolRun } from "./commands/toolRun.js"
 import { isCliRunCommandEnabled } from "./env.js"
 import { isPromptCancellationError } from "./promptErrors.js"
+import { resolveProvider } from "./providers/resolveProvider.js"
 
 const program = new Command()
 
@@ -40,14 +65,12 @@ Examples:
 `
     )
     .action(async (opts?: NonInteractiveOpts) => {
-        const { install } = await import("./commands/install.js")
         await install(opts)
     })
 program
     .command("update")
     .description("Update the Terse CLI and re-sync the Terse skills across your coding agents")
     .action(async () => {
-        const { update } = await import("./commands/install.js")
         await update()
     })
 program
@@ -65,8 +88,6 @@ Examples:
 `
     )
     .action(async (projectName?: string, opts?: NonInteractiveOpts) => {
-        const { init } = await import("./commands/init.js")
-        const { resolveProvider } = await import("./providers/resolveProvider.js")
         const language = "ts"
         const provider = resolveProvider({ command: "init", language })
         await init(projectName, provider, opts)
@@ -77,8 +98,6 @@ program
     .option(...NON_INTERACTIVE_OPTION)
     .option("--regenerate-credentials", "Replace the project key and signing secret this project already has")
     .action(async (opts?: AttachOpts) => {
-        const { attach } = await import("./commands/attach.js")
-        const { resolveProvider } = await import("./providers/resolveProvider.js")
         await attach(resolveProvider(), opts)
     })
 
@@ -106,8 +125,6 @@ Non-interactive subcommands (for AI agents and CI):
 `
     )
     .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean; freshState?: boolean }) => {
-        const { test } = await import("./commands/test.js")
-        const { resolveProvider } = await import("./providers/resolveProvider.js")
         await test(jobName, opts?.verbose, resolveProvider(), opts?.entryFile, opts?.freshState)
     })
 
@@ -118,7 +135,6 @@ testCommand
     .option("--json", "Emit JSON with the full event payload for each id")
     .option(...ENTRY_FILE_OPTION)
     .action(async (jobName?: string, opts?: JsonEntryFileOpts) => {
-        const { testList } = await import("./commands/test.js")
         await testList({ jobName, json: opts?.json, entryFile: opts?.entryFile })
     })
 
@@ -130,7 +146,6 @@ testCommand
     .option("--json", "Emit JSON instead of rendered text")
     .option(...ENTRY_FILE_OPTION)
     .action(async (id: string, jobName?: string, opts?: JsonEntryFileOpts) => {
-        const { testShow } = await import("./commands/test.js")
         await testShow({ id, jobName, json: opts?.json, entryFile: opts?.entryFile })
     })
 
@@ -155,7 +170,6 @@ Examples:
 `
     )
     .action(async (jobName?: string, opts?: { id?: string; event?: string; eventFile?: string; verbose?: boolean; entryFile?: string; freshState?: boolean }) => {
-        const { testRun } = await import("./commands/test.js")
         await testRun({
             jobName,
             id: opts?.id,
@@ -188,8 +202,6 @@ Notes:
 `
     )
     .action(async (jobName?: string, opts?: EntryFileOpts & { verbose?: boolean }) => {
-        const { listen } = await import("./commands/listen.js")
-        const { resolveProvider } = await import("./providers/resolveProvider.js")
         await listen(jobName, { verbose: opts?.verbose, entryFile: opts?.entryFile, provider: resolveProvider() })
     })
 
@@ -211,7 +223,6 @@ Notes:
 `
     )
     .action(async (opts: { runId: string; verbose?: boolean }) => {
-        const { resume } = await import("./commands/resume.js")
         await resume(opts.runId, { verbose: opts.verbose })
     })
 
@@ -220,8 +231,6 @@ program
     .description("Deploy all jobs to Terse (syncs with server — removed jobs are deleted)")
     .option(...ENTRY_FILE_OPTION)
     .action(async (opts?: EntryFileOpts) => {
-        const { deploy } = await import("./commands/deploy.js")
-        const { resolveProvider } = await import("./providers/resolveProvider.js")
         await deploy(resolveProvider(), opts?.entryFile)
     })
 
@@ -229,7 +238,6 @@ program
     .command("build")
     .description("Build the durable workflow bundle into .terse/wf")
     .action(async () => {
-        const { resolveProvider } = await import("./providers/resolveProvider.js")
         await resolveProvider().prebuild()
     })
 
@@ -257,7 +265,6 @@ Examples:
 `
     )
     .action(async () => {
-        const { integrate } = await import("./commands/integrate.js")
         await integrate()
     })
 
@@ -267,7 +274,6 @@ integrateCommand
     .option("--json", "Emit JSON")
     .option("--status <status>", "Filter to `connected` or `disconnected`")
     .action(async (opts: { json?: boolean; status?: string }) => {
-        const { integrateList } = await import("./commands/integrate.js")
         if (opts.status && opts.status !== "connected" && opts.status !== "disconnected") {
             throw new CliError("invalid_status_filter", `--status must be "connected" or "disconnected", got "${opts.status}".`)
         }
@@ -280,7 +286,6 @@ integrateCommand
     .argument("<type>", "Integration type (e.g. slack, snowflake)")
     .option("--json", "Emit JSON")
     .action(async (type: string, opts: JsonOpts) => {
-        const { integrateDescribe } = await import("./commands/integrate.js")
         await integrateDescribe({ integrationType: type, json: opts.json })
     })
 
@@ -303,7 +308,6 @@ Examples:
 `
     )
     .action(async (type: string, opts: { field?: string[]; fieldsStdin?: boolean; force?: boolean; json?: boolean }) => {
-        const { integrateConnect } = await import("./commands/integrate.js")
         await integrateConnect({
             integrationType: type,
             fieldFlags: opts.field,
@@ -319,7 +323,6 @@ integrateCommand
     .argument("<type>", "Integration type (e.g. slack, snowflake)")
     .option("--json", "Emit JSON")
     .action(async (type: string, opts: JsonOpts) => {
-        const { integrateDisconnect } = await import("./commands/integrate.js")
         await integrateDisconnect({ integrationType: type, json: opts.json })
     })
 
@@ -340,7 +343,6 @@ Examples:
 `
     )
     .action(async (type: string, toolName: string | undefined, opts: JsonOpts) => {
-        const { integrateTool } = await import("./commands/integrate.js")
         await integrateTool({ integrationType: type, toolName, json: opts.json })
     })
 
@@ -365,7 +367,6 @@ Params are the tool's wire shape — see \`terse integrate tool <integration> <t
 `
     )
     .action(async (tool: string, opts: { params?: string; integration?: string }) => {
-        const { integrateToolRun } = await import("./commands/toolRun.js")
         await integrateToolRun({ toolName: tool, params: opts.params, integrationId: opts.integration })
     })
 
@@ -385,7 +386,6 @@ Non-interactive counterpart to the \`terse integrate use\` picker: list here, th
 `
     )
     .action(async (type: string, opts: JsonOpts) => {
-        const { integrateConnections } = await import("./commands/integrateUse.js")
         await integrateConnections({ integrationType: type, json: opts.json })
     })
 
@@ -408,8 +408,6 @@ The pin is stored in terse.config.json and also drives \`terse integrate tool ru
 `
     )
     .action(async (type: string, connectionId: string | undefined, opts: { clear?: boolean }) => {
-        const { integrateUse } = await import("./commands/integrateUse.js")
-        const { resolveProvider } = await import("./providers/resolveProvider.js")
         await integrateUse({ integrationType: type, connectionId, clear: opts.clear }, resolveProvider())
     })
 
@@ -420,7 +418,6 @@ integrateCommand
     .option("--timeout <seconds>", "Timeout in seconds (default 300, max 900)", parseIntFlag)
     .option("--json", "Emit JSON")
     .action(async (type: string, opts: { timeout?: number; json?: boolean }) => {
-        const { integrateWait } = await import("./commands/integrate.js")
         await integrateWait({ integrationType: type, timeoutSeconds: opts.timeout, json: opts.json })
     })
 
@@ -444,7 +441,6 @@ secretsCommand
     .description("List project secret names")
     .option("--json", "Emit JSON")
     .action(async (opts: JsonOpts) => {
-        const { secretsList } = await import("./commands/secrets.js")
         await secretsList({ json: opts.json })
     })
 
@@ -455,7 +451,6 @@ secretsCommand
     .option("--value-stdin", "Read the secret value from stdin")
     .option("--skip-local-sync", "Skip syncing the secret to the local environment", false)
     .action(async (name: string, opts: { valueStdin?: boolean; skipLocalSync?: boolean }) => {
-        const { secretsAdd } = await import("./commands/secrets.js")
         await secretsAdd(name, { valueStdin: opts.valueStdin, skipLocalSync: opts.skipLocalSync })
     })
 
@@ -466,7 +461,6 @@ secretsCommand
     .option("--yes", "Confirm removal")
     .option("--skip-local-sync", "Skip syncing the secret to the local environment")
     .action(async (name: string, opts: { yes?: boolean; skipLocalSync?: boolean }) => {
-        const { secretsRemove } = await import("./commands/secrets.js")
         await secretsRemove(name, { yes: opts.yes, skipLocalSync: opts.skipLocalSync })
     })
 
@@ -476,7 +470,6 @@ secretsCommand
     .argument("<file>", ".env-format file")
     .option("--overwrite", "Update existing server-side secrets")
     .action(async (file: string, opts: { overwrite?: boolean }) => {
-        const { secretsImport } = await import("./commands/secrets.js")
         await secretsImport(file, { overwrite: opts.overwrite })
     })
 
@@ -503,7 +496,6 @@ memoryCommand
     .option("--json", "Emit JSON")
     .option(...ENTRY_FILE_OPTION)
     .action(async (opts: JsonEntryFileOpts & { job?: string; test?: boolean }) => {
-        const { memoryList } = await import("./commands/memory.js")
         await memoryList({ job: opts.job, test: opts.test, json: opts.json, entryFile: opts.entryFile })
     })
 
@@ -516,7 +508,6 @@ memoryCommand
     .option("--out <file>", "Write the contents to a local file instead of stdout")
     .option(...ENTRY_FILE_OPTION)
     .action(async (path: string, opts: EntryFileOpts & { job?: string; test?: boolean; out?: string }) => {
-        const { memoryGet } = await import("./commands/memory.js")
         await memoryGet(path, { job: opts.job, test: opts.test, out: opts.out, entryFile: opts.entryFile })
     })
 
@@ -529,7 +520,6 @@ memoryCommand
     .option("--file <path>", "Local file to upload (otherwise reads stdin)")
     .option(...ENTRY_FILE_OPTION)
     .action(async (path: string, opts: EntryFileOpts & { job?: string; test?: boolean; file?: string }) => {
-        const { memoryPut } = await import("./commands/memory.js")
         await memoryPut(path, { job: opts.job, test: opts.test, file: opts.file, entryFile: opts.entryFile })
     })
 
@@ -542,7 +532,6 @@ memoryCommand
     .option("--yes", "Confirm deletion")
     .option(...ENTRY_FILE_OPTION)
     .action(async (path: string, opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
-        const { memoryRemove } = await import("./commands/memory.js")
         await memoryRemove(path, { job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
     })
 
@@ -573,7 +562,6 @@ stateCommand
     .option("--json", "Emit JSON")
     .option(...ENTRY_FILE_OPTION)
     .action(async (opts: JsonEntryFileOpts & { job?: string; test?: boolean }) => {
-        const { stateList } = await import("./commands/state.js")
         await stateList({ job: opts.job, test: opts.test, json: opts.json, entryFile: opts.entryFile })
     })
 
@@ -585,7 +573,6 @@ stateCommand
     .option("--test", "Target the isolated `terse test` state instead of deployed state")
     .option(...ENTRY_FILE_OPTION)
     .action(async (key: string, opts: EntryFileOpts & { job?: string; test?: boolean }) => {
-        const { stateGet } = await import("./commands/state.js")
         await stateGet(key, { job: opts.job, test: opts.test, entryFile: opts.entryFile })
     })
 
@@ -598,7 +585,6 @@ stateCommand
     .option("--yes", "Confirm deletion")
     .option(...ENTRY_FILE_OPTION)
     .action(async (key: string, opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
-        const { stateRemove } = await import("./commands/state.js")
         await stateRemove(key, { job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
     })
 
@@ -610,7 +596,6 @@ stateCommand
     .option("--yes", "Confirm deletion")
     .option(...ENTRY_FILE_OPTION)
     .action(async (opts: EntryFileOpts & { job?: string; test?: boolean; yes?: boolean }) => {
-        const { stateReset } = await import("./commands/state.js")
         await stateReset({ job: opts.job, test: opts.test, yes: opts.yes, entryFile: opts.entryFile })
     })
 
@@ -618,8 +603,6 @@ program
     .command("generate")
     .description("Autogenerate context from your connected workspaces")
     .action(async () => {
-        const { generate } = await import("./commands/generate.js")
-        const { resolveProvider } = await import("./providers/resolveProvider.js")
         await generate(resolveProvider())
     })
 
@@ -635,8 +618,6 @@ if (isCliRunCommandEnabled()) {
         .option("--no-verbose", "Hide job stream output")
         .option(...ENTRY_FILE_OPTION)
         .action(async (jobName?: string, opts?: { event?: string; eventFile?: string; verbose?: boolean; entryFile?: string }) => {
-            const { run } = await import("./commands/run.js")
-            const { resolveProvider } = await import("./providers/resolveProvider.js")
             await run(jobName, opts?.event, opts?.eventFile, resolveProvider(), opts?.entryFile, opts?.verbose)
         })
 }
@@ -657,7 +638,6 @@ Examples:
 `
     )
     .action(async (improvementId?: string, opts?: NonInteractiveOpts) => {
-        const { applyImprovement } = await import("./commands/improvements.js")
         await applyImprovement(improvementId, opts)
     })
 program
@@ -665,7 +645,6 @@ program
     .description("List Terse resources")
     .addCommand(
         new Command("improvements").description("List pending improvements across all jobs").action(async () => {
-            const { listImprovements } = await import("./commands/improvements.js")
             await listImprovements()
         })
     )
@@ -676,7 +655,6 @@ program
     .description("Replay a run locally on your machine")
     .argument("[run-id]", "ID of the run to re-trigger")
     .action(async (runId: string) => {
-        const { replay } = await import("./commands/replay.js")
         await replay(runId)
     })
 program
@@ -711,15 +689,13 @@ program
                 includeTest?: boolean
             }
         ) => {
-            const { history } = await import("./commands/history.js")
             await history(jobName, opts)
         }
     )
 program
     .command("dashboard")
     .description("Open the Terse web app in your browser")
-    .action(async () => {
-        const { openDashboard } = await import("./commands/dashboard.js")
+    .action(() => {
         openDashboard()
     })
 
@@ -730,7 +706,6 @@ authCommand
     .command("login")
     .description("Log in to Terse")
     .action(async () => {
-        const { loginAndPersist } = await import("./commands/auth.js")
         const result = await loginAndPersist()
         if (!result) process.exit(1)
     })
@@ -738,8 +713,7 @@ authCommand
 authCommand
     .command("logout")
     .description("Log out of Terse")
-    .action(async () => {
-        const { logout } = await import("./commands/auth.js")
+    .action(() => {
         const removed = logout()
         if (removed) {
             console.log(chalk.green("  Logged out."))
@@ -752,7 +726,6 @@ authCommand
     .command("status")
     .description("Show the current user and active organization")
     .action(async () => {
-        const { authStatus } = await import("./commands/authStatus.js")
         await authStatus()
     })
 
@@ -763,7 +736,6 @@ authOrgCommand
     .description("List organizations you belong to")
     .option("--json", "Output as JSON")
     .action(async (opts: { json?: boolean }) => {
-        const { authOrgList } = await import("./commands/authOrg.js")
         await authOrgList(opts)
     })
 
@@ -771,7 +743,6 @@ authOrgCommand
     .command("switch [org-id]")
     .description("Switch the active organization. Pass an org id to skip the picker.")
     .action(async (orgId: string | undefined) => {
-        const { authOrgSwitch } = await import("./commands/authOrg.js")
         await authOrgSwitch(orgId)
     })
 
@@ -793,16 +764,14 @@ URLs are written to your shell rc (~/.zshrc or ~/.bashrc) as TERSE_BACKEND_URL /
 After running \`use\` or \`clear\`, open a new shell or \`source\` your rc file to pick up the change.
 `
     )
-    .action(async () => {
-        const { targetStatus } = await import("./commands/target.js")
+    .action(() => {
         targetStatus()
     })
 
 targetCommand
     .command("status")
     .description("Print the current backend / frontend URLs (from TERSE_BACKEND_URL / TERSE_FRONTEND_URL)")
-    .action(async () => {
-        const { targetStatus } = await import("./commands/target.js")
+    .action(() => {
         targetStatus()
     })
 
@@ -813,7 +782,6 @@ targetCommand
     .option("--frontend-url <url>", "Frontend URL to use (TERSE_FRONTEND_URL)")
     .option("-y, --yes", "Skip the confirmation prompt before editing your shell rc")
     .action(async (preset: string | undefined, opts: { backendUrl?: string; frontendUrl?: string; yes?: boolean }) => {
-        const { targetUse } = await import("./commands/target.js")
         await targetUse(preset, opts)
     })
 
@@ -822,7 +790,6 @@ targetCommand
     .description("Remove the terse-managed exports from your shell rc")
     .option("-y, --yes", "Skip the confirmation prompt")
     .action(async (opts: { yes?: boolean }) => {
-        const { targetClear } = await import("./commands/target.js")
         await targetClear(opts)
     })
 
@@ -830,8 +797,7 @@ program.commandsGroup("Getting help:")
 program
     .command("docs")
     .description("Open Terse documentation in your browser")
-    .action(async () => {
-        const { openDocs } = await import("./commands/docs.js")
+    .action(() => {
         openDocs()
     })
 
@@ -840,23 +806,16 @@ const completionCommand = program.command("completion").description("Manage shel
 completionCommand
     .command("install")
     .description("Install tab completion into your shell")
-    .action(async () => {
-        const { completionInstall } = await import("./commands/completion.js")
-        return completionInstall()
-    })
+    .action(() => completionInstall())
 
 completionCommand
     .command("uninstall")
     .description("Remove tab completion from your shell")
-    .action(async () => {
-        const { completionUninstall } = await import("./commands/completion.js")
-        return completionUninstall()
-    })
+    .action(() => completionUninstall())
 
 program.helpCommand(true)
 
 if (process.argv[2] === "completion-server") {
-    const { completionHandler } = await import("./commands/completion.js")
     completionHandler(program)
     process.exit(0)
 }
