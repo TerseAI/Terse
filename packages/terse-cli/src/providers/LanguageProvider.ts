@@ -2,6 +2,7 @@ import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
 import type { SerializedEvent, Trigger } from "terse-types"
 
 import type { CodegenHooks, CodegenResult, CodegenRunInput } from "./codegenTypes"
+import type { SessionHandle } from "./shared/sessionStream.js"
 
 export interface LanguageProvider {
     readonly language: "typescript"
@@ -48,6 +49,7 @@ export interface LanguageProvider {
              * for the duration of the prompt and decision submission.
              */
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+            session?: Promise<SessionHandle>
         }
     ): Promise<void>
     resumeRun(

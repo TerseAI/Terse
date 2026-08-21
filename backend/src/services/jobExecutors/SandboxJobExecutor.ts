@@ -66,6 +66,7 @@ export class SandboxJobExecutor implements JobExecutor {
 
         let sandboxApiKey: string | undefined
         let sandboxTokenId: string | undefined
+        let runSandbox: Sandbox | undefined
         let telemetrySuccess = false
         let telemetryError: unknown
 
@@ -108,7 +109,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 sandboxEnv.TERSE_RESUME_HOOK_PAYLOAD = JSON.stringify(hookResume.payload)
             }
 
-            const result = await this.executeWithSourceImage({
+            const { sb, result } = await this.executeWithSourceImage({
                 executor,
                 jobName,
                 sandboxService: sandboxProvider,
@@ -121,10 +122,11 @@ export class SandboxJobExecutor implements JobExecutor {
                 restoreImageId,
                 telemetry
             })
+            runSandbox = sb
 
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
 
-            const outcome = await telemetry.measure("resolveRunStatusMs", () => resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime, telemetry }))
+            const outcome = await telemetry.measure("resolveRunStatusMs", () => resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime, sandbox: sb, telemetry }))
             telemetrySuccess = outcome.status !== "failed"
             if (outcome.status === "failed") telemetryError = outcome.cause
             return outcome
@@ -145,7 +147,7 @@ export class SandboxJobExecutor implements JobExecutor {
                     logger.warn("Failed to delete sandbox API token", { error: err, tokenId: sandboxTokenId })
                 })
             }
-            await telemetry.measure("terminateRunSandboxMs", () => this.terminateRunSandbox(agent.project.id, runId))
+            await telemetry.measure("terminateRunSandboxMs", () => this.terminateRunSandbox(agent.project.id, runId, runSandbox))
             telemetry.capture(telemetrySuccess, telemetryError)
         }
     }
@@ -211,7 +213,7 @@ export class SandboxJobExecutor implements JobExecutor {
         cliVersion: string
         restoreImageId?: string
         telemetry: SandboxRuntimeTelemetry
-    }): Promise<SandboxCommandResult> {
+    }): Promise<{ sb: Sandbox; result: SandboxCommandResult }> {
         const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId, telemetry } = params
 
         // Resuming boots the suspension snapshot itself, so the run picks up every filesystem
@@ -225,7 +227,7 @@ export class SandboxJobExecutor implements JobExecutor {
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
         const result = await telemetry.measure("runtimeCommandMs", () => (restoreImageId ? executor.resume(executorContext) : executor.execute(executorContext)))
-        return result
+        return { sb, result }
     }
 
     private createRuntimeExecutorContext(
@@ -262,14 +264,19 @@ export class SandboxJobExecutor implements JobExecutor {
         }
     }
 
-    private async terminateRunSandbox(projectId: string, runId: string): Promise<void> {
+    private async terminateRunSandbox(projectId: string, runId: string, runSandbox: Sandbox | undefined): Promise<void> {
         try {
-            const sandboxService = getSandboxProvider()
-            const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
-            await sandboxService.terminateSandbox(app, runtimeSandboxUniqueName(projectId, runId))
+            await (runSandbox ? runSandbox.terminate() : this.terminateRunSandboxByName(projectId, runId))
         } catch (error) {
             logger.warn("SDK sandbox: failed to terminate run sandbox", { projectId, runId, error })
         }
+    }
+
+    // For runs that failed before a sandbox handle existed.
+    private async terminateRunSandboxByName(projectId: string, runId: string): Promise<void> {
+        const sandboxService = getSandboxProvider()
+        const app = await sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME)
+        await sandboxService.terminateSandbox(app, runtimeSandboxUniqueName(projectId, runId))
     }
 
     private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string, runId: string, telemetry: SandboxRuntimeTelemetry): Promise<Sandbox> {

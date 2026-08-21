@@ -1,4 +1,3 @@
-import { select } from "@inquirer/prompts"
 import { CreateJobParameters } from "terse-sdk"
 
 import { assertProjectRoot } from "./assertProjectRoot.js"
@@ -42,6 +41,7 @@ export async function loadJob(provider: LanguageProvider, jobName?: string, entr
             detail: `Available jobs: ${available}. Pass the job name as an argument.`
         })
     } else {
+        const { select } = await import("@inquirer/prompts")
         resolvedName = await select<string>({
             message: "Multiple jobs found. Which one?",
             choices: [...registry.keys()].map(name => ({ name, value: name }))

@@ -1,12 +1,16 @@
 import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 
+import type { SessionHandle } from "../../shared/sessionStream.js"
+
 export type RunJobOptions = {
     verbose?: boolean
     entryFile?: string
     projectId?: string
     onSessionEvent?: (event: SessionStreamEvent) => void
     pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
+    /** A session stream the caller already opened, so its round trip overlaps loading the job. */
+    session?: Promise<SessionHandle>
 }
 
 export type ResumeRunOptions = {

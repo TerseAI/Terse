@@ -17,6 +17,8 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
     readonly settingsKey = "modal"
     readonly supportsContainerizedRunners = true
 
+    private static instance: ModalSandboxService | undefined
+
     private readonly appsByName = new Map<string, Promise<ModalApp>>()
     private bucketMountSecret: Promise<Secret> | undefined
 
@@ -24,6 +26,15 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         tokenId: this.config.tokenId,
         tokenSecret: this.config.tokenSecret
     })
+
+    private constructor() {
+        super()
+    }
+
+    static getInstance(): ModalSandboxService {
+        ModalSandboxService.instance ??= new ModalSandboxService()
+        return ModalSandboxService.instance
+    }
 
     /** Exposed for the volume backend, which owns all volume RPCs/ephemeral-sandbox logic. */
     get modalClient(): ModalClient {

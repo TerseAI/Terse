@@ -31,7 +31,8 @@ export const durableJobRuntime: JobRuntime = {
                     // We can't await in the Modal Sandbox. This polls, and a blocked run will never exit.
                     if (!isCliRunCommandEnabled()) await dispatched.awaitResult()
                 },
-                opts?.onSessionEvent
+                opts?.onSessionEvent,
+                opts?.session
             )
         } catch (error) {
             if (error instanceof CliError) throw error
