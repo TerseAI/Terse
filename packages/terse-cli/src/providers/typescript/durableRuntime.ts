@@ -11,6 +11,7 @@ import { createTerseWorld } from "../../terseWorld.js"
 
 import { transformJobSource } from "./jobMacro.js"
 import { TerseWorkflowBuilder } from "./terseWorkflowBuilder.js"
+import { expectedWorkflowCoreVersion } from "./workflowCoreVersion.js"
 import { writeWorkflowShim } from "./workflowShim.js"
 
 let runtimePromise: Promise<DurableRuntime> | null = null
@@ -120,11 +121,6 @@ function lookupWorkflowId(manifest: any, fnName: string): string | undefined {
 }
 
 const JOBS_MAP_FILE = "jobs.json"
-
-export function expectedWorkflowCoreVersion(): string {
-    const cliPackageJson = new URL("../../../package.json", import.meta.url)
-    return JSON.parse(fs.readFileSync(cliPackageJson, "utf8")).dependencies["@workflow/core"]
-}
 
 function ensureProjectWorkflowDependency(cwd: string): void {
     try {

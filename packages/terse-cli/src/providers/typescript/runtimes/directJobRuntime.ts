@@ -32,7 +32,8 @@ export const directJobRuntime: JobRuntime = {
                         await job.onTrigger(inputEvent, state)
                     })
                 },
-                opts?.onSessionEvent
+                opts?.onSessionEvent,
+                opts?.session
             )
         } catch (error) {
             if (error instanceof CliError) throw error

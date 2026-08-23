@@ -3,18 +3,31 @@ import { isAgentApprovalHandlingClaimed } from "terse-sdk"
 import type { SessionStreamEvent } from "terse-sdk"
 
 import { isCliRunCommandEnabled } from "../../../env.js"
-import { openSessionStream, promptForToolApproval, submitApprovalDecision } from "../../shared/sessionStream.js"
+import { type SessionHandle, openSessionStream, promptForToolApproval, submitApprovalDecision } from "../../shared/sessionStream.js"
 
 let sessionPaused = false
 
-// Holds a session stream open (for tool-approval routing) for the duration of `action`.
+// Holds a session stream open (for tool-approval routing) for the duration of `action`,
+// adopting `started` when a caller opened one ahead of time.
 export async function withSession<T>(
     apiKey: string,
     isVerbose: boolean,
     pauseUiAround: <U>(fn: () => Promise<U>) => Promise<U>,
     action: (sessionId: string) => Promise<T>,
-    onEvent?: (event: SessionStreamEvent) => void
+    onEvent?: (event: SessionStreamEvent) => void,
+    started?: Promise<SessionHandle>
 ): Promise<T> {
+    const session = await (started ?? startSession(apiKey, isVerbose, pauseUiAround, onEvent))
+
+    try {
+        return await action(session.sessionId)
+    } finally {
+        session.close?.()
+    }
+}
+
+// Opens the stream without holding it: the caller closes it by handing it to withSession.
+export function startSession(apiKey: string, isVerbose: boolean, pauseUiAround: <U>(fn: () => Promise<U>) => Promise<U>, onEvent?: (event: SessionStreamEvent) => void): Promise<SessionHandle> {
     let latestRunId: string | null = null
 
     const handleSessionEvent = async (event: SessionStreamEvent): Promise<void> => {
@@ -59,11 +72,5 @@ export async function withSession<T>(
         }
     }
 
-    const session = await openSessionStream(apiKey, { verbose: isVerbose, isPaused: () => sessionPaused, onEvent: handleSessionEvent })
-
-    try {
-        return await action(session.sessionId)
-    } finally {
-        session.close?.()
-    }
+    return openSessionStream(apiKey, { verbose: isVerbose, isPaused: () => sessionPaused, onEvent: handleSessionEvent })
 }

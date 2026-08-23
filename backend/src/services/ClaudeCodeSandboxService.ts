@@ -70,7 +70,8 @@ export class ClaudeCodeSandboxService {
         return `${((performance.now() - startMs) / 1000).toFixed(2)}s`
     }
 
-    private async buildClaudeCodeImage(sandboxService: ModalSandboxService, sourceImageId: string, label: string): Promise<string> {
+    private async buildClaudeCodeImage(sourceImageId: string, label: string): Promise<string> {
+        const sandboxService = ModalSandboxService.getInstance()
         const t = performance.now()
         const app = await sandboxService.getOrCreateApp("terse-claude-code-builder")
         const baseImage = await sandboxService.getImageFromId(sourceImageId)
@@ -138,9 +139,9 @@ export class ClaudeCodeSandboxService {
 
         const executionStart = performance.now()
 
-        const sandboxService = new ModalSandboxService()
+        const sandboxService = ModalSandboxService.getInstance()
 
-        const judgeImageId = await this.buildClaudeCodeImage(sandboxService, sourceImageId, label)
+        const judgeImageId = await this.buildClaudeCodeImage(sourceImageId, label)
 
         let t = performance.now()
         const app = await sandboxService.getOrCreateApp("terse-claude-code-sandbox")

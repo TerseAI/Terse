@@ -16,9 +16,9 @@ import { SDK_SANDBOX_APP_NAME, runtimeSandboxUniqueName } from "./sdkSandboxLaye
 // the (final, since the process is dead) journal is the source of truth for which. Parked
 // runs are marked suspended here; final statuses are left to the run execution handler.
 export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<RunOutcome> {
-    const { runId, agent, result, runtimeName, telemetry } = params
-    const journal =
-        result.exitCode === 0 ? await (telemetry ? telemetry.measure("readRunJournalMs", () => readRunJournalState(runId, agent.project.id)) : readRunJournalState(runId, agent.project.id)) : null
+    const { runId, agent, result, runtimeName, sandbox, telemetry } = params
+    const readJournal = () => readRunJournalState(runId, agent.project.id, sandbox)
+    const journal = result.exitCode === 0 ? await (telemetry ? telemetry.measure("readRunJournalMs", readJournal) : readJournal()) : null
     const verdict = classifyRunExit(result, journal)
 
     switch (verdict) {
@@ -32,7 +32,7 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
             return { status: "failed", cause: new Error("Durable run failed; see the run output for details") }
         }
         case "parked_on_input": {
-            const imageId = await snapshotSandboxForSuspend(runId, telemetry)
+            const imageId = await snapshotSandboxForSuspend(runId, telemetry, sandbox)
             if (!imageId) {
                 logger.error("SDK sandbox: parked run could not be snapshotted", { runId, agentId: agent.id })
                 return { status: "failed", cause: new Error("Could not snapshot the parked run journal") }
@@ -57,20 +57,26 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
 
 // Snapshots a suspending run's filesystem off its live sandbox and returns the resulting
 // image id, which the resuming run boots from. Returns undefined when there is no live sandbox.
-export async function snapshotSandboxForSuspend(runId: string, telemetry?: SandboxRuntimeTelemetry): Promise<string | undefined> {
-    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
-    const projectId = run?.automation?.project_id
-    if (!projectId) return undefined
-
+export async function snapshotSandboxForSuspend(runId: string, telemetry?: SandboxRuntimeTelemetry, liveSandbox?: Sandbox): Promise<string | undefined> {
     const provider = getSandboxProvider()
-    const app = await provider.getOrCreateApp(SDK_SANDBOX_APP_NAME)
-    const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
+    const sandbox = liveSandbox ?? (await findRunSandbox(runId))
     if (!sandbox) return undefined
 
     if (telemetry) {
         return telemetry.measure("snapshotSandboxMs", () => provider.snapshotForSuspension(sandbox))
     }
     return provider.snapshotForSuspension(sandbox)
+}
+
+// For callers outside the run's own worker (e.g. /sdk/suspend), which hold no sandbox handle.
+async function findRunSandbox(runId: string): Promise<Sandbox | null> {
+    const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
+    const projectId = run?.automation?.project_id
+    if (!projectId) return null
+
+    const provider = getSandboxProvider()
+    const app = await provider.getOrCreateApp(SDK_SANDBOX_APP_NAME)
+    return provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
 }
 
 // helpers
@@ -80,6 +86,8 @@ type ResolveRunStatusParams = {
     agent: AgentWithRelations
     result: SandboxCommandResult
     runtimeName: string
+    /** The sandbox the run just executed in, which saves a name lookup and liveness probe. */
+    sandbox?: Sandbox
     telemetry?: SandboxRuntimeTelemetry
 }
 
@@ -98,12 +106,24 @@ type RunJournalState = { status: string; awaitingHook: boolean; hookToken?: stri
 // Reads world-local's journal off the sandbox filesystem: the run record's status field
 // (runs/*.json) and whether any unresolved hook entity remains (hooks/*.json; answered
 // hooks are deleted on dispose).
-async function readRunJournalState(runId: string, projectId: string): Promise<RunJournalState | null> {
+async function readRunJournalState(runId: string, projectId: string, liveSandbox?: Sandbox): Promise<RunJournalState | null> {
+    if (liveSandbox) return readJournalOrNull(liveSandbox, runId)
+
     const provider = getSandboxProvider()
     const app = await provider.getOrCreateApp(SDK_SANDBOX_APP_NAME)
     const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
     if (!sandbox) return null
-    return readJournalFromSandbox(sandbox, runId)
+    return readJournalOrNull(sandbox, runId)
+}
+
+// A sandbox that died mid-run reads as no journal, as the name-lookup path did when it found none.
+async function readJournalOrNull(sandbox: Sandbox, runId: string): Promise<RunJournalState | null> {
+    try {
+        return await readJournalFromSandbox(sandbox, runId)
+    } catch (error) {
+        logger.warn("SDK sandbox: journal read failed", { runId, sandboxId: sandbox.sandboxId, error })
+        return null
+    }
 }
 
 async function readJournalFromSandbox(sandbox: Sandbox, runId: string): Promise<RunJournalState | null> {

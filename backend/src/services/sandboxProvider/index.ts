@@ -8,7 +8,7 @@ import { SandboxService } from "./SandboxService"
 const sandboxProvider: SandboxService = (() => {
     if (settings.modal) {
         logProviderBanner("remote", "SANDBOX PROVIDER: MODAL", "container-isolated, production-grade")
-        return new ModalSandboxService()
+        return ModalSandboxService.getInstance()
     }
     logProviderBanner("local", "SANDBOX PROVIDER: LOCAL", "subprocess on host, NO container isolation")
     return new LocalSandboxService()

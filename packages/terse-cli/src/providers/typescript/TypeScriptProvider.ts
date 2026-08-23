@@ -17,12 +17,13 @@ import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenHooks, CodegenResult, CodegenRunInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 
-import { buildWorkflowArtifacts, expectedWorkflowCoreVersion } from "./durableRuntime.js"
 import { type IntegrationModule, type ModuleOutput, RUN_HISTORY_ACTION_HOIST } from "./modules/IntegrationModule.js"
 import { integrationModuleRegistry, terseModule } from "./modules/registry.js"
-import { type JobRuntime, directJobRuntime, durableJobRuntime } from "./runtimes/index.js"
+import { directJobRuntime } from "./runtimes/directJobRuntime.js"
+import type { JobRuntime } from "./runtimes/index.js"
 import { assembleGeneratedFiles } from "./templateEngine.js"
 import { printHoistedShape } from "./typePrinter.js"
+import { expectedWorkflowCoreVersion } from "./workflowCoreVersion.js"
 
 const execAsync = promisify(exec)
 const execFileAsync = promisify(execFile)
@@ -206,6 +207,7 @@ class TypeScriptProvider implements LanguageProvider {
     }
 
     async prebuild(): Promise<void> {
+        const { buildWorkflowArtifacts } = await import("./durableRuntime.js")
         await buildWorkflowArtifacts(process.cwd())
     }
 
@@ -225,7 +227,7 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        return selectRuntime(job).executeJob(job, runId, event, opts)
+        return (await selectRuntime(job)).executeJob(job, runId, event, opts)
     }
 
     async resumeRun(
@@ -235,6 +237,7 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
+        const { durableJobRuntime } = await import("./runtimes/durableJobRuntime.js")
         return durableJobRuntime.resumeRun(runId, opts)
     }
 
@@ -246,6 +249,7 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
+        const { durableJobRuntime } = await import("./runtimes/durableJobRuntime.js")
         return durableJobRuntime.resumeRunWithInput(runId, input, opts)
     }
 }
@@ -271,7 +275,7 @@ function assertPinExists(module: IntegrationModule, instances: readonly unknown[
 }
 
 // Durability is opt-in per job and unavailable on self-hosted control planes.
-function selectRuntime(job: CreateJobParameters): JobRuntime {
+async function selectRuntime(job: CreateJobParameters): Promise<JobRuntime> {
     if (job.durable && readProjectConfig()?.selfHosted === true) {
         throw new CliError("durable_self_hosted", `Job "${job.name}" is durable, but durability isn't available on self-hosted control planes yet.`, {
             detail: "Remove `durable: true` from this job, or run it on Terse cloud."
@@ -279,7 +283,8 @@ function selectRuntime(job: CreateJobParameters): JobRuntime {
     }
     const durable = isDurableJob(job)
     console.log(chalk.dim(`  Runtime: ${durable ? "durable" : "direct"}`))
-    return durable ? durableJobRuntime : directJobRuntime
+    if (!durable) return directJobRuntime
+    return (await import("./runtimes/durableJobRuntime.js")).durableJobRuntime
 }
 
 function isDurableJob(job: CreateJobParameters): boolean {
