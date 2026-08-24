@@ -3,15 +3,14 @@ import { mkdir, open, readFile } from "node:fs/promises"
 import { join } from "node:path"
 
 import { JournalEventSchema } from "../types/journalEvent.js"
-import type { JournalEvent } from "../types/journalEvent.js"
-import type { JournalSnapshot, JournalStore } from "../types/journalStore.js"
+import type { AppendJournalEventParams, JournalSnapshot, JournalStore, ReadJournalParams } from "../types/journalStore.js"
 
 import { JournalRevisionConflictError } from "./errors.js"
 
 export class FileJournalStore implements JournalStore {
     constructor(private readonly rootDirectory: string) {}
 
-    async read(runId: string): Promise<JournalSnapshot> {
+    async read({ runId }: ReadJournalParams): Promise<JournalSnapshot> {
         const source = await readJournalFile(this.pathFor(runId))
         if (source === undefined || source.length === 0) return { revision: 0, records: [] }
 
@@ -20,8 +19,8 @@ export class FileJournalStore implements JournalStore {
         return { revision: records.length, records }
     }
 
-    async append(runId: string, expectedRevision: number, event: JournalEvent): Promise<number> {
-        const snapshot = await this.read(runId)
+    async append({ runId, expectedRevision, event }: AppendJournalEventParams): Promise<number> {
+        const snapshot = await this.read({ runId })
         if (snapshot.revision !== expectedRevision) {
             throw new JournalRevisionConflictError({
                 runId,

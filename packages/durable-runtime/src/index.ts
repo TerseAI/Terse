@@ -1,3 +1,5 @@
+export { Runtime } from "./runtime/runtime.js"
+export type { RuntimeOptions, StartParams, Workflow } from "./runtime/runtime.js"
 export { JournalRevisionConflictError } from "./storage/errors.js"
 export { FileJournalStore } from "./storage/fileJournalStore.js"
 export * from "./types/index.js"
