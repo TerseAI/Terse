@@ -2,6 +2,7 @@ import { z } from "zod"
 
 export const RunStartedEventSchema = z
     .object({
+        eventId: z.literal("run.started"),
         type: z.literal("run.started"),
         workflowName: z.string().min(1),
         startedAt: z.iso.datetime(),

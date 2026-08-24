@@ -1,7 +1,17 @@
 import type { JournalEvent } from "./journalEvent.js"
 
-export type ReadJournalParams = {
+export type ListJournalEventsParams = {
     readonly runId: string
+}
+
+export type ListJournalEventsByTypeParams = {
+    readonly runId: string
+    readonly eventType: JournalEvent["type"]
+}
+
+export type GetJournalEventParams = {
+    readonly runId: string
+    readonly eventId: string
 }
 
 export type AppendJournalEventParams = {
@@ -10,6 +20,8 @@ export type AppendJournalEventParams = {
 }
 
 export interface JournalStore {
-    read(params: ReadJournalParams): Promise<readonly JournalEvent[]>
+    list(params: ListJournalEventsParams): Promise<readonly JournalEvent[]>
+    listByType(params: ListJournalEventsByTypeParams): Promise<readonly JournalEvent[]>
+    get(params: GetJournalEventParams): Promise<JournalEvent | undefined>
     append(params: AppendJournalEventParams): Promise<void>
 }

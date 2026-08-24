@@ -20,7 +20,17 @@ export class Runtime {
     constructor(private readonly options: RuntimeOptions) {}
 
     async start<Input extends CanonicalInput>({ runId, workflowName, input, workflow }: StartParams<Input>): Promise<void> {
+        const existingEvent = await this.options.journalStore.get({
+            runId,
+            eventId: "run.started"
+        })
+
+        if (existingEvent) {
+            throw new Error(`Run "${runId}" has already started`)
+        }
+
         const event: RunStartedEvent = {
+            eventId: "run.started",
             type: "run.started",
             workflowName,
             startedAt: new Date().toISOString(),

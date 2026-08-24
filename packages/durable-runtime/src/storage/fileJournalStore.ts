@@ -3,12 +3,12 @@ import { join } from "node:path"
 
 import { JournalEventSchema } from "../types/journalEvent.js"
 import type { JournalEvent } from "../types/journalEvent.js"
-import type { AppendJournalEventParams, JournalStore, ReadJournalParams } from "../types/journalStore.js"
+import type { AppendJournalEventParams, GetJournalEventParams, JournalStore, ListJournalEventsByTypeParams, ListJournalEventsParams } from "../types/journalStore.js"
 
 export class FileJournalStore implements JournalStore {
     constructor(private readonly rootDirectory: string) {}
 
-    async read({ runId }: ReadJournalParams): Promise<readonly JournalEvent[]> {
+    async list({ runId }: ListJournalEventsParams): Promise<readonly JournalEvent[]> {
         const runDirectory = this.runDirectoryFor(runId)
         const filenames = await readJournalDirectory(runDirectory)
 
@@ -18,6 +18,16 @@ export class FileJournalStore implements JournalStore {
                 return JournalEventSchema.parse(JSON.parse(source) as unknown)
             })
         )
+    }
+
+    async listByType({ runId, eventType }: ListJournalEventsByTypeParams): Promise<readonly JournalEvent[]> {
+        const events = await this.list({ runId })
+        return events.filter(event => event.type === eventType)
+    }
+
+    async get({ runId, eventId }: GetJournalEventParams): Promise<JournalEvent | undefined> {
+        const events = await this.list({ runId })
+        return events.find(event => event.eventId === eventId)
     }
 
     async append({ runId, event }: AppendJournalEventParams): Promise<void> {

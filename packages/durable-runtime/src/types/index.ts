@@ -1,5 +1,5 @@
 export { JournalEventSchema } from "./journalEvent.js"
 export type { JournalEvent } from "./journalEvent.js"
-export type { AppendJournalEventParams, JournalStore, ReadJournalParams } from "./journalStore.js"
+export type { AppendJournalEventParams, GetJournalEventParams, JournalStore, ListJournalEventsByTypeParams, ListJournalEventsParams } from "./journalStore.js"
 export { RunStartedEventSchema } from "./runStartedEvent.js"
 export type { RunStartedEvent } from "./runStartedEvent.js"
