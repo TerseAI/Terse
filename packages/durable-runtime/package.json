@@ -25,6 +25,7 @@
         "format:check": "pnpm exec prettier --config ../../.prettierrc --check \"src/**/*.ts\" \"test/**/*.ts\" \"*.{json,md}\""
     },
     "dependencies": {
+        "ulid": "3.0.2",
         "zod": "^4.3.6"
     },
     "devDependencies": {
