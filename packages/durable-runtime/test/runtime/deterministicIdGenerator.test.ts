@@ -9,6 +9,17 @@ function createGenerator(seed = "run-123"): DeterministicIdGenerator {
 }
 
 describe("DeterministicIdGenerator", () => {
+    test("preserves the ID sequence for existing journals", () => {
+        const generator = createGenerator()
+
+        expect([generator.next({ namespace: "step" }), generator.next({ namespace: "hook" }), generator.next({ namespace: "wait" }), generator.next({ namespace: "step" })]).toEqual([
+            "step_01M0T693606YR9RF1E6NAZG7K0",
+            "hook_01M0T69360DR403A9EWSRAARQ2",
+            "wait_01M0T693602RCK6XZ04R7GRBPZ",
+            "step_01M0T693606YR9RF1E6NAZG7K1"
+        ])
+    })
+
     test("replays the same ID sequence from the same run data", () => {
         const first = createGenerator()
         const replay = createGenerator()
