@@ -26,7 +26,7 @@ export class Runtime {
         })
 
         if (existingEvent) {
-            throw new Error(`Run "${runId}" has already started`)
+            throw new Error(`Run "${runId}" has already exists`)
         }
 
         const event: RunStartedEvent = {

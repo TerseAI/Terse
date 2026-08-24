@@ -1,33 +1,45 @@
-import { readdir, stat } from "node:fs/promises"
-import { join } from "node:path"
 import { expect } from "vitest"
 
 import { FileJournalStore, Runtime } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
 
-test("starting a workflow creates its run directory and first journal event", async ({ journalDirectory }) => {
+test("starting a workflow records its run started event", async ({ journalDirectory }) => {
     const journalStore = new FileJournalStore(journalDirectory)
     const runtime = new Runtime({
         journalStore
     })
+    const input = {
+        type: "example.received",
+        payload: {
+            id: "example-123",
+            labels: ["important"],
+            enabled: true
+        }
+    }
+    let receivedInput: typeof input | undefined
 
     await runtime.start({
-        workflow: async () => undefined,
+        workflow: async event => {
+            receivedInput = event
+        },
         runId: "run-123",
         workflowName: "test-workflow",
-        input: null
+        input
     })
 
-    const runDirectory = await stat(join(journalDirectory, "run-123"))
-
-    expect(runDirectory.isDirectory()).toBe(true)
-    expect(await readdir(join(journalDirectory, "run-123"))).toEqual(["00000001-run.started.json"])
-    expect(await journalStore.listByType({ runId: "run-123", eventType: "run.started" })).toHaveLength(1)
+    expect(receivedInput).toEqual(input)
+    expect(await journalStore.get({ runId: "run-123", eventId: "run.started" })).toMatchObject({
+        eventId: "run.started",
+        type: "run.started",
+        workflowName: "test-workflow",
+        input
+    })
 })
 
 test("cannot start two workflows with the same run ID", async ({ journalDirectory }) => {
+    const journalStore = new FileJournalStore(journalDirectory)
     const runtime = new Runtime({
-        journalStore: new FileJournalStore(journalDirectory)
+        journalStore
     })
 
     await runtime.start({
@@ -51,5 +63,5 @@ test("cannot start two workflows with the same run ID", async ({ journalDirector
     ).rejects.toThrow()
 
     expect(secondWorkflowWasExecuted).toBe(false)
-    expect(await readdir(join(journalDirectory, "run-123"))).toEqual(["00000001-run.started.json"])
+    expect(await journalStore.listByType({ runId: "run-123", eventType: "run.started" })).toHaveLength(1)
 })
