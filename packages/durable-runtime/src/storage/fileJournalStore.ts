@@ -1,59 +1,50 @@
-import { createHash } from "node:crypto"
-import { mkdir, open, readFile } from "node:fs/promises"
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 
 import { JournalEventSchema } from "../types/journalEvent.js"
-import type { AppendJournalEventParams, JournalSnapshot, JournalStore, ReadJournalParams } from "../types/journalStore.js"
-
-import { JournalRevisionConflictError } from "./errors.js"
+import type { JournalEvent } from "../types/journalEvent.js"
+import type { AppendJournalEventParams, JournalStore, ReadJournalParams } from "../types/journalStore.js"
 
 export class FileJournalStore implements JournalStore {
     constructor(private readonly rootDirectory: string) {}
 
-    async read({ runId }: ReadJournalParams): Promise<JournalSnapshot> {
-        const source = await readJournalFile(this.pathFor(runId))
-        if (source === undefined || source.length === 0) return { revision: 0, records: [] }
+    async read({ runId }: ReadJournalParams): Promise<readonly JournalEvent[]> {
+        const runDirectory = this.runDirectoryFor(runId)
+        const filenames = await readJournalDirectory(runDirectory)
 
-        const lines = source.endsWith("\n") ? source.slice(0, -1).split("\n") : source.split("\n")
-        const records = lines.filter(line => line.length > 0).map(line => JournalEventSchema.parse(JSON.parse(line) as unknown))
-        return { revision: records.length, records }
-    }
-
-    async append({ runId, expectedRevision, event }: AppendJournalEventParams): Promise<number> {
-        const snapshot = await this.read({ runId })
-        if (snapshot.revision !== expectedRevision) {
-            throw new JournalRevisionConflictError({
-                runId,
-                expectedRevision,
-                actualRevision: snapshot.revision
+        return Promise.all(
+            filenames.sort().map(async filename => {
+                const source = await readFile(join(runDirectory, filename), "utf8")
+                return JournalEventSchema.parse(JSON.parse(source) as unknown)
             })
-        }
-
-        const serialized = JSON.stringify(JournalEventSchema.parse(event))
-
-        await mkdir(this.rootDirectory, { recursive: true })
-        const journal = await open(this.pathFor(runId), "a")
-        try {
-            await journal.writeFile(`${serialized}\n`, "utf8")
-            await journal.sync()
-        } finally {
-            await journal.close()
-        }
-
-        return snapshot.revision + 1
+        )
     }
 
-    private pathFor(runId: string): string {
-        const filename = `${createHash("sha256").update(runId).digest("hex")}.jsonl`
-        return join(this.rootDirectory, filename)
+    async append({ runId, event }: AppendJournalEventParams): Promise<void> {
+        const validatedEvent = JournalEventSchema.parse(event)
+        const runDirectory = this.runDirectoryFor(runId)
+        const filenames = await readJournalDirectory(runDirectory)
+        const sequence = filenames.length + 1
+        const filename = `${sequence.toString().padStart(8, "0")}-${validatedEvent.type}.json`
+
+        await mkdir(runDirectory, { recursive: true })
+        await writeFile(join(runDirectory, filename), `${JSON.stringify(validatedEvent, null, 2)}\n`, {
+            encoding: "utf8",
+            flag: "wx"
+        })
+    }
+
+    private runDirectoryFor(runId: string): string {
+        return join(this.rootDirectory, runId)
     }
 }
 
-async function readJournalFile(path: string): Promise<string | undefined> {
+async function readJournalDirectory(path: string): Promise<string[]> {
     try {
-        return await readFile(path, "utf8")
+        const entries = await readdir(path, { withFileTypes: true })
+        return entries.filter(entry => entry.isFile() && entry.name.endsWith(".json")).map(entry => entry.name)
     } catch (error) {
-        if (isNodeError(error) && error.code === "ENOENT") return undefined
+        if (isNodeError(error) && error.code === "ENOENT") return []
         throw error
     }
 }

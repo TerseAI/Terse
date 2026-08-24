@@ -29,7 +29,6 @@ export class Runtime {
 
         await this.options.journalStore.append({
             runId,
-            expectedRevision: 0,
             event
         })
         await workflow(input)
