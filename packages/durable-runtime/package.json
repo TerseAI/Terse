@@ -1,0 +1,35 @@
+{
+    "name": "@terse/durable",
+    "version": "0.0.0",
+    "private": true,
+    "description": "An embeddable durable execution runtime for TypeScript.",
+    "type": "module",
+    "license": "SEE LICENSE IN ../../LICENSE.md",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "typecheck": "tsc -p tsconfig.json",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "format": "pnpm exec prettier --config ../../.prettierrc --write \"src/**/*.ts\" \"test/**/*.ts\" \"*.{json,md}\"",
+        "format:check": "pnpm exec prettier --config ../../.prettierrc --check \"src/**/*.ts\" \"test/**/*.ts\" \"*.{json,md}\""
+    },
+    "dependencies": {
+        "zod": "^4.3.6"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.0.0",
+        "vitest": "^3.2.6"
+    }
+}
