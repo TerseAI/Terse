@@ -1,5 +1,7 @@
 import type { JournalStore } from "../types/journalStore.js"
 import type { RunStartedEvent } from "../types/runStartedEvent.js"
+import { DeterministicIdGenerator } from "./deterministicIdGenerator.js"
+import { runWithWorkflowContext } from "./workflowContext.js"
 
 export type RuntimeOptions = {
     readonly journalStore: JournalStore
@@ -41,6 +43,17 @@ export class Runtime {
             runId,
             event
         })
-        await workflow(input)
+
+        await runWithWorkflowContext(
+            {
+                runId,
+                journalStore: this.options.journalStore,
+                idGenerator: new DeterministicIdGenerator({
+                    seed: runId,
+                    timestamp: Date.parse(event.startedAt)
+                })
+            },
+            () => workflow(input)
+        )
     }
 }

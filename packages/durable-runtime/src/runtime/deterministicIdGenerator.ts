@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto"
-
 import { monotonicFactory } from "ulid"
 
 export type DeterministicIdNamespace = "hook" | "step" | "wait"
