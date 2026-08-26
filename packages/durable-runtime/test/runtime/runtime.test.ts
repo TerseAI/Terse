@@ -42,6 +42,13 @@ test("runs a step and records its input", async ({ journalDirectory }) => {
     expect(completedEvents).toHaveLength(1)
     const [completedEvent] = completedEvents
 
+    if (startedEvent?.type !== "step.started") throw new Error("Expected a step.started event")
+    if (completedEvent?.type !== "step.completed") throw new Error("Expected a step.completed event")
+
+    expect(startedEvent.eventId).toBe(`step.started:${startedEvent.stepId}`)
+    expect(completedEvent.stepId).toBe(startedEvent.stepId)
+    expect(completedEvent.eventId).toBe(`step.completed:${startedEvent.stepId}`)
+
     expect(startedEvent).toMatchObject({
         type: "step.started",
         name: "create-greeting",
@@ -54,6 +61,77 @@ test("runs a step and records its input", async ({ journalDirectory }) => {
         type: "step.completed",
         name: "create-greeting",
         output: "Hello, Ada"
+    })
+})
+
+test("runs a step that throws and records the error", async ({ journalDirectory }) => {
+    const journalStore = new FileJournalStore(journalDirectory)
+    const runtime = new Runtime({ journalStore })
+    const stepError = new Error("test error")
+
+    await expect(
+        runtime.start({
+            runId: "run-123",
+            workflowName: "test-workflow",
+            input: null,
+            workflow: async () => {
+                await step({
+                    name: "create-greeting",
+                    input: {
+                        person: "Ada"
+                    },
+                    run: async () => {
+                        throw stepError
+                    }
+                })
+            }
+        })
+    ).rejects.toBe(stepError)
+
+    const startedEvents = await journalStore.listByType({
+        runId: "run-123",
+        eventType: "step.started"
+    })
+
+    expect(startedEvents).toHaveLength(1)
+    const [startedEvent] = startedEvents
+
+    const completedEvents = await journalStore.listByType({
+        runId: "run-123",
+        eventType: "step.completed"
+    })
+
+    expect(completedEvents).toHaveLength(0)
+
+    const failedEvents = await journalStore.listByType({
+        runId: "run-123",
+        eventType: "step.failed"
+    })
+
+    expect(failedEvents).toHaveLength(1)
+    const [failedEvent] = failedEvents
+
+    if (startedEvent?.type !== "step.started") throw new Error("Expected a step.started event")
+    if (failedEvent?.type !== "step.failed") throw new Error("Expected a step.failed event")
+
+    expect(startedEvent.eventId).toBe(`step.started:${startedEvent.stepId}`)
+    expect(failedEvent.stepId).toBe(startedEvent.stepId)
+    expect(failedEvent.eventId).toBe(`step.failed:${startedEvent.stepId}`)
+
+    expect(startedEvent).toMatchObject({
+        type: "step.started",
+        name: "create-greeting",
+        input: {
+            person: "Ada"
+        }
+    })
+
+    expect(failedEvent).toMatchObject({
+        type: "step.failed",
+        name: "create-greeting",
+        error: {
+            message: "test error"
+        }
     })
 })
 
