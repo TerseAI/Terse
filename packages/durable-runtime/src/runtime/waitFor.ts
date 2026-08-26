@@ -13,9 +13,7 @@ export type WaitForParams<Request extends CanonicalRequest, Payload extends Cano
     readonly request: Request
 }
 
-export async function waitFor<Request extends CanonicalRequest, Payload extends CanonicalPayload = CanonicalPayload>({
-    request
-}: WaitForParams<Request, Payload>): Promise<Payload> {
+export async function waitFor<Request extends CanonicalRequest, Payload extends CanonicalPayload = CanonicalPayload>({ request }: WaitForParams<Request, Payload>): Promise<Payload> {
     const context = getWorkflowContext()
     const waitId = context.idGenerator.next({ namespace: "wait" })
 
