@@ -1,6 +1,6 @@
 {
     "name": "create-terse",
-    "version": "0.4.6",
+    "version": "0.4.7",
     "type": "module",
     "description": "Scaffold and launch a self-hosted Terse instance with one command.",
     "keywords": [
