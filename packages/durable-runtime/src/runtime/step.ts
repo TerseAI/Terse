@@ -19,20 +19,37 @@ export async function step<Input extends CanonicalValue, Output extends Canonica
     const context = getWorkflowContext()
 
     const stepId = context.idGenerator.next({ namespace: "step" })
-    const startedAt = systemNow()
-    const event: StepStartedEvent = {
-        eventId: createStepEventId({ type: "step.started", stepId }),
-        type: "step.started",
-        stepId,
-        name,
-        startedAt: toIsoString(startedAt),
-        input
+
+    const existingCompletedEvent = await context.journalStore.get({
+        runId: context.runId,
+        eventId: createStepEventId({ type: "step.completed", stepId })
+    })
+
+    if (existingCompletedEvent?.type === "step.completed") {
+        return existingCompletedEvent.output as Output
     }
 
-    await context.journalStore.append({
+    const existingStartedEvent = await context.journalStore.get({
         runId: context.runId,
-        event
+        eventId: createStepEventId({ type: "step.started", stepId })
     })
+
+    if (!existingStartedEvent) {
+        const startedAt = systemNow()
+        const event: StepStartedEvent = {
+            eventId: createStepEventId({ type: "step.started", stepId }),
+            type: "step.started",
+            stepId,
+            name,
+            startedAt: toIsoString(startedAt),
+            input
+        }
+
+        await context.journalStore.append({
+            runId: context.runId,
+            event
+        })
+    }
 
     let value: Output
     try {

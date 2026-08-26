@@ -64,6 +64,59 @@ test("runs a step and records its input", async ({ journalDirectory }) => {
     })
 })
 
+test("resuming an interrupted step does not record another step started event", async ({ journalDirectory }) => {
+    const interruptedError = new Error("runtime interrupted")
+    const fileJournalStore = new FileJournalStore(journalDirectory)
+    let interruptCompletionWrite = true
+    const interruptedJournalStore: JournalStore = {
+        list: params => fileJournalStore.list(params),
+        listByType: params => fileJournalStore.listByType(params),
+        get: params => fileJournalStore.get(params),
+        append: async params => {
+            if (params.event.type === "step.completed" && interruptCompletionWrite) {
+                interruptCompletionWrite = false
+                throw interruptedError
+            }
+
+            await fileJournalStore.append(params)
+        }
+    }
+    let stepExecutions = 0
+    const workflow = async () => {
+        await step({
+            name: "create-greeting",
+            input: {
+                person: "Ada"
+            },
+            run: async input => {
+                stepExecutions++
+                return `Hello, ${input.person}`
+            }
+        })
+    }
+
+    await expect(
+        new Runtime({ journalStore: interruptedJournalStore }).start({
+            runId: "run-123",
+            workflowName: "test-workflow",
+            input: null,
+            workflow
+        })
+    ).rejects.toBe(interruptedError)
+
+    expect(await fileJournalStore.listByType({ runId: "run-123", eventType: "step.started" })).toHaveLength(1)
+    expect(await fileJournalStore.listByType({ runId: "run-123", eventType: "step.completed" })).toHaveLength(0)
+
+    await new Runtime({ journalStore: fileJournalStore }).resume({
+        runId: "run-123",
+        workflow
+    })
+
+    expect(stepExecutions).toBe(2)
+    expect(await fileJournalStore.listByType({ runId: "run-123", eventType: "step.started" })).toHaveLength(1)
+    expect(await fileJournalStore.listByType({ runId: "run-123", eventType: "step.completed" })).toHaveLength(1)
+})
+
 test("resuming a completed workflow does not run it again", async ({ journalDirectory }) => {
     let workflowExecutions = 0
     let stepExecutions = 0
