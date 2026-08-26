@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util"
+
 import type { JournalStore } from "../types/journalStore.js"
 import type { RunCompletedEvent } from "../types/runCompletedEvent.js"
 import { createRunEventId } from "../types/runEventId.js"
@@ -119,7 +121,10 @@ export class Runtime {
             eventId: resolvedEventId
         })
 
-        if (existingResolvedEvent?.type === "wait.resolved") return
+        if (existingResolvedEvent?.type === "wait.resolved") {
+            if (isDeepStrictEqual(existingResolvedEvent.payload, event.payload)) return
+            throw new Error(`Wait "${event.waitId}" is already resolved with a different payload`)
+        }
 
         const requestedEvent = await this.options.journalStore.get({
             runId,
