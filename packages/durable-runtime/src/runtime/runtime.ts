@@ -1,14 +1,17 @@
 import type { JournalStore } from "../types/journalStore.js"
-import type { RuntimeCompletedOutcome, RuntimeOutcome, RuntimeSuspendedOutcome, Suspension } from "../types/runtimeOutcome.js"
 import type { RunCompletedEvent } from "../types/runCompletedEvent.js"
 import { createRunEventId } from "../types/runEventId.js"
 import type { RunStartedEvent } from "../types/runStartedEvent.js"
+import { createWaitEventId } from "../types/waitEventId.js"
+import type { WaitRequestedEvent } from "../types/waitRequestedEvent.js"
+import type { WaitResolvedEvent } from "../types/waitResolvedEvent.js"
+import type { RuntimeCompletedOutcome, RuntimeOutcome, RuntimeSuspendedOutcome, Suspension } from "../types/runtimeOutcome.js"
 
-import { systemNow, toIsoString } from "./systemClock.js"
 import { DeterministicIdGenerator } from "./deterministicIdGenerator.js"
-import { installWorkflowDate } from "./workflowDate.js"
+import { systemNow, toIsoString } from "./systemClock.js"
 import type { LogicalClock } from "./workflowContext.js"
 import { runWithWorkflowContext } from "./workflowContext.js"
+import { installWorkflowDate } from "./workflowDate.js"
 
 export type RuntimeOptions = {
     readonly journalStore: JournalStore
@@ -29,6 +32,20 @@ export type StartParams<Input extends CanonicalInput> = {
 export type ResumeParams<Input extends CanonicalInput> = {
     readonly runId: string
     readonly workflow: Workflow<Input>
+    readonly event?: ResumeEvent
+}
+
+export type ResumeEvent = {
+    readonly type: "wait.resolved"
+    readonly waitId: string
+    readonly payload: WaitResolvedEvent["payload"]
+}
+
+type ExecuteParams<Input extends CanonicalInput> = {
+    readonly runId: string
+    readonly input: Input
+    readonly workflow: Workflow<Input>
+    readonly startedAt: number
 }
 
 export class Runtime {
@@ -60,6 +77,79 @@ export class Runtime {
             event
         })
 
+        return this.execute({
+            runId,
+            input,
+            workflow,
+            startedAt
+        })
+    }
+
+    async resume<Input extends CanonicalInput>({ runId, workflow, event }: ResumeParams<Input>): Promise<RuntimeOutcome> {
+        const startedEvent = await this.options.journalStore.get({
+            runId,
+            eventId: createRunEventId({ type: "run.started" })
+        })
+
+        if (startedEvent?.type !== "run.started") {
+            throw new Error(`Run "${runId}" does not exist`)
+        }
+
+        const completedEvent = await this.options.journalStore.get({
+            runId,
+            eventId: createRunEventId({ type: "run.completed" })
+        })
+
+        if (completedEvent?.type === "run.completed") return { status: "completed" }
+
+        if (event) await this.appendResumeEvent({ runId, event })
+
+        return this.execute({
+            runId,
+            input: startedEvent.input as Input,
+            workflow,
+            startedAt: Date.parse(startedEvent.startedAt)
+        })
+    }
+
+    private async appendResumeEvent({ runId, event }: { readonly runId: string; readonly event: ResumeEvent }): Promise<void> {
+        const resolvedEventId = createWaitEventId({ type: "wait.resolved", waitId: event.waitId })
+        const existingResolvedEvent = await this.options.journalStore.get({
+            runId,
+            eventId: resolvedEventId
+        })
+
+        if (existingResolvedEvent?.type === "wait.resolved") return
+
+        const requestedEvent = await this.options.journalStore.get({
+            runId,
+            eventId: createWaitEventId({ type: "wait.requested", waitId: event.waitId })
+        })
+
+        if (requestedEvent?.type !== "wait.requested") {
+            throw new Error(`Wait "${event.waitId}" does not exist in run "${runId}"`)
+        }
+
+        const resolvedAt = systemNow()
+        const wakeAt = getTimerWakeAt(requestedEvent.request)
+
+        if (wakeAt !== undefined && resolvedAt < wakeAt) return
+
+        const resolvedEvent: WaitResolvedEvent = {
+            eventId: resolvedEventId,
+            type: "wait.resolved",
+            waitId: event.waitId,
+            resolvedAt: toIsoString(resolvedAt),
+            payload: event.payload
+        }
+
+        await this.options.journalStore.append({
+            runId,
+            event: resolvedEvent
+        })
+    }
+
+    private async execute<Input extends CanonicalInput>({ runId, input, workflow, startedAt }: ExecuteParams<Input>): Promise<RuntimeOutcome> {
         const suspensionSignal = createSuspensionSignal()
         const logicalClock = createLogicalClock(startedAt)
         const workflowCompletion = Promise.resolve(
@@ -109,26 +199,16 @@ export class Runtime {
 
         return outcome
     }
+}
 
-    async resume<Input extends CanonicalInput>({ runId }: ResumeParams<Input>): Promise<RuntimeOutcome> {
-        const startedEvent = await this.options.journalStore.get({
-            runId,
-            eventId: createRunEventId({ type: "run.started" })
-        })
+function getTimerWakeAt(request: WaitRequestedEvent["request"]): number | undefined {
+    if (typeof request !== "object" || request === null || Array.isArray(request) || request.type !== "timer") return undefined
+    if (typeof request.wakeAt !== "string") throw new Error("Timer wait request has an invalid wakeAt")
 
-        if (startedEvent?.type !== "run.started") {
-            throw new Error(`Run "${runId}" does not exist`)
-        }
+    const wakeAt = Date.parse(request.wakeAt)
+    if (!Number.isFinite(wakeAt)) throw new Error("Timer wait request has an invalid wakeAt")
 
-        const completedEvent = await this.options.journalStore.get({
-            runId,
-            eventId: createRunEventId({ type: "run.completed" })
-        })
-
-        if (completedEvent?.type === "run.completed") return { status: "completed" }
-
-        throw new Error(`Run "${runId}" is incomplete and cannot be resumed yet`)
-    }
+    return wakeAt
 }
 
 function createLogicalClock(initialTimestamp: number): LogicalClock {

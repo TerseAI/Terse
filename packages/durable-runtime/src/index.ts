@@ -1,5 +1,5 @@
 export { Runtime } from "./runtime/runtime.js"
-export type { ResumeParams, RuntimeOptions, StartParams, Workflow } from "./runtime/runtime.js"
+export type { ResumeEvent, ResumeParams, RuntimeOptions, StartParams, Workflow } from "./runtime/runtime.js"
 export { sleep } from "./runtime/sleep.js"
 export { step } from "./runtime/step.js"
 export type { StepParams } from "./runtime/step.js"

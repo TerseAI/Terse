@@ -1,5 +1,4 @@
 import { setTimeout as delay } from "node:timers/promises"
-
 import { expect } from "vitest"
 
 import { FileJournalStore, Runtime, step } from "../../src/index.js"

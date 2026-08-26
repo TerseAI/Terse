@@ -10,10 +10,10 @@ export async function sleep(duration: StringValue): Promise<void> {
         throw new RangeError(`Sleep duration must be greater than zero, received "${duration}"`)
     }
 
-    await waitFor({
-        request: {
-            type: "timer",
-            wakeAt: new Date(Date.now() + durationMilliseconds).toISOString()
-        }
-    })
+    const request = {
+        type: "timer",
+        wakeAt: new Date(Date.now() + durationMilliseconds).toISOString()
+    } as const
+
+    await waitFor({ request })
 }
