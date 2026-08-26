@@ -1,5 +1,4 @@
 import { setTimeout as delay } from "node:timers/promises"
-
 import { expect } from "vitest"
 
 import { FileJournalStore, Runtime, sleep } from "../../src/index.js"
@@ -51,13 +50,7 @@ test("delivering the same resolution again is idempotent", async ({ journalDirec
     })
 
     expect(duplicateOutcome).toEqual(secondOutcome)
-    expect(execution).toEqual([
-        "before-first-sleep",
-        "before-first-sleep",
-        "before-second-sleep",
-        "before-first-sleep",
-        "before-second-sleep"
-    ])
+    expect(execution).toEqual(["before-first-sleep", "before-first-sleep", "before-second-sleep", "before-first-sleep", "before-second-sleep"])
     expect(await journalStore.listByType({ runId: "run-123", eventType: "wait.requested" })).toHaveLength(2)
     expect(await journalStore.listByType({ runId: "run-123", eventType: "wait.resolved" })).toHaveLength(1)
     expect(await journalStore.listByType({ runId: "run-123", eventType: "run.completed" })).toHaveLength(0)
