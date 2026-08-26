@@ -1,6 +1,6 @@
 import { expect } from "vitest"
 
-import { FileJournalStore, Runtime, step } from "../../src/index.js"
+import { createStepEventId, FileJournalStore, Runtime, step } from "../../src/index.js"
 import type { JournalStore } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
 
@@ -45,9 +45,9 @@ test("runs a step and records its input", async ({ journalDirectory }) => {
     if (startedEvent?.type !== "step.started") throw new Error("Expected a step.started event")
     if (completedEvent?.type !== "step.completed") throw new Error("Expected a step.completed event")
 
-    expect(startedEvent.eventId).toBe(`step.started:${startedEvent.stepId}`)
+    expect(startedEvent.eventId).toBe(createStepEventId({ type: "step.started", stepId: startedEvent.stepId }))
     expect(completedEvent.stepId).toBe(startedEvent.stepId)
-    expect(completedEvent.eventId).toBe(`step.completed:${startedEvent.stepId}`)
+    expect(completedEvent.eventId).toBe(createStepEventId({ type: "step.completed", stepId: startedEvent.stepId }))
 
     expect(startedEvent).toMatchObject({
         type: "step.started",
@@ -114,9 +114,9 @@ test("runs a step that throws and records the error", async ({ journalDirectory 
     if (startedEvent?.type !== "step.started") throw new Error("Expected a step.started event")
     if (failedEvent?.type !== "step.failed") throw new Error("Expected a step.failed event")
 
-    expect(startedEvent.eventId).toBe(`step.started:${startedEvent.stepId}`)
+    expect(startedEvent.eventId).toBe(createStepEventId({ type: "step.started", stepId: startedEvent.stepId }))
     expect(failedEvent.stepId).toBe(startedEvent.stepId)
-    expect(failedEvent.eventId).toBe(`step.failed:${startedEvent.stepId}`)
+    expect(failedEvent.eventId).toBe(createStepEventId({ type: "step.failed", stepId: startedEvent.stepId }))
 
     expect(startedEvent).toMatchObject({
         type: "step.started",

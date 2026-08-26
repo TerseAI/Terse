@@ -1,4 +1,5 @@
 import { StepCompletedEvent } from "../types/stepCompletedEvent.js"
+import { createStepEventId } from "../types/stepEventId.js"
 import { StepFailedEvent } from "../types/stepFailedEvent.js"
 import type { StepStartedEvent } from "../types/stepStartedEvent.js"
 
@@ -17,7 +18,7 @@ export async function step<Input extends CanonicalValue, Output extends Canonica
 
     const stepId = context.idGenerator.next({ namespace: "step" })
     const event: StepStartedEvent = {
-        eventId: `step.started:${stepId}`,
+        eventId: createStepEventId({ type: "step.started", stepId }),
         type: "step.started",
         stepId,
         name,
@@ -35,7 +36,7 @@ export async function step<Input extends CanonicalValue, Output extends Canonica
         value = await run(input)
     } catch (error) {
         const failedEvent: StepFailedEvent = {
-            eventId: `step.failed:${stepId}`,
+            eventId: createStepEventId({ type: "step.failed", stepId }),
             type: "step.failed",
             stepId,
             name,
@@ -52,7 +53,7 @@ export async function step<Input extends CanonicalValue, Output extends Canonica
     }
 
     const completedEvent: StepCompletedEvent = {
-        eventId: `step.completed:${stepId}`,
+        eventId: createStepEventId({ type: "step.completed", stepId }),
         type: "step.completed",
         stepId,
         name,
