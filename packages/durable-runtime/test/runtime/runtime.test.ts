@@ -1,6 +1,6 @@
 import { expect } from "vitest"
 
-import { createStepEventId, FileJournalStore, Runtime, step } from "../../src/index.js"
+import { createRunEventId, createStepEventId, FileJournalStore, Runtime, step } from "../../src/index.js"
 import type { JournalStore } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
 
@@ -62,6 +62,70 @@ test("runs a step and records its input", async ({ journalDirectory }) => {
         name: "create-greeting",
         output: "Hello, Ada"
     })
+})
+
+test("resuming a completed workflow does not run it again", async ({ journalDirectory }) => {
+    let workflowExecutions = 0
+    let stepExecutions = 0
+    const results: string[] = []
+
+    const workflow = async () => {
+        workflowExecutions++
+
+        const result = await step({
+            name: "create-greeting",
+            input: {
+                person: "Ada"
+            },
+            run: async input => {
+                stepExecutions++
+                return `Hello, ${input.person}`
+            }
+        })
+
+        results.push(result)
+    }
+
+    const journalStore = new FileJournalStore(journalDirectory)
+
+    await new Runtime({ journalStore }).start({
+        runId: "run-123",
+        workflowName: "test-workflow",
+        input: null,
+        workflow
+    })
+
+    await new Runtime({
+        journalStore: new FileJournalStore(journalDirectory)
+    }).resume({
+        runId: "run-123",
+        workflow
+    })
+
+    expect(workflowExecutions).toBe(1)
+    expect(stepExecutions).toBe(1)
+    expect(results).toEqual(["Hello, Ada"])
+
+    expect(
+        await journalStore.listByType({
+            runId: "run-123",
+            eventType: "run.completed"
+        })
+    ).toHaveLength(1)
+
+    expect(
+        await journalStore.listByType({
+            runId: "run-123",
+            eventType: "step.started"
+        })
+    ).toHaveLength(1)
+
+    expect(
+        await journalStore.listByType({
+            runId: "run-123",
+            eventType: "step.completed"
+        })
+    ).toHaveLength(1)
 })
 
 test("runs a step that throws and records the error", async ({ journalDirectory }) => {
@@ -160,8 +224,9 @@ test("starting a workflow records its run started event", async ({ journalDirect
     })
 
     expect(receivedInput).toEqual(input)
-    expect(await journalStore.get({ runId: "run-123", eventId: "run.started" })).toMatchObject({
-        eventId: "run.started",
+    const eventId = createRunEventId({ type: "run.started" })
+    expect(await journalStore.get({ runId: "run-123", eventId })).toMatchObject({
+        eventId,
         type: "run.started",
         workflowName: "test-workflow",
         input
