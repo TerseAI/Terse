@@ -5,6 +5,7 @@ import type { StepStartedEvent } from "../types/stepStartedEvent.js"
 
 import { getWorkflowContext } from "./workflowContext.js"
 
+// The event input field is the journal's canonical JSON value type.
 type CanonicalValue = StepStartedEvent["input"]
 
 export type StepParams<Input extends CanonicalValue, Output extends CanonicalValue> = {

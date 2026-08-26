@@ -1,6 +1,6 @@
 import { expect } from "vitest"
 
-import { createRunEventId, createStepEventId, FileJournalStore, Runtime, step } from "../../src/index.js"
+import { FileJournalStore, Runtime, createRunEventId, createStepEventId, step } from "../../src/index.js"
 import type { JournalStore } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
 

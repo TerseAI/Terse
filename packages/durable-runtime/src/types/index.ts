@@ -1,6 +1,13 @@
 export { JournalEventSchema } from "./journalEvent.js"
 export type { JournalEvent } from "./journalEvent.js"
 export type { AppendJournalEventParams, GetJournalEventParams, JournalStore, ListJournalEventsByTypeParams, ListJournalEventsParams } from "./journalStore.js"
+export {
+    RuntimeCompletedOutcomeSchema,
+    RuntimeOutcomeSchema,
+    RuntimeSuspendedOutcomeSchema,
+    SuspensionSchema
+} from "./runtimeOutcome.js"
+export type { RuntimeCompletedOutcome, RuntimeOutcome, RuntimeSuspendedOutcome, Suspension } from "./runtimeOutcome.js"
 export { RunCompletedEventSchema } from "./runCompletedEvent.js"
 export type { RunCompletedEvent } from "./runCompletedEvent.js"
 export { createRunEventId } from "./runEventId.js"
@@ -19,3 +26,9 @@ export { StepFailedEventSchema } from "./stepFailedEvent.js"
 export type { StepFailedEvent } from "./stepFailedEvent.js"
 export { StepStartedEventSchema } from "./stepStartedEvent.js"
 export type { StepStartedEvent } from "./stepStartedEvent.js"
+export { createWaitEventId } from "./waitEventId.js"
+export type { CreateWaitEventIdParams } from "./waitEventId.js"
+export { WaitEventTypeSchema } from "./waitEventType.js"
+export type { WaitEventType } from "./waitEventType.js"
+export { WaitRequestedEventSchema } from "./waitRequestedEvent.js"
+export type { WaitRequestedEvent } from "./waitRequestedEvent.js"

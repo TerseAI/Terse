@@ -1,4 +1,5 @@
 import type { JournalStore } from "../types/journalStore.js"
+import type { RuntimeCompletedOutcome, RuntimeOutcome, RuntimeSuspendedOutcome, Suspension } from "../types/runtimeOutcome.js"
 import type { RunCompletedEvent } from "../types/runCompletedEvent.js"
 import { createRunEventId } from "../types/runEventId.js"
 import type { RunStartedEvent } from "../types/runStartedEvent.js"
@@ -10,6 +11,7 @@ export type RuntimeOptions = {
     readonly journalStore: JournalStore
 }
 
+// The event input field is the journal's canonical JSON value type.
 type CanonicalInput = RunStartedEvent["input"]
 
 export type Workflow<Input extends CanonicalInput> = (input: Input) => void | Promise<void>
@@ -29,7 +31,7 @@ export type ResumeParams<Input extends CanonicalInput> = {
 export class Runtime {
     constructor(private readonly options: RuntimeOptions) {}
 
-    async start<Input extends CanonicalInput>({ runId, workflowName, input, workflow }: StartParams<Input>): Promise<void> {
+    async start<Input extends CanonicalInput>({ runId, workflowName, input, workflow }: StartParams<Input>): Promise<RuntimeOutcome> {
         const existingEvent = await this.options.journalStore.get({
             runId,
             eventId: createRunEventId({ type: "run.started" })
@@ -52,17 +54,37 @@ export class Runtime {
             event
         })
 
-        await runWithWorkflowContext(
-            {
-                runId,
-                journalStore: this.options.journalStore,
-                idGenerator: new DeterministicIdGenerator({
-                    seed: runId,
-                    timestamp: Date.parse(event.startedAt)
-                })
-            },
-            () => workflow(input)
+        const suspensionSignal = createSuspensionSignal()
+        const workflowCompletion = Promise.resolve(
+            runWithWorkflowContext(
+                {
+                    runId,
+                    journalStore: this.options.journalStore,
+                    idGenerator: new DeterministicIdGenerator({
+                        seed: runId,
+                        timestamp: Date.parse(event.startedAt)
+                    }),
+                    suspend: suspensionSignal.suspend
+                },
+                () => workflow(input)
+            )
+        ).then(
+            (): RuntimeCompletedOutcome => ({
+                status: "completed"
+            })
         )
+
+        const outcome = await Promise.race([
+            workflowCompletion,
+            suspensionSignal.promise.then(
+                (suspension): RuntimeSuspendedOutcome => ({
+                    status: "suspended",
+                    suspension
+                })
+            )
+        ])
+
+        if (outcome.status === "suspended") return outcome
 
         const completedEvent: RunCompletedEvent = {
             eventId: createRunEventId({ type: "run.completed" }),
@@ -74,9 +96,11 @@ export class Runtime {
             runId,
             event: completedEvent
         })
+
+        return outcome
     }
 
-    async resume<Input extends CanonicalInput>({ runId }: ResumeParams<Input>): Promise<void> {
+    async resume<Input extends CanonicalInput>({ runId }: ResumeParams<Input>): Promise<RuntimeOutcome> {
         const startedEvent = await this.options.journalStore.get({
             runId,
             eventId: createRunEventId({ type: "run.started" })
@@ -91,8 +115,30 @@ export class Runtime {
             eventId: createRunEventId({ type: "run.completed" })
         })
 
-        if (completedEvent?.type === "run.completed") return
+        if (completedEvent?.type === "run.completed") return { status: "completed" }
 
         throw new Error(`Run "${runId}" is incomplete and cannot be resumed yet`)
+    }
+}
+
+type SuspensionSignal = {
+    readonly promise: Promise<Suspension>
+    readonly suspend: (suspension: Suspension) => void
+}
+
+function createSuspensionSignal(): SuspensionSignal {
+    let resolveSuspension: (suspension: Suspension) => void = () => undefined
+    let suspended = false
+    const promise = new Promise<Suspension>(resolve => {
+        resolveSuspension = resolve
+    })
+
+    return {
+        promise,
+        suspend: suspension => {
+            if (suspended) return
+            suspended = true
+            resolveSuspension(suspension)
+        }
     }
 }
