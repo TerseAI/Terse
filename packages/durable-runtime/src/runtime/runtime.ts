@@ -4,7 +4,10 @@ import type { RunCompletedEvent } from "../types/runCompletedEvent.js"
 import { createRunEventId } from "../types/runEventId.js"
 import type { RunStartedEvent } from "../types/runStartedEvent.js"
 
+import { systemNow, toIsoString } from "./systemClock.js"
 import { DeterministicIdGenerator } from "./deterministicIdGenerator.js"
+import { installWorkflowDate } from "./workflowDate.js"
+import type { LogicalClock } from "./workflowContext.js"
 import { runWithWorkflowContext } from "./workflowContext.js"
 
 export type RuntimeOptions = {
@@ -29,7 +32,9 @@ export type ResumeParams<Input extends CanonicalInput> = {
 }
 
 export class Runtime {
-    constructor(private readonly options: RuntimeOptions) {}
+    constructor(private readonly options: RuntimeOptions) {
+        installWorkflowDate()
+    }
 
     async start<Input extends CanonicalInput>({ runId, workflowName, input, workflow }: StartParams<Input>): Promise<RuntimeOutcome> {
         const existingEvent = await this.options.journalStore.get({
@@ -41,11 +46,12 @@ export class Runtime {
             throw new Error(`Run "${runId}" has already exists`)
         }
 
+        const startedAt = systemNow()
         const event: RunStartedEvent = {
             eventId: createRunEventId({ type: "run.started" }),
             type: "run.started",
             workflowName,
-            startedAt: new Date().toISOString(),
+            startedAt: toIsoString(startedAt),
             input
         }
 
@@ -55,6 +61,7 @@ export class Runtime {
         })
 
         const suspensionSignal = createSuspensionSignal()
+        const logicalClock = createLogicalClock(startedAt)
         const workflowCompletion = Promise.resolve(
             runWithWorkflowContext(
                 {
@@ -62,9 +69,11 @@ export class Runtime {
                     journalStore: this.options.journalStore,
                     idGenerator: new DeterministicIdGenerator({
                         seed: runId,
-                        timestamp: Date.parse(event.startedAt)
+                        timestamp: startedAt
                     }),
-                    suspend: suspensionSignal.suspend
+                    suspend: suspensionSignal.suspend,
+                    logicalClock,
+                    phase: "workflow"
                 },
                 () => workflow(input)
             )
@@ -86,10 +95,11 @@ export class Runtime {
 
         if (outcome.status === "suspended") return outcome
 
+        const completedAt = systemNow()
         const completedEvent: RunCompletedEvent = {
             eventId: createRunEventId({ type: "run.completed" }),
             type: "run.completed",
-            completedAt: new Date().toISOString()
+            completedAt: toIsoString(completedAt)
         }
 
         await this.options.journalStore.append({
@@ -118,6 +128,17 @@ export class Runtime {
         if (completedEvent?.type === "run.completed") return { status: "completed" }
 
         throw new Error(`Run "${runId}" is incomplete and cannot be resumed yet`)
+    }
+}
+
+function createLogicalClock(initialTimestamp: number): LogicalClock {
+    let timestamp = initialTimestamp
+
+    return {
+        now: () => timestamp,
+        advanceTo: (nextTimestamp: number) => {
+            timestamp = Math.max(timestamp, nextTimestamp)
+        }
     }
 }
 

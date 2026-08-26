@@ -3,7 +3,8 @@ import { createStepEventId } from "../types/stepEventId.js"
 import { StepFailedEvent } from "../types/stepFailedEvent.js"
 import type { StepStartedEvent } from "../types/stepStartedEvent.js"
 
-import { getWorkflowContext } from "./workflowContext.js"
+import { systemNow, toIsoString } from "./systemClock.js"
+import { getWorkflowContext, runWithStepContext } from "./workflowContext.js"
 
 // The event input field is the journal's canonical JSON value type.
 type CanonicalValue = StepStartedEvent["input"]
@@ -18,12 +19,13 @@ export async function step<Input extends CanonicalValue, Output extends Canonica
     const context = getWorkflowContext()
 
     const stepId = context.idGenerator.next({ namespace: "step" })
+    const startedAt = systemNow()
     const event: StepStartedEvent = {
         eventId: createStepEventId({ type: "step.started", stepId }),
         type: "step.started",
         stepId,
         name,
-        startedAt: new Date().toISOString(),
+        startedAt: toIsoString(startedAt),
         input
     }
 
@@ -34,14 +36,15 @@ export async function step<Input extends CanonicalValue, Output extends Canonica
 
     let value: Output
     try {
-        value = await run(input)
+        value = await runWithStepContext(() => run(input))
     } catch (error) {
+        const failedAt = systemNow()
         const failedEvent: StepFailedEvent = {
             eventId: createStepEventId({ type: "step.failed", stepId }),
             type: "step.failed",
             stepId,
             name,
-            failedAt: new Date().toISOString(),
+            failedAt: toIsoString(failedAt),
             error: error instanceof Error ? { name: error.name, message: error.message } : { name: "Error", message: String(error) }
         }
 
@@ -50,15 +53,18 @@ export async function step<Input extends CanonicalValue, Output extends Canonica
             event: failedEvent
         })
 
+        context.logicalClock.advanceTo(failedAt)
+
         throw error
     }
 
+    const completedAt = systemNow()
     const completedEvent: StepCompletedEvent = {
         eventId: createStepEventId({ type: "step.completed", stepId }),
         type: "step.completed",
         stepId,
         name,
-        completedAt: new Date().toISOString(),
+        completedAt: toIsoString(completedAt),
         output: value
     }
 
@@ -66,6 +72,8 @@ export async function step<Input extends CanonicalValue, Output extends Canonica
         runId: context.runId,
         event: completedEvent
     })
+
+    context.logicalClock.advanceTo(completedAt)
 
     return value
 }
