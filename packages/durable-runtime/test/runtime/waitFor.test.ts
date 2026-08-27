@@ -29,6 +29,39 @@ function createApprovalHook() {
     })
 }
 
+test("gets the active suspension until its wait is resolved", async ({ journalDirectory }) => {
+    const ApprovalHook = createApprovalHook()
+    const journalStore = new FileJournalStore(journalDirectory)
+    const workflow = defineInputlessWorkflow(async () => {
+        await waitFor(ApprovalHook, {
+            message: "Deploy to production?"
+        })
+    })
+    const runtime = new Runtime({ journalStore })
+
+    const firstOutcome = await runtime.start({
+        runId: "run-123",
+        workflowName: "test-workflow",
+        input: null,
+        workflow
+    })
+
+    if (firstOutcome.status !== "suspended") throw new Error("Expected the workflow to be suspended")
+    expect(await runtime.getSuspension({ runId: "run-123" })).toEqual(firstOutcome.suspension)
+
+    await runtime.resumeHook(ApprovalHook, {
+        runId: "run-123",
+        workflow,
+        waitId: firstOutcome.suspension.waitId,
+        resolution: {
+            approved: true,
+            approvedBy: "Ada"
+        }
+    })
+
+    expect(await runtime.getSuspension({ runId: "run-123" })).toBeUndefined()
+})
+
 test("waitFor suspends a workflow and returns its validated resolution", async ({ journalDirectory }) => {
     const ApprovalHook = createApprovalHook()
     const journalStore = new FileJournalStore(journalDirectory)

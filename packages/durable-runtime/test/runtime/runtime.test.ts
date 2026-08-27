@@ -6,6 +6,29 @@ import type { JournalStore } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
 import { defineInputlessWorkflow } from "../fixtures/workflow.js"
 
+test("gets run metadata without exposing journal events", async ({ journalDirectory }) => {
+    const runtime = new Runtime({ journalStore: new FileJournalStore(journalDirectory) })
+
+    await runtime.start({
+        runId: "run-123",
+        workflowName: "test-workflow",
+        input: null,
+        workflow: defineInputlessWorkflow(async () => {})
+    })
+
+    expect(await runtime.getRun({ runId: "run-123" })).toEqual({
+        runId: "run-123",
+        workflowName: "test-workflow",
+        startedAt: expect.any(String)
+    })
+})
+
+test("getting a run that does not exist fails", async ({ journalDirectory }) => {
+    const runtime = new Runtime({ journalStore: new FileJournalStore(journalDirectory) })
+
+    await expect(runtime.getRun({ runId: "missing-run" })).rejects.toThrow('Run "missing-run" does not exist')
+})
+
 test("runs a step and records its input", async ({ journalDirectory }) => {
     const journalStore = new FileJournalStore(journalDirectory)
     const runtime = new Runtime({ journalStore })

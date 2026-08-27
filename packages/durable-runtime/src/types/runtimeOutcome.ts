@@ -1,9 +1,11 @@
 import { z } from "zod"
 
+import { HookRequestEnvelopeSchema } from "./hookRequestEnvelope.js"
+
 export const SuspensionSchema = z
     .object({
         waitId: z.string(),
-        request: z.json()
+        request: HookRequestEnvelopeSchema
     })
     .strict()
 

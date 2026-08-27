@@ -1,24 +1,8 @@
 # `@terse/durable`
 
-An embeddable durable execution runtime for TypeScript.
+Why did I build this?
 
-This package is being developed contract-first inside the Terse monorepo. It will own the small set of durability primitives Terse needs while remaining independent of Terse's backend, SDK, sandbox provider, and compiler.
+Every durability platform is very heavy-weight and doesn't allow you to build on top of it (at least not easily). Over at Terse, we build durable flows that run in sandboxes. This created several issues when we were forced to use an OSS provider.
 
-## Scope
-
-- Append-only, versioned journals
-- Deterministic replay at explicit operation boundaries
-- Durable steps with automatic retries
-- Durable timers
-- Typed hooks that suspend and resume execution
-- Atomic writes, execution fencing, and divergence detection
-- Test utilities for deterministic clocks, IDs, storage, and failure injection
-
-## Non-goals
-
-- Running a queue, scheduler, server, or worker fleet
-- Bundling or evaluating user code in a separate VM
-- Owning sandbox lifecycle or external event delivery
-- Providing exactly-once execution of external side effects
-
-The package is developed and published from the Terse monorepo for now. It can move to its own repository and adopt an independent release lifecycle once the public contract is stable.
+- The npm package was massive (200MB).
+- they had their own control plane. So now we had our control plane, talk to their control plane in an isolated sandbox (you don't need a control plane her)

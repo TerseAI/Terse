@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { HookRequestEnvelopeSchema } from "../types/hookRequestEnvelope.js"
+import type { HookRequestEnvelope } from "../types/hookRequestEnvelope.js"
 import { createWaitEventId } from "../types/waitEventId.js"
 import type { WaitRequestedEvent } from "../types/waitRequestedEvent.js"
 import type { WaitResolvedEvent } from "../types/waitResolvedEvent.js"
@@ -8,8 +10,7 @@ import type { AnyHookDefinition, HookRequest, HookResolution } from "./defineHoo
 import { systemNow, toIsoString } from "./systemClock.js"
 import { getWorkflowContext } from "./workflowContext.js"
 
-// The event request field is the journal's canonical JSON value type.
-type CanonicalRequest = WaitRequestedEvent["request"]
+// The event payload field is the journal's canonical JSON value type.
 type CanonicalPayload = WaitResolvedEvent["payload"]
 
 export async function waitFor<Hook extends AnyHookDefinition>(hook: Hook, request: HookRequest<Hook>): Promise<HookResolution<Hook>>
@@ -27,11 +28,11 @@ export async function waitFor(hook: AnyHookDefinition, request: unknown): Promis
     return hook.resolution.parse(resolution)
 }
 
-type WaitForRequestParams<Request extends CanonicalRequest> = {
+type WaitForRequestParams<Request extends HookRequestEnvelope> = {
     readonly request: Request
 }
 
-async function waitForRequest<Request extends CanonicalRequest, Payload extends CanonicalPayload = CanonicalPayload>({ request }: WaitForRequestParams<Request>): Promise<Payload> {
+async function waitForRequest<Request extends HookRequestEnvelope, Payload extends CanonicalPayload = CanonicalPayload>({ request }: WaitForRequestParams<Request>): Promise<Payload> {
     const context = getWorkflowContext()
     const waitId = context.idGenerator.next({ namespace: "wait" })
 
@@ -49,10 +50,10 @@ async function waitForRequest<Request extends CanonicalRequest, Payload extends 
         runId: context.runId,
         eventId: createWaitEventId({ type: "wait.requested", waitId })
     })
-    let persistedRequest: CanonicalRequest
+    let persistedRequest: HookRequestEnvelope
 
     if (requestedEvent?.type === "wait.requested") {
-        persistedRequest = requestedEvent.request
+        persistedRequest = HookRequestEnvelopeSchema.parse(requestedEvent.request)
     } else {
         const event: WaitRequestedEvent = {
             eventId: createWaitEventId({ type: "wait.requested", waitId }),

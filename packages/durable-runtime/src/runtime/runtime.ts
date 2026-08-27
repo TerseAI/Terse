@@ -5,6 +5,8 @@ import { HookRequestEnvelopeSchema } from "../types/hookRequestEnvelope.js"
 import type { JournalStore } from "../types/journalStore.js"
 import type { RunCompletedEvent } from "../types/runCompletedEvent.js"
 import { createRunEventId } from "../types/runEventId.js"
+import type { RunMetadata } from "../types/runMetadata.js"
+import type { RunStartedEvent } from "../types/runStartedEvent.js"
 import type { RuntimeCompletedOutcome, RuntimeOutcome, RuntimeSuspendedOutcome, Suspension } from "../types/runtimeOutcome.js"
 import { createWaitEventId } from "../types/waitEventId.js"
 import type { WaitRequestedEvent } from "../types/waitRequestedEvent.js"
@@ -22,6 +24,14 @@ import { installWorkflowRandom } from "./workflowRandom.js"
 
 export type RuntimeOptions = {
     readonly journalStore: JournalStore
+}
+
+export type GetRunParams = {
+    readonly runId: string
+}
+
+export type GetSuspensionParams = {
+    readonly runId: string
 }
 
 export type StartParams<InputSchema extends z.ZodType> = {
@@ -103,15 +113,34 @@ export class Runtime {
         })
     }
 
-    async resume<InputSchema extends z.ZodType>({ runId, workflow, event }: ResumeParams<InputSchema>): Promise<RuntimeOutcome> {
-        const startedEvent = await this.options.journalStore.get({
+    async getRun({ runId }: GetRunParams): Promise<RunMetadata> {
+        const startedEvent = await this.getStartedEvent(runId)
+        return {
             runId,
-            eventId: createRunEventId({ type: "run.started" })
-        })
-
-        if (startedEvent?.type !== "run.started") {
-            throw new Error(`Run "${runId}" does not exist`)
+            workflowName: startedEvent.workflowName,
+            startedAt: startedEvent.startedAt
         }
+    }
+
+    async getSuspension({ runId }: GetSuspensionParams): Promise<Suspension | undefined> {
+        await this.getStartedEvent(runId)
+        const events = await this.options.journalStore.list({ runId })
+        const resolvedWaitIds = new Set(events.filter(event => event.type === "wait.resolved").map(event => event.waitId))
+
+        for (let index = events.length - 1; index >= 0; index--) {
+            const event = events[index]
+            if (event?.type !== "wait.requested" || resolvedWaitIds.has(event.waitId)) continue
+            return {
+                waitId: event.waitId,
+                request: HookRequestEnvelopeSchema.parse(event.request)
+            }
+        }
+
+        return undefined
+    }
+
+    async resume<InputSchema extends z.ZodType>({ runId, workflow, event }: ResumeParams<InputSchema>): Promise<RuntimeOutcome> {
+        const startedEvent = await this.getStartedEvent(runId)
 
         const completedEvent = await this.options.journalStore.get({
             runId,
@@ -229,6 +258,19 @@ export class Runtime {
             runId,
             event: resolvedEvent
         })
+    }
+
+    private async getStartedEvent(runId: string): Promise<RunStartedEvent> {
+        const startedEvent = await this.options.journalStore.get({
+            runId,
+            eventId: createRunEventId({ type: "run.started" })
+        })
+
+        if (startedEvent?.type !== "run.started") {
+            throw new Error(`Run "${runId}" does not exist`)
+        }
+
+        return startedEvent
     }
 
     private async execute<InputSchema extends z.ZodType>({ runId, input, workflow, startedAt }: ExecuteParams<InputSchema>): Promise<RuntimeOutcome> {

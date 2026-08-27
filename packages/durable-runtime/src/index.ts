@@ -1,5 +1,5 @@
 export { Runtime } from "./runtime/runtime.js"
-export type { ResumeEvent, ResumeHookParams, ResumeParams, ResumeTimerParams, RuntimeOptions, StartParams } from "./runtime/runtime.js"
+export type { GetRunParams, GetSuspensionParams, ResumeEvent, ResumeHookParams, ResumeParams, ResumeTimerParams, RuntimeOptions, StartParams } from "./runtime/runtime.js"
 export { defineHook } from "./runtime/defineHook.js"
 export type { AnyHookDefinition, DefineHookParams, HookDefinition, HookRequest, HookResolution, HookResolutionInput } from "./runtime/defineHook.js"
 export { defineWorkflow } from "./runtime/defineWorkflow.js"
