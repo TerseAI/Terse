@@ -2,7 +2,6 @@ import { setTimeout as delay } from "node:timers/promises"
 import { expect } from "vitest"
 
 import { FileJournalStore, Runtime, sleep, step } from "../../src/index.js"
-
 import { test } from "../fixtures/filesystem.js"
 
 test("workflow randomness is deterministic when replayed", async ({ journalDirectory }) => {
