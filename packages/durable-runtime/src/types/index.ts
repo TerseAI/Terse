@@ -1,3 +1,5 @@
+export { HookRequestEnvelopeSchema } from "./hookRequestEnvelope.js"
+export type { HookRequestEnvelope } from "./hookRequestEnvelope.js"
 export { JournalEventSchema } from "./journalEvent.js"
 export type { JournalEvent } from "./journalEvent.js"
 export type { AppendJournalEventParams, GetJournalEventParams, JournalStore, ListJournalEventsByTypeParams, ListJournalEventsParams } from "./journalStore.js"

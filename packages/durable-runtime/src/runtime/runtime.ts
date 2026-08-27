@@ -1,5 +1,7 @@
 import { isDeepStrictEqual } from "node:util"
+import { z } from "zod"
 
+import { HookRequestEnvelopeSchema } from "../types/hookRequestEnvelope.js"
 import type { JournalStore } from "../types/journalStore.js"
 import type { RunCompletedEvent } from "../types/runCompletedEvent.js"
 import { createRunEventId } from "../types/runEventId.js"
@@ -9,11 +11,14 @@ import { createWaitEventId } from "../types/waitEventId.js"
 import type { WaitRequestedEvent } from "../types/waitRequestedEvent.js"
 import type { WaitResolvedEvent } from "../types/waitResolvedEvent.js"
 
-import { DeterministicIdGenerator } from "./deterministicIdGenerator.js"
+import type { AnyHookDefinition, HookResolutionInput } from "./defineHook.js"
+import { DeterministicIdGenerator, createDeterministicRandom } from "./deterministicIdGenerator.js"
 import { systemNow, toIsoString } from "./systemClock.js"
+import { TimerHook } from "./timerHook.js"
 import type { LogicalClock } from "./workflowContext.js"
 import { runWithWorkflowContext } from "./workflowContext.js"
 import { installWorkflowDate } from "./workflowDate.js"
+import { installWorkflowRandom } from "./workflowRandom.js"
 
 export type RuntimeOptions = {
     readonly journalStore: JournalStore
@@ -43,6 +48,19 @@ export type ResumeEvent = {
     readonly payload: WaitResolvedEvent["payload"]
 }
 
+export type ResumeHookParams<Input extends CanonicalInput, Hook extends AnyHookDefinition> = {
+    readonly runId: string
+    readonly workflow: Workflow<Input>
+    readonly waitId: string
+    readonly resolution: HookResolutionInput<Hook>
+}
+
+export type ResumeTimerParams<Input extends CanonicalInput> = {
+    readonly runId: string
+    readonly workflow: Workflow<Input>
+    readonly waitId: string
+}
+
 type ExecuteParams<Input extends CanonicalInput> = {
     readonly runId: string
     readonly input: Input
@@ -53,6 +71,7 @@ type ExecuteParams<Input extends CanonicalInput> = {
 export class Runtime {
     constructor(private readonly options: RuntimeOptions) {
         installWorkflowDate()
+        installWorkflowRandom()
     }
 
     async start<Input extends CanonicalInput>({ runId, workflowName, input, workflow }: StartParams<Input>): Promise<RuntimeOutcome> {
@@ -114,6 +133,70 @@ export class Runtime {
         })
     }
 
+    async resumeHook<Hook extends AnyHookDefinition, Input extends CanonicalInput>(
+        hook: Hook,
+        { runId, workflow, waitId, resolution }: ResumeHookParams<Input, Hook>
+    ): Promise<RuntimeOutcome> {
+        const requestedEvent = await this.options.journalStore.get({
+            runId,
+            eventId: createWaitEventId({ type: "wait.requested", waitId })
+        })
+
+        if (requestedEvent?.type !== "wait.requested") {
+            throw new Error(`Wait "${waitId}" does not exist in run "${runId}"`)
+        }
+
+        const request = HookRequestEnvelopeSchema.parse(requestedEvent.request)
+
+        if (request.name !== hook.name) {
+            throw new Error(`Wait "${waitId}" belongs to hook "${request.name}", not "${hook.name}"`)
+        }
+
+        hook.request.parse(request.payload)
+        const parsedResolution = hook.resolution.parse(resolution)
+        const canonicalResolution = z.json().parse(parsedResolution)
+
+        return this.resume({
+            runId,
+            workflow,
+            event: {
+                type: "wait.resolved",
+                waitId,
+                payload: canonicalResolution
+            }
+        })
+    }
+
+    async resumeTimer<Input extends CanonicalInput>({ runId, workflow, waitId }: ResumeTimerParams<Input>): Promise<RuntimeOutcome> {
+        const requestedEvent = await this.options.journalStore.get({
+            runId,
+            eventId: createWaitEventId({ type: "wait.requested", waitId })
+        })
+
+        if (requestedEvent?.type !== "wait.requested") {
+            throw new Error(`Wait "${waitId}" does not exist in run "${runId}"`)
+        }
+
+        const request = HookRequestEnvelopeSchema.parse(requestedEvent.request)
+
+        if (request.name !== TimerHook.name) {
+            throw new Error(`Wait "${waitId}" belongs to hook "${request.name}", not "${TimerHook.name}"`)
+        }
+
+        const timer = TimerHook.request.parse(request.payload)
+
+        if (systemNow() < Date.parse(timer.wakeAt)) {
+            return this.resume({ runId, workflow })
+        }
+
+        return this.resumeHook(TimerHook, {
+            runId,
+            workflow,
+            waitId,
+            resolution: {}
+        })
+    }
+
     private async appendResumeEvent({ runId, event }: { readonly runId: string; readonly event: ResumeEvent }): Promise<void> {
         const resolvedEventId = createWaitEventId({ type: "wait.resolved", waitId: event.waitId })
         const existingResolvedEvent = await this.options.journalStore.get({
@@ -168,6 +251,7 @@ export class Runtime {
                     }),
                     suspend: suspensionSignal.suspend,
                     logicalClock,
+                    random: createDeterministicRandom(`${runId}\0${startedAt}\0workflow`),
                     phase: "workflow"
                 },
                 () => workflow(input)

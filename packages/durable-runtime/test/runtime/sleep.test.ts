@@ -36,8 +36,11 @@ test("sleep suspends a workflow for a human-readable duration", async ({ journal
         suspension: {
             waitId: expect.stringMatching(/^wait_/),
             request: {
-                type: "timer",
-                wakeAt
+                type: "hook",
+                name: "timer",
+                payload: {
+                    wakeAt
+                }
             }
         }
     })
@@ -59,8 +62,11 @@ test("sleep suspends a workflow for a human-readable duration", async ({ journal
         type: "wait.requested",
         waitId: outcome.suspension.waitId,
         request: {
-            type: "timer",
-            wakeAt
+            type: "hook",
+            name: "timer",
+            payload: {
+                wakeAt
+            }
         }
     })
 })
@@ -84,14 +90,10 @@ test("sleep remains suspended when resumed before its wake time", async ({ journ
 
     const resumedOutcome = await new Runtime({
         journalStore: new FileJournalStore(journalDirectory)
-    }).resume({
+    }).resumeTimer({
         runId: "run-123",
         workflow,
-        event: {
-            type: "wait.resolved",
-            waitId: firstOutcome.suspension.waitId,
-            payload: null
-        }
+        waitId: firstOutcome.suspension.waitId
     })
 
     expect(resumedOutcome).toEqual(firstOutcome)
@@ -135,14 +137,10 @@ test("sleep completes when resumed after its wake time", async ({ journalDirecto
 
     const resumedOutcome = await new Runtime({
         journalStore: new FileJournalStore(journalDirectory)
-    }).resume({
+    }).resumeTimer({
         runId: "run-123",
         workflow,
-        event: {
-            type: "wait.resolved",
-            waitId: firstOutcome.suspension.waitId,
-            payload: null
-        }
+        waitId: firstOutcome.suspension.waitId
     })
 
     expect(resumedOutcome).toEqual({ status: "completed" })

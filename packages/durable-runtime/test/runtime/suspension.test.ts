@@ -26,27 +26,19 @@ test("delivering the same resolution again is idempotent", async ({ journalDirec
 
     await delay(35)
 
-    const secondOutcome = await new Runtime({ journalStore }).resume({
+    const secondOutcome = await new Runtime({ journalStore }).resumeTimer({
         runId: "run-123",
         workflow,
-        event: {
-            type: "wait.resolved",
-            waitId: firstOutcome.suspension.waitId,
-            payload: null
-        }
+        waitId: firstOutcome.suspension.waitId
     })
 
     if (secondOutcome.status !== "suspended") throw new Error("Expected the workflow to be suspended")
     expect(secondOutcome.suspension.waitId).not.toBe(firstOutcome.suspension.waitId)
 
-    const duplicateOutcome = await new Runtime({ journalStore }).resume({
+    const duplicateOutcome = await new Runtime({ journalStore }).resumeTimer({
         runId: "run-123",
         workflow,
-        event: {
-            type: "wait.resolved",
-            waitId: firstOutcome.suspension.waitId,
-            payload: null
-        }
+        waitId: firstOutcome.suspension.waitId
     })
 
     expect(duplicateOutcome).toEqual(secondOutcome)
@@ -76,14 +68,10 @@ test("rejects a conflicting resolution for an already resolved wait", async ({ j
 
     await delay(35)
 
-    await new Runtime({ journalStore }).resume({
+    await new Runtime({ journalStore }).resumeTimer({
         runId: "run-123",
         workflow,
-        event: {
-            type: "wait.resolved",
-            waitId: firstOutcome.suspension.waitId,
-            payload: null
-        }
+        waitId: firstOutcome.suspension.waitId
     })
 
     await expect(
@@ -109,7 +97,7 @@ test("rejects a conflicting resolution for an already resolved wait", async ({ j
     expect(resolvedEvents[0]).toMatchObject({
         type: "wait.resolved",
         waitId: firstOutcome.suspension.waitId,
-        payload: null
+        payload: {}
     })
 })
 

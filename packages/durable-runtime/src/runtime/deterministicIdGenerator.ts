@@ -35,7 +35,7 @@ export class DeterministicIdGenerator {
     }
 }
 
-function createDeterministicRandom(seed: string): () => number {
+export function createDeterministicRandom(seed: string): () => number {
     let counter = 0
 
     return () => {

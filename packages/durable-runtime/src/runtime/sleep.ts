@@ -1,6 +1,7 @@
 import ms from "ms"
 import type { StringValue } from "ms"
 
+import { TimerHook } from "./timerHook.js"
 import { waitFor } from "./waitFor.js"
 
 export async function sleep(duration: StringValue): Promise<void> {
@@ -10,10 +11,7 @@ export async function sleep(duration: StringValue): Promise<void> {
         throw new RangeError(`Sleep duration must be greater than zero, received "${duration}"`)
     }
 
-    const request = {
-        type: "timer",
+    await waitFor(TimerHook, {
         wakeAt: new Date(Date.now() + durationMilliseconds).toISOString()
-    } as const
-
-    await waitFor({ request })
+    })
 }

@@ -16,6 +16,7 @@ export type WorkflowContext = {
     readonly idGenerator: DeterministicIdGenerator
     readonly suspend: (suspension: Suspension) => void
     readonly logicalClock: LogicalClock
+    readonly random: () => number
     readonly phase: "step" | "workflow"
 }
 

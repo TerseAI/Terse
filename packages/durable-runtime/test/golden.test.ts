@@ -47,14 +47,10 @@ test("resumes a workflow without rerunning completed steps", async ({ journalDir
 
     await delay(35)
 
-    const resumedOutcome = await new Runtime({ journalStore }).resume({
+    const resumedOutcome = await new Runtime({ journalStore }).resumeTimer({
         runId: "run-123",
         workflow,
-        event: {
-            type: "wait.resolved",
-            waitId: firstOutcome.suspension.waitId,
-            payload: null
-        }
+        waitId: firstOutcome.suspension.waitId
     })
 
     expect(resumedOutcome).toEqual({ status: "completed" })

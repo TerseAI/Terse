@@ -1,7 +1,10 @@
+import { z } from "zod"
+
 import { createWaitEventId } from "../types/waitEventId.js"
 import type { WaitRequestedEvent } from "../types/waitRequestedEvent.js"
 import type { WaitResolvedEvent } from "../types/waitResolvedEvent.js"
 
+import type { AnyHookDefinition, HookRequest, HookResolution } from "./defineHook.js"
 import { systemNow, toIsoString } from "./systemClock.js"
 import { getWorkflowContext } from "./workflowContext.js"
 
@@ -9,11 +12,26 @@ import { getWorkflowContext } from "./workflowContext.js"
 type CanonicalRequest = WaitRequestedEvent["request"]
 type CanonicalPayload = WaitResolvedEvent["payload"]
 
-export type WaitForParams<Request extends CanonicalRequest, Payload extends CanonicalPayload> = {
+export async function waitFor<Hook extends AnyHookDefinition>(hook: Hook, request: HookRequest<Hook>): Promise<HookResolution<Hook>>
+export async function waitFor(hook: AnyHookDefinition, request: unknown): Promise<unknown> {
+    const parsedRequest = hook.request.parse(request)
+    const canonicalRequest = z.json().parse(parsedRequest)
+    const resolution = await waitForRequest({
+        request: {
+            type: "hook",
+            name: hook.name,
+            payload: canonicalRequest
+        }
+    })
+
+    return hook.resolution.parse(resolution)
+}
+
+type WaitForRequestParams<Request extends CanonicalRequest> = {
     readonly request: Request
 }
 
-export async function waitFor<Request extends CanonicalRequest, Payload extends CanonicalPayload = CanonicalPayload>({ request }: WaitForParams<Request, Payload>): Promise<Payload> {
+async function waitForRequest<Request extends CanonicalRequest, Payload extends CanonicalPayload = CanonicalPayload>({ request }: WaitForRequestParams<Request>): Promise<Payload> {
     const context = getWorkflowContext()
     const waitId = context.idGenerator.next({ namespace: "wait" })
 
