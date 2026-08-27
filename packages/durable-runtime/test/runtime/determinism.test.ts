@@ -3,6 +3,7 @@ import { expect } from "vitest"
 
 import { FileJournalStore, Runtime, step } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
+import { defineInputlessWorkflow } from "../fixtures/workflow.js"
 
 test("workflow time does not advance without a durable boundary", async ({ journalDirectory }) => {
     const workflowTimes: number[] = []
@@ -13,11 +14,11 @@ test("workflow time does not advance without a durable boundary", async ({ journ
         runId: "run-123",
         workflowName: "test-workflow",
         input: null,
-        workflow: async () => {
+        workflow: defineInputlessWorkflow(async () => {
             workflowTimes.push(Date.now())
             await delay(25)
             workflowTimes.push(Date.now())
-        }
+        })
     })
 
     expect(workflowTimes[1]).toBe(workflowTimes[0])
@@ -32,7 +33,7 @@ test("workflow time advances after a long-running step completes", async ({ jour
         runId: "run-123",
         workflowName: "test-workflow",
         input: null,
-        workflow: async () => {
+        workflow: defineInputlessWorkflow(async () => {
             workflowTimes.push(Date.now())
 
             await step({
@@ -47,7 +48,7 @@ test("workflow time advances after a long-running step completes", async ({ jour
             })
 
             workflowTimes.push(Date.now())
-        }
+        })
     })
 
     const [runStartedEvent] = await journalStore.listByType({

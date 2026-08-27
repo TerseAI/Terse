@@ -21,4 +21,4 @@ This package is being developed contract-first inside the Terse monorepo. It wil
 - Owning sandbox lifecycle or external event delivery
 - Providing exactly-once execution of external side effects
 
-The package is intentionally private while its public contract is being designed. It can move to its own repository and adopt an independent release lifecycle once that contract is stable.
+The package is developed and published from the Terse monorepo for now. It can move to its own repository and adopt an independent release lifecycle once the public contract is stable.

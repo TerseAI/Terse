@@ -3,6 +3,7 @@ import { expect } from "vitest"
 
 import { FileJournalStore, Runtime, sleep } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
+import { defineInputlessWorkflow } from "../fixtures/workflow.js"
 
 test("sleep suspends a workflow for a human-readable duration", async ({ journalDirectory }) => {
     const journalStore = new FileJournalStore(journalDirectory)
@@ -12,11 +13,11 @@ test("sleep suspends a workflow for a human-readable duration", async ({ journal
         runId: "run-123",
         workflowName: "test-workflow",
         input: null,
-        workflow: async () => {
+        workflow: defineInputlessWorkflow(async () => {
             execution.push("before")
             await sleep("8h")
             execution.push("after")
-        }
+        })
     })
 
     expect(execution).toEqual(["before"])
@@ -73,11 +74,11 @@ test("sleep suspends a workflow for a human-readable duration", async ({ journal
 
 test("sleep remains suspended when resumed before its wake time", async ({ journalDirectory }) => {
     const execution: string[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         execution.push("before")
         await sleep("5s")
         execution.push("after")
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
 
     const firstOutcome = await new Runtime({ journalStore }).start({
@@ -108,11 +109,11 @@ test("sleep remains suspended when resumed before its wake time", async ({ journ
 
 test("sleep completes when resumed after its wake time", async ({ journalDirectory }) => {
     const execution: string[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         execution.push("before")
         await sleep("50ms")
         execution.push("after")
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
 
     const firstOutcome = await new Runtime({ journalStore }).start({

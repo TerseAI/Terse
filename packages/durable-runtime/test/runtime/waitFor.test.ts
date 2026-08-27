@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { FileJournalStore, Runtime, defineHook, waitFor } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
+import { defineInputlessWorkflow } from "../fixtures/workflow.js"
 
 const ApprovalRequestSchema = z
     .object({
@@ -32,14 +33,14 @@ test("waitFor suspends a workflow and returns its validated resolution", async (
     const ApprovalHook = createApprovalHook()
     const journalStore = new FileJournalStore(journalDirectory)
     let resolution: ApprovalResolution | undefined
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         const value = await waitFor(ApprovalHook, {
             message: "Deploy to production?"
         })
 
         expectTypeOf(value).toEqualTypeOf<ApprovalResolution>()
         resolution = value
-    }
+    })
 
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
@@ -92,9 +93,9 @@ test("waitFor rejects an invalid request before journaling it", async ({ journal
             runId: "run-123",
             workflowName: "test-workflow",
             input: null,
-            workflow: async () => {
+            workflow: defineInputlessWorkflow(async () => {
                 await waitFor(ApprovalHook, invalidRequest)
-            }
+            })
         })
     ).rejects.toBeInstanceOf(z.ZodError)
 
@@ -109,11 +110,11 @@ test("waitFor rejects an invalid resolution without journaling it", async ({ jou
         approvedBy: "Ada"
     } as unknown as ApprovalResolution
     let resolution: ApprovalResolution | undefined
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         resolution = await waitFor(ApprovalHook, {
             message: "Deploy to production?"
         })
-    }
+    })
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
         workflowName: "test-workflow",

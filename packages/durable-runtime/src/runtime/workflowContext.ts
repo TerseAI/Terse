@@ -10,6 +10,8 @@ export type LogicalClock = {
     readonly advanceTo: (timestamp: number) => void
 }
 
+export type ExecutionPhase = "step" | "workflow"
+
 export type WorkflowContext = {
     readonly runId: string
     readonly journalStore: JournalStore
@@ -17,10 +19,18 @@ export type WorkflowContext = {
     readonly suspend: (suspension: Suspension) => void
     readonly logicalClock: LogicalClock
     readonly random: () => number
-    readonly phase: "step" | "workflow"
+    readonly phase: ExecutionPhase
 }
 
-const workflowContext = new AsyncLocalStorage<WorkflowContext>()
+const WORKFLOW_CONTEXT_KEY = Symbol.for("@terse/durable/workflow-context")
+type DurableGlobal = typeof globalThis & {
+    [key: symbol]: AsyncLocalStorage<WorkflowContext> | undefined
+}
+const durableGlobal = globalThis as DurableGlobal
+
+function workflowContext(): AsyncLocalStorage<WorkflowContext> {
+    return (durableGlobal[WORKFLOW_CONTEXT_KEY] ??= new AsyncLocalStorage<WorkflowContext>())
+}
 
 export function getWorkflowContext(): WorkflowContext {
     const context = getOptionalWorkflowContext()
@@ -33,14 +43,18 @@ export function getWorkflowContext(): WorkflowContext {
 }
 
 export function getOptionalWorkflowContext(): WorkflowContext | undefined {
-    return workflowContext.getStore()
+    return workflowContext().getStore()
+}
+
+export function getExecutionPhase(): ExecutionPhase | undefined {
+    return getOptionalWorkflowContext()?.phase
 }
 
 export function runWithWorkflowContext<Output>(context: WorkflowContext, run: () => Output): Output {
-    return workflowContext.run(context, run)
+    return workflowContext().run(context, run)
 }
 
 export function runWithStepContext<Output>(run: () => Output): Output {
     const context = getWorkflowContext()
-    return workflowContext.run({ ...context, phase: "step" }, run)
+    return workflowContext().run({ ...context, phase: "step" }, run)
 }

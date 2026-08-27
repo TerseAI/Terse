@@ -16,10 +16,12 @@ test("writes each journal event to its run directory", async ({ journalDirectory
         input: null
     }
 
-    await journalStore.append({
-        runId: "run-123",
-        event
-    })
+    expect(
+        await journalStore.append({
+            runId: "run-123",
+            event
+        })
+    ).toEqual(event)
 
     const runDirectory = join(journalDirectory, "run-123")
 

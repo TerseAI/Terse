@@ -4,12 +4,13 @@ import { expect } from "vitest"
 import { FileJournalStore, Runtime, sleep, step } from "../src/index.js"
 
 import { test } from "./fixtures/filesystem.js"
+import { defineInputlessWorkflow } from "./fixtures/workflow.js"
 
 test("resumes a workflow without rerunning completed steps", async ({ journalDirectory }) => {
     let createGreetingExecutions = 0
     let sendGreetingExecutions = 0
     const sentGreetings: string[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         const greeting = await step({
             name: "create-greeting",
             input: {
@@ -34,7 +35,7 @@ test("resumes a workflow without rerunning completed steps", async ({ journalDir
                 return "sent"
             }
         })
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",

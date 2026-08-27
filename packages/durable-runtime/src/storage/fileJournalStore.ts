@@ -30,7 +30,7 @@ export class FileJournalStore implements JournalStore {
         return events.find(event => event.eventId === eventId)
     }
 
-    async append({ runId, event }: AppendJournalEventParams): Promise<void> {
+    async append({ runId, event }: AppendJournalEventParams): Promise<JournalEvent> {
         const validatedEvent = JournalEventSchema.parse(event)
         const runDirectory = this.runDirectoryFor(runId)
         const filenames = await readJournalDirectory(runDirectory)
@@ -42,6 +42,7 @@ export class FileJournalStore implements JournalStore {
             encoding: "utf8",
             flag: "wx"
         })
+        return validatedEvent
     }
 
     private runDirectoryFor(runId: string): string {

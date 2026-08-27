@@ -1,7 +1,6 @@
 {
     "name": "@terse/durable",
-    "version": "0.0.0",
-    "private": true,
+    "version": "0.4.6",
     "description": "An embeddable durable execution runtime for TypeScript.",
     "type": "module",
     "license": "SEE LICENSE IN ../../LICENSE.md",
@@ -17,7 +16,7 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsc -p tsconfig.build.json",
+        "build": "rm -rf dist && tsc -p tsconfig.build.json",
         "typecheck": "tsc -p tsconfig.json",
         "test": "vitest run",
         "test:watch": "vitest",

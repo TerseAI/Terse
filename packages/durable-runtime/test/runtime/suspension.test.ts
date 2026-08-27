@@ -1,19 +1,20 @@
 import { setTimeout as delay } from "node:timers/promises"
 import { expect } from "vitest"
 
-import { FileJournalStore, Runtime, sleep } from "../../src/index.js"
+import { FileJournalStore, JournalEventSchema, Runtime, sleep } from "../../src/index.js"
 import type { JournalStore } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
+import { defineInputlessWorkflow } from "../fixtures/workflow.js"
 
 test("delivering the same resolution again is idempotent", async ({ journalDirectory }) => {
     const execution: string[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         execution.push("before-first-sleep")
         await sleep("20ms")
         execution.push("before-second-sleep")
         await sleep("5s")
         execution.push("after-second-sleep")
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
@@ -50,12 +51,12 @@ test("delivering the same resolution again is idempotent", async ({ journalDirec
 
 test("rejects a conflicting resolution for an already resolved wait", async ({ journalDirectory }) => {
     const execution: string[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         execution.push("before-first-sleep")
         await sleep("20ms")
         execution.push("before-second-sleep")
         await sleep("5s")
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
@@ -103,10 +104,10 @@ test("rejects a conflicting resolution for an already resolved wait", async ({ j
 
 test("rejects a resolution for an unknown wait before replaying", async ({ journalDirectory }) => {
     const execution: string[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         execution.push("before")
         await sleep("5s")
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
 
     await new Runtime({ journalStore }).start({
@@ -134,11 +135,11 @@ test("rejects a resolution for an unknown wait before replaying", async ({ journ
 
 test("does not replay when recording a resolution fails", async ({ journalDirectory }) => {
     const execution: string[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         execution.push("before")
         await sleep("20ms")
         execution.push("after")
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
@@ -157,8 +158,9 @@ test("does not replay when recording a resolution fails", async ({ journalDirect
         listByType: params => journalStore.listByType(params),
         get: params => journalStore.get(params),
         append: async params => {
-            if (params.event.type === "wait.resolved") throw journalError
-            await journalStore.append(params)
+            const event = JournalEventSchema.parse(params.event)
+            if (event.type === "wait.resolved") throw journalError
+            return journalStore.append(params)
         }
     }
 
@@ -180,9 +182,9 @@ test("does not replay when recording a resolution fails", async ({ journalDirect
 
 test("a resolution delivered after run completion is a no-op", async ({ journalDirectory }) => {
     let workflowExecutions = 0
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         workflowExecutions++
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
 
     await new Runtime({ journalStore }).start({
@@ -209,11 +211,11 @@ test("a resolution delivered after run completion is a no-op", async ({ journalD
 
 test("resuming an unresolved run returns the same suspension", async ({ journalDirectory }) => {
     const execution: string[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         execution.push("before")
         await sleep("8h")
         execution.push("after")
-    }
+    })
 
     const firstOutcome = await new Runtime({
         journalStore: new FileJournalStore(journalDirectory)

@@ -3,13 +3,14 @@ import { expect } from "vitest"
 
 import { FileJournalStore, Runtime, sleep, step } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
+import { defineInputlessWorkflow } from "../fixtures/workflow.js"
 
 test("workflow randomness is deterministic when replayed", async ({ journalDirectory }) => {
     const samples: number[][] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         samples.push([Math.random(), Math.random()])
         await sleep("20ms")
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
@@ -35,7 +36,7 @@ test("workflow randomness is deterministic when replayed", async ({ journalDirec
 test("step randomness remains native when a step is retried", async ({ journalDirectory }) => {
     const stepError = new Error("retry step")
     const samples: number[] = []
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         await step({
             name: "random-step",
             input: null,
@@ -45,7 +46,7 @@ test("step randomness remains native when a step is retried", async ({ journalDi
                 return null
             }
         })
-    }
+    })
     const journalStore = new FileJournalStore(journalDirectory)
 
     await expect(

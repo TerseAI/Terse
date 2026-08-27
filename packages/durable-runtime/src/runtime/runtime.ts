@@ -5,13 +5,13 @@ import { HookRequestEnvelopeSchema } from "../types/hookRequestEnvelope.js"
 import type { JournalStore } from "../types/journalStore.js"
 import type { RunCompletedEvent } from "../types/runCompletedEvent.js"
 import { createRunEventId } from "../types/runEventId.js"
-import type { RunStartedEvent } from "../types/runStartedEvent.js"
 import type { RuntimeCompletedOutcome, RuntimeOutcome, RuntimeSuspendedOutcome, Suspension } from "../types/runtimeOutcome.js"
 import { createWaitEventId } from "../types/waitEventId.js"
 import type { WaitRequestedEvent } from "../types/waitRequestedEvent.js"
 import type { WaitResolvedEvent } from "../types/waitResolvedEvent.js"
 
 import type { AnyHookDefinition, HookResolutionInput } from "./defineHook.js"
+import type { WorkflowDefinition } from "./defineWorkflow.js"
 import { DeterministicIdGenerator, createDeterministicRandom } from "./deterministicIdGenerator.js"
 import { systemNow, toIsoString } from "./systemClock.js"
 import { TimerHook } from "./timerHook.js"
@@ -24,21 +24,16 @@ export type RuntimeOptions = {
     readonly journalStore: JournalStore
 }
 
-// The event input field is the journal's canonical JSON value type.
-type CanonicalInput = RunStartedEvent["input"]
-
-export type Workflow<Input extends CanonicalInput> = (input: Input) => void | Promise<void>
-
-export type StartParams<Input extends CanonicalInput> = {
+export type StartParams<InputSchema extends z.ZodType> = {
     readonly runId: string
     readonly workflowName: string
-    readonly input: Input
-    readonly workflow: Workflow<Input>
+    readonly input: z.input<InputSchema>
+    readonly workflow: WorkflowDefinition<InputSchema>
 }
 
-export type ResumeParams<Input extends CanonicalInput> = {
+export type ResumeParams<InputSchema extends z.ZodType> = {
     readonly runId: string
-    readonly workflow: Workflow<Input>
+    readonly workflow: WorkflowDefinition<InputSchema>
     readonly event?: ResumeEvent
 }
 
@@ -48,23 +43,23 @@ export type ResumeEvent = {
     readonly payload: WaitResolvedEvent["payload"]
 }
 
-export type ResumeHookParams<Input extends CanonicalInput, Hook extends AnyHookDefinition> = {
+export type ResumeHookParams<InputSchema extends z.ZodType, Hook extends AnyHookDefinition> = {
     readonly runId: string
-    readonly workflow: Workflow<Input>
+    readonly workflow: WorkflowDefinition<InputSchema>
     readonly waitId: string
     readonly resolution: HookResolutionInput<Hook>
 }
 
-export type ResumeTimerParams<Input extends CanonicalInput> = {
+export type ResumeTimerParams<InputSchema extends z.ZodType> = {
     readonly runId: string
-    readonly workflow: Workflow<Input>
+    readonly workflow: WorkflowDefinition<InputSchema>
     readonly waitId: string
 }
 
-type ExecuteParams<Input extends CanonicalInput> = {
+type ExecuteParams<InputSchema extends z.ZodType> = {
     readonly runId: string
-    readonly input: Input
-    readonly workflow: Workflow<Input>
+    readonly input: z.infer<typeof z.json>
+    readonly workflow: WorkflowDefinition<InputSchema>
     readonly startedAt: number
 }
 
@@ -74,39 +69,41 @@ export class Runtime {
         installWorkflowRandom()
     }
 
-    async start<Input extends CanonicalInput>({ runId, workflowName, input, workflow }: StartParams<Input>): Promise<RuntimeOutcome> {
+    async start<InputSchema extends z.ZodType>({ runId, workflowName, input, workflow }: StartParams<InputSchema>): Promise<RuntimeOutcome> {
+        workflow.input.parse(input)
+
         const existingEvent = await this.options.journalStore.get({
             runId,
             eventId: createRunEventId({ type: "run.started" })
         })
 
         if (existingEvent) {
-            throw new Error(`Run "${runId}" has already exists`)
+            throw new Error(`Run "${runId}" already exists`)
         }
 
         const startedAt = systemNow()
-        const event: RunStartedEvent = {
-            eventId: createRunEventId({ type: "run.started" }),
-            type: "run.started",
-            workflowName,
-            startedAt: toIsoString(startedAt),
-            input
-        }
-
-        await this.options.journalStore.append({
+        const event = await this.options.journalStore.append({
             runId,
-            event
+            event: {
+                eventId: createRunEventId({ type: "run.started" }),
+                type: "run.started",
+                workflowName,
+                startedAt: toIsoString(startedAt),
+                input
+            }
         })
+
+        if (event.type !== "run.started") throw new Error("Journal store returned the wrong event after appending run.started")
 
         return this.execute({
             runId,
-            input,
+            input: event.input,
             workflow,
             startedAt
         })
     }
 
-    async resume<Input extends CanonicalInput>({ runId, workflow, event }: ResumeParams<Input>): Promise<RuntimeOutcome> {
+    async resume<InputSchema extends z.ZodType>({ runId, workflow, event }: ResumeParams<InputSchema>): Promise<RuntimeOutcome> {
         const startedEvent = await this.options.journalStore.get({
             runId,
             eventId: createRunEventId({ type: "run.started" })
@@ -127,13 +124,13 @@ export class Runtime {
 
         return this.execute({
             runId,
-            input: startedEvent.input as Input,
+            input: startedEvent.input,
             workflow,
             startedAt: Date.parse(startedEvent.startedAt)
         })
     }
 
-    async resumeHook<Hook extends AnyHookDefinition, Input extends CanonicalInput>(hook: Hook, { runId, workflow, waitId, resolution }: ResumeHookParams<Input, Hook>): Promise<RuntimeOutcome> {
+    async resumeHook<Hook extends AnyHookDefinition, InputSchema extends z.ZodType>(hook: Hook, { runId, workflow, waitId, resolution }: ResumeHookParams<InputSchema, Hook>): Promise<RuntimeOutcome> {
         const requestedEvent = await this.options.journalStore.get({
             runId,
             eventId: createWaitEventId({ type: "wait.requested", waitId })
@@ -164,7 +161,7 @@ export class Runtime {
         })
     }
 
-    async resumeTimer<Input extends CanonicalInput>({ runId, workflow, waitId }: ResumeTimerParams<Input>): Promise<RuntimeOutcome> {
+    async resumeTimer<InputSchema extends z.ZodType>({ runId, workflow, waitId }: ResumeTimerParams<InputSchema>): Promise<RuntimeOutcome> {
         const requestedEvent = await this.options.journalStore.get({
             runId,
             eventId: createWaitEventId({ type: "wait.requested", waitId })
@@ -234,7 +231,7 @@ export class Runtime {
         })
     }
 
-    private async execute<Input extends CanonicalInput>({ runId, input, workflow, startedAt }: ExecuteParams<Input>): Promise<RuntimeOutcome> {
+    private async execute<InputSchema extends z.ZodType>({ runId, input, workflow, startedAt }: ExecuteParams<InputSchema>): Promise<RuntimeOutcome> {
         const suspensionSignal = createSuspensionSignal()
         const logicalClock = createLogicalClock(startedAt)
         const workflowCompletion = Promise.resolve(
@@ -251,7 +248,7 @@ export class Runtime {
                     random: createDeterministicRandom(`${runId}\0${startedAt}\0workflow`),
                     phase: "workflow"
                 },
-                () => workflow(input)
+                () => workflow.run(workflow.input.parse(input))
             )
         ).then(
             (): RuntimeCompletedOutcome => ({

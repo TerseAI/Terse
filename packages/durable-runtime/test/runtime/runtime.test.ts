@@ -1,8 +1,10 @@
 import { expect } from "vitest"
+import { z } from "zod"
 
-import { FileJournalStore, Runtime, createRunEventId, createStepEventId, step } from "../../src/index.js"
+import { FileJournalStore, JournalEventSchema, Runtime, createRunEventId, createStepEventId, defineWorkflow, step } from "../../src/index.js"
 import type { JournalStore } from "../../src/index.js"
 import { test } from "../fixtures/filesystem.js"
+import { defineInputlessWorkflow } from "../fixtures/workflow.js"
 
 test("runs a step and records its input", async ({ journalDirectory }) => {
     const journalStore = new FileJournalStore(journalDirectory)
@@ -13,7 +15,7 @@ test("runs a step and records its input", async ({ journalDirectory }) => {
         runId: "run-123",
         workflowName: "test-workflow",
         input: null,
-        workflow: async () => {
+        workflow: defineInputlessWorkflow(async () => {
             result = await step({
                 name: "create-greeting",
                 input: {
@@ -21,7 +23,7 @@ test("runs a step and records its input", async ({ journalDirectory }) => {
                 },
                 run: async input => `Hello, ${input.person}`
             })
-        }
+        })
     })
 
     expect(result).toBe("Hello, Ada")
@@ -73,16 +75,17 @@ test("resuming an interrupted step does not record another step started event", 
         listByType: params => fileJournalStore.listByType(params),
         get: params => fileJournalStore.get(params),
         append: async params => {
-            if (params.event.type === "step.completed" && interruptCompletionWrite) {
+            const event = JournalEventSchema.parse(params.event)
+            if (event.type === "step.completed" && interruptCompletionWrite) {
                 interruptCompletionWrite = false
                 throw interruptedError
             }
 
-            await fileJournalStore.append(params)
+            return fileJournalStore.append(params)
         }
     }
     let stepExecutions = 0
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         await step({
             name: "create-greeting",
             input: {
@@ -93,7 +96,7 @@ test("resuming an interrupted step does not record another step started event", 
                 return `Hello, ${input.person}`
             }
         })
-    }
+    })
 
     await expect(
         new Runtime({ journalStore: interruptedJournalStore }).start({
@@ -122,7 +125,7 @@ test("resuming a completed workflow does not run it again", async ({ journalDire
     let stepExecutions = 0
     const results: string[] = []
 
-    const workflow = async () => {
+    const workflow = defineInputlessWorkflow(async () => {
         workflowExecutions++
 
         const result = await step({
@@ -137,7 +140,7 @@ test("resuming a completed workflow does not run it again", async ({ journalDire
         })
 
         results.push(result)
-    }
+    })
 
     const journalStore = new FileJournalStore(journalDirectory)
 
@@ -191,7 +194,7 @@ test("runs a step that throws and records the error", async ({ journalDirectory 
             runId: "run-123",
             workflowName: "test-workflow",
             input: null,
-            workflow: async () => {
+            workflow: defineInputlessWorkflow(async () => {
                 await step({
                     name: "create-greeting",
                     input: {
@@ -201,7 +204,7 @@ test("runs a step that throws and records the error", async ({ journalDirectory 
                         throw stepError
                     }
                 })
-            }
+            })
         })
     ).rejects.toBe(stepError)
 
@@ -267,10 +270,20 @@ test("starting a workflow records its run started event", async ({ journalDirect
     }
     let receivedInput: typeof input | undefined
 
-    await runtime.start({
-        workflow: async event => {
+    const workflow = defineWorkflow({
+        input: z
+            .object({
+                type: z.string(),
+                payload: z.object({ id: z.string(), labels: z.array(z.string()), enabled: z.boolean() }).strict()
+            })
+            .strict(),
+        run: async event => {
             receivedInput = event
-        },
+        }
+    })
+
+    await runtime.start({
+        workflow,
         runId: "run-123",
         workflowName: "test-workflow",
         input
@@ -292,7 +305,7 @@ test("cannot start a run again after the runtime restarts", async ({ journalDire
     })
 
     await runtime.start({
-        workflow: async () => undefined,
+        workflow: defineInputlessWorkflow(async () => undefined),
         runId: "run-123",
         workflowName: "first-workflow",
         input: null
@@ -306,9 +319,9 @@ test("cannot start a run again after the runtime restarts", async ({ journalDire
 
     await expect(
         restartedRuntime.start({
-            workflow: async () => {
+            workflow: defineInputlessWorkflow(async () => {
                 secondWorkflowWasExecuted = true
-            },
+            }),
             runId: "run-123",
             workflowName: "second-workflow",
             input: null
@@ -334,9 +347,9 @@ test("does not execute the workflow when recording its start fails", async () =>
 
     await expect(
         runtime.start({
-            workflow: async () => {
+            workflow: defineInputlessWorkflow(async () => {
                 workflowWasExecuted = true
-            },
+            }),
             runId: "run-123",
             workflowName: "test-workflow",
             input: null
