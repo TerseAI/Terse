@@ -14,7 +14,6 @@ test("workflow randomness is deterministic when replayed", async ({ journalDirec
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -52,7 +51,6 @@ test("step randomness remains native when a step is retried", async ({ journalDi
     await expect(
         new Runtime({ journalStore }).start({
             runId: "run-123",
-            workflowName: "test-workflow",
             input: null,
             workflow
         })

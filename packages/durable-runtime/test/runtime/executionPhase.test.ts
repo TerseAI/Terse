@@ -11,7 +11,6 @@ test("reports whether code is outside a workflow, orchestrating, or running a st
         journalStore: new FileJournalStore(journalDirectory)
     }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {
             phases.push(getExecutionPhase())

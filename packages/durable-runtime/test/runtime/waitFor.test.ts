@@ -41,7 +41,6 @@ test("gets the active suspension until its wait is resolved", async ({ journalDi
 
     const firstOutcome = await runtime.start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -77,7 +76,6 @@ test("waitFor suspends a workflow and returns its validated resolution", async (
 
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -124,7 +122,6 @@ test("waitFor rejects an invalid request before journaling it", async ({ journal
     await expect(
         new Runtime({ journalStore }).start({
             runId: "run-123",
-            workflowName: "test-workflow",
             input: null,
             workflow: defineInputlessWorkflow(async () => {
                 await waitFor(ApprovalHook, invalidRequest)
@@ -150,7 +147,6 @@ test("waitFor rejects an invalid resolution without journaling it", async ({ jou
     })
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })

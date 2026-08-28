@@ -12,6 +12,7 @@ test("a workflow definition restores its typed input from the journal on resume"
     })
     const receivedDates: Date[] = []
     const workflow = defineWorkflow({
+        name: "test-workflow",
         input: z
             .object({ occurredAt: z.iso.datetime() })
             .strict()
@@ -25,7 +26,6 @@ test("a workflow definition restores its typed input from the journal on resume"
 
     const firstOutcome = await runtime.start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: { occurredAt: "2026-08-26T12:00:00.000Z" },
         workflow
     })
@@ -48,6 +48,7 @@ test("invalid workflow input is rejected before the run is recorded", async ({ j
     const journalStore = new FileJournalStore(journalDirectory)
     const runtime = new Runtime({ journalStore })
     const workflow = defineWorkflow({
+        name: "test-workflow",
         input: z.object({ message: z.string().min(1) }).strict(),
         run: async () => undefined
     })
@@ -55,7 +56,6 @@ test("invalid workflow input is rejected before the run is recorded", async ({ j
     await expect(
         runtime.start({
             runId: "run-123",
-            workflowName: "test-workflow",
             input: { message: "" },
             workflow
         })

@@ -10,7 +10,6 @@ test("Date.now returns the workflow's logical time", async ({ journalDirectory }
 
     await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {
             timestamp = Date.now()
@@ -32,7 +31,6 @@ test("new Date returns the workflow's logical time", async ({ journalDirectory }
 
     await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {
             date = new Date()
@@ -54,7 +52,6 @@ test("Date called as a function returns the workflow's logical time", async ({ j
 
     await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {
             date = Date()

@@ -12,7 +12,6 @@ test("workflow time does not advance without a durable boundary", async ({ journ
         journalStore: new FileJournalStore(journalDirectory)
     }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {
             workflowTimes.push(Date.now())
@@ -31,7 +30,6 @@ test("workflow time advances after a long-running step completes", async ({ jour
 
     await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {
             workflowTimes.push(Date.now())

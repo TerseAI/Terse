@@ -11,7 +11,6 @@ test("sleep suspends a workflow for a human-readable duration", async ({ journal
 
     const outcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {
             execution.push("before")
@@ -83,7 +82,6 @@ test("sleep remains suspended when resumed before its wake time", async ({ journ
 
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -118,7 +116,6 @@ test("sleep completes when resumed after its wake time", async ({ journalDirecto
 
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })

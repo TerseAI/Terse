@@ -18,7 +18,6 @@ test("delivering the same resolution again is idempotent", async ({ journalDirec
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -60,7 +59,6 @@ test("rejects a conflicting resolution for an already resolved wait", async ({ j
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -112,7 +110,6 @@ test("rejects a resolution for an unknown wait before replaying", async ({ journ
 
     await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -143,7 +140,6 @@ test("does not replay when recording a resolution fails", async ({ journalDirect
     const journalStore = new FileJournalStore(journalDirectory)
     const firstOutcome = await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -189,7 +185,6 @@ test("a resolution delivered after run completion is a no-op", async ({ journalD
 
     await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -221,7 +216,6 @@ test("resuming an unresolved run returns the same suspension", async ({ journalD
         journalStore: new FileJournalStore(journalDirectory)
     }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })

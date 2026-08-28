@@ -36,7 +36,6 @@ export type GetSuspensionParams = {
 
 export type StartParams<InputSchema extends z.ZodType> = {
     readonly runId: string
-    readonly workflowName: string
     readonly input: z.input<InputSchema>
     readonly workflow: WorkflowDefinition<InputSchema>
 }
@@ -79,7 +78,7 @@ export class Runtime {
         installWorkflowRandom()
     }
 
-    async start<InputSchema extends z.ZodType>({ runId, workflowName, input, workflow }: StartParams<InputSchema>): Promise<RuntimeOutcome> {
+    async start<InputSchema extends z.ZodType>({ runId, input, workflow }: StartParams<InputSchema>): Promise<RuntimeOutcome> {
         workflow.input.parse(input)
 
         const existingEvent = await this.options.journalStore.get({
@@ -97,7 +96,7 @@ export class Runtime {
             event: {
                 eventId: createRunEventId({ type: "run.started" }),
                 type: "run.started",
-                workflowName,
+                workflowName: workflow.name,
                 startedAt: toIsoString(startedAt),
                 input
             }
@@ -141,6 +140,10 @@ export class Runtime {
 
     async resume<InputSchema extends z.ZodType>({ runId, workflow, event }: ResumeParams<InputSchema>): Promise<RuntimeOutcome> {
         const startedEvent = await this.getStartedEvent(runId)
+
+        if (startedEvent.workflowName !== workflow.name) {
+            throw new Error(`Run "${runId}" belongs to workflow "${startedEvent.workflowName}", not "${workflow.name}"`)
+        }
 
         const completedEvent = await this.options.journalStore.get({
             runId,

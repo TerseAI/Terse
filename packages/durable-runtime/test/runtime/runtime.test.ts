@@ -11,7 +11,6 @@ test("gets run metadata without exposing journal events", async ({ journalDirect
 
     await runtime.start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {})
     })
@@ -36,7 +35,6 @@ test("runs a step and records its input", async ({ journalDirectory }) => {
 
     await runtime.start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow: defineInputlessWorkflow(async () => {
             result = await step({
@@ -124,7 +122,6 @@ test("resuming an interrupted step does not record another step started event", 
     await expect(
         new Runtime({ journalStore: interruptedJournalStore }).start({
             runId: "run-123",
-            workflowName: "test-workflow",
             input: null,
             workflow
         })
@@ -169,7 +166,6 @@ test("resuming a completed workflow does not run it again", async ({ journalDire
 
     await new Runtime({ journalStore }).start({
         runId: "run-123",
-        workflowName: "test-workflow",
         input: null,
         workflow
     })
@@ -207,6 +203,24 @@ test("resuming a completed workflow does not run it again", async ({ journalDire
     ).toHaveLength(1)
 })
 
+test("cannot resume a run with a different workflow", async ({ journalDirectory }) => {
+    const journalStore = new FileJournalStore(journalDirectory)
+    const originalWorkflow = defineInputlessWorkflow(async () => undefined, "original-workflow")
+
+    await new Runtime({ journalStore }).start({
+        runId: "run-123",
+        input: null,
+        workflow: originalWorkflow
+    })
+
+    await expect(
+        new Runtime({ journalStore }).resume({
+            runId: "run-123",
+            workflow: defineInputlessWorkflow(async () => undefined, "different-workflow")
+        })
+    ).rejects.toThrow('Run "run-123" belongs to workflow "original-workflow", not "different-workflow"')
+})
+
 test("runs a step that throws and records the error", async ({ journalDirectory }) => {
     const journalStore = new FileJournalStore(journalDirectory)
     const runtime = new Runtime({ journalStore })
@@ -215,7 +229,6 @@ test("runs a step that throws and records the error", async ({ journalDirectory 
     await expect(
         runtime.start({
             runId: "run-123",
-            workflowName: "test-workflow",
             input: null,
             workflow: defineInputlessWorkflow(async () => {
                 await step({
@@ -294,6 +307,7 @@ test("starting a workflow records its run started event", async ({ journalDirect
     let receivedInput: typeof input | undefined
 
     const workflow = defineWorkflow({
+        name: "test-workflow",
         input: z
             .object({
                 type: z.string(),
@@ -308,7 +322,6 @@ test("starting a workflow records its run started event", async ({ journalDirect
     await runtime.start({
         workflow,
         runId: "run-123",
-        workflowName: "test-workflow",
         input
     })
 
@@ -328,9 +341,8 @@ test("cannot start a run again after the runtime restarts", async ({ journalDire
     })
 
     await runtime.start({
-        workflow: defineInputlessWorkflow(async () => undefined),
+        workflow: defineInputlessWorkflow(async () => undefined, "first-workflow"),
         runId: "run-123",
-        workflowName: "first-workflow",
         input: null
     })
 
@@ -344,9 +356,8 @@ test("cannot start a run again after the runtime restarts", async ({ journalDire
         restartedRuntime.start({
             workflow: defineInputlessWorkflow(async () => {
                 secondWorkflowWasExecuted = true
-            }),
+            }, "second-workflow"),
             runId: "run-123",
-            workflowName: "second-workflow",
             input: null
         })
     ).rejects.toThrow()
@@ -374,7 +385,6 @@ test("does not execute the workflow when recording its start fails", async () =>
                 workflowWasExecuted = true
             }),
             runId: "run-123",
-            workflowName: "test-workflow",
             input: null
         })
     ).rejects.toBe(journalError)
