@@ -14,8 +14,6 @@ This is not the case for running durability in a serverless/cloud function envir
 
 So I made this!
 
-This is the bare bones of a durable runtime. From here, you can chose where to store the journal by simply implementing an interface and plugging it in.
-
 ```ts
 import { FileJournalStore, Runtime, defineWorkflow, sleep, step } from "@terse/durable"
 import { z } from "zod"
@@ -61,7 +59,8 @@ const WelcomeWorkflow = defineWorkflow({
 // run it
 const outcome = await runtime.start({
     runId: "run-123",
-    input: { // this is type safe!
+    input: {
+        // this is type safe!
         recipient: "ada@example.com",
         name: "Ada"
     },
@@ -74,6 +73,11 @@ if (outcome.status === "completed") {
     // reach out to control plane here
     console.log("Workflow suspended", outcome.suspension)
 }
+```
+
+This is the bare bones of a durable runtime. From here, you can chose where to store the journal by simply implementing an interface and plugging it in.
+
+```ts
 
 ```
 
@@ -81,8 +85,36 @@ It doesn't care where you run it! Run it on a few nodes like Temporal, run it on
 
 We make it really easy to plug into an external control plane
 
-```
-code sample showing control plane integration
+```ts
+// Control plane reaches out via HTTP, Grpc, CLI etc...
+const input = req.input
+const runId = req.runId
+const workflowName = req.workflowName
+
+// resolve workflow, your code here
+const workflow = fetchWorkflow(workflowName)
+
+// Start a workflow
+const outcome = await runtime.start({
+    runId: runId,
+    input: {
+        // this is type safe!
+        recipient: "ada@example.com",
+        name: "Ada"
+    },
+    workflow
+})
+
+// Resume from a sleep
+const waitId = req.waitId
+
+const resumedOutcome = runtime.resumeTimer({
+    runId: runId,
+    workflow,
+    waitId: firstOutcome.suspension.waitId
+})
+
+// Resume a workflow
 ```
 
 The hook system here is also extremely malleable. Very easy to add Slack/email Human in the loop steps and plug into an integration system like Composio.
@@ -91,7 +123,7 @@ The hook system here is also extremely malleable. Very easy to add Slack/email H
 example showing how to make a hook
 ```
 
-In fact, we implement ``sleep()`` with a small wrapper around defineHook(). A good example to check if you want some more custom hooks.
+In fact, we implement `sleep()` with a small wrapper around defineHook(). A good example to check if you want some more custom hooks.
 
 At Terse, we use this internally to power our Durable functions. We use the `FileJournalStore` to store the journal on the filesystem. On sandbox suspension, it gets picked up on the snapshot.
 
@@ -109,8 +141,6 @@ Here is a list of the table-stake durability feature that are currently in:
 - Passing in Workflow context and reading it from the workflow
 - Pinning Date() and seeded Random number generate for idempotent replays. (uses runId for seeding)
 - Creating custom hooks for suspending and resuming with external data
-
-
 
 # Documentation
 
