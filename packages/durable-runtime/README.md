@@ -15,6 +15,7 @@ This is not the case for running durability in a serverless/cloud function envir
 So I made this!
 
 Some key features:
+
 - Insanely lightweight: The only dependencies are ulid, ms, and zod
 - Storage agnostic: Journal can be Postgres, File System, Durable Object etc...
 - Runtime agnostic: Runs anywhere you can import this npm package
@@ -88,7 +89,6 @@ export interface JournalStore {
     get(params: GetJournalEventParams): Promise<JournalEvent | undefined>
     append(params: AppendJournalEventParams): Promise<JournalEvent>
 }
-
 ```
 
 It doesn't care where you run it! Run it on a few nodes like Temporal, run it on Workers, sandboxes etc..
