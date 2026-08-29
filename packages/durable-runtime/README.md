@@ -14,6 +14,12 @@ This is not the case for running durability in a serverless/cloud function envir
 
 So I made this!
 
+Some key features:
+- Insanely lightweight: The only dependencies are ulid, ms, and zod
+- Storage agnostic: Journal can be Postgres, File System, Durable Object etc...
+- Runtime agnostic: Runs anywhere you can import this npm package
+- Type safety: Type safety enforced everywhere with Zod enforcing serialization safety in the Journal interactions.
+
 ```ts
 import { FileJournalStore, Runtime, defineWorkflow, sleep, step } from "@terse/durable"
 import { z } from "zod"
@@ -24,12 +30,10 @@ const runtime = new Runtime({ journalStore: new FileJournalStore("./tmp") })
 // Build your workflow
 const WelcomeWorkflow = defineWorkflow({
     name: "welcome-customer",
-    input: z
-        .object({
-            recipient: z.string(),
-            name: z.string()
-        })
-        .strict(),
+    input: z.object({
+        recipient: z.string(),
+        name: z.string()
+    }),
     run: async input => {
         const message = await step({
             name: "prepare-message",
@@ -70,14 +74,20 @@ const outcome = await runtime.start({
 if (outcome.status === "completed") {
     console.log("Workflow completed")
 } else {
-    // reach out to control plane here
+    // reach out to control plane here. Schedule the time to resume the workflow. Use whatever logic you want here!
     console.log("Workflow suspended", outcome.suspension)
 }
 ```
 
-This is the bare bones of a durable runtime. From here, you can chose where to store the journal by simply implementing an interface and plugging it in.
+This is the bare bones of a durable runtime. From here, you can chose where to store the journal by simply implementing an interface and plugging it in. (See fileJournalStore.ts for an example implementation)
 
 ```ts
+export interface JournalStore {
+    list(params: ListJournalEventsParams): Promise<readonly JournalEvent[]>
+    listByType(params: ListJournalEventsByTypeParams): Promise<readonly JournalEvent[]>
+    get(params: GetJournalEventParams): Promise<JournalEvent | undefined>
+    append(params: AppendJournalEventParams): Promise<JournalEvent>
+}
 
 ```
 
@@ -113,14 +123,59 @@ const resumedOutcome = runtime.resumeTimer({
     workflow,
     waitId: firstOutcome.suspension.waitId
 })
-
-// Resume a workflow
 ```
 
-The hook system here is also extremely malleable. Very easy to add Slack/email Human in the loop steps and plug into an integration system like Composio.
+The hook system is also extremely malleable. Very easy to add Slack/email Human in the loop steps and plug into an integration system like Composio.
 
-```
-example showing how to make a hook
+```ts
+const ApprovalHook = defineHook({
+    name: "approval",
+    request: z.object({
+        message: z.string()
+    }).strict(),
+    resolution: z.object({
+        approved: z.boolean(),
+        approvedBy: z.string()
+    }).strict()
+})
+
+
+const WelcomeWorkflow = defineWorkflow({
+    name: "welcome-customer",
+    input: z.object({
+        recipient: z.string(),
+        name: z.string()
+    })
+    run: async input => {
+        console.log("Pre approval")
+
+        const approved = await waitFor(ApprovalHook, { // Type will match resolution zod object above!
+            message: "Deploy to production?"
+        })
+
+        console.log("Post approval: They said: {approved}")
+    }
+})
+
+const outcome = await runtime.start({
+    runId: "run-123",
+    input: {
+        recipient: "ada@example.com",
+        name: "Ada"
+    },
+    workflow: WelcomeWorkflow
+})
+
+await runtime.resumeHook(ApprovalHook, {
+    runId: "run-123",
+    workflow,
+    waitId: firstOutcome.suspension.waitId,
+    resolution: {
+        approved: true,
+        approvedBy: "Ada"
+    }
+})
+
 ```
 
 In fact, we implement `sleep()` with a small wrapper around defineHook(). A good example to check if you want some more custom hooks.
