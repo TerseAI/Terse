@@ -9,10 +9,13 @@ import { defineInputlessWorkflow } from "../fixtures/workflow.js"
 test("gets run metadata without exposing journal events", async ({ journalDirectory }) => {
     const runtime = new Runtime({ journalStore: new FileJournalStore(journalDirectory) })
 
-    await runtime.start(defineInputlessWorkflow(async () => {}), {
-        runId: "run-123",
-        input: null
-    })
+    await runtime.start(
+        defineInputlessWorkflow(async () => {}),
+        {
+            runId: "run-123",
+            input: null
+        }
+    )
 
     expect(await runtime.getRun({ runId: "run-123" })).toEqual({
         runId: "run-123",
@@ -206,7 +209,10 @@ test("cannot resume a run with a different workflow", async ({ journalDirectory 
     })
 
     await expect(
-        new Runtime({ journalStore }).resume(defineInputlessWorkflow(async () => undefined, "different-workflow"), { runId: "run-123" })
+        new Runtime({ journalStore }).resume(
+            defineInputlessWorkflow(async () => undefined, "different-workflow"),
+            { runId: "run-123" }
+        )
     ).rejects.toThrow('Run "run-123" belongs to workflow "original-workflow", not "different-workflow"')
 })
 
@@ -330,10 +336,13 @@ test("cannot start a run again after the runtime restarts", async ({ journalDire
         journalStore: new FileJournalStore(journalDirectory)
     })
 
-    await runtime.start(defineInputlessWorkflow(async () => undefined, "first-workflow"), {
-        runId: "run-123",
-        input: null
-    })
+    await runtime.start(
+        defineInputlessWorkflow(async () => undefined, "first-workflow"),
+        {
+            runId: "run-123",
+            input: null
+        }
+    )
 
     let secondWorkflowWasExecuted = false
     const restartedJournalStore = new FileJournalStore(journalDirectory)

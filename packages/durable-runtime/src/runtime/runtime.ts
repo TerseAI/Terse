@@ -159,7 +159,10 @@ export class Runtime {
         })
     }
 
-    async resumeHook<Hook extends AnyHookDefinition, InputSchema extends z.ZodType>(hook: Hook, { runId, workflow, waitId, resolution }: ResumeHookOptions<InputSchema, Hook>): Promise<RuntimeOutcome> {
+    async resumeHook<Hook extends AnyHookDefinition, InputSchema extends z.ZodType>(
+        hook: Hook,
+        { runId, workflow, waitId, resolution }: ResumeHookOptions<InputSchema, Hook>
+    ): Promise<RuntimeOutcome> {
         const requestedEvent = await this.options.journalStore.get({
             runId,
             eventId: createWaitEventId({ type: "wait.requested", waitId })

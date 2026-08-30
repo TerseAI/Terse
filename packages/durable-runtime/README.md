@@ -79,6 +79,19 @@ if (outcome.status === "completed") {
 }
 ```
 
+Execution returns either `{ status: "completed" }` or `{ status: "suspended", suspension }`. You can inspect the persisted run separately:
+
+```ts
+const run = await runtime.getRun({ runId: "run-123" })
+// { runId: "run-123", workflowName: "welcome-customer", startedAt: "..." }
+
+const suspension = await runtime.getSuspension({ runId: "run-123" })
+// { waitId: "wait_01...", request: { type: "hook", name: "timer", payload: { wakeAt: "..." } } }
+// or undefined when no unresolved wait exists
+```
+
+`getRun()` returns identity metadata, not execution status. The outcome returned by `start()` or `resume()` is the authoritative completed-versus-suspended result.
+
 This is the bare bones of a durable runtime. From here, you can chose where to store the journal by simply implementing an interface and plugging it in. (See fileJournalStore.ts for an example implementation)
 
 ```ts
@@ -127,15 +140,18 @@ The hook system is also extremely malleable. Very easy to add Slack/email Human 
 ```ts
 const ApprovalHook = defineHook({
     name: "approval",
-    request: z.object({
-        message: z.string()
-    }).strict(),
-    resolution: z.object({
-        approved: z.boolean(),
-        approvedBy: z.string()
-    }).strict()
+    request: z
+        .object({
+            message: z.string()
+        })
+        .strict(),
+    resolution: z
+        .object({
+            approved: z.boolean(),
+            approvedBy: z.string()
+        })
+        .strict()
 })
-
 
 const WelcomeWorkflow = defineWorkflow({
     name: "welcome-customer",
@@ -146,7 +162,8 @@ const WelcomeWorkflow = defineWorkflow({
     run: async input => {
         console.log("Pre approval")
 
-        const approved = await waitFor(ApprovalHook, { // Type will match resolution zod object above!
+        const approved = await waitFor(ApprovalHook, {
+            // Type will match resolution zod object above!
             message: "Deploy to production?"
         })
 
@@ -173,7 +190,6 @@ if (outcome.status === "suspended") {
         }
     })
 }
-
 ```
 
 In fact, we implement `sleep()` with a small wrapper around defineHook(). A good example to check if you want some more custom hooks.

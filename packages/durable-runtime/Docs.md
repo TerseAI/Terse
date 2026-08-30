@@ -14,25 +14,6 @@ Each workflow is executed in a **runtime**. This is what calls the internal func
 
 The runtime protocol here is very simple.
 
-```ts
-export class Runtime {
-    // Start a workflow, you need to mint a run-id here. Ideally comes from your control plane and you store it!
-    async start<InputSchema extends z.ZodType>({ runId, input, workflow }: StartParams<InputSchema>): Promise<RuntimeOutcome>
-
-    // Resume a workflow suspended on a hook.
-    async resumeHook<Hook extends AnyHookDefinition, InputSchema extends z.ZodType>(hook: Hook, params: ResumeHookParams<InputSchema, Hook>): Promise<RuntimeOutcome>
-
-    // Wake from a sleep(). Under the hood, this calls resumeHook(). We just enforce the expected duration has passed.
-    async resumeTimer<InputSchema extends z.ZodType>({ runId, workflow, waitId }: ResumeTimerParams<InputSchema>): Promise<RuntimeOutcome>
-
-    // Convenience method to fetch run metadata of a run id
-    async getRun({ runId }: GetRunParams): Promise<RunMetadata>
-
-    // convenience method to fetch suspension status of a run id
-    async getSuspension({ runId }: GetSuspensionParams): Promise<Suspension | undefined>
-}
-```
-
 All you need to initialize one, is a **JournalStore**. In this v0.1, we have the FileJournalStore available for use.
 
 ```ts
@@ -40,9 +21,84 @@ const journalDirectory = await mkdtemp(join(tmpdir(), "terse-durable-test-"))
 const journalStore = new FileJournalStore(journalDirectory)
 const runtime = new Runtime({ journalStore })
 
-// You can now run/resume workflows!
+const startOutcome = await runtime.start(workflow, {
+    runId,
+    input: {
+        recipient: "ada@example.com",
+        name: "Ada"
+    }
+})
 
-runtime.start(...)
+// Replay an interrupted run without resolving a wait
+const resumeOutcome = await runtime.resume(workflow, { runId })
+
+// Resume a timer
+const timerOutcome = await runtime.resumeTimer(workflow, {
+    runId,
+    waitId
+})
+
+// Resume a hook with its resolution payload
+const hookOutcome = await runtime.resumeHook(ApprovalHook, {
+    workflow,
+    runId,
+    waitId,
+    resolution: {
+        approved: true,
+        approvedBy: "Ada"
+    }
+})
+```
+
+`start()`, `resume()`, `resumeTimer()`, and `resumeHook()` return a `RuntimeOutcome`:
+
+```ts
+const completedOutcome: RuntimeOutcome = {
+    status: "completed"
+}
+
+// or
+
+const suspendedOutcome: RuntimeOutcome = {
+    status: "suspended",
+    suspension: {
+        waitId: "wait_01...",
+        request: {
+            type: "hook",
+            name: "timer",
+            payload: {
+                wakeAt: "2026-08-30T12:00:00.000Z"
+            }
+        }
+    }
+}
+```
+
+Use `getRun()` to read identity metadata for an existing run:
+
+```ts
+const run = await runtime.getRun({ runId })
+
+// {
+//     runId: "run-123",
+//     workflowName: "welcome-customer",
+//     startedAt: "2026-08-29T12:00:00.000Z"
+// }
+```
+
+Use `getSuspension()` to read its active unresolved wait:
+
+```ts
+const suspension = await runtime.getSuspension({ runId })
+
+// {
+//     waitId: "wait_01...",
+//     request: {
+//         type: "hook",
+//         name: "timer",
+//         payload: { wakeAt: "2026-08-30T12:00:00.000Z" }
+//     }
+// }
 ```
 
 Remember, with FileJournalStore, you need journal data in that path if you plan on resuming a workflow! We take sandbox snapshots here to solve for this. There will be no durability if you don't persist the journal state correctly!
