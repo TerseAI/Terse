@@ -3,11 +3,10 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { verifyWorkflowShim } from "./verifyWorkflowShim.mjs"
-
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 const manifests = [
     packageManifest("terse-types/package.json"),
+    packageManifest("packages/durable-runtime/package.json"),
     packageManifest("packages/terse-sdk/package.json"),
     packageManifest("packages/terse-cli/package.json"),
     packageManifest("packages/create-terse/package.json"),
@@ -33,7 +32,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 }
 
 export function prepare(nextVersion, { printNextSteps = true } = {}) {
-    verifyWorkflowShim()
     manifests.forEach(manifest => {
         const path = join(root, manifest.path)
         const source = readFileSync(path, "utf8")
@@ -53,7 +51,6 @@ function stampVersion(source, manifest, nextVersion) {
 }
 
 export function verify(expected) {
-    verifyWorkflowShim()
     const mismatched = manifests
         .map(manifest => {
             const json = JSON.parse(readFileSync(join(root, manifest.path), "utf8"))

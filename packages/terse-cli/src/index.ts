@@ -236,7 +236,7 @@ program
 
 program
     .command("build")
-    .description("Build the durable workflow bundle into .terse/wf")
+    .description("Prepare durable job sources in .terse/runtime")
     .action(async () => {
         await resolveProvider().prebuild()
     })

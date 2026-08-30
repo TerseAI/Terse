@@ -19,7 +19,7 @@ export interface LocalPackagesBundle {
     contentHash: string
 }
 
-const LOCAL_PACKAGE_DIRS = ["terse-types", "packages/terse-sdk", "packages/terse-cli"] as const
+const LOCAL_PACKAGE_DIRS = ["terse-types", "packages/durable-runtime", "packages/terse-sdk", "packages/terse-cli"] as const
 
 /**
  * Packs the local SDK/CLI workspace closure into npm tarballs so a dev's uncommitted

@@ -19,8 +19,6 @@ type DurationKey = Extract<
     | "sandboxReadyMs"
     | "runtimeCommandMs"
     | "resolveRunStatusMs"
-    | "readRunJournalMs"
-    | "snapshotSandboxMs"
     | "terminateRunSandboxMs"
 >
 

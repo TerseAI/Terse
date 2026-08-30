@@ -164,8 +164,6 @@ export interface SandboxRuntimeLatencyProperties extends BaseEventProperties {
     sandboxReadyMs?: number
     runtimeCommandMs?: number
     resolveRunStatusMs?: number
-    readRunJournalMs?: number
-    snapshotSandboxMs?: number
     terminateRunSandboxMs?: number
 }
 

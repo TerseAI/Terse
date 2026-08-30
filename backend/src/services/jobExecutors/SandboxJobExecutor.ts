@@ -15,7 +15,7 @@ import { resolveRunStatus } from "../resolveRunStatus"
 import { getSandboxProvider } from "../sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
-import { runJournalDir } from "../sandboxProvider/runJournal"
+import { JOURNAL_ROOT } from "../sandboxProvider/runJournal"
 import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "../sdkRuntimeExecutors/types"
 import { SDK_SANDBOX_APP_NAME, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
@@ -95,7 +95,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,
-                WORKFLOW_LOCAL_DATA_DIR: runJournalDir(runId),
+                TERSE_JOURNAL_ROOT: JOURNAL_ROOT,
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1",
@@ -126,7 +126,7 @@ export class SandboxJobExecutor implements JobExecutor {
 
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
 
-            const outcome = await telemetry.measure("resolveRunStatusMs", () => resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime, sandbox: sb, telemetry }))
+            const outcome = await telemetry.measure("resolveRunStatusMs", () => resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime }))
             telemetrySuccess = outcome.status !== "failed"
             if (outcome.status === "failed") telemetryError = outcome.cause
             return outcome

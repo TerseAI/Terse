@@ -1,3 +1,5 @@
+import { getExecutionPhase } from "@terse/durable"
+
 declare const process: { env: Record<string, string | undefined> }
 
 export class DurableOnlyError extends Error {
@@ -7,10 +9,8 @@ export class DurableOnlyError extends Error {
     }
 }
 
-// The durable runtime injects its sleep implementation on globalThis; its presence is
-// how we detect that we're running inside a durable job.
 export function isDurableExecution(): boolean {
-    return Boolean(Reflect.get(globalThis, Symbol.for("WORKFLOW_SLEEP")))
+    return getExecutionPhase() !== undefined
 }
 
 // Local test runs (`terse test`) execute in the developer's own process; only cloud

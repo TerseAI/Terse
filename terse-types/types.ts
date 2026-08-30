@@ -786,14 +786,33 @@ export const sdkApprovalDecisionRequestBodySchema = z.object({
 })
 export type SdkApprovalDecisionRequestBody = z.infer<typeof sdkApprovalDecisionRequestBodySchema>
 
+const sdkJobSuspendBaseSchema = z.object({
+    runId: z.string().min(1),
+    idempotencyKey: z.string().min(1)
+})
+
+const sdkExplicitJobSuspendRequestBodySchema = z.discriminatedUnion("kind", [
+    sdkJobSuspendBaseSchema.extend({
+        kind: z.literal("timer"),
+        delaySeconds: z.number().int().positive()
+    }),
+    sdkJobSuspendBaseSchema.extend({
+        kind: z.literal("input"),
+        hookToken: z.string().min(1)
+    })
+])
+
 const validQueueNameSchema = z.string().regex(/^__(?:[a-z][a-z0-9]*_)?wkf_(?:workflow|step)_.+$/, "Must be a valid queue name with a recognized prefix")
 
-export const sdkJobSuspendRequestBodySchema = z.object({
+const sdkLegacyJobSuspendRequestBodySchema = z.object({
     runId: z.string().min(1),
-    name: validQueueNameSchema,
+    /** @deprecated Accepted for Workflow SDK clients; current runtimes report an explicit suspension kind. */
+    name: validQueueNameSchema.optional(),
     delaySeconds: z.number().int().positive(),
     idempotencyKey: z.string().min(1).optional()
 })
+
+export const sdkJobSuspendRequestBodySchema = z.union([sdkExplicitJobSuspendRequestBodySchema, sdkLegacyJobSuspendRequestBodySchema])
 export type SdkJobSuspendRequestBody = z.infer<typeof sdkJobSuspendRequestBodySchema>
 
 export const sdkJobSuspendResponseBodySchema = z.object({
@@ -1010,7 +1029,7 @@ export const sdkDeployRequestBodySchema = z
         sourceZipBase64: z.string().optional(),
         /** Key of an archive already uploaded to object storage. Preferred over sourceZipBase64. */
         sourceObjectKey: z.string().optional(),
-        /** False when no job needs the durable workflow bundle, letting the build skip compiling one. */
+        /** Legacy compatibility flag. Current CLIs always send false because durable jobs load transformed source directly. */
         requiresWorkflowBundle: z.boolean().optional()
     })
     .refine(data => !(data.remoteServerUrl && (data.sourceZipBase64 || data.sourceObjectKey)), {
