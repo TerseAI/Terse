@@ -34,15 +34,13 @@ export type GetSuspensionParams = {
     readonly runId: string
 }
 
-export type StartParams<InputSchema extends z.ZodType> = {
+export type StartOptions<InputSchema extends z.ZodType> = {
     readonly runId: string
     readonly input: z.input<InputSchema>
-    readonly workflow: WorkflowDefinition<InputSchema>
 }
 
-export type ResumeParams<InputSchema extends z.ZodType> = {
+export type ResumeOptions = {
     readonly runId: string
-    readonly workflow: WorkflowDefinition<InputSchema>
     readonly event?: ResumeEvent
 }
 
@@ -52,16 +50,15 @@ export type ResumeEvent = {
     readonly payload: WaitResolvedEvent["payload"]
 }
 
-export type ResumeHookParams<InputSchema extends z.ZodType, Hook extends AnyHookDefinition> = {
+export type ResumeHookOptions<InputSchema extends z.ZodType, Hook extends AnyHookDefinition> = {
     readonly runId: string
     readonly workflow: WorkflowDefinition<InputSchema>
     readonly waitId: string
     readonly resolution: HookResolutionInput<Hook>
 }
 
-export type ResumeTimerParams<InputSchema extends z.ZodType> = {
+export type ResumeTimerOptions = {
     readonly runId: string
-    readonly workflow: WorkflowDefinition<InputSchema>
     readonly waitId: string
 }
 
@@ -78,7 +75,7 @@ export class Runtime {
         installWorkflowRandom()
     }
 
-    async start<InputSchema extends z.ZodType>({ runId, input, workflow }: StartParams<InputSchema>): Promise<RuntimeOutcome> {
+    async start<InputSchema extends z.ZodType>(workflow: WorkflowDefinition<InputSchema>, { runId, input }: StartOptions<InputSchema>): Promise<RuntimeOutcome> {
         workflow.input.parse(input)
 
         const existingEvent = await this.options.journalStore.get({
@@ -138,7 +135,7 @@ export class Runtime {
         return undefined
     }
 
-    async resume<InputSchema extends z.ZodType>({ runId, workflow, event }: ResumeParams<InputSchema>): Promise<RuntimeOutcome> {
+    async resume<InputSchema extends z.ZodType>(workflow: WorkflowDefinition<InputSchema>, { runId, event }: ResumeOptions): Promise<RuntimeOutcome> {
         const startedEvent = await this.getStartedEvent(runId)
 
         if (startedEvent.workflowName !== workflow.name) {
@@ -162,7 +159,7 @@ export class Runtime {
         })
     }
 
-    async resumeHook<Hook extends AnyHookDefinition, InputSchema extends z.ZodType>(hook: Hook, { runId, workflow, waitId, resolution }: ResumeHookParams<InputSchema, Hook>): Promise<RuntimeOutcome> {
+    async resumeHook<Hook extends AnyHookDefinition, InputSchema extends z.ZodType>(hook: Hook, { runId, workflow, waitId, resolution }: ResumeHookOptions<InputSchema, Hook>): Promise<RuntimeOutcome> {
         const requestedEvent = await this.options.journalStore.get({
             runId,
             eventId: createWaitEventId({ type: "wait.requested", waitId })
@@ -182,9 +179,8 @@ export class Runtime {
         const parsedResolution = hook.resolution.parse(resolution)
         const canonicalResolution = z.json().parse(parsedResolution)
 
-        return this.resume({
+        return this.resume(workflow, {
             runId,
-            workflow,
             event: {
                 type: "wait.resolved",
                 waitId,
@@ -193,7 +189,7 @@ export class Runtime {
         })
     }
 
-    async resumeTimer<InputSchema extends z.ZodType>({ runId, workflow, waitId }: ResumeTimerParams<InputSchema>): Promise<RuntimeOutcome> {
+    async resumeTimer<InputSchema extends z.ZodType>(workflow: WorkflowDefinition<InputSchema>, { runId, waitId }: ResumeTimerOptions): Promise<RuntimeOutcome> {
         const requestedEvent = await this.options.journalStore.get({
             runId,
             eventId: createWaitEventId({ type: "wait.requested", waitId })
@@ -212,7 +208,7 @@ export class Runtime {
         const timer = TimerHook.request.parse(request.payload)
 
         if (systemNow() < Date.parse(timer.wakeAt)) {
-            return this.resume({ runId, workflow })
+            return this.resume(workflow, { runId })
         }
 
         return this.resumeHook(TimerHook, {

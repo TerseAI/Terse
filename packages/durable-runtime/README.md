@@ -62,14 +62,13 @@ const WelcomeWorkflow = defineWorkflow({
 })
 
 // run it
-const outcome = await runtime.start({
+const outcome = await runtime.start(WelcomeWorkflow, {
     runId: "run-123",
     input: {
         // this is type safe!
         recipient: "ada@example.com",
         name: "Ada"
-    },
-    workflow: WelcomeWorkflow
+    }
 })
 
 if (outcome.status === "completed") {
@@ -105,23 +104,21 @@ const workflowName = req.workflowName
 const workflow = fetchWorkflow(workflowName)
 
 // Start a workflow
-const outcome = await runtime.start({
-    runId: runId,
+const outcome = await runtime.start(workflow, {
+    runId,
     input: {
         // this is type safe!
         recipient: "ada@example.com",
         name: "Ada"
-    },
-    workflow
+    }
 })
 
 // Resume from a sleep
 const waitId = req.waitId
 
-const resumedOutcome = runtime.resumeTimer({
-    runId: runId,
-    workflow,
-    waitId: firstOutcome.suspension.waitId
+const resumedOutcome = await runtime.resumeTimer(workflow, {
+    runId,
+    waitId
 })
 ```
 
@@ -145,7 +142,7 @@ const WelcomeWorkflow = defineWorkflow({
     input: z.object({
         recipient: z.string(),
         name: z.string()
-    })
+    }),
     run: async input => {
         console.log("Pre approval")
 
@@ -157,24 +154,25 @@ const WelcomeWorkflow = defineWorkflow({
     }
 })
 
-const outcome = await runtime.start({
+const outcome = await runtime.start(WelcomeWorkflow, {
     runId: "run-123",
     input: {
         recipient: "ada@example.com",
         name: "Ada"
-    },
-    workflow: WelcomeWorkflow
-})
-
-await runtime.resumeHook(ApprovalHook, {
-    runId: "run-123",
-    workflow,
-    waitId: firstOutcome.suspension.waitId,
-    resolution: {
-        approved: true,
-        approvedBy: "Ada"
     }
 })
+
+if (outcome.status === "suspended") {
+    await runtime.resumeHook(ApprovalHook, {
+        workflow: WelcomeWorkflow,
+        runId: "run-123",
+        waitId: outcome.suspension.waitId,
+        resolution: {
+            approved: true,
+            approvedBy: "Ada"
+        }
+    })
+}
 
 ```
 

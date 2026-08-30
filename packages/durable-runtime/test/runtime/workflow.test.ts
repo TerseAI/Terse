@@ -24,10 +24,9 @@ test("a workflow definition restores its typed input from the journal on resume"
     })
     const runtime = new Runtime({ journalStore: new FileJournalStore(journalDirectory) })
 
-    const firstOutcome = await runtime.start({
+    const firstOutcome = await runtime.start(workflow, {
         runId: "run-123",
-        input: { occurredAt: "2026-08-26T12:00:00.000Z" },
-        workflow
+        input: { occurredAt: "2026-08-26T12:00:00.000Z" }
     })
 
     if (firstOutcome.status !== "suspended") throw new Error("Expected the workflow to be suspended")
@@ -54,10 +53,9 @@ test("invalid workflow input is rejected before the run is recorded", async ({ j
     })
 
     await expect(
-        runtime.start({
+        runtime.start(workflow, {
             runId: "run-123",
-            input: { message: "" },
-            workflow
+            input: { message: "" }
         })
     ).rejects.toBeInstanceOf(z.ZodError)
 

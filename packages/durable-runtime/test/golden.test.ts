@@ -53,13 +53,12 @@ test("runs a typed workflow through steps, sleep, and resume", async ({ journalD
     const runtime = new Runtime({ journalStore })
     const runId = "run-123"
 
-    const firstOutcome = await runtime.start({
+    const firstOutcome = await runtime.start(WelcomeWorkflow, {
         runId,
         input: {
             recipient: "ada@example.com",
             name: "Ada"
-        },
-        workflow: WelcomeWorkflow
+        }
     })
 
     if (firstOutcome.status !== "suspended") throw new Error("Expected the workflow to be suspended")
@@ -71,9 +70,8 @@ test("runs a typed workflow through steps, sleep, and resume", async ({ journalD
 
     await delay(35)
 
-    const resumedOutcome = await new Runtime({ journalStore }).resumeTimer({
+    const resumedOutcome = await new Runtime({ journalStore }).resumeTimer(WelcomeWorkflow, {
         runId,
-        workflow: WelcomeWorkflow,
         waitId: firstOutcome.suspension.waitId
     })
 
@@ -114,19 +112,17 @@ test("resumes a workflow without rerunning completed steps", async ({ journalDir
         })
     })
     const journalStore = new FileJournalStore(journalDirectory)
-    const firstOutcome = await new Runtime({ journalStore }).start({
+    const firstOutcome = await new Runtime({ journalStore }).start(workflow, {
         runId: "run-123",
-        input: null,
-        workflow
+        input: null
     })
 
     if (firstOutcome.status !== "suspended") throw new Error("Expected the workflow to be suspended")
 
     await delay(35)
 
-    const resumedOutcome = await new Runtime({ journalStore }).resumeTimer({
+    const resumedOutcome = await new Runtime({ journalStore }).resumeTimer(workflow, {
         runId: "run-123",
-        workflow,
         waitId: firstOutcome.suspension.waitId
     })
 

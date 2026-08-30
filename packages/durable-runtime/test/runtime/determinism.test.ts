@@ -10,15 +10,14 @@ test("workflow time does not advance without a durable boundary", async ({ journ
 
     await new Runtime({
         journalStore: new FileJournalStore(journalDirectory)
-    }).start({
-        runId: "run-123",
-        input: null,
-        workflow: defineInputlessWorkflow(async () => {
+    }).start(
+        defineInputlessWorkflow(async () => {
             workflowTimes.push(Date.now())
             await delay(25)
             workflowTimes.push(Date.now())
-        })
-    })
+        }),
+        { runId: "run-123", input: null }
+    )
 
     expect(workflowTimes[1]).toBe(workflowTimes[0])
 })
@@ -28,10 +27,8 @@ test("workflow time advances after a long-running step completes", async ({ jour
     const workflowTimes: number[] = []
     const stepTimes: number[] = []
 
-    await new Runtime({ journalStore }).start({
-        runId: "run-123",
-        input: null,
-        workflow: defineInputlessWorkflow(async () => {
+    await new Runtime({ journalStore }).start(
+        defineInputlessWorkflow(async () => {
             workflowTimes.push(Date.now())
 
             await step({
@@ -46,8 +43,9 @@ test("workflow time advances after a long-running step completes", async ({ jour
             })
 
             workflowTimes.push(Date.now())
-        })
-    })
+        }),
+        { runId: "run-123", input: null }
+    )
 
     const [runStartedEvent] = await journalStore.listByType({
         runId: "run-123",

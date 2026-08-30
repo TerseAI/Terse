@@ -12,19 +12,17 @@ test("workflow randomness is deterministic when replayed", async ({ journalDirec
         await sleep("20ms")
     })
     const journalStore = new FileJournalStore(journalDirectory)
-    const firstOutcome = await new Runtime({ journalStore }).start({
+    const firstOutcome = await new Runtime({ journalStore }).start(workflow, {
         runId: "run-123",
-        input: null,
-        workflow
+        input: null
     })
 
     if (firstOutcome.status !== "suspended") throw new Error("Expected the workflow to be suspended")
 
     await delay(35)
 
-    await new Runtime({ journalStore }).resumeTimer({
+    await new Runtime({ journalStore }).resumeTimer(workflow, {
         runId: "run-123",
-        workflow,
         waitId: firstOutcome.suspension.waitId
     })
 
@@ -49,17 +47,13 @@ test("step randomness remains native when a step is retried", async ({ journalDi
     const journalStore = new FileJournalStore(journalDirectory)
 
     await expect(
-        new Runtime({ journalStore }).start({
+        new Runtime({ journalStore }).start(workflow, {
             runId: "run-123",
-            input: null,
-            workflow
+            input: null
         })
     ).rejects.toBe(stepError)
 
-    await new Runtime({ journalStore }).resume({
-        runId: "run-123",
-        workflow
-    })
+    await new Runtime({ journalStore }).resume(workflow, { runId: "run-123" })
 
     expect(samples).toHaveLength(2)
     expect(samples[1]).not.toBe(samples[0])

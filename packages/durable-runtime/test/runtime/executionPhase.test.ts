@@ -9,10 +9,8 @@ test("reports whether code is outside a workflow, orchestrating, or running a st
 
     await new Runtime({
         journalStore: new FileJournalStore(journalDirectory)
-    }).start({
-        runId: "run-123",
-        input: null,
-        workflow: defineInputlessWorkflow(async () => {
+    }).start(
+        defineInputlessWorkflow(async () => {
             phases.push(getExecutionPhase())
 
             await step({
@@ -23,8 +21,9 @@ test("reports whether code is outside a workflow, orchestrating, or running a st
                     return null
                 }
             })
-        })
-    })
+        }),
+        { runId: "run-123", input: null }
+    )
 
     phases.push(getExecutionPhase())
 

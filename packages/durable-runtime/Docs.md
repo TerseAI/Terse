@@ -67,13 +67,12 @@ const workflow = defineWorkflow({
 Now, we can combine that with our runtime above and run our first workflow!
 
 ```ts
-const outcome = await runtime.start({
+const outcome = await runtime.start(workflow, {
     runId: "run-123",
     input: {
         recipient: "ada@example.com",
         name: "Ada"
-    },
-    workflow
+    }
 })
 
 if (outcome.status === "completed") {
@@ -120,7 +119,6 @@ const workflow = defineWorkflow({
                 name: input.name
             },
             run: async ({ name }) => {
-
                 // pretend this needs to reach out to github
                 return `Welcome, ${name}!`
             }
@@ -131,7 +129,7 @@ const workflow = defineWorkflow({
 
 ## Pausing a Workflow
 
-Pausing a workflow is done with ```sleep()```.
+Pausing a workflow is done with `sleep()`.
 
 ```ts
 const workflow = defineWorkflow({
@@ -147,12 +145,11 @@ const workflow = defineWorkflow({
                 name: input.name
             },
             run: async ({ name }) => {
-
                 // pretend this needs to reach out to github
                 return `Welcome, ${name}!`
             }
         })
-        
+
         await sleep("1d")
 
         const message2 = await step({
@@ -161,7 +158,6 @@ const workflow = defineWorkflow({
                 name: input.name
             },
             run: async ({ name }) => {
-
                 // pretend this needs to reach out to github
                 return `Welcome, ${name}. first message was ${message}!`
             }
@@ -209,7 +205,6 @@ const SlackDisambiguationHook = defineHook({
 Now that your hook is defined, you can use it to suspend a workflow and read the response!
 
 ```ts
-
 const DeploymentWorkflow = defineWorkflow({
     name: "deploy-application",
     input: z.object({}),

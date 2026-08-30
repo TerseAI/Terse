@@ -8,13 +8,12 @@ test("Date.now returns the workflow's logical time", async ({ journalDirectory }
     const journalStore = new FileJournalStore(journalDirectory)
     let timestamp: number | undefined
 
-    await new Runtime({ journalStore }).start({
-        runId: "run-123",
-        input: null,
-        workflow: defineInputlessWorkflow(async () => {
+    await new Runtime({ journalStore }).start(
+        defineInputlessWorkflow(async () => {
             timestamp = Date.now()
-        })
-    })
+        }),
+        { runId: "run-123", input: null }
+    )
 
     const [startedEvent] = await journalStore.listByType({
         runId: "run-123",
@@ -29,13 +28,12 @@ test("new Date returns the workflow's logical time", async ({ journalDirectory }
     const journalStore = new FileJournalStore(journalDirectory)
     let date: Date | undefined
 
-    await new Runtime({ journalStore }).start({
-        runId: "run-123",
-        input: null,
-        workflow: defineInputlessWorkflow(async () => {
+    await new Runtime({ journalStore }).start(
+        defineInputlessWorkflow(async () => {
             date = new Date()
-        })
-    })
+        }),
+        { runId: "run-123", input: null }
+    )
 
     const [startedEvent] = await journalStore.listByType({
         runId: "run-123",
@@ -50,13 +48,12 @@ test("Date called as a function returns the workflow's logical time", async ({ j
     const journalStore = new FileJournalStore(journalDirectory)
     let date: string | undefined
 
-    await new Runtime({ journalStore }).start({
-        runId: "run-123",
-        input: null,
-        workflow: defineInputlessWorkflow(async () => {
+    await new Runtime({ journalStore }).start(
+        defineInputlessWorkflow(async () => {
             date = Date()
-        })
-    })
+        }),
+        { runId: "run-123", input: null }
+    )
 
     const [startedEvent] = await journalStore.listByType({
         runId: "run-123",

@@ -39,10 +39,9 @@ test("gets the active suspension until its wait is resolved", async ({ journalDi
     })
     const runtime = new Runtime({ journalStore })
 
-    const firstOutcome = await runtime.start({
+    const firstOutcome = await runtime.start(workflow, {
         runId: "run-123",
-        input: null,
-        workflow
+        input: null
     })
 
     if (firstOutcome.status !== "suspended") throw new Error("Expected the workflow to be suspended")
@@ -74,10 +73,9 @@ test("waitFor suspends a workflow and returns its validated resolution", async (
         resolution = value
     })
 
-    const firstOutcome = await new Runtime({ journalStore }).start({
+    const firstOutcome = await new Runtime({ journalStore }).start(workflow, {
         runId: "run-123",
-        input: null,
-        workflow
+        input: null
     })
 
     expect(resolution).toBeUndefined()
@@ -120,13 +118,12 @@ test("waitFor rejects an invalid request before journaling it", async ({ journal
     } as unknown as ApprovalRequest
 
     await expect(
-        new Runtime({ journalStore }).start({
-            runId: "run-123",
-            input: null,
-            workflow: defineInputlessWorkflow(async () => {
+        new Runtime({ journalStore }).start(
+            defineInputlessWorkflow(async () => {
                 await waitFor(ApprovalHook, invalidRequest)
-            })
-        })
+            }),
+            { runId: "run-123", input: null }
+        )
     ).rejects.toBeInstanceOf(z.ZodError)
 
     expect(await journalStore.listByType({ runId: "run-123", eventType: "wait.requested" })).toHaveLength(0)
@@ -145,10 +142,9 @@ test("waitFor rejects an invalid resolution without journaling it", async ({ jou
             message: "Deploy to production?"
         })
     })
-    const firstOutcome = await new Runtime({ journalStore }).start({
+    const firstOutcome = await new Runtime({ journalStore }).start(workflow, {
         runId: "run-123",
-        input: null,
-        workflow
+        input: null
     })
 
     if (firstOutcome.status !== "suspended") throw new Error("Expected the workflow to be suspended")
