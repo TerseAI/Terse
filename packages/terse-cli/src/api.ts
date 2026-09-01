@@ -1,7 +1,7 @@
 import dotenv from "dotenv"
 import fs from "node:fs"
 import path from "node:path"
-import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema } from "terse-types"
+import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema, sdkTestRunStartResponseSchema } from "terse-types"
 import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SdkTestRunStartResponse, SerializedEvent } from "terse-types"
 
 import { CliError, ErrorCode } from "./cliError.js"
@@ -195,7 +195,12 @@ export async function startTestRun(
     params: { projectId: string; jobName: string; event: SerializedEvent; forceLocal?: boolean; isTest?: boolean; replayOfRunId?: string; freshState?: boolean },
     apiKey: string
 ): Promise<SdkTestRunStartResponse> {
-    return fetchWithAuth<SdkTestRunStartResponse>(ApiRoutes.SDK.TEST_RUN, apiKey, params, "POST")
+    const response = await fetchWithAuth<unknown>(ApiRoutes.SDK.TEST_RUN, apiKey, params, "POST")
+    const parsed = sdkTestRunStartResponseSchema.safeParse(response)
+    if (!parsed.success) {
+        throw new CliError("invalid_api_response", "Terse returned an invalid local test environment.", { detail: parsed.error.message })
+    }
+    return parsed.data
 }
 
 export async function finalizeTestRun(runId: string, status: "success" | "failed", apiKey: string, error?: string): Promise<void> {

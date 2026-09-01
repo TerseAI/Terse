@@ -2,15 +2,16 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 ARG TERSE_VERSION
+ARG DURABLE_OBJECTS_DEPENDENCY_SPEC
 ARG WORKFLOW_CORE_VERSION
 ARG PROJECT_DIR=/opt/terse-sdk-run/project
-RUN test -n "${TERSE_VERSION}" && test -n "${WORKFLOW_CORE_VERSION}"
+RUN test -n "${TERSE_VERSION}" && test -n "${DURABLE_OBJECTS_DEPENDENCY_SPEC}" && test -n "${WORKFLOW_CORE_VERSION}"
 
 # Warm the pnpm store so a project whose dependencies differ from the scaffold still installs
 # from disk instead of the registry.
 RUN mkdir -p /tmp/warm-pnpm && cd /tmp/warm-pnpm \
     && pnpm init > /dev/null \
-    && pnpm add --prod --ignore-scripts --config.confirmModulesPurge=false "terse-sdk@${TERSE_VERSION}" \
+    && pnpm add --prod --ignore-scripts --config.confirmModulesPurge=false "terse-sdk@${TERSE_VERSION}" "@terse/durable-objects@${DURABLE_OBJECTS_DEPENDENCY_SPEC}" \
     && cd / && rm -rf /tmp/warm-pnpm
 
 # The scaffold's dependency set, materialized at the path a deploy builds in. A warm store alone
@@ -19,7 +20,7 @@ RUN mkdir -p /tmp/warm-pnpm && cd /tmp/warm-pnpm \
 # matching project has nothing to install and contributes nothing to the snapshot: measured 232MB
 # of snapshot payload down to 459KB, and the install from 5.5s to 1.2s ("Already up to date").
 RUN mkdir -p "${PROJECT_DIR}" && cd "${PROJECT_DIR}" \
-    && printf '{"name":"terse-baked","private":true,"dependencies":{"terse-sdk":"%s","@workflow/core":"%s","zod":"^4.3.6"}}' "${TERSE_VERSION}" "${WORKFLOW_CORE_VERSION}" > package.json \
+    && printf '{"name":"terse-baked","private":true,"dependencies":{"@terse/durable-objects":"%s","@workflow/core":"%s","terse-sdk":"%s","zod":"^4.3.6"}}' "${DURABLE_OBJECTS_DEPENDENCY_SPEC}" "${WORKFLOW_CORE_VERSION}" "${TERSE_VERSION}" > package.json \
     && pnpm install --prod --ignore-scripts --config.confirmModulesPurge=false \
     && rm -f package.json pnpm-lock.yaml
 

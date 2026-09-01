@@ -1205,10 +1205,20 @@ export const sdkTestRunStartRequestSchema = z.object({
 })
 export type SdkTestRunStartRequest = z.infer<typeof sdkTestRunStartRequestSchema>
 
+export const sdkDurableObjectEnvironmentSchema = z.object({
+    token: z.string().min(1),
+    namespaceId: z.string().min(1),
+    controlPlaneUrl: z.string().url(),
+    expiresAtMs: z.number().int().positive()
+})
+export type SdkDurableObjectEnvironment = z.infer<typeof sdkDurableObjectEnvironmentSchema>
+
 export const sdkTestRunStartResponseSchema = z.object({
     runId: z.string(),
     /** true: the local CLI must drive the run via /sdk/*. false: it was dispatched to the self-hosted webhook. */
-    local: z.boolean()
+    local: z.boolean(),
+    /** object: use this isolated environment. null: explicitly run without inherited actor credentials. undefined: legacy backend. */
+    durableObjects: sdkDurableObjectEnvironmentSchema.nullable().optional()
 })
 export type SdkTestRunStartResponse = z.infer<typeof sdkTestRunStartResponseSchema>
 

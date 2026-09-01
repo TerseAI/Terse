@@ -28,6 +28,7 @@ jobs:
             contents: read
         outputs:
             version: ${{ steps.version.outputs.version }}
+            durable_objects_sha: ${{ steps.durable_objects.outputs.sha }}
         steps:
             - name: Read release version
               id: version
@@ -61,6 +62,27 @@ jobs:
 
             - name: Assert every manifest matches the tag
               run: node scripts/release.mjs verify "${{ steps.version.outputs.version }}"
+
+            - name: Checkout the matching Durable Objects release
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  repository: TerseAI/durable-objects
+                  ref: v${{ steps.version.outputs.version }}
+                  path: .durable-objects
+
+            - name: Verify the Durable Objects release
+              id: durable_objects
+              env:
+                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
+              run: |
+                  set -euo pipefail
+                  source_version=$(node -p "require('./.durable-objects/npm/package.json').version")
+                  sdk_dependency_version=$(node -p "require('./packages/terse-sdk/package.json').dependencies['@terse/durable-objects'] ?? ''")
+                  published_version=$(npm view "@terse/durable-objects@$RELEASE_VERSION" version)
+                  test "$source_version" = "$RELEASE_VERSION" || { echo "::error::durable-objects npm version $source_version does not match $RELEASE_VERSION"; exit 1; }
+                  test "$sdk_dependency_version" = "$RELEASE_VERSION" || { echo "::error::terse-sdk depends on @terse/durable-objects@$sdk_dependency_version instead of $RELEASE_VERSION"; exit 1; }
+                  test "$published_version" = "$RELEASE_VERSION" || { echo "::error::@terse/durable-objects@$RELEASE_VERSION is not published"; exit 1; }
+                  echo "sha=$(git -C .durable-objects rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
     # ── CI ────────────────────────────────────────────────────────────────────
     # The full PR suite, re-run against the tagged commit. Running it here rather
@@ -196,10 +218,9 @@ jobs:
                   done
 
     # ── 3 · SDK sandbox image (retryable) ─────────────────────────────────────
-    # What customer deploys boot from. Built after npm because the runtime image
-    # installs terse-cli from the registry, and consumed through a moving tag: the
-    # value here is the warm package cache, and the Terse dependency tree barely
-    # changes between releases.
+    # What customer deploys boot from. Built after npm because the image installs
+    # release packages from the registry. It also compiles the matching Durable
+    # Objects runtime once so project deploys only add project-specific layers.
     sandbox-image:
         name: Publish the SDK sandbox images
         needs: [preflight, npm]
@@ -213,6 +234,13 @@ jobs:
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
               with:
                   ref: ${{ github.sha }}
+
+            - name: Checkout the approved Durable Objects release
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  repository: TerseAI/durable-objects
+                  ref: ${{ needs.preflight.outputs.durable_objects_sha }}
+                  path: .durable-objects
 
             - name: Authenticate to Google Cloud
               uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -237,14 +265,15 @@ jobs:
                   set -euo pipefail
                   for attempt in $(seq 1 20); do
                       if npm view "terse-cli@$RELEASE_VERSION" version >/dev/null 2>&1 \
-                          && npm view "terse-sdk@$RELEASE_VERSION" version >/dev/null 2>&1; then
-                          echo "terse-cli and terse-sdk $RELEASE_VERSION are live"
+                          && npm view "terse-sdk@$RELEASE_VERSION" version >/dev/null 2>&1 \
+                          && npm view "@terse/durable-objects@$RELEASE_VERSION" version >/dev/null 2>&1; then
+                          echo "sandbox packages $RELEASE_VERSION are live"
                           exit 0
                       fi
                       echo "attempt $attempt: not visible yet, retrying in 15s"
                       sleep 15
                   done
-                  echo "::error::terse-cli@$RELEASE_VERSION never became visible on npm"
+                  echo "::error::one or more sandbox packages at $RELEASE_VERSION never became visible on npm"
                   exit 1
 
             # Modal sandboxes are amd64, so this skips the arm64 pass the control plane takes.
@@ -268,6 +297,8 @@ jobs:
                   push: true
                   build-args: |
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
+                  build-contexts: |
+                      durable_objects_source=.durable-objects
                   tags: |
                       ${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       ${{ env.SANDBOX_BASE_IMAGE }}:latest
@@ -286,6 +317,7 @@ jobs:
                   build-args: |
                       BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
+                      DURABLE_OBJECTS_DEPENDENCY_SPEC=${{ needs.preflight.outputs.version }}
                       WORKFLOW_CORE_VERSION=${{ steps.workflow.outputs.version }}
                   tags: |
                       ${{ env.SANDBOX_PNPM_IMAGE }}:${{ needs.preflight.outputs.version }}
@@ -303,6 +335,7 @@ jobs:
                   build-args: |
                       BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
+                      DURABLE_OBJECTS_DEPENDENCY_SPEC=${{ needs.preflight.outputs.version }}
                       WORKFLOW_CORE_VERSION=${{ steps.workflow.outputs.version }}
                   tags: |
                       ${{ env.SANDBOX_NPM_IMAGE }}:${{ needs.preflight.outputs.version }}
@@ -310,13 +343,23 @@ jobs:
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
-
-
     # ── 4 · Prod (retryable) ──────────────────────────────────────────────────
+    durable-objects:
+        name: Deploy Durable Objects
+        needs: [preflight, npm, sandbox-image]
+        permissions:
+            contents: read
+            id-token: write
+        uses: ./.github/workflows/durable-objects-cloud-run.yml
+        with:
+            version: ${{ needs.preflight.outputs.version }}
+            source_sha: ${{ needs.preflight.outputs.durable_objects_sha }}
+            environment: production
+
     deploy:
         name: Deploy production
-        # Waits on the sandbox image so prod never runs ahead of what its deploys boot.
-        needs: [preflight, npm, sandbox-image]
+        # The backend only advances after its runtime image and control plane are ready.
+        needs: [preflight, npm, sandbox-image, durable-objects]
         runs-on: ubuntu-latest
         timeout-minutes: 50
         environment: production

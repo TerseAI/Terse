@@ -5,6 +5,7 @@
 !**/.env.example
 .git
 .github
+gha-creds-*.json
 .pnpm-store
 .deepsec
 .ruff_cache

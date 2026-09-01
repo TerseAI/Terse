@@ -46,3 +46,8 @@
 // Secrets:
 //   Write with `terse secrets add`; read in job code via process.env.MY_SECRET.
 //   There is no value-returning secrets API — env vars are the read side.
+//
+// Durable objects (from "terse-sdk"):
+//   Define exported Actor subclasses in src/durable-objects.ts. Call an actor
+//   with `await Counter.get("stable-id").method(args)` from a managed workflow.
+//   Terse supplies the namespace and short-lived runtime credentials.

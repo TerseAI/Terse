@@ -18,10 +18,12 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "../../../modules/agents/controller"
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
-import { SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
+import { DurableObjectProjectService } from "../../../services/DurableObjectProjectService"
+import { type PreparedSdkDeployImage, SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
-import type { SdkDeployPhase } from "../../../services/sdkRuntimeExecutors/types"
+import { type SdkDeployPhase } from "../../../services/sdkRuntimeExecutors/types"
 import { GcsSourceArchiveStore } from "../../../services/sourceArchive/SourceArchiveStore"
+import { settings } from "../../../settings"
 import { InvalidCronExpressionError, assertValidUserCron } from "../../../tasks/queues/scheduleQueue"
 import { AgentWithTriggerRelations, PrismaTransaction } from "../../../types/prisma"
 
@@ -95,12 +97,13 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         }
 
         const results: SdkDeployResponseBody["results"] = []
+        let preparedImage: PreparedSdkDeployImage | undefined
 
         if (sourceZipBase64 || sourceObjectKey) {
             const sourceZipBuffer = await telemetry.measure("parseSourceZipMs", () => readSourceArchive({ sourceZipBase64, sourceObjectKey, organizationId }))
             telemetry.setSourceZipBytes(sourceZipBuffer.length)
 
-            const preparedImages = await telemetry.measure("prepareImagesMs", () =>
+            preparedImage = await telemetry.measure("prepareImagesMs", () =>
                 new SdkSandboxImageService().prepareFromSourceZip({
                     zipBuffer: sourceZipBuffer,
                     organizationId,
@@ -114,7 +117,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
             await prisma.project_deploys.update({
                 where: { id: deploy.id },
-                data: { sdk_source_image_id: preparedImages.deployImageId }
+                data: { sdk_source_image_id: preparedImage.deployImageId }
             })
 
             if (sourceObjectKey) void GcsSourceArchiveStore.getInstance()?.discard(sourceObjectKey, organizationId)
@@ -179,6 +182,8 @@ export async function handleSdkDeploy(req: Request, res: Response) {
 
         const deployedNames = new Set(jobs.map(j => j.jobName))
         const removed = await removeStaleAutomations(prisma, organizationId, deployedNames, projectId)
+
+        await registerDurableObjectDeployment(projectId, preparedImage)
 
         const jobsAdded = results.filter(r => !r.isUpdate).length
         await markDeploySucceeded(
@@ -405,4 +410,11 @@ async function readSourceArchive(params: { sourceZipBase64?: string; sourceObjec
     const store = GcsSourceArchiveStore.getInstance()
     if (!store || !sourceObjectKey) throw new Error("No source archive was provided with this deploy")
     return store.download(sourceObjectKey, organizationId)
+}
+
+async function registerDurableObjectDeployment(projectId: string, preparedImage: PreparedSdkDeployImage | undefined): Promise<void> {
+    const config = settings.durableObjects
+    if (!preparedImage || !config) return
+
+    await DurableObjectProjectService.getInstance(config).registerProductionDeployment(projectId, preparedImage)
 }

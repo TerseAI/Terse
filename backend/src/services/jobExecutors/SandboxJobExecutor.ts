@@ -10,6 +10,7 @@ import { createSandboxToken } from "../../modules/auth/helpers/apiTokens"
 import { settings } from "../../settings"
 import { AgentWithRelations } from "../../types/prisma"
 import { getSocketIO } from "../CacheInvalidationService"
+import { DurableObjectControlPlaneClient } from "../DurableObjectControlPlaneClient"
 import { SecretService } from "../SecretService"
 import { resolveRunStatus } from "../resolveRunStatus"
 import { getSandboxProvider } from "../sandboxProvider"
@@ -75,6 +76,8 @@ export class SandboxJobExecutor implements JobExecutor {
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
             telemetry.setRuntime(executor.runtime)
 
+            const durableObjectEnvironment = await this.durableObjectEnvironment(agent.project.id, runId)
+
             const { rawToken, tokenId } = await telemetry.measure("createSandboxTokenMs", () => createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id }))
             sandboxApiKey = rawToken
             sandboxTokenId = tokenId
@@ -99,7 +102,8 @@ export class SandboxJobExecutor implements JobExecutor {
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1",
-                IS_SANDBOX: "1"
+                IS_SANDBOX: "1",
+                ...durableObjectEnvironment
             }
             // Interim transport: the response payload rides sandbox env vars because there is no
             // server-side store for it yet. Once the shared Redis cache lands, stash the payload
@@ -149,6 +153,21 @@ export class SandboxJobExecutor implements JobExecutor {
             }
             await telemetry.measure("terminateRunSandboxMs", () => this.terminateRunSandbox(agent.project.id, runId, runSandbox))
             telemetry.capture(telemetrySuccess, telemetryError)
+        }
+    }
+
+    private async durableObjectEnvironment(namespaceId: string, executionId: string): Promise<Record<string, string>> {
+        const config = settings.durableObjects
+        if (!config) return {}
+
+        const controlPlane = DurableObjectControlPlaneClient.getInstance(config)
+        const deadlineUnixMs = Date.now() + (SANDBOX_DEFAULT_OPTIONS.timeoutMs ?? 24 * 60 * 60 * 1000)
+        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, deadlineUnixMs)
+
+        return {
+            DURABLE_OBJECT_TOKEN: workflowToken.token,
+            DURABLE_OBJECT_NAMESPACE_ID: namespaceId,
+            DURABLE_OBJECT_CONTROL_PLANE_URL: controlPlane.controlPlaneUrl
         }
     }
 

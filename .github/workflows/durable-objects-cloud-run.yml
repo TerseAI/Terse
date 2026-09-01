@@ -1,0 +1,242 @@
+name: Deploy Durable Objects to Cloud Run
+
+on:
+    workflow_call:
+        inputs:
+            version:
+                description: Immutable image tag for this deployment
+                required: true
+                type: string
+            source_sha:
+                description: Approved TerseAI/durable-objects commit
+                required: true
+                type: string
+            environment:
+                description: GitHub environment containing the Cloud Run configuration
+                required: true
+                type: string
+    workflow_dispatch:
+        inputs:
+            version:
+                description: Immutable image tag for this deployment
+                required: true
+                type: string
+            source_sha:
+                description: Full TerseAI/durable-objects commit SHA
+                required: true
+                type: string
+            environment:
+                description: GitHub environment to deploy
+                required: true
+                type: choice
+                default: staging
+                options:
+                    - staging
+                    - production
+
+concurrency:
+    group: durable-objects-cloud-run-${{ inputs.environment }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+    id-token: write
+
+jobs:
+    deploy:
+        name: Build and deploy
+        runs-on: blacksmith-4vcpu-ubuntu-2404
+        timeout-minutes: 60
+        environment: ${{ inputs.environment }}
+        steps:
+            - name: Checkout Terse
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+            - name: Checkout the approved Durable Objects source
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+              with:
+                  repository: TerseAI/durable-objects
+                  ref: ${{ inputs.source_sha }}
+                  path: .durable-objects
+
+            - name: Validate deployment configuration
+              id: config
+              env:
+                  VERSION: ${{ inputs.version }}
+                  SOURCE_SHA: ${{ inputs.source_sha }}
+                  GCP_PROJECT_ID: ${{ vars.DURABLE_OBJECT_GCP_PROJECT_ID }}
+                  GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+                  GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.DURABLE_OBJECT_GCP_DEPLOY_SERVICE_ACCOUNT }}
+                  GCP_REGION: ${{ vars.DURABLE_OBJECT_GCP_REGION }}
+                  ARTIFACT_REPOSITORY: ${{ vars.DURABLE_OBJECT_ARTIFACT_REPOSITORY }}
+                  CLOUD_RUN_SERVICE: ${{ vars.DURABLE_OBJECT_CLOUD_RUN_SERVICE }}
+                  CLOUD_RUN_SERVICE_ACCOUNT: ${{ vars.DURABLE_OBJECT_CLOUD_RUN_SERVICE_ACCOUNT }}
+                  CLOUD_SQL_CONNECTION_NAME: ${{ vars.DURABLE_OBJECT_CLOUD_SQL_CONNECTION_NAME }}
+                  STANDARD_BUCKETS: ${{ vars.DURABLE_OBJECT_STANDARD_BUCKETS }}
+                  ADMIN_TOKEN_SECRET: ${{ vars.DURABLE_OBJECT_ADMIN_TOKEN_SECRET }}
+                  JWT_SIGNING_KEY_SECRET: ${{ vars.DURABLE_OBJECT_JWT_SIGNING_KEY_SECRET }}
+                  MODAL_TOKEN_ID_SECRET: ${{ vars.DURABLE_OBJECT_MODAL_TOKEN_ID_SECRET }}
+                  MODAL_TOKEN_SECRET: ${{ vars.DURABLE_OBJECT_MODAL_TOKEN_SECRET }}
+                  POSTGRES_URL_SECRET: ${{ vars.DURABLE_OBJECT_POSTGRES_URL_SECRET }}
+              run: |
+                  set -euo pipefail
+                  required=(
+                      GCP_PROJECT_ID
+                      GCP_WIF_PROVIDER
+                      GCP_DEPLOY_SERVICE_ACCOUNT
+                      GCP_REGION
+                      ARTIFACT_REPOSITORY
+                      CLOUD_RUN_SERVICE
+                      CLOUD_RUN_SERVICE_ACCOUNT
+                      CLOUD_SQL_CONNECTION_NAME
+                      STANDARD_BUCKETS
+                      ADMIN_TOKEN_SECRET
+                      JWT_SIGNING_KEY_SECRET
+                      MODAL_TOKEN_ID_SECRET
+                      MODAL_TOKEN_SECRET
+                      POSTGRES_URL_SECRET
+                  )
+                  for name in "${required[@]}"; do
+                      if [ -z "${!name:-}" ]; then
+                          echo "::error::Missing GitHub environment variable for ${name}"
+                          exit 1
+                      fi
+                  done
+                  if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                      echo "::error::version must be a complete numeric SemVer version"
+                      exit 1
+                  fi
+                  if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+                      echo "::error::source_sha must be a full lowercase Git commit SHA"
+                      exit 1
+                  fi
+                  source_version=$(node -p "require('./.durable-objects/npm/package.json').version")
+                  if [ "$source_version" != "$VERSION" ]; then
+                      echo "::error::durable-objects npm version ${source_version} does not match ${VERSION}"
+                      exit 1
+                  fi
+                  node -e 'const value = JSON.parse(process.env.STANDARD_BUCKETS); if (!value || Array.isArray(value) || Object.keys(value).length === 0) throw new Error("DURABLE_OBJECT_STANDARD_BUCKETS must be a non-empty JSON object")'
+                  image="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/durable-objects:${VERSION}"
+                  echo "image=${image}" >> "$GITHUB_OUTPUT"
+                  echo "registry=${GCP_REGION}-docker.pkg.dev" >> "$GITHUB_OUTPUT"
+
+            - name: Authenticate to Google Cloud
+              uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+              with:
+                  project_id: ${{ vars.DURABLE_OBJECT_GCP_PROJECT_ID }}
+                  workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+                  service_account: ${{ vars.DURABLE_OBJECT_GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+            - name: Set up gcloud
+              uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+            - name: Configure Docker for Artifact Registry
+              env:
+                  REGISTRY: ${{ steps.config.outputs.registry }}
+              run: gcloud auth configure-docker "$REGISTRY" --quiet
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+            - name: Build and push the control-plane image
+              id: build
+              uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+              with:
+                  context: .
+                  file: ./docker/durable-objects-cloud-run.Dockerfile
+                  platforms: linux/amd64
+                  push: true
+                  build-contexts: |
+                      durable_objects_source=.durable-objects
+                  tags: |
+                      ${{ steps.config.outputs.image }}
+                  cache-from: type=gha,scope=durable-objects-cloud-run
+                  cache-to: type=gha,mode=max,scope=durable-objects-cloud-run
+
+            - name: Refresh Google Cloud credentials for deployment
+              uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+              with:
+                  project_id: ${{ vars.DURABLE_OBJECT_GCP_PROJECT_ID }}
+                  workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+                  service_account: ${{ vars.DURABLE_OBJECT_GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+            - name: Create or update the Cloud Run service
+              id: deploy
+              env:
+                  IMAGE: ${{ steps.config.outputs.image }}
+                  IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+                  GCP_PROJECT_ID: ${{ vars.DURABLE_OBJECT_GCP_PROJECT_ID }}
+                  GCP_REGION: ${{ vars.DURABLE_OBJECT_GCP_REGION }}
+                  CLOUD_RUN_SERVICE: ${{ vars.DURABLE_OBJECT_CLOUD_RUN_SERVICE }}
+                  CLOUD_RUN_SERVICE_ACCOUNT: ${{ vars.DURABLE_OBJECT_CLOUD_RUN_SERVICE_ACCOUNT }}
+                  CLOUD_SQL_CONNECTION_NAME: ${{ vars.DURABLE_OBJECT_CLOUD_SQL_CONNECTION_NAME }}
+                  STANDARD_BUCKETS: ${{ vars.DURABLE_OBJECT_STANDARD_BUCKETS }}
+                  ADMIN_TOKEN_SECRET: ${{ vars.DURABLE_OBJECT_ADMIN_TOKEN_SECRET }}
+                  JWT_SIGNING_KEY_SECRET: ${{ vars.DURABLE_OBJECT_JWT_SIGNING_KEY_SECRET }}
+                  MODAL_TOKEN_ID_SECRET: ${{ vars.DURABLE_OBJECT_MODAL_TOKEN_ID_SECRET }}
+                  MODAL_TOKEN_SECRET: ${{ vars.DURABLE_OBJECT_MODAL_TOKEN_SECRET }}
+                  POSTGRES_URL_SECRET: ${{ vars.DURABLE_OBJECT_POSTGRES_URL_SECRET }}
+              run: |
+                  set -euo pipefail
+
+                  deploy() {
+                      local control_plane_url="$1"
+                      gcloud run deploy "$CLOUD_RUN_SERVICE" \
+                          --project="$GCP_PROJECT_ID" \
+                          --region="$GCP_REGION" \
+                          --platform=managed \
+                          --image="${IMAGE}@${IMAGE_DIGEST}" \
+                          --service-account="$CLOUD_RUN_SERVICE_ACCOUNT" \
+                          --allow-unauthenticated \
+                          --ingress=all \
+                          --use-http2 \
+                          --port=8080 \
+                          --timeout=3600 \
+                          --min=1 \
+                          --max=10 \
+                          --concurrency=80 \
+                          --cpu=1 \
+                          --memory=1Gi \
+                          --execution-environment=gen2 \
+                          --set-cloudsql-instances="$CLOUD_SQL_CONNECTION_NAME" \
+                          --set-env-vars="^@^DURABLE_OBJECT_PROCESS_ROLE=control_plane@DURABLE_OBJECT_CONTROL_PLANE_BIND=0.0.0.0:8080@DURABLE_OBJECT_CONTROL_PLANE_URL=${control_plane_url}@DURABLE_OBJECT_JWT_MAX_TTL_SECONDS=86400@DURABLE_OBJECT_SANDBOX_PROVIDER=modal@DURABLE_OBJECT_SANDBOX_COMMAND=terse-durable-objects-modal@DURABLE_OBJECT_STANDARD_BUCKETS=${STANDARD_BUCKETS}" \
+                          --set-secrets="DURABLE_OBJECT_ADMIN_TOKEN=${ADMIN_TOKEN_SECRET}:latest,DURABLE_OBJECT_JWT_SIGNING_KEY=${JWT_SIGNING_KEY_SECRET}:latest,MODAL_TOKEN_ID=${MODAL_TOKEN_ID_SECRET}:latest,MODAL_TOKEN_SECRET=${MODAL_TOKEN_SECRET}:latest,DURABLE_OBJECT_POSTGRES_URL=${POSTGRES_URL_SECRET}:latest" \
+                          --labels="app=durable-objects,managed-by=github-actions" \
+                          --quiet
+                  }
+
+                  service_name=$(gcloud run services list \
+                      --project="$GCP_PROJECT_ID" \
+                      --region="$GCP_REGION" \
+                      --platform=managed \
+                      --filter="metadata.name=${CLOUD_RUN_SERVICE}" \
+                      --format='value(metadata.name)')
+                  if [ -z "$service_name" ]; then
+                      deploy https://placeholder.invalid
+                  fi
+
+                  control_plane_url=$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+                      --project="$GCP_PROJECT_ID" \
+                      --region="$GCP_REGION" \
+                      --platform=managed \
+                      --format='value(status.url)')
+                  if [ -z "$control_plane_url" ]; then
+                      echo "::error::Cloud Run did not assign a service URL"
+                      exit 1
+                  fi
+                  deploy "$control_plane_url"
+
+                  echo "url=${control_plane_url}" >> "$GITHUB_OUTPUT"
+                  {
+                      echo "### Durable Objects Cloud Run"
+                      echo
+                      echo "- Environment: ${{ inputs.environment }}"
+                      echo "- Service: \`$CLOUD_RUN_SERVICE\`"
+                      echo "- Image: \`${IMAGE}@${IMAGE_DIGEST}\`"
+                      echo "- URL: $control_plane_url"
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Verify the public endpoint
+              env:
+                  CONTROL_PLANE_URL: ${{ steps.deploy.outputs.url }}
+              run: curl --fail --show-error --silent --retry 5 --retry-all-errors "$CONTROL_PLANE_URL/.well-known/jwks.json" >/dev/null

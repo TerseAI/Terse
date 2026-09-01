@@ -36,6 +36,7 @@
         "zod": "^4.3.6"
     },
     "dependencies": {
+        "@terse/durable-objects": "0.4.7",
         "ms": "2.1.3",
         "terse-types": "workspace:*"
     }

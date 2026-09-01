@@ -225,6 +225,14 @@ export const settings = {
         tokenSecret: requireEnv("MODAL_TOKEN_SECRET")
     })),
 
+    // Durable Objects — opt-in. The URL is the feature gate; once present, the trusted backend
+    // requires its admin credential for deployment registration and workflow-token issuance.
+    durableObjects: optionalIntegrationSettings(["DURABLE_OBJECT_CONTROL_PLANE_URL"], () => ({
+        controlPlaneUrl: requireEnv("DURABLE_OBJECT_CONTROL_PLANE_URL"),
+        adminToken: requireSecretMinLength("DURABLE_OBJECT_ADMIN_TOKEN"),
+        requestTimeoutMs: optionalIntEnv("DURABLE_OBJECT_REQUEST_TIMEOUT_MS")
+    })),
+
     // Dev-only: hoist locally-built terse-types/terse-sdk/terse-cli into sandboxes instead of
     // installing from npm. Requires a monorepo checkout on the same machine as the backend.
     // MUST never be set in production — it is the sole gate for the local-package code path.

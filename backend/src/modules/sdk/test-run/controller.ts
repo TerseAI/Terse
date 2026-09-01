@@ -9,6 +9,7 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { EventProcessor } from "../../../modules/agents/AgentRunner/EventProcessor"
 import { finalizeRunStatus, markRunFailed } from "../../../modules/agents/AgentRunner/runHistory"
 import { SyntheticTriggerRuntime } from "../../../modules/triggers/syntheticTriggerRuntime"
+import { DurableObjectProjectService } from "../../../services/DurableObjectProjectService"
 import { deleteSubtrees } from "../../../services/memory/memorySnapshots"
 import { replayMemorySubtreeKey, replayStateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { settings } from "../../../settings"
@@ -32,13 +33,18 @@ export async function handleSdkTestRunStart(req: Request, res: Response) {
             return res.status(400).json({ success: false, error: "--fresh-state is not supported for projects with a remote data plane yet." })
         }
 
+        const durableObjects = localDataPlane
+            ? settings.durableObjects
+                ? ((await DurableObjectProjectService.getInstance(settings.durableObjects).issueLocalTestEnvironment(projectId)) ?? null)
+                : null
+            : undefined
         const agentId = await ensureTestAutomation(user, projectId, parsed.data.jobName)
         if (parsed.data.freshState) await resetJobTestState(projectId, agentId)
         const synthetic = new SyntheticTriggerRuntime(parsed.data.event.data)
         const processor = new EventProcessor(synthetic, user, { isManuallyTriggered: true, isTest: parsed.data.isTest ?? true, localDataPlane, replayOfRunId: parsed.data.replayOfRunId })
         const { runId } = await processor.triggerSingleAgent(agentId)
 
-        const response: SdkTestRunStartResponse = { runId, local: localDataPlane }
+        const response: SdkTestRunStartResponse = { runId, local: localDataPlane, durableObjects }
         return res.json(response)
     } catch (error) {
         logger.error("[sdk/test-run] Failed to start test run", { jobName: parsed.data.jobName, projectId, error: extractErrorMessage(error) })

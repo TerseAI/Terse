@@ -2,6 +2,7 @@ import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
 import type { SerializedEvent } from "terse-types"
 
 import { finalizeTestRun, startTestRun } from "./api.js"
+import { withDurableObjectEnvironment } from "./durableObjectEnvironment.js"
 import type { LanguageProvider } from "./providers/LanguageProvider.js"
 
 export async function runLocalTestJob(
@@ -21,7 +22,7 @@ export async function runLocalTestJob(
         onSessionEvent?: (event: SessionStreamEvent) => void
     }
 ): Promise<{ runId: string; local: boolean }> {
-    const { runId, local } = await startTestRun(
+    const { runId, local, durableObjects } = await startTestRun(
         { projectId: opts.projectId, jobName: job.name, event, forceLocal: opts.forceLocal, isTest: opts.isTest, replayOfRunId: opts.replayOfRunId, freshState: opts.freshState },
         opts.apiKey
     )
@@ -30,13 +31,15 @@ export async function runLocalTestJob(
 
     let failure: Error | null = null
     try {
-        await provider.executeJob(job, runId, event, {
-            verbose: opts.verbose,
-            entryFile: opts.entryFile,
-            projectId: opts.projectId,
-            onSessionEvent: opts.onSessionEvent,
-            pauseUiAround: opts.pauseUiAround
-        })
+        await withDurableObjectEnvironment(durableObjects, () =>
+            provider.executeJob(job, runId, event, {
+                verbose: opts.verbose,
+                entryFile: opts.entryFile,
+                projectId: opts.projectId,
+                onSessionEvent: opts.onSessionEvent,
+                pauseUiAround: opts.pauseUiAround
+            })
+        )
     } catch (error) {
         failure = error instanceof Error ? error : new Error(String(error))
         throw error

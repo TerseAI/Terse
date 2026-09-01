@@ -34,13 +34,6 @@ const SOURCE_MOUNT_PATH = "/mnt/terse-source"
 
 const APT_GET_INSTALL_FLAGS = "apt-get -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3 -o DPkg::Lock::Timeout=120"
 
-interface PreparedSdkDeployImage {
-    runtime: SdkProjectRuntime
-    buildHash: string
-    sourceHash: string
-    deployImageId: string
-}
-
 interface PhaseContext {
     onProgress?: (phase: SdkDeployPhase) => void
     telemetry?: SdkDeployTelemetry
@@ -141,6 +134,9 @@ export class SdkSandboxImageService {
             // The local provider ignores registry images entirely, so a probe would buy nothing.
             registryImagesSupported: getSandboxProvider().supportsContainerizedRunners
         })
+        if (settings.durableObjects && baseImage.kind !== "sandbox") {
+            throw new DurableObjectBaseImageError("Durable Objects requires a published SDK base image; configure Modal and Artifact Registry access before deploying")
+        }
         telemetry?.setBaseImageKind(baseImage.kind)
         logger.info("SDK image build: base image resolved", { kind: baseImage.kind, reference: baseImage.reference })
 
@@ -155,7 +151,8 @@ export class SdkSandboxImageService {
             runtime: executor.runtime,
             buildHash,
             sourceHash,
-            deployImageId: deployImage.id
+            deployImageId: deployImage.id,
+            imageRef: deployImage.image_id
         }
     }
 
@@ -505,4 +502,19 @@ function extractError(error: unknown): string {
 
 function archiveNameOf(objectKey: string | undefined): string | undefined {
     return objectKey?.slice(objectKey.lastIndexOf("/") + 1)
+}
+
+class DurableObjectBaseImageError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "DurableObjectBaseImageError"
+    }
+}
+
+export interface PreparedSdkDeployImage {
+    runtime: SdkProjectRuntime
+    buildHash: string
+    sourceHash: string
+    deployImageId: string
+    imageRef: string
 }
