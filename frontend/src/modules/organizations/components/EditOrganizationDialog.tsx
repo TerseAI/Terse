@@ -172,7 +172,7 @@ export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationD
                             ) : (
                                 <p className="text-sm text-muted-foreground">{executionRegionLabel(currentExecutionRegion)}</p>
                             )}
-                            <p className="text-sm text-muted-foreground">Controls where new workflow runs execute. It does not change where your organization’s data is stored.</p>
+                            <p className="text-sm text-muted-foreground">Controls where workflow runs execute by default.</p>
                         </div>
                     )}
 

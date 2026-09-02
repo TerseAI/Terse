@@ -632,9 +632,9 @@ importers:
 
   packages/terse-sdk:
     dependencies:
-      '@terse/durable-objects':
-        specifier: 0.4.7
-        version: 0.4.7
+      little-durable-objects:
+        specifier: 0.1.1
+        version: 0.1.1
       ms:
         specifier: 2.1.3
         version: 2.1.3
@@ -700,9 +700,6 @@ importers:
         version: 5.8.3
 
 packages:
-
-  '@terse/durable-objects@0.4.7':
-    resolution: {tarball: https://registry.npmjs.org/@terse/durable-objects/-/durable-objects-0.4.7.tgz}
 
   '@ai-sdk/anthropic@3.0.71':
     resolution: {integrity: sha512-bUWOzrzR0gJKJO/PLGMR4uH2dqEgqGhrsCV+sSpk4KtOEnUQlfjZI/F7BFlqSvVpFbjdgYRRLysAeEZpJ6S1lg==}
@@ -5751,6 +5748,11 @@ packages:
     resolution: {integrity: sha512-NXYBzinNrblfraPGyrbPoD19C1h9lfI/1mzgWYvXUTe414Gz/X1FD2XBZSZM7rRTrMA8JL3OtAaGifrIKhQ5yQ==}
     engines: {node: '>= 12.0.0'}
 
+  little-durable-objects@0.1.1:
+    resolution: {integrity: sha512-kEBqHsrg44m1Idy9lCBPdf71w7rRc/JyCf/ugcg1+g/Ad6fsNZmWIqhc28vC3vx5Z8ySZfsOH50Yk27RWO11ig==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   locate-path@6.0.0:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
@@ -7563,12 +7565,6 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
-
-  '@terse/durable-objects@0.4.7':
-    dependencies:
-      modal: 0.7.3
-      tsx: 4.21.0
-      zod: 4.3.6
 
   '@ai-sdk/anthropic@3.0.71(zod@4.3.6)':
     dependencies:
@@ -13341,6 +13337,12 @@ snapshots:
       lightningcss-linux-x64-musl: 1.32.0
       lightningcss-win32-arm64-msvc: 1.32.0
       lightningcss-win32-x64-msvc: 1.32.0
+
+  little-durable-objects@0.1.1:
+    dependencies:
+      modal: 0.7.3
+      tsx: 4.21.0
+      zod: 4.3.6
 
   locate-path@6.0.0:
     dependencies:

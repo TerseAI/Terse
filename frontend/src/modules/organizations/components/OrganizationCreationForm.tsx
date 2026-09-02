@@ -239,7 +239,7 @@ export default function OrganizationCreationForm() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <FormDescription>Controls where new workflow runs execute. It does not change where your organization’s data is stored.</FormDescription>
+                                    <FormDescription>Controls where workflow runs execute by default.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
