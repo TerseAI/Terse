@@ -18,7 +18,7 @@ A workflow is the thing being automated; in code it is defined as a job (`create
 
 You should use the following sources to get context on the Terse platform:
 
-1. The code in the project itself if it is present: (src/terse.jobs.ts, src/jobs/)
+1. The code in the project itself if it is present: (`src/terse.jobs.ts`, `src/jobs/`, and `src/durable-objects.ts` when the workflow uses actors)
 2. The generated files should be the primary source of truth and explain how Terse works: `src/terse.generated.ts` is the entry point — its header lists every available integration and carries a line-numbered index of the `src/terse.generated/` folder, which holds one file per integration and kind (`<integration>.triggers.ts` for trigger factories and payload types, `<integration>.tools.ts` for typed tool methods, resources and skills, workspace schema files like `attio.schemas.ts`, plus shared plumbing in `common.ts`). Use the index to open only the files the workflow needs. The generated files answer what exists and its exact shape; when they disagree with the live docs, the generated files win — a missing helper means rerun `terse generate`, never code against a docs claim the generated files don't back.
 3. The terse cli: (terse --help)
 4. The fourth and last option should be to use the live terse docs (docs.useterse.ai). Fetch first the index page (https://docs.useterse.ai/llms.txt) to discover available pages and then only pull the specific pages you need to implement the workflow.
@@ -202,6 +202,8 @@ Durability changes how the handler is structured, so settle it before writing an
 
 For durable jobs, the style rules in the conventions section ("Durable job style") govern the handler; the mechanics (`step()`, `jobStep`, `sleep`, `waitForInput`, replay model) are in https://docs.useterse.ai/core-concepts/durability.
 
+Settle shared state separately from run durability. If several runs or workflows need to mutate the same logical entity, and those mutations must be serialized, use a durable actor. Use workflow `states` for values owned by one workflow when read-modify-write races are not a concern. An actor does not make a job durable, and a durable job does not make an actor call an implicit step. Follow the "Durable actors" conventions and https://docs.useterse.ai/core-concepts/actors.
+
 ### 6. Pick triggers
 
 Choose triggers based on what events the job should respond to. Your workspace scan surfaced the candidates; import trigger factories and resource constants from `./terse.generated`.
@@ -269,6 +271,8 @@ Which primitive a piece of work belongs in:
 
 - **Agentic work** — use `generateText` wherever judgment is required (summarize, triage, draft). Include full event context via `event.formatForAgentRunner()`; write specific prompts, and pass an `outputSchema` (a Zod schema) to get a typed, validated object back. Reach for `TerseAgent.create()` only for streaming with `run()` or reusing one agent instance across calls.
 
+- **Shared serialized state** — define a named `Actor` subclass in `src/durable-objects.ts` and address it with a stable domain ID. In a durable job, call it through a module-scope helper wrapped in `step()`.
+
 - If the user's request is fully deterministic (e.g. "post X to Slack when Y happens"), do not create an agent at all.
 
 **Test targets.** Before the first test run, if the job writes to an external surface, ask the user once: "Which channel/repo should I use for test runs? (I'll swap to the real targets at the end.)" In the same ask, when an involved API bills or has customer-visible effects, ask whether it has a test-mode key to use while building (`terse secrets add <NAME>`). Point side-effecting calls at those test resources while building. If the user says to use the real ones, proceed live. The "Testing Safety Conventions" section at the bottom of this file governs every test run — real data, test keys, production writes, probing.
@@ -284,6 +288,8 @@ terse test run "<job-name>" --id <id>
 `terse test list` lists the stored sample events and `terse test show` prints one. `terse test run --id <id>` runs that event; `--event-file <path>` or `--event <json>` runs a payload you supply. If multiple jobs exist, pass the job name explicitly — non-interactive job loading cannot prompt. Reserve bare `terse test` for manual sessions with a TTY.
 
 When the sample buffer is empty (a fresh webhook has no stored deliveries), hand-write the event file: on a shape mismatch, `terse test run` prints the expected envelope and the exact validation issues — correct the file from that error output rather than guessing fields.
+
+`terse test` loads actor definitions from the latest successful deployment. If `src/durable-objects.ts` is new or has changed since that deployment, use the typechecker for pre-deploy verification and defer the actor behavior test until after the user approves deployment. The post-deploy test uses an isolated `test.<projectId>` actor namespace, not production actor state.
 
 Exit code 0 only means the handler ran. Where an agent produced text, read the output and judge it against the prompt's intent.
 
@@ -308,6 +314,7 @@ Verify the things that are easy to get wrong:
 - Imports resolve to real exports from `terse-sdk` and `./terse.generated`.
 - The code follows the conventions section: no stray casts, exhaustive switches, custom error classes, stepdown ordering, types at the bottom.
 - Durable jobs: every side effect lives in a step, branch helpers sit below the job in the same file, only serializable data crosses step boundaries.
+- Actors: `src/durable-objects.ts` has only named direct `Actor` subclasses; IDs are stable; state is plain JSON; new fields handle old snapshots; durable handlers journal actor calls through module-scope helpers; `outcome_unknown` mutations are not blindly retried.
 - Every test target from step 9 is swapped back to the real resource.
 
 ### 12. Ask before deploying
@@ -318,7 +325,7 @@ Example prompt:
 
 > The workflow is ready locally. Deploy it to production with `terse deploy`? (This syncs all jobs in the project — removed jobs are deleted remotely.)
 
-- If the user says yes, run `terse deploy` and report the outcome.
+- If the user says yes, run `terse deploy` and report the outcome. When this build added or changed an actor, run the planned `terse test run` after a successful deployment and report the result; it exercises the deployed actor definition in the isolated test namespace.
 - If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
 
 ---

@@ -44,9 +44,6 @@ export class SandboxBaseImageResolver {
         // The local provider ignores registry images entirely, so a probe would buy nothing.
         if (!request.registryImagesSupported) return false
 
-        // Dev hoisting replaces the published packages with local tarballs, so the baked CLI would be wrong.
-        if (request.usesLocalPackages) return false
-
         return true
     }
 

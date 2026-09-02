@@ -62,11 +62,14 @@ createJob({
 | `toolbox.*` | Generated, deterministic wrappers. Call directly to bypass the LLM. No agent or `skills` needed. |
 | `Triggers.*` | Per-integration trigger builders, plus `Triggers.schedule.cron()` and `Triggers.webhook.onRequest<Body>()`. |
 | `Skills.*` | Integration skill factories (e.g. `Skills.github({...})`, `Skills.slack({...})`) that scope the tools available to the model. |
+| `Actor` | Base class for project-scoped durable actors. Define named subclasses in `src/durable-objects.ts` and address each instance with a stable ID. |
 | `TerseAgent.create()` | The lower-level agent `generateText` wraps. Use directly only to stream with `run()` or reuse one agent instance across calls. |
 
 The trigger builders, skill constructors, and `toolbox.*` wrappers come from `src/terse.generated.ts`, which is produced by `terse generate`. Do not edit it by hand.
 
 Full reference: [docs.useterse.ai/reference/typescript-sdk](https://docs.useterse.ai/reference/typescript-sdk).
+
+Actor guide: [docs.useterse.ai/core-concepts/actors](https://docs.useterse.ai/core-concepts/actors).
 
 ## Environment
 

@@ -6,6 +6,8 @@ icon: "history"
 
 A durable job can pause for long waits, survive process restarts and redeploys, and never repeat work it has already done. Each step runs **exactly once** and its result is remembered, so an interrupted job resumes from where it left off instead of starting over.
 
+Durable execution protects the progress of one workflow run. When several runs must coordinate changes to the same project-scoped state, use a [durable actor](/core-concepts/actors). Actors serialize calls for each stable actor ID; durable steps prevent one run from repeating a call when it resumes.
+
 Durability is opt-in per job. Add `durable: true`:
 
 ```ts

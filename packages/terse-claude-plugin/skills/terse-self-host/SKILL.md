@@ -13,6 +13,8 @@ metadata:
 
 Boot a full local copy of the Terse control plane (backend + frontend + Postgres) inside Docker via `npx create-terse`. This installs the platform itself; it is not the same as building a workflow. If the user actually wants to build a workflow on Terse Cloud, hand off to the `terse-create` skill instead.
 
+The `create-terse` stack does not include the durable actor control plane. If the user's workflow requires `Actor` subclasses from `terse-sdk`, explain that durable actors currently require Terse Cloud; do not suggest an internal environment-variable workaround.
+
 ## Prefer computer use when available
 
 Use computer-use tools whenever the environment exposes them and the task can be completed reliably through a graphical interface. This includes browser and desktop surfaces in apps such as Claude Code, ChatGPT, and other installed or signed-in applications.

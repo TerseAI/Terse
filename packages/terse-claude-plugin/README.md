@@ -43,7 +43,7 @@ Create a Terse workflow. If no Terse project exists yet, it bootstraps one first
 1. Reads `src/terse.generated.ts` for connected integrations, triggers, skills, and resources
 2. Picks the right triggers and resources for the events you want to react to
 3. Connects missing integrations and configures skills in `src/terse.jobs.ts`
-4. Writes the `onTrigger` handler: typed events, specific prompts, and `toolbox` for known calls, reserving `generateText` for the steps that need judgment
+4. Writes the `onTrigger` handler: typed events, specific prompts, and `toolbox` for known calls, reserving `generateText` for the steps that need judgment; adds a durable actor when shared per-entity state needs serialized updates
 5. Verifies with `terse test list|show|run`, and asks before running `terse deploy`
 
 **Example:** "build me a workflow that summarizes new PRs and posts to Slack"
@@ -53,7 +53,7 @@ Create a Terse workflow. If no Terse project exists yet, it bootstraps one first
 Improve an existing Terse workflow:
 
 1. Pulls past production runs with `terse history` to see what's actually been failing
-2. Analyzes tool usage, prompt quality, event filtering, error handling, and skill configuration
+2. Analyzes tool usage, prompt quality, event filtering, error handling, actor safety, and skill configuration
 3. Implements the changes in `src/terse.jobs.ts`
 4. Verifies locally with `terse replay <run-id>` against the failing run, or `terse test list|show|run`
 5. Runs `tsc --noEmit`, summarizes what changed, and asks before `terse deploy`
@@ -62,7 +62,7 @@ Improve an existing Terse workflow:
 
 ### `terse-self-host`
 
-Self-host the Terse control plane on your own infrastructure via `npx create-terse`: Docker prerequisites, the interactive and non-interactive bootstrap, post-install integration setup (OAuth env vars), and the caveats to know before exposing the instance beyond `localhost`.
+Self-host the Terse control plane on your own infrastructure via `npx create-terse`: Docker prerequisites, the interactive and non-interactive bootstrap, post-install integration setup (OAuth env vars), and the caveats to know before exposing the instance beyond `localhost`. Durable actors currently require Terse Cloud and are not included in this stack.
 
 **Example:** "help me run Terse on my own server"
 

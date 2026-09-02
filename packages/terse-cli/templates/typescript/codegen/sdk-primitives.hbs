@@ -50,4 +50,6 @@
 // Durable objects (from "terse-sdk"):
 //   Define exported Actor subclasses in src/durable-objects.ts. Call an actor
 //   with `await Counter.get("stable-id").method(args)` from a managed workflow.
+//   Actor calls are external operations. In a durable job, call through a
+//   module-scope helper and journal that helper with step() or jobStep().
 //   Terse supplies the namespace and short-lived runtime credentials.

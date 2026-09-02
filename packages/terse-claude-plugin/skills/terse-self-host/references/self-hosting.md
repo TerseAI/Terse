@@ -2,6 +2,8 @@
 
 Boots a full local copy of the Terse control plane (backend + frontend + Postgres) inside Docker. This is not the same as scaffolding a job (`terse init`); it installs the platform itself.
 
+This stack does not include the durable actor control plane. Workflows that define `Actor` subclasses in `src/durable-objects.ts` currently require Terse Cloud.
+
 ## 1. Verify prerequisites
 
 Don't run a long preflight, but quickly check the two things that *will* break the bootstrap if missing:

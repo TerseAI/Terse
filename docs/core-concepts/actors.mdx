@@ -1,0 +1,140 @@
+---
+title: "Durable actors"
+description: "Keep project-scoped state consistent across workflow runs with typed, serialized actors."
+icon: "boxes"
+---
+
+Use a durable actor when several workflow runs need to read and change the same piece of state without racing. An actor combines state with the methods allowed to change it. Calls to one actor run one at a time, while calls to actors with different IDs can run concurrently.
+
+An actor belongs to a project and is identified by its class name and a stable ID. For example, `AccountCounter.get("acct_123")` always addresses the same `AccountCounter` in that project.
+
+## Actors, workflow state, and durable steps
+
+These features solve different problems:
+
+| Feature           | Scope                                               | Use it for                                                                         |
+| ----------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Workflow `states` | One workflow                                        | Cursors, cooldowns, and small values used only by that workflow                    |
+| Durable actor     | One actor type and ID across workflows in a project | Per-account state, counters, coordination, and atomic read-modify-write operations |
+| Durable step      | One workflow run                                    | Preventing an external call from repeating when that run resumes                   |
+
+An actor is the right boundary when correctness depends on serializing concurrent changes. A workflow state read followed by a write is not an atomic operation across runs.
+
+## Define an actor
+
+Create `src/durable-objects.ts` and export each actor as a named class:
+
+```ts
+import { Actor } from "terse-sdk"
+
+export class AccountCounter extends Actor {
+    count = 0
+
+    async increment(by = 1): Promise<number> {
+        this.count += by
+        return this.count
+    }
+
+    async current(): Promise<number> {
+        return this.count
+    }
+}
+```
+
+Actor definitions have a deliberately small surface:
+
+- Classes must extend `Actor` directly and cannot require constructor arguments.
+- Export actor classes by name from `src/durable-objects.ts`. Do not use a default export or export runtime values that are not actor classes from that file.
+- Public actor methods must be asynchronous.
+- Method arguments, return values, and instance fields must be plain JSON values.
+- Actor class names, IDs, and method names may contain ASCII letters, digits, `.`, `_`, and `-`.
+- Use `this.id` inside an actor method when you need the current actor ID.
+
+Terse saves the actor's enumerable instance fields after a successful method call. A method that throws does not publish its changed state.
+
+## Call an actor
+
+For a non-durable workflow, call the actor directly:
+
+```ts
+import { AccountCounter } from "../durable-objects"
+
+async function incrementAccount(accountId: string): Promise<number> {
+    return AccountCounter.get(accountId).increment()
+}
+```
+
+Actor calls are external operations. In a workflow with `durable: true`, journal every actor call so a resume does not invoke it again. Because `step()` accepts a plain function call rather than a chained `get(...).method(...)` expression, put the actor call in a module-scope helper:
+
+```ts
+import { createJob, step } from "terse-sdk"
+
+import { AccountCounter } from "../durable-objects"
+import { Triggers } from "../terse.generated"
+
+createJob({
+    name: "count-account-events",
+    durable: true,
+    triggers: [Triggers.webhook.onRequest<AccountEvent>()],
+    onTrigger: async event => step(incrementAccount(event.body.accountId))
+})
+
+async function incrementAccount(accountId: string): Promise<number> {
+    return AccountCounter.get(accountId).increment()
+}
+
+type AccountEvent = { accountId: string }
+```
+
+Use `jobStep()` instead when the actor input or output needs runtime validation at the step boundary.
+
+## Choose stable identities
+
+The actor class name and ID are part of its durable identity. Derive IDs from stable domain identifiers such as an Attio record ID, GitHub repository ID, or customer ID. Do not use a random value when later calls must reach the same state.
+
+Renaming an actor class creates a different actor type; it does not move the old class's state. Treat class names and ID formats as persistent data contracts.
+
+Actor state also survives code deployments. Add fields defensively because an existing actor snapshot does not acquire a new field's initializer automatically:
+
+```ts
+import { Actor } from "terse-sdk"
+
+export class AccountCounter extends Actor {
+    count = 0
+    lastSource?: string
+
+    async increment(source: string): Promise<number> {
+        this.count = (this.count ?? 0) + 1
+        this.lastSource = source
+        return this.count
+    }
+}
+```
+
+## Errors and retries
+
+`ActorInvocationError` exposes a machine-readable `code` and `requestId`. An `outcome_unknown` error means the caller did not receive a definitive result after dispatch; the method may have committed. Do not blindly apply the mutation again as a new logical operation. Reconcile with a read method or make the actor method accept a stable application-level operation ID and deduplicate it in actor state.
+
+Actor-to-actor calls are not currently supported. A workflow can call several actors, but an actor method cannot call another actor.
+
+## Regions
+
+The organization's execution region supplies the initial home region for newly created actors. An actor keeps that home region so later calls reach the same durable state even if the organization's execution region changes.
+
+Admins can change the default from the organization menu at the top of the sidebar: select **Edit Organization**, then choose an **Execution region**.
+
+The execution-region setting controls actor and workflow execution placement. It does not change where Terse stores organization control-plane data.
+
+## Deploy and test
+
+Actor hosts load `src/durable-objects.ts` from the project's latest successful deployment. Run the typechecker first, then deploy actor definition changes before testing them:
+
+```bash
+pnpm exec tsc --noEmit
+terse deploy
+terse test run "<workflow-name>" --id <sample-id>
+```
+
+`terse test` uses an isolated actor namespace, so test calls do not read or modify production actor state. It still runs the actor definitions from the latest successful deployment.
+
+<Note>Durable actors are currently available for TypeScript workflows on Terse Cloud. The `create-terse` self-hosted stack does not include the actor control plane.</Note>

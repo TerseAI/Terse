@@ -141,6 +141,30 @@ if (!parsed.success) throw new InvalidSecretError("GOOGLE_SERVICE_ACCOUNT_B64", 
 
 For `_B64` secrets, put the full encode one-liner in the missing-secret error message so the fix is copy-pasteable.
 
+## Durable actors
+
+Use a durable actor when several runs or workflows need shared, mutable state for one logical entity and updates to that entity must be serialized. Use workflow `states` for values owned by one workflow when read-modify-write races are not a concern. A durable step result belongs to one run and is not shared state.
+
+Define actors in `src/durable-objects.ts` as named classes that directly extend `Actor`. Do not use a default export or export other runtime values from that file. Actor classes take no constructor arguments; public methods are async; method arguments, return values, and enumerable instance fields must be plain JSON data. Actor type names, IDs, and method names may contain only letters, numbers, `.`, `_`, and `-`. Actor-to-actor calls are not supported.
+
+Address an actor with a stable domain ID, such as `AccountCounter.get(accountId)`. Identity is the project namespace plus actor type plus ID, so renaming an actor class creates a new actor type. Existing persisted fields replace the class's initial field values when an actor is restored. Read newly added fields defensively, for example `this.limit ?? 10`, instead of assuming a new initializer backfills old actors.
+
+An actor call is an external side effect, not an implicit durable step. In a durable job, route the call through a module-scope helper and journal the helper call:
+
+```typescript
+async function incrementAccount(accountId: string): Promise<number> {
+    return AccountCounter.get(accountId).increment()
+}
+
+const count = await step(incrementAccount(accountId))
+```
+
+Do not write `step(AccountCounter.get(accountId).increment())`: the durable transform rejects intermediate method calls inside `step()`. Calls to the same actor ID are serialized; different actor IDs can run concurrently.
+
+Catch `ActorInvocationError` only when the workflow has a recovery policy. An `outcome_unknown` error means the request may have reached the actor, so never blindly retry a mutation. Reconcile by reading actor state, or accept a stable application operation ID and deduplicate it in actor state.
+
+Actor definitions come from the latest successful deployment. Deploy a changed `src/durable-objects.ts` before behavioral testing; `terse test` then calls an isolated `test.<projectId>` actor namespace rather than production state. Durable actors currently require Terse Cloud and are not included in the `create-terse` self-hosted stack. See https://docs.useterse.ai/core-concepts/actors.
+
 ## Durable job style
 
 These rules apply when the job sets `durable: true`. The mechanics (replay model, `step()`, `jobStep`, `sleep`, `waitForInput`) live in https://docs.useterse.ai/core-concepts/durability; facts there win.

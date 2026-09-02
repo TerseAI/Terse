@@ -12,6 +12,15 @@ export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
 
 const CREATE_MAX_ATTEMPTS = 6
 const CREATE_RETRY_BASE_DELAY_MS = 150
+const GRPC_PERMISSION_DENIED = 7
+
+export function isUnavailableImageError(error: unknown): boolean {
+    if (error instanceof NotFoundError) return true
+    if (typeof error !== "object" || error === null) return false
+
+    const clientError = error as Record<string, unknown>
+    return clientError["@@nice-grpc:ClientError"] === true && clientError.code === GRPC_PERMISSION_DENIED
+}
 
 export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, ModalSandbox, ModalApp> {
     readonly settingsKey = "modal"
@@ -124,7 +133,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             await this.modal.images.fromId(imageId)
             return true
         } catch (error) {
-            if (error instanceof NotFoundError) return false
+            if (isUnavailableImageError(error)) return false
             throw error
         }
     }

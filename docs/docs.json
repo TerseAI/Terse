@@ -37,6 +37,7 @@
                     "core-concepts/deterministic-tool-calls",
                     "core-concepts/human-in-the-loop",
                     "core-concepts/durability",
+                    "core-concepts/actors",
                     "core-concepts/activity-and-observability",
                     "core-concepts/self-improvement"
                 ]

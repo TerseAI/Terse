@@ -8,6 +8,7 @@ import { type PackageManager, buildLocalDependencyInstallCommand, installLocalCl
 const DEFAULT_PNPM_VERSION = "10.34.1"
 const CLI_VERSION_MARKER = ".terse-cli-version"
 const PNPM_NON_INTERACTIVE = "--config.confirmModulesPurge=false"
+const DURABLE_OBJECTS_PACKAGE_SPEC = "file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz"
 
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
@@ -25,7 +26,7 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
 
     defineDeployImage({ archive, organizationId, sourceHash, cliVersion, baseImage, localPackages }: DefineDeployImageParams): SdkDeployImageDefinition {
         const hashPayload = {
-            version: 4,
+            version: 5,
             runtime: this.runtime,
             organizationId,
             sourceHash,
@@ -47,29 +48,31 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         }
 
         const packageManager = this.detectPackageManager(context.archive)
+        const usesDurableObjectsRuntime = context.baseImage.kind === "sandbox"
 
         // Dev-only: hoist the dev's locally-built SDK/CLI into the sandbox instead of the npm registry.
         const localPackages = context.localPackages
         let localTarballs: Map<string, string> | undefined
-        if (localPackages) {
-            // Unpack first: the overridden package.json is written into the project dir, which the
-            // unpack creates and then empties. Folding it into the install exec below would write it
-            // before the directory exists, then delete it. The extra round trip is dev-only.
+        if (localPackages || usesDurableObjectsRuntime) {
             await context.ensureSandboxCommand("building_project", context.unpackCommand)
-            localTarballs = await writeLocalTarballs(context, localPackages)
-            await context.writeFile(`${context.projectDir}/package.json`, withTerseOverrides(packageJson, localTarballs, packageManager))
+            if (localPackages) localTarballs = await writeLocalTarballs(context, localPackages)
+            const runtimePackageJson = usesDurableObjectsRuntime ? withDurableObjectsDependency(packageJson, packageManager) : packageJson
+            const effectivePackageJson = localTarballs ? withTerseOverrides(runtimePackageJson, localTarballs, packageManager) : runtimePackageJson
+            await context.writeFile(`${context.projectDir}/package.json`, effectivePackageJson)
+        }
+        if (localPackages && localTarballs) {
             await installLocalCli(context, localTarballs)
             await writeHoistMarker(context, localPackages)
         }
         // === end dev-only ===
 
         const install = [
-            localTarballs ? undefined : context.unpackCommand,
+            localTarballs || usesDurableObjectsRuntime ? undefined : context.unpackCommand,
             localTarballs ? undefined : this.ensureCliCommand(context),
             this.ensurePackageManagerCommand(context, packageManager),
             localTarballs
                 ? buildLocalDependencyInstallCommand(packageManager, context.projectDir, context.escapeShellArg)
-                : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg)
+                : this.buildDependencyInstallCommand(context.archive, context.projectDir, context.escapeShellArg, usesDurableObjectsRuntime)
         ].filter((command): command is string => command !== undefined)
 
         // Only the durable runtime reads .terse/wf; directJobRuntime calls the handler from source.
@@ -174,12 +177,12 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return DEFAULT_PNPM_VERSION
     }
 
-    private buildDependencyInstallCommand(archive: SdkProjectArchive, projectDir: string, escapeShellArg: (value: string) => string): string {
+    private buildDependencyInstallCommand(archive: SdkProjectArchive, projectDir: string, escapeShellArg: (value: string) => string, manifestChanged: boolean): string {
         const escapedProjectDir = escapeShellArg(projectDir)
         const packageManager = this.detectPackageManager(archive)
 
         if (packageManager === "pnpm") {
-            const frozen = archive.has("pnpm-lock.yaml") ? "--frozen-lockfile" : "--no-frozen-lockfile"
+            const frozen = archive.has("pnpm-lock.yaml") && !manifestChanged ? "--frozen-lockfile" : "--no-frozen-lockfile"
             return `cd ${escapedProjectDir} && pnpm install --prod ${frozen} ${PNPM_NON_INTERACTIVE}`
         }
 
@@ -187,4 +190,22 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         // node_modules either, so npm reconciles the image's baked tree instead of rebuilding it.
         return `cd ${escapedProjectDir} && npm install --omit=dev --no-fund`
     }
+}
+
+function withDurableObjectsDependency(packageJsonText: string, packageManager: PackageManager): string {
+    type DependencyRecord = Record<string, string>
+    const pkg = JSON.parse(packageJsonText) as {
+        dependencies?: DependencyRecord
+        overrides?: DependencyRecord
+        pnpm?: { overrides?: DependencyRecord }
+        [key: string]: unknown
+    }
+
+    pkg.dependencies = { ...pkg.dependencies, "little-durable-objects": DURABLE_OBJECTS_PACKAGE_SPEC }
+    if (packageManager === "pnpm") {
+        pkg.pnpm = { ...pkg.pnpm, overrides: { ...pkg.pnpm?.overrides, "little-durable-objects": DURABLE_OBJECTS_PACKAGE_SPEC } }
+    } else {
+        pkg.overrides = { ...pkg.overrides, "little-durable-objects": "$little-durable-objects" }
+    }
+    return JSON.stringify(pkg, null, 2)
 }

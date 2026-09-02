@@ -22,6 +22,8 @@ Import these from `terse-sdk`:
 - `TerseAgent`, `EventType`: the lower-level agent that `generateText` wraps. Reach for `TerseAgent.create()` directly only when you need to stream with `run()` or reuse one agent instance across calls; `EventType` enumerates values on streamed results
 - `runWithJobContext`, `getJobContext`, `TerseJobContext`: wrap a handler with `runWithJobContext` to preserve run attribution. Outside of it, set `TERSE_BACKEND_URL` if needed (default `https://api.useterse.ai`) and optionally `TERSE_RUN_ID`
 - `formatTriggerForAgent`, `debugTrigger`: helpers for plain trigger payloads
+- `Actor`, `ActorInvocationError`: define and call project-scoped durable actors. See [Durable actors](/core-concepts/actors)
+- `configureDurableObjects`: configure actor credentials for a custom runtime. Terse Cloud and `terse test` inject these credentials automatically
 
 ## Re-exported types
 
@@ -124,6 +126,8 @@ Two type details worth knowing:
 
 State is stored as JSON in the project volume, in a namespace the agent cannot read or write. It is separate from the agent's memory.
 
+Workflow state is scoped to one workflow. Use a [durable actor](/core-concepts/actors) when multiple workflows or concurrent runs need to update the same entity with serialized read-modify-write behavior.
+
 Deployed runs and `terse test` runs each have their own copy of a job's state, so testing never touches production values. Test state persists across `terse test` invocations, which lets you exercise dedupe and cooldown logic locally; reset it with `terse test run --fresh-state` or inspect it with the [`terse state` commands](/reference/cli#state).
 
 ```ts
@@ -145,6 +149,34 @@ createJob({
     }
 })
 ```
+
+## Durable actors
+
+Define named `Actor` subclasses in `src/durable-objects.ts`, then address an instance by its stable ID:
+
+```ts
+import { Actor } from "terse-sdk"
+
+export class AccountCounter extends Actor {
+    count = 0
+
+    async increment(): Promise<number> {
+        return ++this.count
+    }
+}
+```
+
+Import the actor into a job file and call it from the workflow:
+
+```ts
+import { AccountCounter } from "../durable-objects"
+
+async function incrementAccount(accountId: string): Promise<number> {
+    return AccountCounter.get(accountId).increment()
+}
+```
+
+Actor methods and state use plain JSON values. Calls to one actor ID are serialized. Inside a durable workflow, wrap actor calls in a journaled step through a module-scope helper. See [Durable actors](/core-concepts/actors) for the complete definition rules, replay guidance, deployment behavior, and testing model.
 
 ## `generateText`
 

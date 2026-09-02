@@ -20,7 +20,7 @@ A workflow is defined in code as a job (`createJob` in `src/terse.jobs.ts`); the
 
 You should use the following sources to get context on the Terse platform:
 
-1. The code in the project itself if it is present: (src/terse.jobs.ts, src/jobs/)
+1. The code in the project itself if it is present: (`src/terse.jobs.ts`, `src/jobs/`, and `src/durable-objects.ts` when the workflow uses actors)
 2. The generated files should be the primary source of truth and explain how Terse works: `src/terse.generated.ts` is the entry point — its header lists every available integration and carries a line-numbered index of the `src/terse.generated/` folder, which holds one file per integration and kind (`<integration>.triggers.ts` for trigger factories and payload types, `<integration>.tools.ts` for typed tool methods, resources and skills, workspace schema files like `attio.schemas.ts`, plus shared plumbing in `common.ts`). Use the index to open only the files the job touches. The generated files answer what exists and its exact shape; when they disagree with the live docs, the generated files win — a missing helper means rerun `terse generate`, never code against a docs claim the generated files don't back.
 3. The terse cli: (terse --help)
 4. The fourth and last option should be to use the live terse docs (docs.useterse.ai). Fetch first the index page (https://docs.useterse.ai/llms.txt) to discover available pages and then only pull the specific pages you need to improve the workflow.
@@ -140,6 +140,14 @@ The "Terse Job Code Conventions" section at the bottom of this file is what the 
 - **Durable jobs**: audit the handler against the "Durable job style" rules in the conventions section — step placement, serializable boundaries, branch helpers, journaled branch conditions.
 - **Non-durable jobs**: check for the durable signals in the conventions section ("When to be durable") that have crept in. A forcing signal (`waitForInput`, `sleep`) means the job is broken, not improvable — the flip to `durable: true` (and the step restructuring it requires) is a required fix; state it as a consequence, never as a question. The judgment signal (three or more side-effecting stages) makes the flip an opt-in improvement to recommend.
 
+#### Actors
+
+- If the job imports or calls an actor, read `src/durable-objects.ts` and audit it against the "Durable actors" conventions.
+- Confirm an actor is appropriate: shared mutable state for a logical entity whose updates must be serialized. Prefer workflow `states` when one workflow owns the value and read-modify-write races are not a concern.
+- Check stable IDs, plain-JSON state and boundaries, defensive reads for fields added after actors already existed, and deliberate handling of `ActorInvocationError` with `code === "outcome_unknown"`.
+- In durable handlers, confirm every actor call goes through a module-scope helper wrapped in `step()`. A direct actor call is not journaled, and `step(ActorType.get(id).method())` is rejected by the durable transform.
+- Treat actor class renames as identity migrations: the class name is part of the actor's persisted identity.
+
 #### Skill Configuration
 
 - **Missing skills**: Are all integrations the model needs during a `generateText` run listed? If the prompt tells the model to post to Slack but Slack isn't in `skills`, that agentic step will fail.
@@ -193,6 +201,8 @@ Reserve bare `terse test` for manual interactive sessions only.
 
 To replay a specific payload, or when no sample events are available, hand-write an event file and run it with `terse test run --event-file <path>`: on a shape mismatch, the command prints the expected envelope and the exact validation issues — correct the file from that error output rather than guessing fields.
 
+`terse test` loads actor definitions from the latest successful deployment. If this improvement changes `src/durable-objects.ts`, use the typechecker for pre-deploy verification and defer the actor behavior test until after the user approves deployment. That post-deploy test uses an isolated `test.<projectId>` actor namespace rather than production actor state.
+
 For all of these commands, see https://docs.useterse.ai/reference/cli for the full option list.
 
 ### 7. Typecheck the project
@@ -219,7 +229,7 @@ Example prompt:
 
 > The improvements are verified locally. Deploy to production with `terse deploy`? (This syncs all jobs in the project — removed jobs are deleted remotely.)
 
-- If the user says yes, run `terse deploy` and report the outcome.
+- If the user says yes, run `terse deploy` and report the outcome. If `src/durable-objects.ts` changed, run the planned `terse test run` after a successful deployment so it exercises the deployed actor definition in the isolated test namespace.
 - If the user says no or wants more changes, stop without deploying and remind them they can run `terse deploy` when ready.
 
 ---
@@ -507,6 +517,30 @@ if (!parsed.success) throw new InvalidSecretError("GOOGLE_SERVICE_ACCOUNT_B64", 
 ```
 
 For `_B64` secrets, put the full encode one-liner in the missing-secret error message so the fix is copy-pasteable.
+
+## Durable actors
+
+Use a durable actor when several runs or workflows need shared, mutable state for one logical entity and updates to that entity must be serialized. Use workflow `states` for values owned by one workflow when read-modify-write races are not a concern. A durable step result belongs to one run and is not shared state.
+
+Define actors in `src/durable-objects.ts` as named classes that directly extend `Actor`. Do not use a default export or export other runtime values from that file. Actor classes take no constructor arguments; public methods are async; method arguments, return values, and enumerable instance fields must be plain JSON data. Actor type names, IDs, and method names may contain only letters, numbers, `.`, `_`, and `-`. Actor-to-actor calls are not supported.
+
+Address an actor with a stable domain ID, such as `AccountCounter.get(accountId)`. Identity is the project namespace plus actor type plus ID, so renaming an actor class creates a new actor type. Existing persisted fields replace the class's initial field values when an actor is restored. Read newly added fields defensively, for example `this.limit ?? 10`, instead of assuming a new initializer backfills old actors.
+
+An actor call is an external side effect, not an implicit durable step. In a durable job, route the call through a module-scope helper and journal the helper call:
+
+```typescript
+async function incrementAccount(accountId: string): Promise<number> {
+    return AccountCounter.get(accountId).increment()
+}
+
+const count = await step(incrementAccount(accountId))
+```
+
+Do not write `step(AccountCounter.get(accountId).increment())`: the durable transform rejects intermediate method calls inside `step()`. Calls to the same actor ID are serialized; different actor IDs can run concurrently.
+
+Catch `ActorInvocationError` only when the workflow has a recovery policy. An `outcome_unknown` error means the request may have reached the actor, so never blindly retry a mutation. Reconcile by reading actor state, or accept a stable application operation ID and deduplicate it in actor state.
+
+Actor definitions come from the latest successful deployment. Deploy a changed `src/durable-objects.ts` before behavioral testing; `terse test` then calls an isolated `test.<projectId>` actor namespace rather than production state. Durable actors currently require Terse Cloud and are not included in the `create-terse` self-hosted stack. See https://docs.useterse.ai/core-concepts/actors.
 
 ## Durable job style
 
