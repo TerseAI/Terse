@@ -40,7 +40,8 @@ test("uses the admin API contract and encodes namespace IDs", async () => {
             codeRevision: "revision-1",
             imageRef: "im-1",
             workingDirectory: "/opt/terse-sdk-run/project",
-            actorEntrypoint: "src/durable-objects.ts"
+            actorEntrypoint: "src/durable-objects.ts",
+            warmRegion: "north-america-central"
         }),
         { changed: true }
     )
@@ -60,7 +61,8 @@ test("uses the admin API contract and encodes namespace IDs", async () => {
         codeRevision: "revision-1",
         imageRef: "im-1",
         workingDirectory: "/opt/terse-sdk-run/project",
-        actorEntrypoint: "src/durable-objects.ts"
+        actorEntrypoint: "src/durable-objects.ts",
+        warmRegion: "north-america-central"
     })
     assert.deepEqual(JSON.parse(requests[1].body), {
         executionId: "run-1",

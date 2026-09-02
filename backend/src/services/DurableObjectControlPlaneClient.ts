@@ -161,6 +161,7 @@ export interface DurableObjectDeployment {
     readonly imageRef: string
     readonly workingDirectory: string
     readonly actorEntrypoint?: string
+    readonly warmRegion?: DurableObjectStorageRegion
 }
 
 export interface DurableObjectWorkflowToken {

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { type ExecutionRegion, durableObjectStorageRegion } from "terse-types/ExecutionRegions"
+import { type DurableObjectStorageRegion, type ExecutionRegion, durableObjectStorageRegion } from "terse-types/ExecutionRegions"
 
 import { db } from "../loaders/prisma"
 
@@ -22,8 +22,8 @@ class DurableObjectProjectService {
         return DurableObjectProjectService.instance
     }
 
-    async registerProductionDeployment(projectId: string, image: DurableObjectProjectImage): Promise<void> {
-        await this.registerDeployment(projectId, image)
+    async registerProductionDeployment(projectId: string, image: DurableObjectProjectImage, executionRegion: ExecutionRegion): Promise<void> {
+        await this.registerDeployment(projectId, image, durableObjectStorageRegion(executionRegion))
     }
 
     async issueLocalTestEnvironment(projectId: string, executionRegion: ExecutionRegion): Promise<DurableObjectEnvironment | undefined> {
@@ -43,12 +43,13 @@ class DurableObjectProjectService {
         }
     }
 
-    private async registerDeployment(namespaceId: string, image: DurableObjectProjectImage): Promise<void> {
+    private async registerDeployment(namespaceId: string, image: DurableObjectProjectImage, warmRegion?: DurableObjectStorageRegion): Promise<void> {
         await this.controlPlane.registerDeployment(namespaceId, {
             codeRevision: image.buildHash,
             imageRef: image.imageRef,
             workingDirectory: SDK_SOURCE_IMAGE_PROJECT_DIR,
-            actorEntrypoint: ACTOR_ENTRYPOINT
+            actorEntrypoint: ACTOR_ENTRYPOINT,
+            warmRegion
         })
     }
 

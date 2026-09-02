@@ -1,6 +1,7 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { Request, Response } from "express"
 import { ConfigType, TriggerConfigData } from "terse-types/Configs"
+import { DEFAULT_EXECUTION_REGION } from "terse-types/ExecutionRegions"
 import { SdkDeployJob, SdkDeployResponseBody, SdkDeployStage, SdkSourceUploadResponse, sdkDeployRequestBodySchema } from "terse-types/types"
 
 import { AnalyticsEvent, analytics } from "../../../common/analytics"
@@ -19,6 +20,7 @@ import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "../../../modules/agents/controller"
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
 import { DurableObjectProjectService } from "../../../services/DurableObjectProjectService"
+import { getOrCreateOrganizationExecutionRegion } from "../../../services/OrganizationSettingsService"
 import { type PreparedSdkDeployImage, SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
 import { type SdkDeployPhase } from "../../../services/sdkRuntimeExecutors/types"
@@ -183,7 +185,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const deployedNames = new Set(jobs.map(j => j.jobName))
         const removed = await removeStaleAutomations(prisma, organizationId, deployedNames, projectId)
 
-        await registerDurableObjectDeployment(projectId, preparedImage)
+        await registerDurableObjectDeployment(projectId, organizationId, preparedImage)
 
         const jobsAdded = results.filter(r => !r.isUpdate).length
         await markDeploySucceeded(
@@ -412,9 +414,10 @@ async function readSourceArchive(params: { sourceZipBase64?: string; sourceObjec
     return store.download(sourceObjectKey, organizationId)
 }
 
-async function registerDurableObjectDeployment(projectId: string, preparedImage: PreparedSdkDeployImage | undefined): Promise<void> {
+async function registerDurableObjectDeployment(projectId: string, organizationId: string, preparedImage: PreparedSdkDeployImage | undefined): Promise<void> {
     const config = settings.durableObjects
     if (!preparedImage || !config) return
 
-    await DurableObjectProjectService.getInstance(config).registerProductionDeployment(projectId, preparedImage)
+    const executionRegion = settings.workos ? await getOrCreateOrganizationExecutionRegion(organizationId) : DEFAULT_EXECUTION_REGION
+    await DurableObjectProjectService.getInstance(config).registerProductionDeployment(projectId, preparedImage, executionRegion)
 }
