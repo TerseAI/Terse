@@ -28,3 +28,30 @@ test("local package hoisting reuses the published sandbox base", async () => {
         reference: `us-central1-docker.pkg.dev/test-project/public/terse-sandbox-node-pnpm@${digest}`
     })
 })
+
+test("moving sandbox image tags are resolved for every deployment", async () => {
+    const digests = [`sha256:${"a".repeat(64)}`, `sha256:${"b".repeat(64)}`]
+    let calls = 0
+    const resolver = SandboxBaseImageResolver.createForTesting(
+        { resolveDigest: async () => digests[calls++] },
+        {
+            enabled: true,
+            registry: "us-central1-docker.pkg.dev",
+            repositoryPrefix: "test-project/public",
+            tag: "latest",
+            probeTtlMs: 60_000
+        }
+    )
+    const request = {
+        releaseImageName: "terse-sandbox-node-pnpm",
+        genericImage: "node:22-slim",
+        usesLocalPackages: false,
+        registryImagesSupported: true
+    }
+
+    const first = await resolver.resolve(request)
+    const second = await resolver.resolve(request)
+
+    assert.equal(calls, 2)
+    assert.notDeepEqual(first, second)
+})

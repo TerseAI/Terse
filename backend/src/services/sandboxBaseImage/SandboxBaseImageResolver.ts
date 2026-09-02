@@ -48,9 +48,12 @@ export class SandboxBaseImageResolver {
     }
 
     private async resolveDigestReference(releaseImageName: string): Promise<string | undefined> {
-        const cached = this.cachedDigests.get(releaseImageName)
-        if (cached && cached.expiresAtMs > Date.now()) {
-            return cached.reference
+        const cacheable = this.config.tag !== "latest"
+        if (cacheable) {
+            const cached = this.cachedDigests.get(releaseImageName)
+            if (cached && cached.expiresAtMs > Date.now()) {
+                return cached.reference
+            }
         }
 
         const repository = `${this.config.repositoryPrefix}/${releaseImageName}`
@@ -58,7 +61,9 @@ export class SandboxBaseImageResolver {
         if (digest === undefined) return undefined
 
         const reference = `${this.config.registry}/${repository}@${digest}`
-        this.cachedDigests.set(releaseImageName, { reference, expiresAtMs: Date.now() + this.config.probeTtlMs })
+        if (cacheable) {
+            this.cachedDigests.set(releaseImageName, { reference, expiresAtMs: Date.now() + this.config.probeTtlMs })
+        }
         return reference
     }
 }
