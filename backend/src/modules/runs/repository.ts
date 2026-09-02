@@ -57,6 +57,7 @@ export async function countAndListRunHistory(where: RunHistoryWhere, opts: { ski
                 is_test: true,
                 triggered_by_user_id: true,
                 replay_of_run_id: true,
+                execution_region: true,
                 actions: { select: runHistoryActionSummarySelect },
                 ...(opts.includeAgent ? { automation: { select: { name: true } } } : {})
             },

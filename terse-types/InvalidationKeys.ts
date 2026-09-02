@@ -6,6 +6,11 @@ export const currentUserKey = (): readonly [string] => ["currentUser"]
 
 export const userOrganizationsKey = (): readonly [string] => ["userOrganizations"]
 
+export const currentOrganizationKey = (organizationId: string | null | undefined): readonly [string, string] | null => {
+    if (!organizationId) return null
+    return ["currentOrganization", organizationId] as const
+}
+
 export const widgetTokenKey = (): readonly [string] => ["widgetToken"]
 
 export const integrationsKey = (): readonly [string] => ["integrations"]

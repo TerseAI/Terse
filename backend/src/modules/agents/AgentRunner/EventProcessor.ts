@@ -7,6 +7,7 @@ import { TriggerRuntime } from "../../../integrations/abstract/TriggerRuntime"
 import { db } from "../../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard, finalizeRunFailure } from "../../../loaders/socket"
 import { NotificationManager } from "../../../modules/notifications/Notification"
+import { getOrCreateOrganizationExecutionRegion } from "../../../services/OrganizationSettingsService"
 import { resolveJobExecutionKind } from "../../../services/jobExecutors/resolveJobExecutionKind"
 import { captureRunSnapshot, restoreRunSnapshotInto } from "../../../services/memory/memorySnapshots"
 import { replayMemorySubtreeKey, replayStateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
@@ -184,6 +185,7 @@ export class EventProcessor {
 
     private async createRunForAgent(agent: AgentWithRelations): Promise<string> {
         const trigger = this.inputEvent.createTriggerMetadata()
+        const executionRegion = settings.workos && !agent.project.remote_server_url ? await getOrCreateOrganizationExecutionRegion(this.user.organizationId) : null
         const runId = await createRunRecord({
             agentId: agent.id,
             trigger,
@@ -191,7 +193,8 @@ export class EventProcessor {
             isManuallyTriggered: this.isManuallyTriggered,
             isTest: this.isTest,
             triggeredByUserId: this.isManuallyTriggered || this.isTest ? this.user.id : undefined,
-            replayOfRunId: this.replayOfRunId
+            replayOfRunId: this.replayOfRunId,
+            executionRegion
         })
         if (settings.modal && this.replayOfRunId) {
             await restoreRunSnapshotInto({

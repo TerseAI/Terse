@@ -1,4 +1,5 @@
 import { DateTime } from "luxon"
+import { executionRegionSchema } from "terse-types/ExecutionRegions"
 import { RunHistoryRecordWithAgent } from "terse-types/RunHistoryTypes"
 import { AgentActivityItem, CountByString, RecentAction, StatsInterval, StatsResponse } from "terse-types/types"
 
@@ -203,7 +204,8 @@ export async function buildStatsResponse(organizationId: string, timezone: strin
             step_id: a.step_id ?? undefined,
             type: a.type
         })),
-        isManuallyTriggered: run.is_manually_triggered
+        isManuallyTriggered: run.is_manually_triggered,
+        executionRegion: executionRegionSchema.nullable().parse(run.execution_region)
     }))
 
     return {

@@ -47,7 +47,7 @@ declare const process: { env: Record<string, string | undefined> }
 
 export const TERSE_JOB_WEBHOOK_TRIGGER_PATH = ApiRoutes.SDK.JOB_WEBHOOK_TRIGGER
 
-export { Actor, ActorInvocationError, configureDurableObjects } from "@terse/durable-objects"
+export { Actor, ActorInvocationError, configureDurableObjects } from "little-durable-objects"
 
 export { DurableOnlyError } from "./execution.js"
 

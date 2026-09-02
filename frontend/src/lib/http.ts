@@ -14,6 +14,7 @@ import {
     type UsageResponse
 } from "terse-types"
 import { ApprovalRequestFilter, GetPendingApprovalsResponse } from "terse-types/ApprovalTypes"
+import type { ExecutionRegion } from "terse-types/ExecutionRegions"
 import {
     ApolloIntegration,
     AttioIntegration,
@@ -60,6 +61,8 @@ import {
     LinearTeam,
     NotionResourcesResponse,
     OAuthInstallationDetails,
+    OrganizationDetails,
+    OrganizationUpdateRequest,
     PosthogProjectsResponse,
     ProjectDeploysResponse,
     ProjectDetailResponse,
@@ -556,12 +559,12 @@ interface BackendService {
      * Creates a new organization
      * Optionally updates the user's first/last name in WorkOS when provided (e.g., for users without social auth).
      */
-    createOrganization(name: string, firstName?: string, lastName?: string): Promise<{ id: string; name: string }>
+    createOrganization(name: string, executionRegion: ExecutionRegion, firstName?: string, lastName?: string): Promise<OrganizationDetails>
 
     /**
      * Gets the current organization
      */
-    getCurrentOrganization(): Promise<{ id: string; name: string }>
+    getCurrentOrganization(): Promise<OrganizationDetails>
 
     /**
      * Gets organizations the user belongs to
@@ -596,7 +599,7 @@ interface BackendService {
     /**
      * Updates organization settings (admin only)
      */
-    updateOrganization(name: string): Promise<{ id: string; name: string }>
+    updateOrganization(settings: OrganizationUpdateRequest): Promise<OrganizationDetails>
 
     /**
      * Gets user-level notification topic settings
@@ -1247,12 +1250,14 @@ export const BackendProvider: BackendService = {
         }
     },
 
-    createOrganization: (name: string, firstName?: string, lastName?: string) => {
-        return axios.post<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName }, { withCredentials: true }).then(response => response.data)
+    createOrganization: (name: string, executionRegion: ExecutionRegion, firstName?: string, lastName?: string) => {
+        return axios
+            .post<OrganizationDetails>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.CREATE}`, { name, firstName, lastName, executionRegion }, { withCredentials: true })
+            .then(response => response.data)
     },
 
     getCurrentOrganization: () => {
-        return axios.get<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true }).then(response => response.data)
+        return axios.get<OrganizationDetails>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.GET_CURRENT}`, { withCredentials: true }).then(response => response.data)
     },
 
     getUserOrganizations: () => {
@@ -1301,8 +1306,8 @@ export const BackendProvider: BackendService = {
         })
     },
 
-    updateOrganization: (name: string) => {
-        return axios.put<{ id: string; name: string }>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.UPDATE}`, { name }, { withCredentials: true }).then(response => response.data)
+    updateOrganization: (settings: OrganizationUpdateRequest) => {
+        return axios.put<OrganizationDetails>(`${backendBaseUrl}${ApiRoutes.ORGANIZATIONS.UPDATE}`, settings, { withCredentials: true }).then(response => response.data)
     },
 
     getNotificationSettings: () => {

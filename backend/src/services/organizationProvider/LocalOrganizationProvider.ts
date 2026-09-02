@@ -60,7 +60,7 @@ export class LocalOrganizationProvider implements OrganizationProvider {
             res.status(404).json({ error: "Organization not found" })
             return
         }
-        res.json(org)
+        res.json({ ...org, executionRegion: null })
     }
 
     async getUserOrganizations(req: Request, res: Response): Promise<void> {
@@ -85,12 +85,20 @@ export class LocalOrganizationProvider implements OrganizationProvider {
             return
         }
         try {
-            const { name } = organizationUpdateRequestSchema.parse(req.body)
+            const { name, executionRegion } = organizationUpdateRequestSchema.parse(req.body)
+            if (executionRegion !== undefined) {
+                res.status(400).json({ error: "Execution region is managed by the self-hosted deployment" })
+                return
+            }
+            if (name === undefined) {
+                res.status(400).json({ error: "Organization name is required" })
+                return
+            }
             const updated = await localDb().local_organizations.update({
                 where: { id: user.organizationId },
                 data: { name: name.trim() }
             })
-            res.json({ id: updated.id, name: updated.name })
+            res.json({ id: updated.id, name: updated.name, executionRegion: null })
         } catch (error) {
             logger.error("[LocalOrganizationProvider] updateOrganization failed", { error })
             res.status(500).json({ error: "Failed to update organization" })

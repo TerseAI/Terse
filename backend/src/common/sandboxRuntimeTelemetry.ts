@@ -1,3 +1,5 @@
+import type { ExecutionRegion } from "terse-types/ExecutionRegions"
+
 import { db } from "../loaders/prisma"
 
 import { AnalyticsEvent, SandboxRuntimeLatencyProperties, analytics } from "./analytics"
@@ -35,6 +37,7 @@ type SandboxRuntimeTelemetryParams = {
     provider: "containerized" | "local"
     enqueuedAtMs?: number
     scheduledForMs?: number
+    executionRegion: ExecutionRegion | null
 }
 
 export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
@@ -67,6 +70,7 @@ export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
             provider: this.params.provider,
             success,
             runtime: this.runtime,
+            executionRegion: this.params.executionRegion,
             ...(error ? { errorMessage: extractErrorMessage(error).slice(0, 500) } : {}),
             ...this.durations
         }

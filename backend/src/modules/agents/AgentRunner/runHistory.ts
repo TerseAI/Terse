@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import { pendingApprovalsKey, serializedEventSchema } from "terse-types"
 import { type RunHistoryAction, RunHistoryStatus, type RunHistoryTrigger, type SerializedEvent } from "terse-types"
 import { type SkillConfigData, skillConfigDataSchema } from "terse-types/Configs"
+import type { ExecutionRegion } from "terse-types/ExecutionRegions"
 
 import { AnalyticsEvent, RunEventProperties, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
@@ -24,8 +25,9 @@ export async function createRunRecord(params: {
     isTest?: boolean
     triggeredByUserId?: string
     replayOfRunId?: string
+    executionRegion: ExecutionRegion | null
 }): Promise<string> {
-    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered, isTest, triggeredByUserId, replayOfRunId } = params
+    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered, isTest, triggeredByUserId, replayOfRunId, executionRegion } = params
     const prisma = db()
     const record = await prisma.run_history_records.create({
         data: {
@@ -41,6 +43,7 @@ export async function createRunRecord(params: {
             is_test: isTest ?? false,
             triggered_by_user_id: triggeredByUserId ?? null,
             replay_of_run_id: replayOfRunId ?? null,
+            execution_region: executionRegion,
             filtered: false,
             decision_action: "processed", // placeholder until we decide after filtering
             decision_reason: "",
@@ -58,7 +61,8 @@ export async function createRunRecord(params: {
         triggerEvent: trigger.event,
         isManuallyTriggered: isManuallyTriggered ?? false,
         isTest: isTest ?? false,
-        isReplay: !!replayOfRunId
+        isReplay: !!replayOfRunId,
+        executionRegion
     })
 
     return record.id

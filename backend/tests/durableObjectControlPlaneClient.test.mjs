@@ -44,7 +44,7 @@ test("uses the admin API contract and encodes namespace IDs", async () => {
         }),
         { changed: true }
     )
-    assert.deepEqual(await client.issueWorkflowToken("project/one", "run-1", 1_800_000_000_000), {
+    assert.deepEqual(await client.issueWorkflowToken("project/one", "run-1", "north-america-central", 1_800_000_000_000), {
         token: "workflow-token",
         expiresAtMs: 1_800_000_000_000
     })
@@ -62,7 +62,11 @@ test("uses the admin API contract and encodes namespace IDs", async () => {
         workingDirectory: "/opt/terse-sdk-run/project",
         actorEntrypoint: "src/durable-objects.ts"
     })
-    assert.deepEqual(JSON.parse(requests[1].body), { executionId: "run-1", deadlineUnixMs: 1_800_000_000_000 })
+    assert.deepEqual(JSON.parse(requests[1].body), {
+        executionId: "run-1",
+        storageRegion: "north-america-central",
+        deadlineUnixMs: 1_800_000_000_000
+    })
 })
 
 test("fails closed on a non-success response", async () => {

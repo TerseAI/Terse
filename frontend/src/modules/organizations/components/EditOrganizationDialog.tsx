@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { ImagePlus, Loader2, X } from "lucide-react"
 import { useSWRConfig } from "swr"
+import { DEFAULT_EXECUTION_REGION, EXECUTION_REGIONS, type ExecutionRegion, executionRegionLabel } from "terse-types/ExecutionRegions"
 import { orgLogoKey, userOrganizationsKey } from "terse-types/InvalidationKeys"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -9,8 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BackendProvider } from "@/lib/http"
 import { useAuth } from "@/modules/auth/context/AuthProvider"
+import { useCurrentOrganization } from "@/modules/organizations/api/useCurrentOrganization"
 import { useOrgLogo } from "@/modules/organizations/api/useOrgLogo"
 
 interface EditOrganizationDialogProps {
@@ -21,25 +24,30 @@ interface EditOrganizationDialogProps {
 export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationDialogProps) {
     const { user, refreshUser } = useAuth()
     const { logoUrl, mutate: mutateLogo } = useOrgLogo(user?.organizationId)
+    const { organization, mutate: mutateCurrentOrganization } = useCurrentOrganization(user?.organizationId)
     const { mutate } = useSWRConfig()
 
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [orgName, setOrgName] = useState("")
+    const [executionRegion, setExecutionRegion] = useState<ExecutionRegion>(DEFAULT_EXECUTION_REGION)
     const [logoFile, setLogoFile] = useState<File | null>(null)
     const [logoPreview, setLogoPreview] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const currentOrgName = user?.organizationName || "Organization"
+    const currentExecutionRegion = organization?.executionRegion ?? DEFAULT_EXECUTION_REGION
+    const supportsExecutionRegion = organization !== undefined && organization.executionRegion !== null
     const isAdmin = user?.roles?.includes("admin") ?? false
 
     // Reset form when dialog opens
     useEffect(() => {
         if (open) {
             setOrgName(currentOrgName)
+            setExecutionRegion(currentExecutionRegion)
             setError(null)
         }
-    }, [open, currentOrgName])
+    }, [open, currentOrgName, currentExecutionRegion])
 
     function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
@@ -75,10 +83,13 @@ export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationD
         clearLogo()
         setError(null)
         setOrgName(currentOrgName)
+        setExecutionRegion(currentExecutionRegion)
         onOpenChange(false)
     }
 
-    const hasChanges = orgName.trim() !== currentOrgName || logoFile !== null
+    const nameChanged = orgName.trim() !== currentOrgName
+    const executionRegionChanged = supportsExecutionRegion && executionRegion !== currentExecutionRegion
+    const hasChanges = nameChanged || executionRegionChanged || logoFile !== null
 
     async function handleSave() {
         if (!hasChanges) {
@@ -95,11 +106,16 @@ export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationD
         setError(null)
 
         try {
-            // Update name if changed
-            if (orgName.trim() !== currentOrgName) {
-                await BackendProvider.updateOrganization(orgName.trim())
-                await refreshUser()
-                await mutate(userOrganizationsKey())
+            if (nameChanged || executionRegionChanged) {
+                await BackendProvider.updateOrganization({
+                    ...(nameChanged ? { name: orgName.trim() } : {}),
+                    ...(executionRegionChanged ? { executionRegion } : {})
+                })
+                await mutateCurrentOrganization()
+                if (nameChanged) {
+                    await refreshUser()
+                    await mutate(userOrganizationsKey())
+                }
             }
 
             // Upload logo if selected
@@ -137,6 +153,29 @@ export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationD
                         )}
                     </div>
 
+                    {supportsExecutionRegion && (
+                        <div className="space-y-2">
+                            <Label htmlFor="execution-region">Execution region</Label>
+                            {isAdmin ? (
+                                <Select value={executionRegion} onValueChange={value => setExecutionRegion(value as ExecutionRegion)} disabled={isSaving}>
+                                    <SelectTrigger id="execution-region" className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {EXECUTION_REGIONS.map(region => (
+                                            <SelectItem key={region} value={region}>
+                                                {executionRegionLabel(region)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">{executionRegionLabel(currentExecutionRegion)}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground">Controls where new workflow runs execute. It does not change where your organization’s data is stored.</p>
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label>Organization Logo</Label>
                         <div className="flex items-center gap-4">
@@ -165,7 +204,11 @@ export function EditOrganizationDialog({ open, onOpenChange }: EditOrganizationD
                         </div>
                     </div>
 
-                    {error && <p className="text-sm text-danger">{error}</p>}
+                    {error && (
+                        <p role="alert" className="text-sm text-danger">
+                            {error}
+                        </p>
+                    )}
                 </div>
 
                 <DialogFooter>

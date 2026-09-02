@@ -1,3 +1,5 @@
+import { DEFAULT_EXECUTION_REGION, durableObjectStorageRegion, executionRegionLabel } from "terse-types/ExecutionRegions"
+
 import logger from "../../common/logger"
 import { getActiveDeployForProject } from "../../common/projectHelper"
 import { SandboxRuntimeTelemetry } from "../../common/sandboxRuntimeTelemetry"
@@ -47,7 +49,7 @@ export class SandboxJobExecutor implements JobExecutor {
     }
 
     async execute(context: JobExecutionContext): Promise<RunOutcome> {
-        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, enqueuedAtMs, scheduledForMs } = context
+        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, enqueuedAtMs, scheduledForMs, executionRegion } = context
         const executionStart = performance.now()
         const sandboxProvider = getSandboxProvider()
         const telemetry = new SandboxRuntimeTelemetry({
@@ -60,7 +62,8 @@ export class SandboxJobExecutor implements JobExecutor {
             mode: restoreImageId ? "resume" : "fresh",
             provider: sandboxProvider.supportsContainerizedRunners ? "containerized" : "local",
             enqueuedAtMs,
-            scheduledForMs
+            scheduledForMs,
+            executionRegion
         })
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
@@ -76,7 +79,7 @@ export class SandboxJobExecutor implements JobExecutor {
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
             telemetry.setRuntime(executor.runtime)
 
-            const durableObjectEnvironment = await this.durableObjectEnvironment(agent.project.id, runId)
+            const durableObjectEnvironment = await this.durableObjectEnvironment(agent.project.id, runId, executionRegion)
 
             const { rawToken, tokenId } = await telemetry.measure("createSandboxTokenMs", () => createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id }))
             sandboxApiKey = rawToken
@@ -124,6 +127,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 sourceImageRecordId: sourceImage.recordId,
                 cliVersion: sourceImage.cliVersion,
                 restoreImageId,
+                executionRegion,
                 telemetry
             })
             runSandbox = sb
@@ -156,13 +160,13 @@ export class SandboxJobExecutor implements JobExecutor {
         }
     }
 
-    private async durableObjectEnvironment(namespaceId: string, executionId: string): Promise<Record<string, string>> {
+    private async durableObjectEnvironment(namespaceId: string, executionId: string, executionRegion: JobExecutionContext["executionRegion"]): Promise<Record<string, string>> {
         const config = settings.durableObjects
         if (!config) return {}
 
         const controlPlane = DurableObjectControlPlaneClient.getInstance(config)
         const deadlineUnixMs = Date.now() + (SANDBOX_DEFAULT_OPTIONS.timeoutMs ?? 24 * 60 * 60 * 1000)
-        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, deadlineUnixMs)
+        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, durableObjectStorageRegion(executionRegion ?? DEFAULT_EXECUTION_REGION), deadlineUnixMs)
 
         return {
             DURABLE_OBJECT_TOKEN: workflowToken.token,
@@ -231,17 +235,18 @@ export class SandboxJobExecutor implements JobExecutor {
         sourceImageRecordId: string
         cliVersion: string
         restoreImageId?: string
+        executionRegion: JobExecutionContext["executionRegion"]
         telemetry: SandboxRuntimeTelemetry
     }): Promise<{ sb: Sandbox; result: SandboxCommandResult }> {
-        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId, telemetry } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId, executionRegion, telemetry } = params
 
         // Resuming boots the suspension snapshot itself, so the run picks up every filesystem
         // edit it made before parking. A fresh run boots the active deploy's source image.
         let sb: Sandbox
         if (restoreImageId) {
-            sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSandboxFromImage(sandboxService, restoreImageId, projectId, runId, telemetry))
+            sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSandboxFromImage(sandboxService, restoreImageId, projectId, runId, executionRegion, telemetry))
         } else {
-            sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, telemetry))
+            sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, executionRegion, telemetry))
         }
         const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
         // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
@@ -298,20 +303,40 @@ export class SandboxJobExecutor implements JobExecutor {
         await sandboxService.terminateSandbox(app, runtimeSandboxUniqueName(projectId, runId))
     }
 
-    private async createSourceImageSandbox(sandboxService: SandboxService, sourceImageRecordId: string, projectId: string, runId: string, telemetry: SandboxRuntimeTelemetry): Promise<Sandbox> {
+    private async createSourceImageSandbox(
+        sandboxService: SandboxService,
+        sourceImageRecordId: string,
+        projectId: string,
+        runId: string,
+        executionRegion: JobExecutionContext["executionRegion"],
+        telemetry: SandboxRuntimeTelemetry
+    ): Promise<Sandbox> {
         const source = await this.getSourceImageRecord(sourceImageRecordId)
         if (!source) {
             throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
         }
 
-        return this.createSandboxFromImage(sandboxService, source.imageId, projectId, runId, telemetry)
+        return this.createSandboxFromImage(sandboxService, source.imageId, projectId, runId, executionRegion, telemetry)
     }
 
-    private async createSandboxFromImage(sandboxService: SandboxService, imageId: string, projectId: string, runId: string, telemetry: SandboxRuntimeTelemetry): Promise<Sandbox> {
+    private async createSandboxFromImage(
+        sandboxService: SandboxService,
+        imageId: string,
+        projectId: string,
+        runId: string,
+        executionRegion: JobExecutionContext["executionRegion"],
+        telemetry: SandboxRuntimeTelemetry
+    ): Promise<Sandbox> {
         const app = await telemetry.measure("sandboxAppReadyMs", () => sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME))
         const image = await telemetry.measure("sourceImageLoadMs", () => sandboxService.getImageFromId(imageId))
         const uniqueName = runtimeSandboxUniqueName(projectId, runId)
-        return telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS))
+        const options = executionRegion ? { ...SANDBOX_DEFAULT_OPTIONS, regions: [executionRegion] } : SANDBOX_DEFAULT_OPTIONS
+        try {
+            return await telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, options))
+        } catch (error) {
+            if (!executionRegion) throw error
+            throw new Error(`Unable to start this workflow in ${executionRegionLabel(executionRegion)}. Terse will not run it in another region.`, { cause: error })
+        }
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

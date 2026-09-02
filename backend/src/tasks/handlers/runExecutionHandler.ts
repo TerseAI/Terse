@@ -1,4 +1,5 @@
 import { RunHistoryStatus } from "terse-types"
+import { executionRegionSchema } from "terse-types/ExecutionRegions"
 
 import logger from "../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
@@ -58,6 +59,12 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
         throw new Error("Agent not found for run execution")
     }
 
+    const runRecord = await db().run_history_records.findUnique({
+        where: { id: runId },
+        select: { execution_region: true }
+    })
+    const executionRegion = executionRegionSchema.nullable().parse(runRecord?.execution_region ?? null)
+
     try {
         // Single billing choke point: every run is gated + base-charged here, before its executor runs.
         // A denied gate fails the run before any sandbox is created or any webhook is delivered.
@@ -68,7 +75,7 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
         }
 
         const executor = jobExecutorRegistry.resolve(kind)
-        const outcome = await executor.execute({ runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, enqueuedAtMs, scheduledForMs })
+        const outcome = await executor.execute({ runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, enqueuedAtMs, scheduledForMs, executionRegion })
         switch (outcome.status) {
             case "success":
                 await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)

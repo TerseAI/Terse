@@ -10,7 +10,6 @@ on:
             - "pnpm-lock.yaml"
             - "docker/**"
             - ".github/workflows/docker-build.yml"
-            - ".github/workflows/durable-objects-cloud-run.yml"
 permissions:
     contents: read
 jobs:
@@ -25,11 +24,6 @@ jobs:
                     - 5000:5000
         steps:
             - uses: actions/checkout@v4
-            - name: Checkout Durable Objects
-              uses: actions/checkout@v4
-              with:
-                  repository: TerseAI/durable-objects
-                  path: .durable-objects
             - uses: docker/setup-buildx-action@v3
               with:
                   driver-opts: network=host
@@ -42,17 +36,6 @@ jobs:
                   # fail the build check.
                   cache-to: type=gha,mode=max,ignore-error=true
 
-            - name: Durable Objects Cloud Run image
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  file: ./docker/durable-objects-cloud-run.Dockerfile
-                  platforms: linux/amd64
-                  build-contexts: |
-                      durable_objects_source=.durable-objects
-                  cache-from: type=gha,scope=durable-objects-cloud-run
-                  cache-to: type=gha,mode=max,scope=durable-objects-cloud-run,ignore-error=true
-
             # This release's packages do not exist yet, so the Dockerfile is proven
             # against whatever is currently published.
             - name: Resolve the published CLI version
@@ -64,6 +47,7 @@ jobs:
                   # swap; both packages ship under the same version string.
                   deps=$(npm view "terse-cli@${version}" dependencies --json)
                   echo "workflow_core=$(node -p "const d = JSON.parse(process.argv[1]); d['@workflow/core'] ?? d.workflow" "$deps")" >> "$GITHUB_OUTPUT"
+                  echo "durable_objects=$(npm view little-durable-objects version)" >> "$GITHUB_OUTPUT"
 
             # Pushed to the job-local registry so the leaf images can FROM it. BuildKit reaches it
             # over the host network and allows plain HTTP because the host is localhost.
@@ -77,8 +61,7 @@ jobs:
                   tags: localhost:5000/terse-sandbox-base:pr
                   build-args: |
                       TERSE_VERSION=${{ steps.published.outputs.version }}
-                  build-contexts: |
-                      durable_objects_source=.durable-objects
+                      DURABLE_OBJECTS_VERSION=${{ steps.published.outputs.durable_objects }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true
 
@@ -91,7 +74,7 @@ jobs:
                   build-args: |
                       BASE_IMAGE=localhost:5000/terse-sandbox-base:pr
                       TERSE_VERSION=${{ steps.published.outputs.version }}
-                      DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/terse-durable-objects.tgz
+                      DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz
                       WORKFLOW_CORE_VERSION=${{ steps.published.outputs.workflow_core }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true
@@ -105,7 +88,7 @@ jobs:
                   build-args: |
                       BASE_IMAGE=localhost:5000/terse-sandbox-base:pr
                       TERSE_VERSION=${{ steps.published.outputs.version }}
-                      DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/terse-durable-objects.tgz
+                      DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz
                       WORKFLOW_CORE_VERSION=${{ steps.published.outputs.workflow_core }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true

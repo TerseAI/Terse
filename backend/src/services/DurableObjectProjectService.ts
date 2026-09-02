@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { type ExecutionRegion, durableObjectStorageRegion } from "terse-types/ExecutionRegions"
 
 import { db } from "../loaders/prisma"
 
@@ -25,7 +26,7 @@ class DurableObjectProjectService {
         await this.registerDeployment(projectId, image)
     }
 
-    async issueLocalTestEnvironment(projectId: string): Promise<DurableObjectEnvironment | undefined> {
+    async issueLocalTestEnvironment(projectId: string, executionRegion: ExecutionRegion): Promise<DurableObjectEnvironment | undefined> {
         const image = await this.activeProjectImage(projectId)
         if (!image) return undefined
 
@@ -33,7 +34,7 @@ class DurableObjectProjectService {
         await this.registerDeployment(namespaceId, image)
 
         const deadlineUnixMs = Date.now() + LOCAL_EXECUTION_DEADLINE_MS
-        const token = await this.controlPlane.issueWorkflowToken(namespaceId, `local-test.${randomUUID()}`, deadlineUnixMs)
+        const token = await this.controlPlane.issueWorkflowToken(namespaceId, `local-test.${randomUUID()}`, durableObjectStorageRegion(executionRegion), deadlineUnixMs)
         return {
             token: token.token,
             namespaceId,

@@ -92,6 +92,8 @@ type SandboxCreateParams = {
     /** Mount points (absolute path -> volume handle from a VolumeManager). */
     volumes?: Record<string, SandboxVolume>
     cloudBucketMounts?: Record<string, SandboxBucketMount>
+    /** Provider-level placement constraints. Omit for unpinned legacy and local runs. */
+    regions?: string[]
 }
 
 /** Opaque per-provider volume handle (Modal Volume / local dir marker). */

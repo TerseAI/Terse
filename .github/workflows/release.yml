@@ -28,7 +28,7 @@ jobs:
             contents: read
         outputs:
             version: ${{ steps.version.outputs.version }}
-            durable_objects_sha: ${{ steps.durable_objects.outputs.sha }}
+            durable_objects_version: ${{ steps.durable_objects.outputs.version }}
         steps:
             - name: Read release version
               id: version
@@ -63,26 +63,15 @@ jobs:
             - name: Assert every manifest matches the tag
               run: node scripts/release.mjs verify "${{ steps.version.outputs.version }}"
 
-            - name: Checkout the matching Durable Objects release
-              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-              with:
-                  repository: TerseAI/durable-objects
-                  ref: v${{ steps.version.outputs.version }}
-                  path: .durable-objects
-
             - name: Verify the Durable Objects release
               id: durable_objects
-              env:
-                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
               run: |
                   set -euo pipefail
-                  source_version=$(node -p "require('./.durable-objects/npm/package.json').version")
-                  sdk_dependency_version=$(node -p "require('./packages/terse-sdk/package.json').dependencies['@terse/durable-objects'] ?? ''")
-                  published_version=$(npm view "@terse/durable-objects@$RELEASE_VERSION" version)
-                  test "$source_version" = "$RELEASE_VERSION" || { echo "::error::durable-objects npm version $source_version does not match $RELEASE_VERSION"; exit 1; }
-                  test "$sdk_dependency_version" = "$RELEASE_VERSION" || { echo "::error::terse-sdk depends on @terse/durable-objects@$sdk_dependency_version instead of $RELEASE_VERSION"; exit 1; }
-                  test "$published_version" = "$RELEASE_VERSION" || { echo "::error::@terse/durable-objects@$RELEASE_VERSION is not published"; exit 1; }
-                  echo "sha=$(git -C .durable-objects rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+                  version=$(node -p "require('./packages/terse-sdk/package.json').dependencies['little-durable-objects'] ?? ''")
+                  test -n "$version" || { echo "::error::terse-sdk does not pin little-durable-objects"; exit 1; }
+                  published_version=$(npm view "little-durable-objects@$version" version)
+                  test "$published_version" = "$version" || { echo "::error::little-durable-objects@$version is not published"; exit 1; }
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
 
     # ── CI ────────────────────────────────────────────────────────────────────
     # The full PR suite, re-run against the tagged commit. Running it here rather
@@ -219,8 +208,8 @@ jobs:
 
     # ── 3 · SDK sandbox image (retryable) ─────────────────────────────────────
     # What customer deploys boot from. Built after npm because the image installs
-    # release packages from the registry. It also compiles the matching Durable
-    # Objects runtime once so project deploys only add project-specific layers.
+    # release packages from the registry. The Durable Objects runtime and npm
+    # package come from their independently versioned public release.
     sandbox-image:
         name: Publish the SDK sandbox images
         needs: [preflight, npm]
@@ -234,13 +223,6 @@ jobs:
               uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
               with:
                   ref: ${{ github.sha }}
-
-            - name: Checkout the approved Durable Objects release
-              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-              with:
-                  repository: TerseAI/durable-objects
-                  ref: ${{ needs.preflight.outputs.durable_objects_sha }}
-                  path: .durable-objects
 
             - name: Authenticate to Google Cloud
               uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -266,7 +248,7 @@ jobs:
                   for attempt in $(seq 1 20); do
                       if npm view "terse-cli@$RELEASE_VERSION" version >/dev/null 2>&1 \
                           && npm view "terse-sdk@$RELEASE_VERSION" version >/dev/null 2>&1 \
-                          && npm view "@terse/durable-objects@$RELEASE_VERSION" version >/dev/null 2>&1; then
+                          && npm view "little-durable-objects@${{ needs.preflight.outputs.durable_objects_version }}" version >/dev/null 2>&1; then
                           echo "sandbox packages $RELEASE_VERSION are live"
                           exit 0
                       fi
@@ -297,8 +279,7 @@ jobs:
                   push: true
                   build-args: |
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
-                  build-contexts: |
-                      durable_objects_source=.durable-objects
+                      DURABLE_OBJECTS_VERSION=${{ needs.preflight.outputs.durable_objects_version }}
                   tags: |
                       ${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       ${{ env.SANDBOX_BASE_IMAGE }}:latest
@@ -317,7 +298,7 @@ jobs:
                   build-args: |
                       BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
-                      DURABLE_OBJECTS_DEPENDENCY_SPEC=${{ needs.preflight.outputs.version }}
+                      DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz
                       WORKFLOW_CORE_VERSION=${{ steps.workflow.outputs.version }}
                   tags: |
                       ${{ env.SANDBOX_PNPM_IMAGE }}:${{ needs.preflight.outputs.version }}
@@ -335,7 +316,7 @@ jobs:
                   build-args: |
                       BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
-                      DURABLE_OBJECTS_DEPENDENCY_SPEC=${{ needs.preflight.outputs.version }}
+                      DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz
                       WORKFLOW_CORE_VERSION=${{ steps.workflow.outputs.version }}
                   tags: |
                       ${{ env.SANDBOX_NPM_IMAGE }}:${{ needs.preflight.outputs.version }}
@@ -343,23 +324,9 @@ jobs:
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
-    # ── 4 · Prod (retryable) ──────────────────────────────────────────────────
-    durable-objects:
-        name: Deploy Durable Objects
-        needs: [preflight, npm, sandbox-image]
-        permissions:
-            contents: read
-            id-token: write
-        uses: ./.github/workflows/durable-objects-cloud-run.yml
-        with:
-            version: ${{ needs.preflight.outputs.version }}
-            source_sha: ${{ needs.preflight.outputs.durable_objects_sha }}
-            environment: production
-
     deploy:
         name: Deploy production
-        # The backend only advances after its runtime image and control plane are ready.
-        needs: [preflight, npm, sandbox-image, durable-objects]
+        needs: [preflight, npm, sandbox-image]
         runs-on: ubuntu-latest
         timeout-minutes: 50
         environment: production

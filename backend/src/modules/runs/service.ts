@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { serializedEventSchema } from "terse-types"
 import { type TriggerPayload } from "terse-types"
+import { executionRegionSchema } from "terse-types/ExecutionRegions"
 import { type GetRunHistoryParams, type RunHistoryModelEvent, type RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../../common/typeConverters"
@@ -153,7 +154,8 @@ export async function listAllRunHistory(organizationId: string, params: GetRunHi
         isManuallyTriggered: runRecord.is_manually_triggered,
         isTest: runRecord.is_test,
         triggeredByUserId: runRecord.triggered_by_user_id ?? null,
-        replayOfRunId: runRecord.replay_of_run_id ?? null
+        replayOfRunId: runRecord.replay_of_run_id ?? null,
+        executionRegion: executionRegionSchema.nullable().parse(runRecord.execution_region)
     }))
     return { items, total }
 }
@@ -185,7 +187,8 @@ export async function listRunHistoryForAgent(agentId: string, organizationId: st
         isManuallyTriggered: runRecord.is_manually_triggered,
         isTest: runRecord.is_test,
         triggeredByUserId: runRecord.triggered_by_user_id ?? null,
-        replayOfRunId: runRecord.replay_of_run_id ?? null
+        replayOfRunId: runRecord.replay_of_run_id ?? null,
+        executionRegion: executionRegionSchema.nullable().parse(runRecord.execution_region)
     }))
     return { items, total }
 }

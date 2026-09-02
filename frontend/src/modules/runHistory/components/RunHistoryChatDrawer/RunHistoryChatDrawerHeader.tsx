@@ -1,4 +1,5 @@
-import { Braces, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2, RefreshCcw } from "lucide-react"
+import { Braces, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, MapPin, Maximize2, Minimize2, RefreshCcw } from "lucide-react"
+import { type ExecutionRegion, executionRegionLabel } from "terse-types/ExecutionRegions"
 import { RunHistoryRecord, RunHistoryStatus, RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,7 @@ type Props = {
     isManuallyTriggered?: boolean
     triggeredByUserId?: string | null
     replayOfRunId?: string | null
+    executionRegion: ExecutionRegion | null
     runs?: RunHistoryRecord[]
     currentRunIndex?: number
     onNavigate?: (runId: string) => void
@@ -43,6 +45,7 @@ export default function RunHistoryChatDrawerHeader({
     isManuallyTriggered,
     triggeredByUserId,
     replayOfRunId,
+    executionRegion,
     runs,
     currentRunIndex,
     onNavigate,
@@ -103,12 +106,18 @@ export default function RunHistoryChatDrawerHeader({
                     </Button>
                 </div>
             </div>
-            {(isTest || isManuallyTriggered || replayOfRunId) && (
-                <div className="flex items-center gap-2">
-                    <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} replayOfRunId={replayOfRunId} onOpenOriginal={openRun} className="text-xs" />
-                    <TriggeredBy userId={triggeredByUserId} />
-                </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {(isTest || isManuallyTriggered || replayOfRunId) && (
+                    <>
+                        <RunTypeBadge isTest={isTest} isManuallyTriggered={isManuallyTriggered} replayOfRunId={replayOfRunId} onOpenOriginal={openRun} className="text-xs" />
+                        <TriggeredBy userId={triggeredByUserId} />
+                    </>
+                )}
+                <span className="inline-flex items-center gap-1" title={executionRegion ? "Execution region" : "Execution region was not recorded for this run"}>
+                    <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                    {executionRegion ? executionRegionLabel(executionRegion) : "Not recorded"}
+                </span>
+            </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
                 <CopyCommandButton command={`terse replay ${runId}`} title="Copy. Then run in your project's terminal" />

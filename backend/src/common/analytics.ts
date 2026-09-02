@@ -1,4 +1,5 @@
 import { PostHog } from "posthog-node"
+import type { ExecutionRegion } from "terse-types/ExecutionRegions"
 
 import logger from "../common/logger"
 import { settings } from "../settings"
@@ -6,6 +7,7 @@ import { settings } from "../settings"
 export enum AnalyticsEvent {
     NEW_USER_ADDED = "new_user_added",
     ORGANIZATION_CREATED = "organization_created",
+    ORGANIZATION_EXECUTION_REGION_SET = "organization_execution_region_set",
     INTEGRATION_ADDED = "integration_added",
     INTEGRATION_REMOVED = "integration_removed",
     PROJECT_CREATED = "project_created",
@@ -49,6 +51,13 @@ interface NewUserAddedProperties extends BaseEventProperties {
 interface OrganizationCreatedProperties extends BaseEventProperties {
     organizationId: string
     organizationName: string
+}
+
+interface OrganizationExecutionRegionSetProperties extends BaseEventProperties {
+    organizationId: string
+    executionRegion: ExecutionRegion
+    previousExecutionRegion: ExecutionRegion | null
+    source: "creation" | "settings"
 }
 
 interface IntegrationAddedProperties extends BaseEventProperties {
@@ -140,6 +149,7 @@ export interface RunEventProperties extends BaseEventProperties {
     failureStage?: string
     errorMessage?: string
     reason?: string
+    executionRegion?: ExecutionRegion | null
 }
 
 export interface SandboxRuntimeLatencyProperties extends BaseEventProperties {
@@ -152,6 +162,7 @@ export interface SandboxRuntimeLatencyProperties extends BaseEventProperties {
     runtime?: string
     jobName?: string
     errorMessage?: string
+    executionRegion?: ExecutionRegion | null
     queueWaitMs?: number
     resumeSchedulerLagMs?: number
     totalWorkerExecutionMs?: number
@@ -195,6 +206,7 @@ interface OrganizationScopedProperties extends BaseEventProperties {
 type EventProperties = {
     [AnalyticsEvent.NEW_USER_ADDED]: NewUserAddedProperties
     [AnalyticsEvent.ORGANIZATION_CREATED]: OrganizationCreatedProperties
+    [AnalyticsEvent.ORGANIZATION_EXECUTION_REGION_SET]: OrganizationExecutionRegionSetProperties
     [AnalyticsEvent.INTEGRATION_ADDED]: IntegrationAddedProperties
     [AnalyticsEvent.INTEGRATION_REMOVED]: IntegrationRemovedProperties
     [AnalyticsEvent.PROJECT_CREATED]: ProjectProperties
