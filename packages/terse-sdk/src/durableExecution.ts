@@ -1,5 +1,5 @@
-import { step as durableStep, getExecutionPhase } from "@terse/durable"
-import type { StepCompletedEvent, StepStartedEvent } from "@terse/durable"
+import { step as durableStep, getExecutionPhase } from "little-durable"
+import type { StepCompletedEvent, StepStartedEvent } from "little-durable"
 
 import { DurableOnlyError } from "./execution.js"
 

@@ -1,4 +1,4 @@
-import { defineHook, waitFor } from "@terse/durable"
+import { defineHook, waitFor } from "little-durable"
 import type {
     SdkInputRequestDelivery,
     SdkInputRequestMedia,

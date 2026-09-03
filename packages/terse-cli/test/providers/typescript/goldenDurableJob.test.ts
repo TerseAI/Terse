@@ -1,4 +1,4 @@
-import { FileJournalStore, Runtime } from "@terse/durable"
+import { FileJournalStore, Runtime } from "little-durable"
 import assert from "node:assert/strict"
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
@@ -53,10 +53,12 @@ createJob({
     const journalStore = new FileJournalStore(join(cwd, "journal"))
     const event = serializedEvent()
     const outcome = await runWithJobContext(jobContext(), () =>
-        new Runtime({ journalStore }).start(workflow, {
-            runId: "run-golden",
-            input: event
-        })
+        new Runtime({ journalStore })
+            .start(workflow, {
+                runId: "run-golden",
+                input: event
+            })
+            .waitForOutcome()
     )
 
     assert.deepEqual(outcome, { status: "completed" })

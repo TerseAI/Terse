@@ -1,6 +1,6 @@
-import { FileJournalStore, Runtime } from "@terse/durable"
-import type { JournalStore, RuntimeOutcome, Suspension } from "@terse/durable"
 import chalk from "chalk"
+import { FileJournalStore, Runtime } from "little-durable"
+import type { JournalStore, RuntimeOutcome, Suspension } from "little-durable"
 import path from "node:path"
 import { __fetchRegisteredDurableWorkflow, __inputRequestHook, fetchRegisteredJobs } from "terse-sdk"
 import type { CreateJobParameters, TerseJobContext } from "terse-sdk"
@@ -40,7 +40,7 @@ export const durableJobRuntime: JobRuntime = {
                     const workflow = __fetchRegisteredDurableWorkflow(job.name)
                     if (!workflow) throw new Error(`No durable workflow was registered for job "${job.name}".`)
 
-                    const outcome = await runWithJobContext(context, () => runtime.start(workflow, { runId, input: event }))
+                    const outcome = await runWithJobContext(context, () => runtime.start(workflow, { runId, input: event }).waitForOutcome())
                     await handleOutcome({ runId, outcome, apiKey })
                 },
                 opts?.onSessionEvent,
@@ -90,10 +90,12 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
                         throw new Error(`No unresolved input wait with token "${input.token}" exists in run "${runId}".`)
                     }
                     const resolution = __inputRequestHook.resolution.parse(input.payload)
-                    return runtime.resumeHook(__inputRequestHook, { runId, workflow, waitId: suspension.waitId, resolution })
+                    return runtime.resumeHook(__inputRequestHook, { runId, workflow, waitId: suspension.waitId, resolution }).waitForOutcome()
                 }
 
-                return suspension?.request.name === "timer" ? runtime.resumeTimer(workflow, { runId, waitId: suspension.waitId }) : runtime.resume(workflow, { runId })
+                return suspension?.request.name === "timer"
+                    ? runtime.resumeTimer(workflow, { runId, waitId: suspension.waitId }).waitForOutcome()
+                    : runtime.resume(workflow, { runId }).waitForOutcome()
             })
 
             await handleOutcome({ runId, outcome, apiKey })
@@ -125,7 +127,13 @@ function jobContext({ sessionId, runId, job, projectId }: { sessionId: string; r
 }
 
 async function handleOutcome({ runId, outcome, apiKey }: { runId: string; outcome: RuntimeOutcome; apiKey: string }): Promise<void> {
-    if (outcome.status !== "suspended") return
+    if (outcome.status === "completed") return
+    if (outcome.status === "failed") {
+        const error = new Error(outcome.error.message)
+        error.name = outcome.error.name
+        throw error
+    }
+
     const body = suspendRequest({ runId, suspension: outcome.suspension })
     await fetchWithAuth<SdkJobSuspendResponseBody>(ApiRoutes.SDK.SUSPEND, apiKey, body, "POST")
 }

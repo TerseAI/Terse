@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url"
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 const manifests = [
     packageManifest("terse-types/package.json"),
-    packageManifest("packages/durable-runtime/package.json"),
     packageManifest("packages/terse-sdk/package.json"),
     packageManifest("packages/terse-cli/package.json"),
     packageManifest("packages/create-terse/package.json"),

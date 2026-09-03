@@ -35,7 +35,7 @@ export function withTerseOverrides(packageJsonText: string, tarballs: Map<string
         [key: string]: unknown
     }
 
-    const targets = ["@terse/durable", "terse-sdk", "terse-types"] as const
+    const targets = ["terse-sdk", "terse-types"] as const
     const depSections = ["dependencies", "devDependencies", "optionalDependencies"] as const
 
     const directlyPinned = new Set<string>()
@@ -70,22 +70,21 @@ export function withTerseOverrides(packageJsonText: string, tarballs: Map<string
 }
 
 // Installs the CLI from its local tarball into a host project so npm `overrides` apply to its nested
-// @terse/durable/terse-sdk/terse-types (global `npm install -g` ignores overrides). Symlinks the bin to the same
+// terse-sdk/terse-types (global `npm install -g` ignores overrides). Symlinks the bin to the same
 // `${cliCachePath}/bin/terse` path the registry install and execute() already expect.
 export async function installLocalCli(context: SdkDeployImageBuildContext, tarballs: Map<string, string>): Promise<void> {
     const cliTarball = tarballs.get("terse-cli")
-    const durableTarball = tarballs.get("@terse/durable")
     const sdkTarball = tarballs.get("terse-sdk")
     const typesTarball = tarballs.get("terse-types")
-    if (!cliTarball || !durableTarball || !sdkTarball || !typesTarball) {
-        throw new Error("Local packages bundle is missing @terse/durable, terse-cli, terse-sdk, or terse-types")
+    if (!cliTarball || !sdkTarball || !typesTarball) {
+        throw new Error("Local packages bundle is missing terse-cli, terse-sdk, or terse-types")
     }
 
     const hostPackageJson = {
         name: "terse-cli-local-host",
         private: true,
         dependencies: { "terse-cli": `file:${cliTarball}` },
-        overrides: { "@terse/durable": `file:${durableTarball}`, "terse-sdk": `file:${sdkTarball}`, "terse-types": `file:${typesTarball}` }
+        overrides: { "terse-sdk": `file:${sdkTarball}`, "terse-types": `file:${typesTarball}` }
     }
     await context.writeFile(`${context.cliCachePath}/package.json`, JSON.stringify(hostPackageJson, null, 2))
 

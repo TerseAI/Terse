@@ -1,5 +1,4 @@
 packages:
-  - packages/durable-runtime
   - packages/terse-sdk
   - packages/terse-cli
   - packages/create-terse

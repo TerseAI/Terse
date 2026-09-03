@@ -7,7 +7,6 @@ on:
             - "frontend/**"
             - "terse-types/**"
             - "packages/terse-sdk/**"
-            - "packages/durable-runtime/**"
             - "pnpm-lock.yaml"
             - "docker/**"
             - ".github/workflows/docker-build.yml"

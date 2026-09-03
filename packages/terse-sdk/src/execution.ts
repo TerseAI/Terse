@@ -1,4 +1,4 @@
-import { getExecutionPhase } from "@terse/durable"
+import { getExecutionPhase } from "little-durable"
 
 declare const process: { env: Record<string, string | undefined> }
 

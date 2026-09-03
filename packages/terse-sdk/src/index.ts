@@ -1,5 +1,5 @@
-import { defineWorkflow, sleep as durableSleep, getExecutionPhase } from "@terse/durable"
-import type { StepStartedEvent, WorkflowDefinition } from "@terse/durable"
+import { defineWorkflow, sleep as durableSleep, getExecutionPhase } from "little-durable"
+import type { StepStartedEvent, WorkflowDefinition } from "little-durable"
 import ms from "ms"
 import type {
     RunHistoryAction,

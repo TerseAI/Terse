@@ -174,12 +174,12 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Build publishable packages
-              run: pnpm -r --filter terse-types --filter @terse/durable --filter terse-sdk --filter terse-cli --filter create-terse run build
+              run: pnpm -r --filter terse-types --filter terse-sdk --filter terse-cli --filter create-terse run build
 
             - name: Pack tarballs
               run: |
                   mkdir -p dist-tarballs
-                  for directory in terse-types packages/durable-runtime packages/terse-sdk packages/terse-cli packages/create-terse; do
+                  for directory in terse-types packages/terse-sdk packages/terse-cli packages/create-terse; do
                       pnpm --dir "$directory" pack --pack-destination "$PWD/dist-tarballs"
                   done
 
@@ -187,7 +187,7 @@ jobs:
               env:
                   RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
               run: |
-                  for package in terse-types @terse/durable terse-sdk terse-cli create-terse; do
+                  for package in terse-types terse-sdk terse-cli create-terse; do
                       tarball_name=${package#@}
                       tarball_name=${tarball_name//\//-}
                       if npm view "$package@$RELEASE_VERSION" version >/dev/null 2>&1; then
@@ -239,9 +239,8 @@ jobs:
                   set -euo pipefail
                   for attempt in $(seq 1 20); do
                       if npm view "terse-cli@$RELEASE_VERSION" version >/dev/null 2>&1 \
-                          && npm view "terse-sdk@$RELEASE_VERSION" version >/dev/null 2>&1 \
-                          && npm view "@terse/durable@$RELEASE_VERSION" version >/dev/null 2>&1; then
-                          echo "terse-cli, terse-sdk, and @terse/durable $RELEASE_VERSION are live"
+                          && npm view "terse-sdk@$RELEASE_VERSION" version >/dev/null 2>&1; then
+                          echo "terse-cli and terse-sdk $RELEASE_VERSION are live"
                           exit 0
                       fi
                       echo "attempt $attempt: not visible yet, retrying in 15s"

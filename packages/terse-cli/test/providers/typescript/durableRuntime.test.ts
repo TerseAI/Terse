@@ -1,4 +1,4 @@
-import { FileJournalStore, Runtime, waitFor } from "@terse/durable"
+import { FileJournalStore, Runtime, waitFor } from "little-durable"
 import assert from "node:assert/strict"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -56,7 +56,7 @@ test("runs, suspends, and resumes a Terse job directly from its journal", async 
     const context = jobContext()
     assert.equal(await shouldRunTerseWorkflow({ job, event, context }), true)
     const workflow = __defineTerseWorkflow(job)
-    const firstOutcome = await runWithJobContext(context, () => runtime.start(workflow, { runId: "run-123", input: event }))
+    const firstOutcome = await runWithJobContext(context, () => runtime.start(workflow, { runId: "run-123", input: event }).waitForOutcome())
 
     assert.equal(firstOutcome.status, "suspended")
     assert.equal(filterExecutions, 1)
@@ -73,12 +73,14 @@ test("runs, suspends, and resumes a Terse job directly from its journal", async 
         respondent: { provider: "slack", userId: "user-123", displayName: "Ada" }
     })
     const secondOutcome = await runWithJobContext(context, () =>
-        runtime.resumeHook(__inputRequestHook, {
-            runId: "run-123",
-            workflow,
-            waitId: suspension.waitId,
-            resolution
-        })
+        runtime
+            .resumeHook(__inputRequestHook, {
+                runId: "run-123",
+                workflow,
+                waitId: suspension.waitId,
+                resolution
+            })
+            .waitForOutcome()
     )
 
     assert.equal(secondOutcome.status, "completed")
