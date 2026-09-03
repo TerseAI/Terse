@@ -68,7 +68,7 @@ async function handleBearer(bearer: string, allow: AuthKind[], opts: AuthOptions
             return sendOrganizationRequired(res)
         }
 
-        req.session = { user: result.user, authMethod: { kind: "api_token", tokenKind: result.tokenKind } }
+        req.session = { user: result.user, authMethod: { kind: "api_token", tokenKind: result.tokenKind, projectId: result.projectId } }
         if (!assertAdminIfRequired(opts, result.user, res)) return
         return next()
     }

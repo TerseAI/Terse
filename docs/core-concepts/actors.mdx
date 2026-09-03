@@ -117,6 +117,122 @@ export class AccountCounter extends Actor {
 
 Actor-to-actor calls are not currently supported. A workflow can call several actors, but an actor method cannot call another actor.
 
+## WebSocket sessions
+
+An actor can keep chat state and connection-aware behavior while the workflow sandbox runs the model or agent SDK. Socket lifecycle calls and ordinary actor methods are serialized against the same durable actor state. Every new connection automatically receives a `state` event containing the actor's current durable properties, so `onConnect` is optional.
+
+This room accepts one generation at a time and returns `already_generating` to a client that sends while it is busy:
+
+```ts
+import { Actor } from "terse-sdk"
+import type { ActorSocket } from "terse-sdk"
+
+type Connection = { userId: string }
+type Message = { id: string; role: "user" | "assistant"; text: string; userId?: string }
+
+export class AgentSession extends Actor {
+    isGenerating = false
+    activeMessageId: string | null = null
+    assistantDraft = ""
+    history: Message[] = []
+
+    async onMessage(socket: ActorSocket<Connection>, raw: string | Uint8Array): Promise<void> {
+        if (typeof raw !== "string") return
+        const message = JSON.parse(raw) as { id: string; text: string }
+
+        if (this.isGenerating) {
+            socket.send(JSON.stringify({ type: "error", code: "already_generating" }))
+            return
+        }
+
+        this.isGenerating = true
+        this.activeMessageId = message.id
+        this.history.push({ ...message, role: "user", userId: socket.metadata.userId })
+        this.broadcast(JSON.stringify({ type: "state", state: sessionState(this) }))
+    }
+
+    async currentTurn(messageId: string) {
+        return this.activeMessageId === messageId ? { messageId, history: this.history } : null
+    }
+
+    async appendOutput(messageId: string, chunk: string): Promise<void> {
+        if (this.activeMessageId !== messageId) return
+        this.assistantDraft += chunk
+        this.broadcast(JSON.stringify({ type: "assistant_delta", messageId, chunk }))
+    }
+
+    async finish(messageId: string): Promise<void> {
+        if (this.activeMessageId !== messageId) return
+        this.history.push({ id: `assistant:${messageId}`, role: "assistant", text: this.assistantDraft })
+        this.isGenerating = false
+        this.activeMessageId = null
+        this.assistantDraft = ""
+        this.broadcast(JSON.stringify({ type: "state", state: sessionState(this) }))
+    }
+}
+
+function sessionState(session: AgentSession) {
+    return {
+        isGenerating: session.isGenerating,
+        activeMessageId: session.activeMessageId,
+        assistantDraft: session.assistantDraft,
+        history: session.history
+    }
+}
+```
+
+Register one workflow turn for each socket message:
+
+```ts
+import { createJob } from "terse-sdk"
+
+import { AgentSession } from "./durable-objects"
+import { streamAgent } from "./my-agent"
+import { Triggers } from "./terse.generated"
+
+createJob({
+    name: "run-chat-agent",
+    triggers: [Triggers.durableObject.onMessage({ actor: AgentSession })],
+    onTrigger: async event => {
+        if (event.message.type !== "text") return
+        const { id } = JSON.parse(event.message.data) as { id: string }
+        const session = AgentSession.get(event.actorId)
+        const turn = await session.currentTurn(id)
+        if (!turn) return
+
+        for await (const chunk of streamAgent(turn.history)) {
+            await session.appendOutput(turn.messageId, chunk)
+        }
+
+        await session.finish(turn.messageId)
+    }
+})
+```
+
+After deployment, the job details show a socket URL template and a socket key. Trusted server clients replace `{actorId}` with the session ID and send the key as a Bearer token during the WebSocket upgrade.
+
+For browser or other untrusted clients, your backend exchanges the project API token for a short-lived connection ticket:
+
+```http
+POST /durable-objects/socket-tickets
+Authorization: Bearer terse_project_token
+Content-Type: application/json
+
+{
+  "triggerId": "the-trigger-id",
+  "actorId": "session-123",
+  "metadata": { "userId": "user-123" }
+}
+```
+
+The response contains `url`, `protocols`, and `expiresAt`. Pass the first two values directly to the WebSocket constructor:
+
+```ts
+const socket = new WebSocket(ticket.url, ticket.protocols)
+```
+
+The ticket binds the trigger, actor ID, metadata, and expiration. Every authenticated connection can send and receive; actor code decides whether a busy room rejects or queues another message.
+
 ## Regions
 
 The organization's execution region supplies the initial home region for newly created actors. An actor keeps that home region so later calls reach the same durable state even if the organization's execution region changes.

@@ -446,18 +446,19 @@ model automation_inputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config        automation_slack_configs?
-  notion_config       automation_notion_configs?
-  linear_config       automation_linear_configs?
-  github_config       automation_github_configs?
-  gmail_config        automation_gmail_configs?
-  time_trigger_config automation_time_trigger_configs?
-  workos_config       automation_workos_configs?
-  attio_config        automation_attio_configs?
-  attio_input_config  automation_attio_input_configs?
-  webhook_config      automation_webhook_configs?
-  webmonitor_config   automation_webmonitor_configs?
-  hey_reach_config    automation_hey_reach_configs?
+  slack_config          automation_slack_configs?
+  notion_config         automation_notion_configs?
+  linear_config         automation_linear_configs?
+  github_config         automation_github_configs?
+  gmail_config          automation_gmail_configs?
+  time_trigger_config   automation_time_trigger_configs?
+  workos_config         automation_workos_configs?
+  attio_config          automation_attio_configs?
+  attio_input_config    automation_attio_input_configs?
+  webhook_config        automation_webhook_configs?
+  durable_object_config automation_durable_object_configs?
+  webmonitor_config     automation_webmonitor_configs?
+  hey_reach_config      automation_hey_reach_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -741,6 +742,19 @@ model automation_webhook_configs {
   @@index([webhook_token])
 }
 
+model automation_durable_object_configs {
+  id                  String @id @default(cuid())
+  automation_input_id String @unique
+  socket_token        String @unique
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+
+  @@index([socket_token])
+}
+
 // Web Event (scheduled web monitor) trigger configuration
 model automation_webmonitor_configs {
   id                  String  @id @default(cuid())
@@ -854,6 +868,7 @@ enum InputConfigType {
   WORKOS_INPUT
   ATTIO_INPUT
   WEBHOOK_INPUT
+  DURABLE_OBJECT_INPUT
   WEBMONITOR
   HEY_REACH_INPUT
 }

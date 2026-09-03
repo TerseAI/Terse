@@ -89,7 +89,7 @@
         "jsonwebtoken": "^9.0.2",
         "luxon": "^3.7.2",
         "mime": "^4.0.7",
-        "modal": "^0.7.2",
+        "modal": "^0.10.0",
         "morgan": "^1.10.1",
         "mqemitter-redis": "^7.2.0",
         "openai": "^6.10.0",

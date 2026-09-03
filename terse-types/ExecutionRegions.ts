@@ -13,6 +13,12 @@ export const DURABLE_OBJECT_STORAGE_REGIONS = {
 } as const satisfies Record<ExecutionRegion, string>
 export type DurableObjectStorageRegion = (typeof DURABLE_OBJECT_STORAGE_REGIONS)[ExecutionRegion]
 
+export const MODAL_EXECUTION_REGIONS = {
+    "us-west": "us-west1",
+    "us-central": "us-central1",
+    "us-east": "us-east4"
+} as const satisfies Record<ExecutionRegion, string>
+
 export const EXECUTION_REGION_LABELS: Record<ExecutionRegion, string> = {
     "us-west": "US West",
     "us-central": "US Central",
@@ -70,4 +76,8 @@ export function executionRegionLabel(region: ExecutionRegion): string {
 
 export function durableObjectStorageRegion(region: ExecutionRegion): DurableObjectStorageRegion {
     return DURABLE_OBJECT_STORAGE_REGIONS[region]
+}
+
+export function modalExecutionRegion(region: ExecutionRegion): string {
+    return MODAL_EXECUTION_REGIONS[region]
 }

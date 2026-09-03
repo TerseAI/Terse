@@ -49,12 +49,12 @@ export class DurableObjectControlPlaneClient implements DurableObjectControlPlan
         )
     }
 
-    async issueWorkflowToken(namespaceId: string, executionId: string, storageRegion: DurableObjectStorageRegion, deadlineUnixMs: number): Promise<DurableObjectWorkflowToken> {
+    async issueWorkflowToken(namespaceId: string, executionId: string, storageRegion: DurableObjectStorageRegion, deadlineUnixMs: number, privateRouting = false): Promise<DurableObjectWorkflowToken> {
         return this.request(
             `/v1/namespaces/${pathSegment(namespaceId)}/workflow-tokens`,
             {
                 method: "POST",
-                body: JSON.stringify({ executionId, storageRegion, deadlineUnixMs })
+                body: JSON.stringify({ executionId, storageRegion, deadlineUnixMs, privateRouting })
             },
             workflowTokenResponseSchema
         )
@@ -147,7 +147,7 @@ export class DurableObjectControlPlaneError extends Error {
 export interface DurableObjectControlPlane {
     readonly controlPlaneUrl: string
     registerDeployment(namespaceId: string, deployment: DurableObjectDeployment): Promise<{ changed: boolean }>
-    issueWorkflowToken(namespaceId: string, executionId: string, storageRegion: DurableObjectStorageRegion, deadlineUnixMs: number): Promise<DurableObjectWorkflowToken>
+    issueWorkflowToken(namespaceId: string, executionId: string, storageRegion: DurableObjectStorageRegion, deadlineUnixMs: number, privateRouting?: boolean): Promise<DurableObjectWorkflowToken>
 }
 
 export interface DurableObjectControlPlaneConfig {

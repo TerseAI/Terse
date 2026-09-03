@@ -54,6 +54,7 @@ import {
     AttioObjectWithAttributes,
     DatadogIndexesResponse,
     DismissImprovementResponse,
+    DurableObjectSocketKeyResponse,
     GetAgentImprovementsResponse,
     GetGithubRepositoriesForIntegrationResponse,
     LaunchDarklyEnvironmentsResponse,
@@ -356,6 +357,8 @@ interface BackendService {
      * Gets a single agent by ID
      */
     getAgentById(id: string): Promise<Agent>
+
+    rotateDurableObjectSocketKey(triggerId: string): Promise<DurableObjectSocketKeyResponse>
 
     /**
      * Fetches the detail view for a single project.
@@ -979,6 +982,11 @@ export const BackendProvider: BackendService = {
     getAgentById: (id: string) => {
         const url = buildRoute(ApiRoutes.AGENTS.BY_ID, { id })
         return axios.get<Agent>(`${backendBaseUrl}${url}`, { withCredentials: true }).then(response => response.data)
+    },
+
+    rotateDurableObjectSocketKey: (triggerId: string) => {
+        const url = buildRoute(ApiRoutes.DURABLE_OBJECTS.ROTATE_SOCKET_KEY, { triggerId })
+        return axios.post<DurableObjectSocketKeyResponse>(`${backendBaseUrl}${url}`, undefined, { withCredentials: true }).then(response => response.data)
     },
 
     getProjectById: (id: string) => {

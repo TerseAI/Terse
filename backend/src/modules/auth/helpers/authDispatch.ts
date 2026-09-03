@@ -14,7 +14,7 @@ export async function authenticateViaCookie(sealedSessionData: string | undefine
     return await getAuthProvider().authenticateViaCookie(sealedSessionData, req, res)
 }
 
-export type ApiTokenAuthOutcome = { ok: true; user: UserSession; tokenKind: TokenKind } | { ok: false; reason: "not_found" | "expired" | "user_org_unresolved" }
+export type ApiTokenAuthOutcome = { ok: true; user: UserSession; tokenKind: TokenKind; projectId: string | null } | { ok: false; reason: "not_found" | "expired" | "user_org_unresolved" }
 
 export async function authenticateViaApiToken(rawToken: string): Promise<ApiTokenAuthOutcome> {
     const tokenHash = hashToken(rawToken)
@@ -46,7 +46,7 @@ export async function authenticateViaApiToken(rawToken: string): Promise<ApiToke
         })
         .catch(err => logger.warn("Failed to update api_token last_used_at", { error: err, tokenId: apiToken.id }))
 
-    return { ok: true, user, tokenKind: apiToken.kind }
+    return { ok: true, user, tokenKind: apiToken.kind, projectId: apiToken.project_id }
 }
 
 export function readBearerToken(authHeaderValue: string | undefined): string | null {

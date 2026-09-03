@@ -62,6 +62,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.WEB:
         case ConfigType.IMAGE_EDIT:
         case ConfigType.MEMORY:
+        case ConfigType.DURABLE_OBJECT_INPUT:
             return <TerseIcon />
         case ConfigType.HEY_REACH_INPUT:
             return <HeyReachIcon />

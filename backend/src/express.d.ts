@@ -2,7 +2,7 @@
 import type { TokenKind } from "@prisma/client"
 import type { UserSession } from "terse-types/types"
 
-export type AuthMethod = { kind: "cookie" } | { kind: "api_token"; tokenKind: TokenKind }
+export type AuthMethod = { kind: "cookie" } | { kind: "api_token"; tokenKind: TokenKind; projectId: string | null }
 
 export type Session = {
     user: UserSession

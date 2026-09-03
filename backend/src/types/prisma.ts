@@ -47,6 +47,7 @@ type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
         workos_config: true
         attio_input_config: true
         webhook_config: true
+        durable_object_config: true
         webmonitor_config: true
         hey_reach_config: true
     }
@@ -91,6 +92,7 @@ type AutomationWithInputRelations = Prisma.automationsGetPayload<{
                 workos_config: true
                 attio_input_config: true
                 webhook_config: true
+                durable_object_config: true
                 webmonitor_config: true
                 hey_reach_config: true
             }

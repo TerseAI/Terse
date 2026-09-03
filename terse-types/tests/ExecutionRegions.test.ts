@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { durableObjectStorageRegion, executionRegionForTimeZone } from "../ExecutionRegions"
+import { durableObjectStorageRegion, executionRegionForTimeZone, modalExecutionRegion } from "../ExecutionRegions"
 import { organizationCreateRequestSchema, organizationUpdateRequestSchema } from "../types"
 
 test("maps western US timezones to US West", () => {
@@ -36,4 +36,10 @@ test("maps execution regions to durable object home regions", () => {
     assert.equal(durableObjectStorageRegion("us-west"), "north-america-west")
     assert.equal(durableObjectStorageRegion("us-central"), "north-america-central")
     assert.equal(durableObjectStorageRegion("us-east"), "north-america-east")
+})
+
+test("pins workflow sandboxes to exact GCP Modal regions", () => {
+    assert.equal(modalExecutionRegion("us-west"), "us-west1")
+    assert.equal(modalExecutionRegion("us-central"), "us-central1")
+    assert.equal(modalExecutionRegion("us-east"), "us-east4")
 })

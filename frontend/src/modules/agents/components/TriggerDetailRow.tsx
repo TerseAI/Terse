@@ -1,12 +1,13 @@
 import { useState } from "react"
 
-import { Check, Copy } from "lucide-react"
+import { Check, Copy, RotateCw } from "lucide-react"
 import { CONFIG_DETAILS, ConfigType } from "terse-types"
 import type {
     AgentTrigger,
     AttioFilter,
     AttioInputConfigData,
     DatadogConfigData,
+    DurableObjectInputConfigData,
     FrequencyUnit,
     GitHubConfigData,
     GmailConfigData,
@@ -21,6 +22,7 @@ import type {
 } from "terse-types"
 
 import { describeCron, formatNextRun, getNextRun } from "@/lib/cron"
+import { BackendProvider } from "@/lib/http"
 import { useAttioObjects } from "@/modules/integrations/api/useAttioObjects"
 import { useGithubIntegrations } from "@/modules/integrations/api/useGithubIntegrations"
 import { useGithubResources } from "@/modules/integrations/api/useGithubResources"
@@ -39,6 +41,17 @@ export function TriggerDetailRow({ trigger }: { trigger: AgentTrigger }) {
     switch (config.configType) {
         case ConfigType.WEBHOOK_INPUT:
             return <WebhookBody webhookUrl={trigger.metadata?.webhookUrl || undefined} label={label} type={type} />
+        case ConfigType.DURABLE_OBJECT_INPUT:
+            return (
+                <DurableObjectBody
+                    config={config}
+                    socketUrl={trigger.metadata?.socketUrl ?? undefined}
+                    initialSocketKey={trigger.metadata?.socketKey ?? undefined}
+                    label={label}
+                    type={type}
+                    triggerId={trigger.id}
+                />
+            )
         case ConfigType.WEBMONITOR:
             return <WebMonitorBody config={config} label={label} type={type} />
         case ConfigType.SLACK:
@@ -71,6 +84,93 @@ export function TriggerDetailRow({ trigger }: { trigger: AgentTrigger }) {
         default:
             return <Frame type={type} label={label} />
     }
+}
+
+function DurableObjectBody({
+    config,
+    socketUrl,
+    initialSocketKey,
+    label,
+    type,
+    triggerId
+}: {
+    config: DurableObjectInputConfigData
+    socketUrl: string | undefined
+    initialSocketKey: string | undefined
+    label: string
+    type: ConfigType
+    triggerId: string
+}) {
+    const [socketKey, setSocketKey] = useState(initialSocketKey)
+    const [rotating, setRotating] = useState(false)
+    const [rotationError, setRotationError] = useState(false)
+
+    const rotateKey = async () => {
+        if (!window.confirm("Rotate this socket key? Clients using the current key will no longer connect.")) return
+        setRotating(true)
+        setRotationError(false)
+        try {
+            setSocketKey((await BackendProvider.rotateDurableObjectSocketKey(triggerId)).socketKey)
+        } catch {
+            setRotationError(true)
+        } finally {
+            setRotating(false)
+        }
+    }
+
+    return (
+        <div className="space-y-2 overflow-hidden px-4 py-2.5">
+            <div className="flex items-center gap-x-2 overflow-hidden">
+                <div className="flex size-4 shrink-0 items-center justify-center [&_svg]:size-4">
+                    <IconForConfigType type={type} />
+                </div>
+                <span className="text-foreground shrink-0 text-sm leading-none font-medium">{label}</span>
+                <span className="bg-muted/60 text-foreground min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-xs" title={config.actorType}>
+                    {config.actorType}
+                </span>
+            </div>
+            <div className="ml-6 flex min-w-0 items-center gap-1.5">
+                {socketUrl ? (
+                    <>
+                        <code className="bg-muted/60 text-foreground min-w-0 flex-1 truncate rounded-md px-1.5 py-0.5 font-mono text-xs select-all" title={socketUrl}>
+                            {socketUrl}
+                        </code>
+                        <CopyButton text={socketUrl} label="Copy socket URL" />
+                    </>
+                ) : (
+                    <EmptyValue text="Socket URL unavailable" />
+                )}
+            </div>
+            <div className="ml-6 flex min-w-0 items-center gap-1.5">
+                <span className="text-muted-foreground shrink-0 text-xs">Socket key</span>
+                {socketKey ? (
+                    <>
+                        <code className="bg-muted/60 text-foreground min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-xs" title="Use as a Bearer token from trusted server clients">
+                            {maskSecret(socketKey)}
+                        </code>
+                        <CopyButton text={socketKey} label="Copy socket key" />
+                        <button
+                            type="button"
+                            onClick={rotateKey}
+                            disabled={rotating}
+                            className="hover:bg-muted/80 shrink-0 rounded-md p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="Rotate socket key"
+                            title="Rotate socket key"
+                        >
+                            <RotateCw className={`text-muted-foreground size-3.5 ${rotating ? "animate-spin" : ""}`} />
+                        </button>
+                    </>
+                ) : (
+                    <EmptyValue text="Socket key unavailable" />
+                )}
+                {rotationError ? (
+                    <span className="text-destructive shrink-0 text-xs" role="status">
+                        Rotation failed
+                    </span>
+                ) : null}
+            </div>
+        </div>
+    )
 }
 
 function WebhookBody({ webhookUrl, label, type }: { webhookUrl: string | undefined; label: string; type: ConfigType }) {
@@ -277,7 +377,7 @@ function EmptyValue({ text }: { text: string }) {
     return <div className="text-muted-foreground shrink-0 text-xs">{text}</div>
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, label = "Copy to clipboard" }: { text: string; label?: string }) {
     const [copied, setCopied] = useState(false)
 
     const handleCopy = () => {
@@ -287,10 +387,14 @@ function CopyButton({ text }: { text: string }) {
     }
 
     return (
-        <button onClick={handleCopy} className="hover:bg-muted/80 shrink-0 self-center rounded-md p-1 transition-colors" aria-label="Copy to clipboard">
+        <button type="button" onClick={handleCopy} className="hover:bg-muted/80 shrink-0 self-center rounded-md p-1 transition-colors" aria-label={label} title={label}>
             {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="text-muted-foreground size-3.5" />}
         </button>
     )
+}
+
+function maskSecret(secret: string): string {
+    return `${secret.slice(0, 13)}••••••••${secret.slice(-4)}`
 }
 
 function joinSummary(...parts: Array<string | null | undefined>): string | undefined {

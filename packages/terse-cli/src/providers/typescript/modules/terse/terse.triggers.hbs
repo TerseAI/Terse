@@ -18,6 +18,13 @@ export const webhookTriggers = {
     },
 }
 
+export const durableObjectTriggers = {
+    /** Trigger when the selected durable object accepts a WebSocket message */
+    onMessage(opts: { actor: ActorClass }): TypedTrigger<DurableObjectMessageTrigger> {
+        return new DurableObjectInputConfig(opts.actor.name)
+    },
+}
+
 /** Bind a web-monitor event to a Zod schema: the `payload` field types as the schema's output */
 export type WebMonitorTriggerFor<TSchema> = WebMonitorTrigger<InferStructuredOutput<TSchema>>
 

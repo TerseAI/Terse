@@ -3,7 +3,7 @@ import { AlreadyExistsError, CloudBucketMount, App as ModalApp, ModalClient, Ima
 import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
 
-import { BucketMountParams, Sandbox, SandboxService } from "./SandboxService"
+import { BucketMountParams, Sandbox, SandboxFile, SandboxService } from "./SandboxService"
 
 export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     idleTimeoutMs: 5 * 60 * 1000,
@@ -22,7 +22,7 @@ export function isUnavailableImageError(error: unknown): boolean {
     return clientError["@@nice-grpc:ClientError"] === true && clientError.code === GRPC_PERMISSION_DENIED
 }
 
-export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, ModalSandbox, ModalApp> {
+export class ModalSandboxService extends SettingsDependant implements SandboxService<ModalImage, Sandbox, ModalApp> {
     readonly settingsKey = "modal"
     readonly supportsContainerizedRunners = true
 
@@ -50,20 +50,20 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return this.modal
     }
 
-    getProjectPath(_sandbox: ModalSandbox): string {
+    getProjectPath(_sandbox: Sandbox): string {
         return "/opt/terse-sdk-run/project"
     }
 
-    getCliCachePath(_sandbox: ModalSandbox): string {
+    getCliCachePath(_sandbox: Sandbox): string {
         return `/opt/terse-sdk-cache/cli`
     }
 
-    getScratchPath(_sandbox: ModalSandbox, filename: string): string {
+    getScratchPath(_sandbox: Sandbox, filename: string): string {
         // Each Modal sandbox has its own isolated filesystem, so /tmp is per-sandbox.
         return `/tmp/${filename}`
     }
 
-    async snapshotForSuspension(sandbox: ModalSandbox): Promise<string> {
+    async snapshotForSuspension(sandbox: Sandbox): Promise<string> {
         const image = await sandbox.snapshotFilesystem()
         return image.imageId
     }
@@ -149,7 +149,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         }
     }
 
-    async getOrCreateSandbox(app: ModalApp, image: ModalImage, uniqueName: string, params?: SandboxCreateParams): Promise<ModalSandbox> {
+    async getOrCreateSandbox(app: ModalApp, image: ModalImage, uniqueName: string, params?: SandboxCreateParams): Promise<Sandbox> {
         if (!app.name) {
             throw new Error("App name is required")
         }
@@ -163,15 +163,16 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             imageId: image.imageId,
             timeoutMs: params?.timeoutMs,
             idleTimeoutMs: params?.idleTimeoutMs,
-            regions: params?.regions
+            regions: params?.regions,
+            i6pn: params?.i6pn
         })
 
         const existing = await this.lookupLiveSandbox(app.name, name, opStart)
         if (existing) {
-            return existing
+            return adaptModalSandbox(existing)
         }
 
-        return this.createSandboxWithRetries(app, image, name, params, opStart)
+        return adaptModalSandbox(await this.createSandboxWithRetries(app, image, name, params, opStart))
     }
 
     async terminateSandbox(app: ModalApp, uniqueName: string): Promise<void> {
@@ -182,7 +183,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         const name = this.fullSandboxName(app.name, uniqueName)
 
         try {
-            const sandbox = await this.modal.sandboxes.fromName(app.name, name)
+            const sandbox = await this.modal.sandboxes.experimentalFromName(app.name, name)
             await this.terminateStaleSandbox(sandbox, app.name, name)
         } catch (error) {
             if (error instanceof NotFoundError) {
@@ -202,18 +203,19 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         return `${appName}__${uniqueName}`
     }
 
-    async getExistingSandbox(app: ModalApp, uniqueName: string): Promise<ModalSandbox | null> {
+    async getExistingSandbox(app: ModalApp, uniqueName: string): Promise<Sandbox | null> {
         if (!app.name) {
             throw new Error("App name is required")
         }
-        return this.lookupLiveSandbox(app.name, this.fullSandboxName(app.name, uniqueName), Date.now())
+        const sandbox = await this.lookupLiveSandbox(app.name, this.fullSandboxName(app.name, uniqueName), Date.now())
+        return sandbox ? adaptModalSandbox(sandbox) : null
     }
 
     private async lookupLiveSandbox(appName: string, name: string, opStart: number): Promise<ModalSandbox | null> {
         const lookupStart = Date.now()
 
         try {
-            const sandbox = await this.modal.sandboxes.fromName(appName, name)
+            const sandbox = await this.modal.sandboxes.experimentalFromName(appName, name)
             const status = await sandbox.poll()
 
             if (status === null && (await this.livenessProbe(sandbox, appName, name))) {
@@ -258,7 +260,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
     }
 
     /** terminate() is a no-op if the sandbox already finished (Modal docs). */
-    private async terminateStaleSandbox(sandbox: Sandbox, appName: string, name: string): Promise<void> {
+    private async terminateStaleSandbox(sandbox: ModalSandbox, appName: string, name: string): Promise<void> {
         const t0 = Date.now()
 
         try {
@@ -320,9 +322,10 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             timeoutMs: params?.timeoutMs,
             idleTimeoutMs: params?.idleTimeoutMs,
             regions: params?.regions,
+            i6pn: params?.i6pn,
             attempt
         })
-        const sandbox = await this.modal.sandboxes.create(appRef, imageRef, { ...params, name })
+        const sandbox = await this.modal.sandboxes.experimentalCreate(appRef, imageRef, { ...params, name })
 
         logger.info("Modal sandbox: created new", {
             app: app.name,
@@ -346,7 +349,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         })
 
         try {
-            const sandbox = await this.modal.sandboxes.fromName(appName, name)
+            const sandbox = await this.modal.sandboxes.experimentalFromName(appName, name)
             const status = await sandbox.poll()
 
             if (status === null && (await this.livenessProbe(sandbox, appName, name))) {
@@ -394,7 +397,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         await sleep(delayMs)
     }
 
-    private async livenessProbe(sandbox: Sandbox, appName: string, name: string): Promise<boolean> {
+    private async livenessProbe(sandbox: ModalSandbox, appName: string, name: string): Promise<boolean> {
         const t0 = Date.now()
         try {
             const proc = await sandbox.exec(["true"], { stdout: "pipe", stderr: "pipe" })
@@ -426,6 +429,32 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             })
             return false
         }
+    }
+}
+
+function adaptModalSandbox(sandbox: ModalSandbox): Sandbox {
+    return {
+        sandboxId: sandbox.sandboxId,
+        exec: (command, params) => sandbox.exec(command, params as never) as unknown as ReturnType<Sandbox["exec"]>,
+        open: (path, mode) => Promise.resolve(modalSandboxFile(sandbox, path, mode)),
+        terminate: () => sandbox.terminate(),
+        snapshotFilesystem: () => sandbox.snapshotFilesystem()
+    }
+}
+
+function modalSandboxFile(sandbox: ModalSandbox, path: string, mode: "r" | "w"): SandboxFile {
+    const writes: Uint8Array[] = []
+    const persist = async (): Promise<void> => {
+        if (mode === "w") await sandbox.filesystem.writeBytes(Buffer.concat(writes.map(value => Buffer.from(value))), path)
+    }
+    return {
+        read: () => sandbox.filesystem.readBytes(path),
+        async write(data) {
+            if (mode !== "w") throw new Error("Sandbox file is not writable")
+            writes.push(data)
+        },
+        flush: persist,
+        close: persist
     }
 }
 

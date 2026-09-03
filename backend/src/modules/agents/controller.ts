@@ -2,9 +2,10 @@ import { Request, Response } from "express"
 import { isValidToolName } from "terse-types"
 import { AttioInputConfig, ConfigData, ConfigType, WebMonitorConfig } from "terse-types/Configs"
 import { IntegrationType } from "terse-types/Integrations"
-import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, agentUpdateSchema } from "terse-types/types"
+import { Agent, AgentNotificationSettings, AgentTrigger, AgentUpdate, AgentsResponse, TriggerMetadata, agentUpdateSchema } from "terse-types/types"
 
 import { AnalyticsEvent, analytics } from "../../common/analytics"
+import { buildDurableObjectSocketUrlTemplate } from "../../common/durableObjectSocketUrl"
 import logger from "../../common/logger"
 import { parsePageParams } from "../../common/pagination"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
@@ -18,6 +19,7 @@ import { db } from "../../loaders/prisma"
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from "../../loaders/socket"
 import { OutputFactory } from "../../outputs/abstract/OutputFactory"
 import { purgeAutomationsMemory } from "../../services/memory/memoryPurge"
+import { settings } from "../../settings"
 import { TRIGGER_REGISTRY } from "../../triggers/TriggerRegistry"
 import { AgentWithNotificationSettingsRelations, AgentWithRelations, AgentWithTriggerRelations, PrismaTransaction } from "../../types/prisma"
 import { getUserNotificationSettings } from "../notifications/settings/repository"
@@ -587,12 +589,20 @@ export async function deleteAgent(req: Request, res: Response) {
     }
 }
 
-export function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { metadata?: { webhookUrl: string } } {
+export function buildTriggerMetadata(trigger: AgentWithRelations["inputs"][number]): { metadata?: TriggerMetadata } {
     if (trigger.webhook_config) {
         return { metadata: { webhookUrl: buildWebhookUrl(trigger.webhook_config.webhook_token) } }
     }
     if (trigger.hey_reach_config) {
         return { metadata: { webhookUrl: buildHeyReachWebhookUrl(trigger.id) } }
+    }
+    if (trigger.durable_object_config && settings.durableObjects) {
+        return {
+            metadata: {
+                socketUrl: buildDurableObjectSocketUrlTemplate(trigger.id),
+                socketKey: trigger.durable_object_config.socket_token
+            }
+        }
     }
     return {}
 }

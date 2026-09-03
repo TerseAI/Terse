@@ -6,6 +6,7 @@ import {
     ConfigData,
     ConfigType,
     DatadogConfig,
+    DurableObjectInputConfig,
     GitHubConfig,
     GitHubEventType,
     GmailConfig,
@@ -211,6 +212,10 @@ export const convertPrismaConfigToConfigData = (channelInput: AgentTriggerWithCo
         return new WebhookInputConfig()
     }
 
+    if (channelInput.config_type === InputConfigType.DURABLE_OBJECT_INPUT) {
+        return new DurableObjectInputConfig(integrationId)
+    }
+
     if (channelInput.webmonitor_config) {
         // query/frequency/output_schema are no longer stored — owned by Parallel API and rehydrated at runtime
         return new WebMonitorConfig("", { number: 1, unit: "day" })
@@ -394,6 +399,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.WORKOS_INPUT
         case ConfigType.WEBHOOK_INPUT:
             return InputConfigType.WEBHOOK_INPUT
+        case ConfigType.DURABLE_OBJECT_INPUT:
+            return InputConfigType.DURABLE_OBJECT_INPUT
         case ConfigType.WEBMONITOR:
             return InputConfigType.WEBMONITOR
         case ConfigType.HEY_REACH_INPUT:

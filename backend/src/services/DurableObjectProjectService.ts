@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { type DurableObjectStorageRegion, type ExecutionRegion, durableObjectStorageRegion } from "terse-types/ExecutionRegions"
 
 import { db } from "../loaders/prisma"
+import { settings } from "../settings"
 
 import { DurableObjectControlPlaneClient } from "./DurableObjectControlPlaneClient"
 import type { DurableObjectControlPlane, DurableObjectControlPlaneConfig } from "./DurableObjectControlPlaneClient"
@@ -39,6 +40,7 @@ class DurableObjectProjectService {
             token: token.token,
             namespaceId,
             controlPlaneUrl: this.controlPlane.controlPlaneUrl,
+            socketGatewayUrl: settings.durableObjects?.socketGatewayUrl ?? this.controlPlane.controlPlaneUrl,
             expiresAtMs: token.expiresAtMs
         }
     }
@@ -82,5 +84,6 @@ export interface DurableObjectEnvironment {
     readonly token: string
     readonly namespaceId: string
     readonly controlPlaneUrl: string
+    readonly socketGatewayUrl: string
     readonly expiresAtMs: number
 }

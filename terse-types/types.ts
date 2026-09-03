@@ -312,7 +312,9 @@ export type SwitchOrganizationResponse = z.infer<typeof switchOrganizationRespon
 const configInstanceDataSchema = configDataSchema
 
 export const triggerMetadataSchema = z.object({
-    webhookUrl: z.string().nullable().optional()
+    webhookUrl: z.string().nullable().optional(),
+    socketUrl: z.string().nullable().optional(),
+    socketKey: z.string().nullable().optional()
 })
 export type TriggerMetadata = z.infer<typeof triggerMetadataSchema>
 
@@ -1220,9 +1222,28 @@ export const sdkDurableObjectEnvironmentSchema = z.object({
     token: z.string().min(1),
     namespaceId: z.string().min(1),
     controlPlaneUrl: z.string().url(),
+    socketGatewayUrl: z.string().url(),
     expiresAtMs: z.number().int().positive()
 })
 export type SdkDurableObjectEnvironment = z.infer<typeof sdkDurableObjectEnvironmentSchema>
+
+export const durableObjectSocketTicketRequestSchema = z.object({
+    triggerId: z.string().min(1),
+    actorId: z.string().min(1),
+    metadata: z.unknown().optional(),
+    ttlSeconds: z.number().int().min(30).max(3600).optional()
+})
+export type DurableObjectSocketTicketRequest = z.infer<typeof durableObjectSocketTicketRequestSchema>
+
+export const durableObjectSocketTicketResponseSchema = z.object({
+    url: z.string().url(),
+    protocols: z.tuple([z.literal("terse-do"), z.string().startsWith("terse-ticket.")]),
+    expiresAt: z.string().datetime()
+})
+export type DurableObjectSocketTicketResponse = z.infer<typeof durableObjectSocketTicketResponseSchema>
+
+export const durableObjectSocketKeyResponseSchema = z.object({ socketKey: z.string().startsWith("terse_socket_") })
+export type DurableObjectSocketKeyResponse = z.infer<typeof durableObjectSocketKeyResponseSchema>
 
 export const sdkTestRunStartResponseSchema = z.object({
     runId: z.string(),

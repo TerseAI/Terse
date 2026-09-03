@@ -26,6 +26,7 @@ export enum ConfigType {
     ATTIO_OUTPUT = "attio_output",
     SNOWFLAKE_OUTPUT = "snowflake_output",
     WEBHOOK_INPUT = "webhook_input",
+    DURABLE_OBJECT_INPUT = "durable_object_input",
     WEBMONITOR = "webmonitor",
     HEY_REACH_INPUT = "hey_reach_input",
     RESEND_OUTPUT = "resend_output",
@@ -248,6 +249,15 @@ export const WebhookInputConfigMetadata = {
     isOutput: false
 } as const satisfies ConfigDetails
 
+export const DurableObjectInputConfigMetadata = {
+    configType: ConfigType.DURABLE_OBJECT_INPUT,
+    name: "Durable Object message",
+    description: "Trigger when a durable object accepts a WebSocket message",
+    integrationType: IntegrationType.TERSE,
+    isInput: true,
+    isOutput: false
+} as const satisfies ConfigDetails
+
 export const WebMonitorConfigMetadata = {
     configType: ConfigType.WEBMONITOR,
     name: "Web Monitor",
@@ -336,6 +346,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfigMetadata,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfigMetadata,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfigMetadata,
+    [ConfigType.DURABLE_OBJECT_INPUT]: DurableObjectInputConfigMetadata,
     [ConfigType.WEBMONITOR]: WebMonitorConfigMetadata,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfigMetadata,
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfigMetadata,
@@ -1323,6 +1334,28 @@ export class WebhookInputConfig extends BaseConfigInstance<IntegrationType.WEBHO
     }
 }
 
+export const DurableObjectInputConfigSchema = ConfigInstanceSchema.extend({
+    integrationType: z.literal(IntegrationType.TERSE),
+    configType: z.literal(ConfigType.DURABLE_OBJECT_INPUT),
+    actorType: z.string().min(1)
+})
+export type DurableObjectInputConfigData = z.infer<typeof DurableObjectInputConfigSchema>
+export type DurableObjectInputConfigInstance = DurableObjectInputConfigData & ConfigBehavior
+
+export class DurableObjectInputConfig extends BaseConfigInstance<IntegrationType.TERSE, ConfigType.DURABLE_OBJECT_INPUT> implements DurableObjectInputConfigInstance {
+    constructor(public readonly actorType: string) {
+        super(actorType, IntegrationType.TERSE, ConfigType.DURABLE_OBJECT_INPUT)
+    }
+
+    isComplete(): boolean {
+        return this.actorType.length > 0
+    }
+
+    formatForAgent(): string {
+        return `Type: Durable Object message\nActor: ${this.actorType}`
+    }
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === "object" && !Array.isArray(value)
 }
@@ -1438,6 +1471,7 @@ export const configDataSchema = z.union([
     AttioOutputConfigSchema,
     SnowflakeOutputConfigSchema,
     WebhookInputConfigSchema,
+    DurableObjectInputConfigSchema,
     WebMonitorConfigSchema,
     HeyReachInputConfigSchema,
     ResendOutputConfigSchema,
@@ -1458,6 +1492,7 @@ export const triggerConfigDataSchema = z.union([
     WorkOSInputConfigSchema,
     AttioInputConfigSchema,
     WebhookInputConfigSchema,
+    DurableObjectInputConfigSchema,
     WebMonitorConfigSchema,
     HeyReachInputConfigSchema
 ])
@@ -1502,6 +1537,7 @@ export function isConfigComplete(config: ConfigData | undefined): boolean {
         case ConfigType.IMAGE_EDIT:
         case ConfigType.MEMORY:
         case ConfigType.WEBHOOK_INPUT:
+        case ConfigType.DURABLE_OBJECT_INPUT:
             return true
         case ConfigType.SLACK:
             return !!(config.channelId || config.listenToUserDms)
@@ -1679,6 +1715,8 @@ export function formatConfigForAgent(config: ConfigData): string {
         }
         case ConfigType.WEBHOOK_INPUT:
             return "Type: Webhook Trigger"
+        case ConfigType.DURABLE_OBJECT_INPUT:
+            return `Type: Durable Object message\nActor: ${config.actorType}`
         case ConfigType.WEBMONITOR: {
             const parts = [`Type: Web Event`]
             if (config.query) parts.push(`Query: ${config.query}`)
@@ -1718,6 +1756,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.ATTIO_OUTPUT]: typeof AttioOutputConfig
     [ConfigType.SNOWFLAKE_OUTPUT]: typeof SnowflakeOutputConfig
     [ConfigType.WEBHOOK_INPUT]: typeof WebhookInputConfig
+    [ConfigType.DURABLE_OBJECT_INPUT]: typeof DurableObjectInputConfig
     [ConfigType.WEBMONITOR]: typeof WebMonitorConfig
     [ConfigType.HEY_REACH_INPUT]: typeof HeyReachInputConfig
     [ConfigType.RESEND_OUTPUT]: typeof ResendOutputConfig
@@ -1750,6 +1789,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.ATTIO_OUTPUT]: AttioOutputConfig,
     [ConfigType.SNOWFLAKE_OUTPUT]: SnowflakeOutputConfig,
     [ConfigType.WEBHOOK_INPUT]: WebhookInputConfig,
+    [ConfigType.DURABLE_OBJECT_INPUT]: DurableObjectInputConfig,
     [ConfigType.WEBMONITOR]: WebMonitorConfig,
     [ConfigType.HEY_REACH_INPUT]: HeyReachInputConfig,
     [ConfigType.RESEND_OUTPUT]: ResendOutputConfig,

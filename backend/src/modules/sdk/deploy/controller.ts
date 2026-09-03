@@ -267,6 +267,7 @@ async function updateExistingAutomation(
 ): Promise<AgentWithTriggerRelations> {
     const automationId = existing.id
     const preservedWebhookTokens = existing.inputs.filter(input => input.webhook_config).map(input => input.webhook_config!.webhook_token)
+    const preservedSocketTokens = existing.inputs.filter(input => input.durable_object_config).map(input => input.durable_object_config!.socket_token)
     await tearDownAgentTriggers(existing)
 
     return prisma.$transaction(async tx => {
@@ -281,6 +282,13 @@ async function updateExistingAutomation(
             const newWebhookConfigs = await tx.automation_webhook_configs.findMany({ where: { automation_input: { automation_id: automationId } } })
             for (let i = 0; i < newWebhookConfigs.length && i < preservedWebhookTokens.length; i++) {
                 await tx.automation_webhook_configs.update({ where: { id: newWebhookConfigs[i].id }, data: { webhook_token: preservedWebhookTokens[i] } })
+            }
+        }
+
+        if (preservedSocketTokens.length > 0) {
+            const newSocketConfigs = await tx.automation_durable_object_configs.findMany({ where: { automation_input: { automation_id: automationId } } })
+            for (let i = 0; i < newSocketConfigs.length && i < preservedSocketTokens.length; i++) {
+                await tx.automation_durable_object_configs.update({ where: { id: newSocketConfigs[i].id }, data: { socket_token: preservedSocketTokens[i] } })
             }
         }
 

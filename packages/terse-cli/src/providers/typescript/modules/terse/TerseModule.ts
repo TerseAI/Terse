@@ -11,6 +11,8 @@ export class TerseModule extends IntegrationModule<undefined, undefined> {
     readonly summaryLabel = "Terse"
     protected readonly sectionImports = [
         "TimeTriggerConfig",
+        "ActorClass",
+        "DurableObjectInputConfig",
         "Timezone",
         "WebConfig",
         "ImageEditConfig",
@@ -49,6 +51,8 @@ export class TerseModule extends IntegrationModule<undefined, undefined> {
             "    schedule: scheduleTriggers,",
             "    /** Built-in: trigger via an external HTTP request to a generated URL */",
             "    webhook: webhookTriggers,",
+            "    /** Built-in: trigger when a durable object accepts a WebSocket message */",
+            "    durableObject: durableObjectTriggers,",
             "    /** Built-in: trigger when a query against the live web matches a schema */",
             "    webMonitor: webMonitorTriggers,"
         ]

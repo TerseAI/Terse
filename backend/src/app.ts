@@ -69,6 +69,7 @@ export interface CreateAppOptions {
 
 const LARGE_BODY_LIMIT_ROUTES: string[] = [ApiRoutes.GITHUB.UNIFIED_EVENT, ApiRoutes.SDK.DEPLOY]
 const LARGE_BODY_LIMIT = "10mb"
+const DURABLE_OBJECT_EVENT_BODY_LIMIT = "32mb"
 const DEFAULT_BODY_LIMIT = "1mb"
 
 function isIntegrationAvailable(type: IntegrationType): boolean {
@@ -119,7 +120,7 @@ export function createApp(options: CreateAppOptions) {
         ) {
             next()
         } else {
-            const limit = LARGE_BODY_LIMIT_ROUTES.includes(req.path) ? LARGE_BODY_LIMIT : DEFAULT_BODY_LIMIT
+            const limit = req.path === ApiRoutes.WEBHOOKS.DURABLE_OBJECT_MESSAGE ? DURABLE_OBJECT_EVENT_BODY_LIMIT : LARGE_BODY_LIMIT_ROUTES.includes(req.path) ? LARGE_BODY_LIMIT : DEFAULT_BODY_LIMIT
             bodyParser.json({ limit })(req, res, next)
         }
     })

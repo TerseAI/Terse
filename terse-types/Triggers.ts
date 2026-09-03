@@ -408,6 +408,9 @@ export type WebMonitorTriggerType = z.infer<typeof webMonitorTriggerTypeSchema>
 export const manualSampleTriggerTypeSchema = z.literal("manual_sample")
 export type ManualSampleTriggerType = z.infer<typeof manualSampleTriggerTypeSchema>
 
+export const durableObjectMessageTriggerTypeSchema = z.literal("durable_object.message")
+export type DurableObjectMessageTriggerType = z.infer<typeof durableObjectMessageTriggerTypeSchema>
+
 export const TriggerTypeSchema = z.union([
     slackEventTypeSchema,
     gitHubEventTypeSchema,
@@ -419,6 +422,7 @@ export const TriggerTypeSchema = z.union([
     webhookTriggerTypeSchema,
     cronTriggerTypeSchema,
     webMonitorTriggerTypeSchema,
+    durableObjectMessageTriggerTypeSchema,
     manualSampleTriggerTypeSchema
 ])
 export type TriggerType = z.infer<typeof TriggerTypeSchema>
@@ -920,6 +924,20 @@ export const webhookTriggerSchema = baseTriggerSchema.extend({
 })
 export type WebhookTrigger<TBody = unknown> = Omit<z.infer<typeof webhookTriggerSchema>, "body"> & { body: TBody }
 
+export const durableObjectTextMessageSchema = z.object({ type: z.literal("text"), data: z.string() })
+export const durableObjectBinaryMessageSchema = z.object({ type: z.literal("binary"), data: z.string() })
+
+export const durableObjectMessageTriggerSchema = baseTriggerSchema.extend({
+    integrationType: z.literal(IntegrationType.TERSE),
+    eventType: durableObjectMessageTriggerTypeSchema,
+    eventId: z.string(),
+    actorType: z.string(),
+    actorId: z.string(),
+    connectionId: z.string(),
+    message: z.discriminatedUnion("type", [durableObjectTextMessageSchema, durableObjectBinaryMessageSchema])
+})
+export type DurableObjectMessageTrigger = z.infer<typeof durableObjectMessageTriggerSchema>
+
 export const cronTriggerSchema = baseTriggerSchema.extend({
     integrationType: z.literal(IntegrationType.CRON_JOB),
     eventType: cronTriggerTypeSchema,
@@ -1004,6 +1022,7 @@ export const TriggerSchema = z.union([
     heyReachTriggerSchema,
     attioTriggerSchema,
     webhookTriggerSchema,
+    durableObjectMessageTriggerSchema,
     cronTriggerSchema,
     webMonitorTriggerSchema,
     manualSampleTriggerSchema
@@ -1138,6 +1157,15 @@ const webhookPresenter = {
     formatForAgent: formatWebhookTrigger,
     debug: debugWebhookTrigger,
     display: formatWebhookDisplay
+}
+
+const durableObjectMessagePresenter = {
+    formatForAgent: (event: DurableObjectMessageTrigger) => `Durable Object WebSocket message received.\n\nActor: ${event.actorType}/${event.actorId}\n\nMessage:\n${event.message.data}`,
+    debug: (event: DurableObjectMessageTrigger) => `Durable Object message (${event.actorType}/${event.actorId})`,
+    display: (event: DurableObjectMessageTrigger) => ({
+        title: `${event.actorType}/${event.actorId}`,
+        subtitle: "Durable Object message"
+    })
 }
 
 const cronPresenter = {
@@ -1666,6 +1694,12 @@ export const TriggerDefinitions = {
             fieldOverrides: { body: "TBody" }
         },
         presenter: webhookPresenter
+    }),
+    DurableObjectMessageTrigger: defineTrigger({
+        integration: IntegrationType.TERSE,
+        schema: durableObjectMessageTriggerSchema,
+        eventTypes: ["durable_object.message"],
+        presenter: durableObjectMessagePresenter
     }),
     WebMonitorTrigger: defineTrigger({
         integration: IntegrationType.WEBMONITOR,

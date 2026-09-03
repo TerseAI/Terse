@@ -1,4 +1,4 @@
-import { DEFAULT_EXECUTION_REGION, durableObjectStorageRegion, executionRegionLabel } from "terse-types/ExecutionRegions"
+import { DEFAULT_EXECUTION_REGION, durableObjectStorageRegion, executionRegionLabel, modalExecutionRegion } from "terse-types/ExecutionRegions"
 
 import logger from "../../common/logger"
 import { getActiveDeployForProject } from "../../common/projectHelper"
@@ -166,12 +166,13 @@ export class SandboxJobExecutor implements JobExecutor {
 
         const controlPlane = DurableObjectControlPlaneClient.getInstance(config)
         const deadlineUnixMs = Date.now() + (SANDBOX_DEFAULT_OPTIONS.timeoutMs ?? 24 * 60 * 60 * 1000)
-        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, durableObjectStorageRegion(executionRegion ?? DEFAULT_EXECUTION_REGION), deadlineUnixMs)
+        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, durableObjectStorageRegion(executionRegion ?? DEFAULT_EXECUTION_REGION), deadlineUnixMs, true)
 
         return {
             DURABLE_OBJECT_TOKEN: workflowToken.token,
             DURABLE_OBJECT_NAMESPACE_ID: namespaceId,
-            DURABLE_OBJECT_CONTROL_PLANE_URL: controlPlane.controlPlaneUrl
+            DURABLE_OBJECT_CONTROL_PLANE_URL: controlPlane.controlPlaneUrl,
+            DURABLE_OBJECT_SOCKET_GATEWAY_URL: config.socketGatewayUrl
         }
     }
 
@@ -330,7 +331,7 @@ export class SandboxJobExecutor implements JobExecutor {
         const app = await telemetry.measure("sandboxAppReadyMs", () => sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME))
         const image = await telemetry.measure("sourceImageLoadMs", () => sandboxService.getImageFromId(imageId))
         const uniqueName = runtimeSandboxUniqueName(projectId, runId)
-        const options = executionRegion ? { ...SANDBOX_DEFAULT_OPTIONS, regions: [executionRegion] } : SANDBOX_DEFAULT_OPTIONS
+        const options = executionRegion ? { ...SANDBOX_DEFAULT_OPTIONS, regions: [modalExecutionRegion(executionRegion)], i6pn: true } : SANDBOX_DEFAULT_OPTIONS
         try {
             return await telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, options))
         } catch (error) {

@@ -150,7 +150,7 @@ export class ClaudeCodeSandboxService {
         const uniqueName = `cc-${crypto.randomBytes(14).toString("hex")}`
         const sb = await sandboxService.getOrCreateSandbox(app, image, uniqueName, {
             timeoutMs,
-            cidrAllowlist: egressCidrAllowlist
+            outboundCidrAllowlist: egressCidrAllowlist
         })
         logger.info(`[ClaudeCodeSandbox:${label}] Created sandbox`, {
             sandboxId: sb.sandboxId,

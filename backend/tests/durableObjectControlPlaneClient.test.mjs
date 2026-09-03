@@ -67,7 +67,8 @@ test("uses the admin API contract and encodes namespace IDs", async () => {
     assert.deepEqual(JSON.parse(requests[1].body), {
         executionId: "run-1",
         storageRegion: "north-america-central",
-        deadlineUnixMs: 1_800_000_000_000
+        deadlineUnixMs: 1_800_000_000_000,
+        privateRouting: false
     })
 })
 

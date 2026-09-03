@@ -1,6 +1,6 @@
 import type { SdkDurableObjectEnvironment } from "terse-types"
 
-const ENVIRONMENT_VARIABLES = ["DURABLE_OBJECT_TOKEN", "DURABLE_OBJECT_NAMESPACE_ID", "DURABLE_OBJECT_CONTROL_PLANE_URL"] as const
+const ENVIRONMENT_VARIABLES = ["DURABLE_OBJECT_TOKEN", "DURABLE_OBJECT_NAMESPACE_ID", "DURABLE_OBJECT_CONTROL_PLANE_URL", "DURABLE_OBJECT_SOCKET_GATEWAY_URL"] as const
 
 async function withDurableObjectEnvironment<T>(environment: SdkDurableObjectEnvironment | null | undefined, run: () => Promise<T>): Promise<T> {
     if (environment === undefined) return run()
@@ -12,6 +12,7 @@ async function withDurableObjectEnvironment<T>(environment: SdkDurableObjectEnvi
         process.env.DURABLE_OBJECT_TOKEN = environment.token
         process.env.DURABLE_OBJECT_NAMESPACE_ID = environment.namespaceId
         process.env.DURABLE_OBJECT_CONTROL_PLANE_URL = environment.controlPlaneUrl
+        process.env.DURABLE_OBJECT_SOCKET_GATEWAY_URL = environment.socketGatewayUrl
     }
 
     try {
