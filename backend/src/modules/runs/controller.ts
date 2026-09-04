@@ -5,7 +5,17 @@ import logger from "../../common/logger"
 import { parsePageParams } from "../../common/pagination"
 import { extractErrorMessage } from "../../common/strings"
 
-import { AgentNotFoundError, RunNotFoundError, fetchActionsByIds, fetchChatHistoryForRun, listAllRunHistory, listRunHistoryForAgent, parseGetRunHistoryParams } from "./service"
+import {
+    AgentNotFoundError,
+    RunNotFoundError,
+    RunNotRetryableError,
+    fetchActionsByIds,
+    fetchChatHistoryForRun,
+    listAllRunHistory,
+    listRunHistoryForAgent,
+    parseGetRunHistoryParams,
+    retryFailedRunFromSnapshot
+} from "./service"
 
 export async function getAllRunHistory(req: Request, res: Response) {
     try {
@@ -87,5 +97,23 @@ export async function getRunHistoryActions(req: Request, res: Response) {
     } catch (err) {
         logger.error("Failed to fetch run history actions", { error: extractErrorMessage(err), stack: err instanceof Error ? err.stack : undefined, ids: req.query.ids })
         res.status(500).json({ error: "Failed to fetch run history actions" })
+    }
+}
+
+export async function retryFailedRun(req: Request, res: Response) {
+    try {
+        const user = req.session?.user
+        if (!user?.organizationId) return res.status(401).json({ error: "Unauthorized" })
+
+        const runId = (req.params.runId as string | undefined)?.trim()
+        if (!runId) return res.status(400).json({ error: "runId is required" })
+
+        await retryFailedRunFromSnapshot(runId, user.organizationId)
+        res.status(202).json({ accepted: true })
+    } catch (err) {
+        if (err instanceof RunNotFoundError) return res.status(404).json({ error: "Run not found" })
+        if (err instanceof RunNotRetryableError) return res.status(409).json({ error: err.message })
+        logger.error("Failed to retry run", { error: extractErrorMessage(err), stack: err instanceof Error ? err.stack : undefined, runId: req.params.runId })
+        res.status(500).json({ error: "Failed to retry run" })
     }
 }

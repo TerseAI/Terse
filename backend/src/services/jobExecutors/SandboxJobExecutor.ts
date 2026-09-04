@@ -1,3 +1,5 @@
+import { DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL } from "terse-types"
+
 import logger from "../../common/logger"
 import { getActiveDeployForProject } from "../../common/projectHelper"
 import { SandboxRuntimeTelemetry } from "../../common/sandboxRuntimeTelemetry"
@@ -15,7 +17,7 @@ import { resolveRunStatus } from "../resolveRunStatus"
 import { getSandboxProvider } from "../sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
-import { runJournalDir } from "../sandboxProvider/runJournal"
+import { JOURNAL_ROOT, runJournalDir } from "../sandboxProvider/runJournal"
 import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "../sdkRuntimeExecutors/types"
 import { SDK_SANDBOX_APP_NAME, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
@@ -46,7 +48,7 @@ export class SandboxJobExecutor implements JobExecutor {
     }
 
     async execute(context: JobExecutionContext): Promise<RunOutcome> {
-        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, enqueuedAtMs, scheduledForMs } = context
+        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs } = context
         const executionStart = performance.now()
         const sandboxProvider = getSandboxProvider()
         const telemetry = new SandboxRuntimeTelemetry({
@@ -58,6 +60,7 @@ export class SandboxJobExecutor implements JobExecutor {
             jobName,
             mode: restoreImageId ? "resume" : "fresh",
             provider: sandboxProvider.supportsContainerizedRunners ? "containerized" : "local",
+            resumeSignal,
             enqueuedAtMs,
             scheduledForMs
         })
@@ -74,6 +77,7 @@ export class SandboxJobExecutor implements JobExecutor {
             const sourceImage = await telemetry.measure("resolveSourceImageMs", () => this.resolveSourceImage({ agent, runId }))
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
             telemetry.setRuntime(executor.runtime)
+            telemetry.setCliVersion(sourceImage.cliVersion)
 
             const { rawToken, tokenId } = await telemetry.measure("createSandboxTokenMs", () => createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id }))
             sandboxApiKey = rawToken
@@ -95,6 +99,9 @@ export class SandboxJobExecutor implements JobExecutor {
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,
+                TERSE_JOURNAL_ROOT: JOURNAL_ROOT,
+                // Active deploys built before the Little Durable migration still use
+                // @workflow/world-local and expect a per-run journal directory here.
                 WORKFLOW_LOCAL_DATA_DIR: runJournalDir(runId),
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
@@ -126,9 +133,27 @@ export class SandboxJobExecutor implements JobExecutor {
 
             logger.info("SDK sandbox: total execution finished", { runId, agentId: agent.id, runtime: executor.runtime, totalDuration: this.elapsed(executionStart) })
 
-            const outcome = await telemetry.measure("resolveRunStatusMs", () => resolveRunStatus({ runId, agent, result, runtimeName: executor.runtime, sandbox: sb, telemetry }))
+            const outcome = await telemetry.measure("resolveRunStatusMs", () =>
+                resolveRunStatus({
+                    runId,
+                    agent,
+                    result,
+                    runtimeName: executor.runtime,
+                    sandbox: sb,
+                    onLegacyRuntimeDetected: () =>
+                        this.emitAndPersistProcessOutput(runId, {
+                            label: DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL,
+                            stream: "stdout",
+                            content:
+                                "[terse] Warning: This deployment uses the deprecated Terse durable runtime. Upgrade terse-sdk and terse-cli, then run terse deploy. Compatibility support will be removed in a future release.\n"
+                        })
+                })
+            )
             telemetrySuccess = outcome.status !== "failed"
-            if (outcome.status === "failed") telemetryError = outcome.cause
+            if (outcome.status === "failed") {
+                telemetryError = outcome.cause
+                await telemetry.measure("snapshotFailureSandboxMs", () => this.captureFailureSnapshot(runId, sb))
+            }
             return outcome
         } catch (error) {
             telemetryError = error
@@ -224,7 +249,18 @@ export class SandboxJobExecutor implements JobExecutor {
         } else {
             sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, telemetry))
         }
-        const executorContext = this.createRuntimeExecutorContext(sb, sandboxEnv, runId, agentId, jobName, sandboxService.getProjectPath(sb), sandboxService.getCliCachePath(sb), true, cliVersion)
+        const executorContext = this.createRuntimeExecutorContext(
+            sb,
+            sandboxEnv,
+            runId,
+            agentId,
+            jobName,
+            sandboxService.getProjectPath(sb),
+            sandboxService.getCliCachePath(sb),
+            true,
+            cliVersion,
+            restoreImageId ? () => telemetry.markResumeCliStarted() : undefined
+        )
         // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
         const result = await telemetry.measure("runtimeCommandMs", () => (restoreImageId ? executor.resume(executorContext) : executor.execute(executorContext)))
         return { sb, result }
@@ -239,7 +275,8 @@ export class SandboxJobExecutor implements JobExecutor {
         projectDir: string,
         cliCachePath: string,
         usesPrebuiltImage: boolean,
-        cliVersion: string
+        cliVersion: string,
+        onRuntimeCommandStarted?: () => void
     ): SdkRuntimeExecutorContext {
         return {
             sb,
@@ -258,7 +295,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 return this.runSandboxCommand(sb, label, command, sandboxEnv, runId, agentId)
             },
             runSandboxCommandStreaming: async (label, command) => {
-                return this.runSandboxCommandStreaming(sb, label, command, sandboxEnv, runId, agentId)
+                return this.runSandboxCommandStreaming(sb, label, command, sandboxEnv, runId, agentId, onRuntimeCommandStarted)
             },
             escapeShellArg: shellQuote
         }
@@ -269,6 +306,29 @@ export class SandboxJobExecutor implements JobExecutor {
             await (runSandbox ? runSandbox.terminate() : this.terminateRunSandboxByName(projectId, runId))
         } catch (error) {
             logger.warn("SDK sandbox: failed to terminate run sandbox", { projectId, runId, error })
+        }
+    }
+
+    private async captureFailureSnapshot(runId: string, sandbox: Sandbox): Promise<void> {
+        const sandboxProvider = getSandboxProvider()
+        let snapshotImageId: string | undefined
+
+        try {
+            snapshotImageId = await sandboxProvider.snapshotForSuspension(sandbox)
+            await db().run_failure_snapshots.create({
+                data: {
+                    run_id: runId,
+                    snapshot_image_id: snapshotImageId
+                }
+            })
+            logger.info("SDK sandbox: captured failure snapshot", { runId, snapshotImageId })
+        } catch (error) {
+            logger.warn("SDK sandbox: failed to capture failure snapshot", { runId, snapshotImageId, error })
+            if (snapshotImageId) {
+                await sandboxProvider.deleteImage(snapshotImageId).catch(deleteError => {
+                    logger.warn("SDK sandbox: failed to delete untracked failure snapshot", { runId, snapshotImageId, error: deleteError })
+                })
+            }
         }
     }
 
@@ -334,7 +394,15 @@ export class SandboxJobExecutor implements JobExecutor {
         return { exitCode, stdout, stderr }
     }
 
-    private async runSandboxCommandStreaming(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<SandboxCommandResult> {
+    private async runSandboxCommandStreaming(
+        sb: Sandbox,
+        label: string,
+        command: string,
+        sandboxEnv: Record<string, string>,
+        runId: string,
+        agentId: string,
+        onStarted?: () => void
+    ): Promise<SandboxCommandResult> {
         const start = performance.now()
         logger.info("SDK sandbox: starting streaming command", { runId, agentId, label, command })
 
@@ -343,6 +411,7 @@ export class SandboxJobExecutor implements JobExecutor {
             stderr: "pipe",
             env: sandboxEnv
         })
+        onStarted?.()
 
         const pending = {
             stdout: "",

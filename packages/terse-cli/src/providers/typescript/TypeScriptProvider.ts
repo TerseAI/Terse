@@ -17,13 +17,13 @@ import type { LanguageProvider } from "../LanguageProvider.js"
 import type { CodegenHooks, CodegenResult, CodegenRunInput } from "../codegenTypes.js"
 import { printMissingEntryFileGuidance } from "../shared/entryFileGuidance.js"
 
+import { prepareJobSources } from "./jobSources.js"
 import { type IntegrationModule, type ModuleOutput, RUN_HISTORY_ACTION_HOIST } from "./modules/IntegrationModule.js"
 import { integrationModuleRegistry, terseModule } from "./modules/registry.js"
-import { directJobRuntime } from "./runtimes/directJobRuntime.js"
+import { directJobRuntime, durableJobRuntime } from "./runtimes/index.js"
 import type { JobRuntime } from "./runtimes/index.js"
 import { assembleGeneratedFiles } from "./templateEngine.js"
 import { printHoistedShape } from "./typePrinter.js"
-import { expectedWorkflowCoreVersion } from "./workflowCoreVersion.js"
 
 const execAsync = promisify(exec)
 const execFileAsync = promisify(execFile)
@@ -60,7 +60,7 @@ class TypeScriptProvider implements LanguageProvider {
     }
 
     buildInitTemplateContext(projectName: string, sdkVersion: string): Record<string, unknown> {
-        return { projectName, sdkVersion, workflowCoreVersion: expectedWorkflowCoreVersion() }
+        return { projectName, sdkVersion }
     }
 
     getPostInitSteps(_packageManager: string): string[] {
@@ -153,6 +153,14 @@ class TypeScriptProvider implements LanguageProvider {
     }
 
     async loadJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>> {
+        return this.importJobRegistry(entryFile, false)
+    }
+
+    private async loadPreparedJobRegistry(entryFile?: string): Promise<Map<string, CreateJobParameters>> {
+        return this.importJobRegistry(entryFile, true)
+    }
+
+    private async importJobRegistry(entryFile: string | undefined, prepared: boolean): Promise<Map<string, CreateJobParameters>> {
         const cwd = process.cwd()
         const resolvedEntryFile = entryFile ?? resolveTypeScriptEntryFile(cwd)
         const parentURL = pathToFileURL(path.join(cwd, "package.json")).href
@@ -167,7 +175,7 @@ class TypeScriptProvider implements LanguageProvider {
             })
         }
 
-        const entryPath = path.join(cwd, resolvedEntryFile)
+        const entryPath = prepared ? prepareJobSources({ cwd, entryFile: resolvedEntryFile }) : path.join(cwd, resolvedEntryFile)
 
         // Clear any Terse instances registered by a previous call in the same
         // process (e.g. the first attempt of a deploy that then retried after
@@ -207,8 +215,17 @@ class TypeScriptProvider implements LanguageProvider {
     }
 
     async prebuild(): Promise<void> {
-        const { buildWorkflowArtifacts } = await import("./durableRuntime.js")
-        await buildWorkflowArtifacts(process.cwd())
+        const cwd = process.cwd()
+        const entryFile = resolveTypeScriptEntryFile(cwd)
+        if (!entryFile) {
+            printMissingEntryFileGuidance({
+                languageDisplayName: this.displayName,
+                defaultEntryFile: this.entryFile,
+                overrideExample: "src/server.ts",
+                createHint: `Create ${this.entryFile} and have your app startup file import it.`
+            })
+        }
+        prepareJobSources({ cwd, entryFile })
     }
 
     runtimeName(job: CreateJobParameters): "durable" | "direct" {
@@ -227,7 +244,12 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        return (await selectRuntime(job)).executeJob(job, runId, event, opts)
+        const runtime = selectRuntime(job)
+        if (runtime === directJobRuntime) return runtime.executeJob(job, runId, event, opts)
+
+        const preparedJob = (await this.loadPreparedJobRegistry(opts?.entryFile)).get(job.name)
+        if (!preparedJob) throw new CliError("durable_job_missing", `No transformed durable job was registered with name "${job.name}".`)
+        return runtime.executeJob(preparedJob, runId, event, opts)
     }
 
     async resumeRun(
@@ -237,7 +259,7 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        const { durableJobRuntime } = await import("./runtimes/durableJobRuntime.js")
+        await this.loadPreparedJobRegistry()
         return durableJobRuntime.resumeRun(runId, opts)
     }
 
@@ -249,7 +271,7 @@ class TypeScriptProvider implements LanguageProvider {
             pauseUiAround?: <T>(fn: () => Promise<T>) => Promise<T>
         }
     ): Promise<void> {
-        const { durableJobRuntime } = await import("./runtimes/durableJobRuntime.js")
+        await this.loadPreparedJobRegistry()
         return durableJobRuntime.resumeRunWithInput(runId, input, opts)
     }
 }
@@ -275,7 +297,7 @@ function assertPinExists(module: IntegrationModule, instances: readonly unknown[
 }
 
 // Durability is opt-in per job and unavailable on self-hosted control planes.
-async function selectRuntime(job: CreateJobParameters): Promise<JobRuntime> {
+function selectRuntime(job: CreateJobParameters): JobRuntime {
     if (job.durable && readProjectConfig()?.selfHosted === true) {
         throw new CliError("durable_self_hosted", `Job "${job.name}" is durable, but durability isn't available on self-hosted control planes yet.`, {
             detail: "Remove `durable: true` from this job, or run it on Terse cloud."
@@ -283,8 +305,7 @@ async function selectRuntime(job: CreateJobParameters): Promise<JobRuntime> {
     }
     const durable = isDurableJob(job)
     console.log(chalk.dim(`  Runtime: ${durable ? "durable" : "direct"}`))
-    if (!durable) return directJobRuntime
-    return (await import("./runtimes/durableJobRuntime.js")).durableJobRuntime
+    return durable ? durableJobRuntime : directJobRuntime
 }
 
 function isDurableJob(job: CreateJobParameters): boolean {

@@ -77,7 +77,29 @@ export async function findRunRecordForChat(runId: string, organizationId: string
             updated_at: true,
             status: true,
             trigger_payload: true,
-            is_test: true
+            is_test: true,
+            failure_snapshots: {
+                where: { restored_at: null },
+                orderBy: { created_at: "desc" },
+                take: 1,
+                select: { id: true }
+            }
+        }
+    })
+}
+
+export async function findRunForFailureRetry(runId: string, organizationId: string) {
+    return db().run_history_records.findFirst({
+        where: { id: runId, automation: { organization_id: organizationId } },
+        select: {
+            status: true,
+            automation: { select: { id: true, name: true, user_id: true } },
+            failure_snapshots: {
+                where: { restored_at: null },
+                orderBy: { created_at: "desc" },
+                take: 1,
+                select: { id: true }
+            }
         }
     })
 }

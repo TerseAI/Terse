@@ -81,6 +81,10 @@ export type GetAllRunHistoryResponse = {
     total: number
 }
 
+export type RetryFailedRunResponse = {
+    accepted: boolean
+}
+
 export type RunHistoryModelEvent = ModelEvent & { id: string }
 
 export type RunHistoryModelSocketEvent = {

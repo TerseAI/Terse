@@ -42,8 +42,14 @@ export async function readStashedInputResponse(organizationId: string, token: st
 const RESOLVE_CLAIM_ATTEMPTS = 24
 const RESOLVE_CLAIM_RETRY_DELAY_MS = 5_000
 
-export async function resolveInputRequest(params: { organizationId: string; runId: string; token: string; response: SdkInputResponsePayload }): Promise<InputResolveOutcome> {
-    const { organizationId, runId, token, response } = params
+export async function resolveInputRequest(params: {
+    organizationId: string
+    runId: string
+    token: string
+    response: SdkInputResponsePayload
+    signalReceivedAtMs: number
+}): Promise<InputResolveOutcome> {
+    const { organizationId, runId, token, response, signalReceivedAtMs } = params
 
     const run = await findRunInOrganization(runId, organizationId)
     if (!run) {
@@ -55,7 +61,7 @@ export async function resolveInputRequest(params: { organizationId: string; runI
     while (attempt < RESOLVE_CLAIM_ATTEMPTS) {
         attempt++
         const status = await readRunStatus(runId, organizationId)
-        if (status === "suspended") return enqueueInputResume(run, runId, token, response)
+        if (status === "suspended") return enqueueInputResume(run, runId, token, response, signalReceivedAtMs)
 
         if (status !== "in_progress" && status !== "awaiting_approval") {
             logger.warn("[InputRequest] Response arrived for a run that is no longer waiting", { runId, status, token })
@@ -70,7 +76,7 @@ export async function resolveInputRequest(params: { organizationId: string; runI
 
 // The resume rides the run execution queue so it survives a backend crash and dedupes on
 // singleton key; the queue handler is the single place that claims the suspended run.
-async function enqueueInputResume(run: RunForInput, runId: string, token: string, response: SdkInputResponsePayload): Promise<InputResolveOutcome> {
+async function enqueueInputResume(run: RunForInput, runId: string, token: string, response: SdkInputResponsePayload, signalReceivedAtMs: number): Promise<InputResolveOutcome> {
     const suspension = await db().run_suspensions.findFirst({
         where: { run_id: runId, resumed_at: null },
         orderBy: { created_at: "desc" }
@@ -85,16 +91,19 @@ async function enqueueInputResume(run: RunForInput, runId: string, token: string
         return "unresumable"
     }
 
-    await enqueueRunExecution({
-        runId,
-        agentId: run.agentId,
-        orgId: run.organizationId,
-        userId: run.userId,
-        jobName: run.jobName,
-        kind: "sandbox",
-        restoreImageId: suspension.suspend_image_id,
-        hookResume: { token, payload: response }
-    })
+    await enqueueRunExecution(
+        {
+            runId,
+            agentId: run.agentId,
+            orgId: run.organizationId,
+            userId: run.userId,
+            jobName: run.jobName,
+            kind: "sandbox",
+            restoreImageId: suspension.suspend_image_id,
+            hookResume: { token, payload: response }
+        },
+        { resumeSignal: { kind: "input", receivedAtMs: signalReceivedAtMs } }
+    )
     return "resumed"
 }
 

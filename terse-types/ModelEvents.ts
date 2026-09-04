@@ -38,6 +38,8 @@ export const runErrorSchema = modelEventBaseSchema.extend({
 })
 export type RunError = z.infer<typeof runErrorSchema>
 
+export const DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL = "compatibility warning"
+
 export const processOutputSchema = modelEventBaseSchema.extend({
     type: z.literal("ProcessOutput"),
     stream: z.enum(["stdout", "stderr"]),

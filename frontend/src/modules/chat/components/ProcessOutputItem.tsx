@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react"
 
-import { ChevronRight } from "lucide-react"
+import { AlertTriangle, ChevronRight } from "lucide-react"
+import { DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL } from "terse-types"
 
 import { cn } from "@/lib/utils"
 
@@ -22,6 +23,21 @@ export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
     const detailsId = useId()
 
     if (events.length === 0) return null
+
+    if (events.some(event => event.label === DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL)) {
+        return (
+            <div role="alert" className="flex min-w-0 items-start gap-2.5 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+                <div className="min-w-0">
+                    <p className="font-medium">Deprecated Terse SDK detected</p>
+                    <p className="mt-0.5 text-xs leading-5 text-foreground/75">
+                        This run used the legacy durable runtime. Upgrade <code className="font-mono text-foreground">terse-sdk</code> and <code className="font-mono text-foreground">terse-cli</code>,
+                        then run <code className="font-mono text-foreground">terse deploy</code>. Compatibility mode is temporary.
+                    </p>
+                </div>
+            </div>
+        )
+    }
 
     // Key to preserve scroll position when collapsing/expanding the process output
     const updateExpandedState = (nextExpanded: boolean) => {

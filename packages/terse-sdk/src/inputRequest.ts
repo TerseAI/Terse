@@ -1,4 +1,4 @@
-import { createHook } from "@workflow/core"
+import { defineHook, waitFor } from "little-durable"
 import type {
     SdkInputRequestDelivery,
     SdkInputRequestMedia,
@@ -9,13 +9,21 @@ import type {
     SdkInputResponseTransport
 } from "terse-types"
 import { ApiRoutes, buildRoute, sdkInputRequestRegisterResponseSchema, sdkInputResponsePayloadSchema } from "terse-types"
+import { z } from "zod"
 
 import { buildSdkRequestHeaders, resolveTerseBackendUrl } from "./backendRequest.js"
+import { runSdkStep } from "./durableExecution.js"
 import { DurableOnlyError, isDurableExecution, isLocalTestRun } from "./execution.js"
 import { pollUntil } from "./poll.js"
 import { resolveRunIdentity } from "./runIdentity/index.js"
 
 declare const process: { env: Record<string, string | undefined> }
+
+export const __inputRequestHook = defineHook({
+    name: "terse.input-request",
+    request: z.object({ token: z.string().min(1) }).strict(),
+    resolution: sdkInputResponsePayloadSchema
+})
 
 // Provider-neutral input targets and delivery refs; both unions live in terse-types.
 // Adding a provider: extend those unions, add a target constructor here, and register
@@ -71,24 +79,22 @@ export function waitForInput<const Options extends readonly InputOption[], Targe
     return waitForInputDurable(params)
 }
 
-// No sleep, no race, no park signal: the hook entity this journals IS the wait. The run
-// parks by draining its queue and exiting; the backend reads the journal at exit and
-// suspends the sandbox.
+// The hook entity this journals is the wait. The durable runtime returns it as an explicit
+// suspension outcome, and the CLI asks the control plane to snapshot and park the sandbox.
 async function waitForInputDurable<Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
 ): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {
-    const hook = createHook<SdkInputResponsePayload>()
-    const delivery = await registerInputRequest(hook.token, params, "suspend")
+    const token = await createInputRequestToken()
+    const delivery = await registerInputRequest(token, params, "suspend")
     if (delivery.provider !== params.via.provider) {
         throw new Error(`waitForInput: backend delivered via "${delivery.provider}" but the target was "${params.via.provider}"`)
     }
     const typedDelivery = delivery as DeliveryFor<Target>
 
-    const payload = await hook
-    hook.dispose()
+    const payload = await waitFor(__inputRequestHook, { token })
     return {
         choice: payload.choice as Options[number]["id"],
-        text: payload.text,
+        ...(payload.text !== undefined ? { text: payload.text } : {}),
         respondent: payload.respondent,
         delivery: typedDelivery
     }
@@ -109,7 +115,7 @@ async function waitForInputViaPoll<Options extends readonly InputOption[], Targe
     const payload = await pollInputResponse(token, describeInputTarget(params.via))
     return {
         choice: payload.choice as Options[number]["id"],
-        text: payload.text,
+        ...(payload.text !== undefined ? { text: payload.text } : {}),
         respondent: payload.respondent,
         delivery: typedDelivery
     }
@@ -117,8 +123,11 @@ async function waitForInputViaPoll<Options extends readonly InputOption[], Targe
 
 // Journaled so replays reuse the registered request instead of posting a duplicate message.
 async function createInputRequestToken(): Promise<string> {
-    "use step"
-    return globalThis.crypto.randomUUID()
+    return runSdkStep({
+        name: "terse.input-request.token",
+        input: null,
+        run: () => globalThis.crypto.randomUUID()
+    })
 }
 
 async function registerInputRequest(token: string, params: WaitForInputParams<readonly InputOption[], InputTarget>, transport: SdkInputResponseTransport): Promise<InputDelivery> {
@@ -126,8 +135,13 @@ async function registerInputRequest(token: string, params: WaitForInputParams<re
         token,
         prompt: params.prompt,
         details: params.details,
-        media: params.media?.map(item => ({ kind: item.kind, url: item.url, altText: item.altText })),
-        options: params.options.map(o => ({ id: o.id, label: o.label, description: o.description, freeText: o.freeText })),
+        media: params.media?.map(item => ({ kind: item.kind, url: item.url, ...(item.altText !== undefined ? { altText: item.altText } : {}) })),
+        options: params.options.map(option => ({
+            id: option.id,
+            label: option.label,
+            ...(option.description !== undefined ? { description: option.description } : {}),
+            ...(option.freeText !== undefined ? { freeText: option.freeText } : {})
+        })),
         via: params.via,
         transport
     })
@@ -153,52 +167,66 @@ async function deliverInputRequestStep(request: {
     via: InputTarget
     transport: SdkInputResponseTransport
 }): Promise<{ status: number; body: string }> {
-    "use step"
-    const runId = process.env.TERSE_RUN_ID ?? (await resolveRunIdentity()).runId
-    if (!runId) {
-        throw new Error("waitForInput: could not resolve a run id for this execution.")
-    }
-    const body: SdkInputRequestRegisterBody = {
+    const input = {
         token: request.token,
-        runId,
         prompt: request.prompt,
-        details: request.details,
-        media: request.media,
+        ...(request.details ? { details: request.details } : {}),
+        ...(request.media ? { media: request.media } : {}),
         options: request.options,
         via: request.via,
         transport: request.transport
     }
-    const headers = { ...(await buildSdkRequestHeaders()), Accept: "application/json" }
-    const response = await fetch(`${resolveTerseBackendUrl()}${ApiRoutes.SDK.INPUT_REQUEST}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body)
+
+    return runSdkStep({
+        name: "terse.input-request.deliver",
+        input,
+        run: async stepRequest => {
+            const runId = process.env.TERSE_RUN_ID ?? (await resolveRunIdentity()).runId
+            if (!runId) {
+                throw new Error("waitForInput: could not resolve a run id for this execution.")
+            }
+            const body: SdkInputRequestRegisterBody = {
+                ...stepRequest,
+                runId
+            }
+            const headers = { ...(await buildSdkRequestHeaders()), Accept: "application/json" }
+            const response = await fetch(`${resolveTerseBackendUrl()}${ApiRoutes.SDK.INPUT_REQUEST}`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(body)
+            })
+            return { status: response.status, body: await response.text() }
+        }
     })
-    return { status: response.status, body: await response.text() }
 }
 
 // A step so the wait happens exactly once; replays return the journaled response.
 async function pollInputResponse(token: string, targetDescription: string): Promise<SdkInputResponsePayload> {
-    "use step"
-    console.log(`[terse] waitForInput: sent via ${targetDescription}; waiting for a response there.`)
-    const headers = { ...(await buildSdkRequestHeaders()), Accept: "application/json" }
-    const url = `${resolveTerseBackendUrl()}${buildRoute(ApiRoutes.SDK.INPUT_RESPONSE, { token })}`
+    return runSdkStep({
+        name: "terse.input-request.poll",
+        input: { token, targetDescription },
+        run: async input => {
+            console.log(`[terse] waitForInput: sent via ${input.targetDescription}; waiting for a response there.`)
+            const headers = { ...(await buildSdkRequestHeaders()), Accept: "application/json" }
+            const url = `${resolveTerseBackendUrl()}${buildRoute(ApiRoutes.SDK.INPUT_RESPONSE, { token: input.token })}`
 
-    const payload = await pollUntil(
-        async () => {
-            const response = await fetch(url, { headers })
-            if (response.status === 204) return undefined
-            if (!response.ok) {
-                throw new Error(`waitForInput: response poll failed: HTTP ${response.status}`)
+            const payload = await pollUntil(
+                async () => {
+                    const response = await fetch(url, { headers })
+                    if (response.status === 204) return undefined
+                    if (!response.ok) {
+                        throw new Error(`waitForInput: response poll failed: HTTP ${response.status}`)
+                    }
+                    return sdkInputResponsePayloadSchema.parse(await response.json())
+                },
+                { intervalMs: 3_000, errorToleranceMs: 10 * 60_000 }
+            )
+            if (payload === null) {
+                throw new Error("waitForInput: polling stopped before a response arrived.")
             }
-            return sdkInputResponsePayloadSchema.parse(await response.json())
-        },
-        { intervalMs: 3_000, errorToleranceMs: 10 * 60_000 }
-    )
-    if (payload === null) {
-        throw new Error("waitForInput: polling stopped before a response arrived.")
-    }
-    return payload
+            return payload
+        }
+    })
 }
 
 function describeInputTarget(target: InputTarget): string {

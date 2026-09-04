@@ -15,6 +15,8 @@ export interface JobExecutionContext {
     readonly restoreImageId?: string
     /** Input response to inject when resuming a run parked on a workflow hook. */
     readonly hookResume?: HookResume
+    /** User-visible signal that caused a suspended run to resume. */
+    readonly resumeSignal?: ResumeSignal
     readonly enqueuedAtMs?: number
     readonly scheduledForMs?: number
 }
@@ -22,6 +24,11 @@ export interface JobExecutionContext {
 export type HookResume = {
     readonly token: string
     readonly payload: SdkInputResponsePayload
+}
+
+export type ResumeSignal = {
+    readonly kind: "timer" | "input"
+    readonly receivedAtMs: number
 }
 
 export type RunOutcome = { status: "success" } | { status: "skipped"; reason: string } | { status: "suspended" } | { status: "failed"; cause: unknown }

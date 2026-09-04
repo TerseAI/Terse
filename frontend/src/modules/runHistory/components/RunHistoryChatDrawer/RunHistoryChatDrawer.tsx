@@ -77,6 +77,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                         handleReject,
                         handleCancellation,
                         currentStatus,
+                        canRetryFromFailure,
                         isRunPending,
                         triggerEvent,
                         triggerEventType,
@@ -105,6 +106,7 @@ export default function RunHistoryChatDrawer({ isOpen, onOpenChange, runs, curre
                                         runNumber={runNumber}
                                         totalEvents={totalEvents}
                                         status={currentStatus}
+                                        canRetryFromFailure={canRetryFromFailure}
                                         filtered={isFiltered || filtered}
                                         isTest={isTest}
                                         isManuallyTriggered={isManuallyTriggered}

@@ -9,6 +9,7 @@ type ChatHistoryResponse = {
     startTimestamp?: string
     endTimestamp?: string
     status?: RunHistoryStatus
+    canRetryFromFailure?: boolean
 } & Partial<TriggerPayload>
 
 export function useChatHistory(runId: string | null | undefined) {
@@ -32,6 +33,7 @@ export function useChatHistory(runId: string | null | undefined) {
         startTimestamp: data?.startTimestamp,
         endTimestamp: data?.endTimestamp,
         status: data?.status,
+        canRetryFromFailure: data?.canRetryFromFailure ?? false,
         triggerEvent: data?.triggerEvent ?? null,
         triggerEventType: data?.triggerEventType ?? null,
         isTriggerEventTruncated: data?.isTriggerEventTruncated ?? false,

@@ -25,7 +25,8 @@
         "ALL": "/run-history",
         "ACTIONS": "/run-history/actions",
         "BY_AGENT_ID": "/run-history/:agentId",
-        "CHAT_BY_RUN_ID": "/run-history/:runId/chat"
+        "CHAT_BY_RUN_ID": "/run-history/:runId/chat",
+        "RETRY_BY_RUN_ID": "/run-history/:runId/retry"
     },
     "SESSION": {
         "TOKEN": "/session/token"
