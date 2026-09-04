@@ -40,7 +40,7 @@ import {
 } from "terse-types/Integrations"
 import { CreateNotificationDestinationRequest, NotificationDestination, NotificationSettings, UpdateNotificationSettingsRequest } from "terse-types/Notifications"
 import type { RunHistoryActionType, RunHistoryActionWithId, RunHistoryModelEvent } from "terse-types/RunHistoryTypes"
-import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from "terse-types/RunHistoryTypes"
+import { GetAllRunHistoryResponse, GetRunHistoryParams, GetRunHistoryResponse, RetryFailedRunResponse, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 import { GetSentNotificationsResponse } from "terse-types/SentNotifications"
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from "terse-types/ToolsTypes"
 import {
@@ -463,7 +463,11 @@ interface BackendService {
         triggerEvent?: string | null
         triggerEventType?: string | null
         isTriggerEventTruncated?: boolean
+        canRetryFromFailure?: boolean
     }>
+
+    /** Continue a failed durable run from its latest unclaimed filesystem snapshot. */
+    retryFailedRun(runId: string): Promise<RetryFailedRunResponse>
 
     /**
      * Fetch run history actions by IDs
@@ -1113,10 +1117,16 @@ export const BackendProvider: BackendService = {
                 triggerEvent?: string | null
                 triggerEventType?: string | null
                 isTriggerEventTruncated?: boolean
+                canRetryFromFailure?: boolean
             }>(url, {
                 withCredentials: true
             })
             .then(r => r.data)
+    },
+
+    retryFailedRun: runId => {
+        const apiUrl = buildRoute(ApiRoutes.RUN_HISTORY.RETRY_BY_RUN_ID, { runId })
+        return axios.post<RetryFailedRunResponse>(`${backendBaseUrl}${apiUrl}`, undefined, { withCredentials: true }).then(response => response.data)
     },
 
     getRunHistoryActions: ids => {

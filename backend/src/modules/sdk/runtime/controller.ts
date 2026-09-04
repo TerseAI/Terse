@@ -21,7 +21,7 @@ import { extractErrorMessage } from "../../../common/strings"
 import { db } from "../../../loaders/prisma"
 import { finalizeRunFailure } from "../../../loaders/socket"
 import { SdkAgentRunner } from "../../../modules/agents/AgentRunner/SdkAgentRunner"
-import { appendRunAction, claimSuspendedRun, markRunFailed, markRunSuspended, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
+import { type RunSuspensionDetails, appendRunAction, claimSuspendedRun, markRunFailed, markRunSuspended, upsertSdkSkills } from "../../../modules/agents/AgentRunner/runHistory"
 import { onListenForwardedEvent } from "../../../modules/agents/ListenBus"
 import { emitSessionEvent, onSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { classifyAgentError } from "../../../modules/agents/agentErrorUtils"
@@ -406,20 +406,31 @@ export async function handleJobSuspension(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: "Invalid request body", details: parsed.error.issues.map(i => i.message) })
     }
 
-    const { runId, delaySeconds } = parsed.data
+    const { runId } = parsed.data
+    const runContext = await resolveRunContext(runId, user)
+    if (!runContext) return res.status(404).json({ success: false, error: "Run not found" })
+
+    const suspension = suspensionDetails(parsed.data)
+    const delaySeconds = suspension.kind === "timer" ? suspension.delaySeconds : undefined
     const telemetry = new SandboxSuspendTelemetry({
         userId: user.id,
         runId,
-        suspensionKind: "timer",
+        suspensionKind: suspension.kind,
         delaySeconds
     })
+    let parked = false
     try {
         const imageId = await telemetry.measure("snapshotSandboxMs", () => snapshotSandboxForSuspend(runId))
         if (!imageId) {
             throw new Error("No live sandbox to snapshot; the run cannot be suspended")
         }
-        await telemetry.measure("markRunSuspendedMs", () => markRunSuspended(runId, imageId, { kind: "timer", delaySeconds }))
-        await telemetry.measure("enqueueRunResumptionMs", () => enqueueRunResumption(runId, imageId, delaySeconds))
+        parked = await telemetry.measure("markRunSuspendedMs", () => markRunSuspended(runId, imageId, suspension))
+        if (!parked) {
+            const existing = await db().run_history_records.findUnique({ where: { id: runId }, select: { status: true } })
+            if (existing?.status !== "suspended") throw new Error("Run is no longer in progress and cannot be suspended")
+        } else if (suspension.kind === "timer") {
+            await telemetry.measure("enqueueRunResumptionMs", () => enqueueRunResumption(runId, imageId, suspension.delaySeconds))
+        }
         await telemetry.capture(true)
 
         const response: SdkJobSuspendResponseBody = { success: true }
@@ -427,9 +438,15 @@ export async function handleJobSuspension(req: Request, res: Response) {
     } catch (error) {
         logger.error("Failed to suspend job", { error, runId })
         await telemetry.capture(false, error)
-        await rollbackSuspension(runId)
+        if (parked) await rollbackSuspension(runId)
         return res.status(500).json({ success: false, error: extractErrorMessage(error) })
     }
+}
+
+function suspensionDetails(body: z.infer<typeof sdkJobSuspendRequestBodySchema>): RunSuspensionDetails {
+    if (!("kind" in body)) return { kind: "timer", delaySeconds: body.delaySeconds }
+    if (body.kind === "timer") return { kind: "timer", delaySeconds: body.delaySeconds }
+    return { kind: "input", hookToken: body.hookToken }
 }
 
 // Suspension parks the run as a delayed pg-boss job; when the delay elapses the worker-side

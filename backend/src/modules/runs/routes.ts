@@ -3,7 +3,7 @@ import { Router } from "express"
 import { AuthKind, requireAuth } from "../../modules/auth/helpers/authMiddleware"
 import { RateLimitKind, rateLimit } from "../../rateLimit/routeLimits"
 
-import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions } from "./controller"
+import { getAllRunHistory, getChatHistory, getRunHistory, getRunHistoryActions, retryFailedRun } from "./controller"
 
 const router = Router()
 
@@ -14,6 +14,7 @@ const limit = rateLimit(RateLimitKind.Default)
 router.get("/actions", limit, auth, getRunHistoryActions)
 router.get("/", limit, auth, getAllRunHistory)
 router.get("/:runId/chat", limit, auth, getChatHistory)
+router.post("/:runId/retry", limit, auth, retryFailedRun)
 router.get("/:agentId", limit, auth, getRunHistory)
 
 export default router

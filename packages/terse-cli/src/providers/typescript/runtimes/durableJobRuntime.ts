@@ -1,18 +1,26 @@
 import chalk from "chalk"
+import { FileJournalStore, Runtime } from "little-durable"
+import type { JournalStore, RuntimeOutcome, Suspension } from "little-durable"
 import path from "node:path"
+import { __fetchRegisteredDurableWorkflow, __inputRequestHook, fetchRegisteredJobs } from "terse-sdk"
+import type { CreateJobParameters, TerseJobContext } from "terse-sdk"
+import { runWithJobContext } from "terse-sdk/dist/runIdentity/jobContextStore.js"
+import type { SdkJobSuspendRequestBody, SdkJobSuspendResponseBody } from "terse-types"
+import { ApiRoutes } from "terse-types"
 
-import { readRuntimeKeyOrBail } from "../../../api.js"
+import { fetchWithAuth, readRuntimeKeyOrBail } from "../../../api.js"
 import { CliError } from "../../../cliError.js"
 import { BACKEND_URL } from "../../../config.js"
-import { isCliRunCommandEnabled } from "../../../env.js"
-import { closeDurableRuntime, getDurableRuntime } from "../durableRuntime.js"
-import { readRunStatus, resolveWorkflowRunId, rewindFailedRun } from "../rewindRun.js"
+import { readProjectConfig } from "../../../projectConfig.js"
+import { shouldRunTerseWorkflow } from "../terseWorkflow.js"
 
 import { type JobRuntime, type ResumeHookInput, type ResumeRunOptions, formatErrorDetail } from "./JobRuntime.js"
 import { withSession } from "./session.js"
 
 export const durableJobRuntime: JobRuntime = {
     async executeJob(job, runId, event, opts) {
+        if (!runId) throw new CliError("durable_run_id_missing", "Durable execution requires a run ID.")
+
         const isVerbose = opts?.verbose ?? true
         const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
         const apiKey = readRuntimeKeyOrBail()
@@ -24,12 +32,16 @@ export const durableJobRuntime: JobRuntime = {
                 pauseUiAround,
                 async sessionId => {
                     if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
-                    const rt = await getDurableRuntime(process.cwd())
-                    await rt.start()
-                    const dispatched = await rt.dispatchJob(job.name, { sessionId, runId, apiBaseUrl: BACKEND_URL }, event)
+                    const journalStore = createJournalStore()
+                    const runtime = new Runtime({ journalStore })
+                    const context = jobContext({ sessionId, runId, job, projectId: opts?.projectId })
+                    const shouldRun = await shouldRunTerseWorkflow({ job, event, context })
+                    if (!shouldRun) return
+                    const workflow = __fetchRegisteredDurableWorkflow(job.name)
+                    if (!workflow) throw new Error(`No durable workflow was registered for job "${job.name}".`)
 
-                    // We can't await in the Modal Sandbox. This polls, and a blocked run will never exit.
-                    if (!isCliRunCommandEnabled()) await dispatched.awaitResult()
+                    const outcome = await runWithJobContext(context, () => runtime.start(workflow, { runId, input: event }).waitForOutcome())
+                    await handleOutcome({ runId, outcome, apiKey })
                 },
                 opts?.onSessionEvent,
                 opts?.session
@@ -37,8 +49,6 @@ export const durableJobRuntime: JobRuntime = {
         } catch (error) {
             if (error instanceof CliError) throw error
             throw new CliError("job_execution_failed", `Job "${job.name}" threw an error.`, { detail: formatErrorDetail(error) })
-        } finally {
-            if (!isCliRunCommandEnabled()) await closeDurableRuntime()
         }
     },
 
@@ -56,49 +66,101 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
     const pauseUiAround = opts?.pauseUiAround ?? (async fn => fn())
     const apiKey = readRuntimeKeyOrBail()
 
-    const dataDir = resolveDataDir()
-    const workflowRunId = resolveWorkflowRunId(dataDir, runId)
-    const status = readRunStatus(dataDir, workflowRunId)
-
     try {
-        await withSession(apiKey, isVerbose, pauseUiAround, async () => {
-            if (status === "failed") {
-                const { rewoundStepId } = rewindFailedRun(dataDir, workflowRunId)
-                if (isVerbose) console.log(chalk.yellow(`  Re-driving failed run ${workflowRunId}${rewoundStepId ? " from the failed step" : ""}; completed steps replay from the journal`))
-            } else if (isVerbose) {
-                console.log(chalk.cyan(`  Resuming run ${workflowRunId}`))
-            }
-            const rt = await getDurableRuntime(process.cwd())
-            if (input) {
-                await deliverInput(rt, input, isVerbose)
-            } else {
-                await rt.start()
-            }
-            if (isCliRunCommandEnabled()) return
-            await rt.awaitRunResult(workflowRunId)
-            if (isVerbose) console.log(chalk.green(`  Run ${workflowRunId} completed`))
+        await withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
+            const journalStore = createJournalStore()
+            const runtime = new Runtime({ journalStore })
+            const run = await runtime.getRun({ runId })
+            const job = fetchRegisteredJobs().get(run.workflowName)
+            if (!job) throw new Error(`No registered job matches durable workflow "${run.workflowName}".`)
+            const workflow = __fetchRegisteredDurableWorkflow(job.name)
+            if (!workflow) throw new Error(`No durable workflow was registered for job "${job.name}".`)
+
+            if (isVerbose) console.log(chalk.cyan(`  Resuming run ${runId}`))
+            const context = jobContext({ sessionId, runId, job, projectId: readProjectConfig()?.projectId })
+            const outcome = await runWithJobContext(context, async (): Promise<RuntimeOutcome> => {
+                const suspension = await runtime.getSuspension({ runId })
+
+                if (input) {
+                    if (!suspension || suspension.request.name !== __inputRequestHook.name) {
+                        throw new Error(`No unresolved input wait with token "${input.token}" exists in run "${runId}".`)
+                    }
+                    const request = __inputRequestHook.request.safeParse(suspension.request.payload)
+                    if (!request.success || request.data.token !== input.token) {
+                        throw new Error(`No unresolved input wait with token "${input.token}" exists in run "${runId}".`)
+                    }
+                    const resolution = __inputRequestHook.resolution.parse(input.payload)
+                    return runtime.resumeHook(__inputRequestHook, { runId, workflow, waitId: suspension.waitId, resolution }).waitForOutcome()
+                }
+
+                return suspension?.request.name === "timer"
+                    ? runtime.resumeTimer(workflow, { runId, waitId: suspension.waitId }).waitForOutcome()
+                    : runtime.resume(workflow, { runId }).waitForOutcome()
+            })
+
+            await handleOutcome({ runId, outcome, apiKey })
+
+            if (isVerbose && outcome.status === "completed") console.log(chalk.green(`  Run ${runId} completed`))
         })
     } catch (error) {
         if (error instanceof CliError) throw error
         throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })
-    } finally {
-        if (!isCliRunCommandEnabled()) await closeDurableRuntime()
     }
 }
 
-function resolveDataDir(): string {
-    return process.env.WORKFLOW_LOCAL_DATA_DIR ?? path.join(process.cwd(), ".terse", "data")
+function createJournalStore(): JournalStore {
+    return new FileJournalStore(resolveDataDirectory())
 }
 
-// Input resumes skip start(): resumeHook re-queues the run itself, and start()'s
-// crash-recovery wake would add a concurrent second replay.
-async function deliverInput(rt: Awaited<ReturnType<typeof getDurableRuntime>>, input: ResumeHookInput, isVerbose: boolean): Promise<void> {
-    try {
-        await rt.deliverInput(input.token, input.payload)
-        if (isVerbose) console.log(chalk.cyan(`  Delivered input response to hook ${input.token}`))
-    } catch (error) {
-        // Stale token: recovery replay instead; the run re-parks on its real wait.
-        console.log(chalk.yellow(`  Could not deliver input response to hook ${input.token}: ${formatErrorDetail(error)}`))
-        await rt.start()
+function resolveDataDirectory(): string {
+    return process.env.TERSE_JOURNAL_ROOT ?? path.join(process.cwd(), ".terse", "data")
+}
+
+function jobContext({ sessionId, runId, job, projectId }: { sessionId: string; runId: string; job: CreateJobParameters; projectId?: string }): TerseJobContext {
+    return {
+        sessionId,
+        runId,
+        apiBaseUrl: BACKEND_URL,
+        jobName: job.name,
+        projectId
     }
+}
+
+async function handleOutcome({ runId, outcome, apiKey }: { runId: string; outcome: RuntimeOutcome; apiKey: string }): Promise<void> {
+    if (outcome.status === "completed") return
+    if (outcome.status === "failed") {
+        const error = new Error(outcome.error.message)
+        error.name = outcome.error.name
+        throw error
+    }
+
+    const body = suspendRequest({ runId, suspension: outcome.suspension })
+    await fetchWithAuth<SdkJobSuspendResponseBody>(ApiRoutes.SDK.SUSPEND, apiKey, body, "POST")
+}
+
+function suspendRequest({ runId, suspension }: { runId: string; suspension: Suspension }): SdkJobSuspendRequestBody {
+    const payload = suspension.request.payload
+    if (suspension.request.name === "timer") {
+        if (typeof payload !== "object" || payload === null || Array.isArray(payload) || typeof payload.wakeAt !== "string") {
+            throw new Error("Timer suspension has an invalid wakeAt.")
+        }
+        return {
+            runId,
+            kind: "timer",
+            delaySeconds: Math.max(1, Math.ceil((Date.parse(payload.wakeAt) - Date.now()) / 1_000)),
+            idempotencyKey: suspension.waitId
+        }
+    }
+
+    if (suspension.request.name === __inputRequestHook.name) {
+        const input = __inputRequestHook.request.parse(payload)
+        return {
+            runId,
+            kind: "input",
+            hookToken: input.token,
+            idempotencyKey: suspension.waitId
+        }
+    }
+
+    throw new Error(`Terse does not know how to park hook "${suspension.request.name}".`)
 }

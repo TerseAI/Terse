@@ -33,13 +33,14 @@ type RunHistoryChatAdapterProps = {
         handleReject: (stepId: string) => void
         handleCancellation: () => void
         currentStatus: RunHistoryStatus
+        canRetryFromFailure: boolean
         isRunPending: boolean
     }) => React.ReactNode
 }
 
 export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus, triggerEvent, triggerEventType, isTriggerEventTruncated } = useChatHistory(runId)
+    const { events, isLoading, startTimestamp, endTimestamp, status: apiStatus, canRetryFromFailure, triggerEvent, triggerEventType, isTriggerEventTruncated } = useChatHistory(runId)
 
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = apiStatus ?? status
@@ -101,6 +102,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
                     subscribeToEvents,
                     sendMessage,
                     currentStatus,
+                    canRetryFromFailure,
                     isRunPending,
                     handleApprove,
                     handleReject,

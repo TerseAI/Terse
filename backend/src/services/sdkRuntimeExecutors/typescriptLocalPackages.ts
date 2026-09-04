@@ -4,9 +4,9 @@ import type { SdkDeployImageBuildContext } from "./types"
 
 export type PackageManager = "npm" | "pnpm"
 
-// Dev-only (TERSE_DEV_LOCAL_PACKAGES) helpers that hoist a dev's locally-built terse-types/terse-sdk/
-// terse-cli into the sandbox instead of installing from the npm registry. Kept out of the executor so
-// the registry install path stays clean and self-contained.
+// Dev-only (TERSE_DEV_LOCAL_PACKAGES) helpers that hoist the dev's locally-built Terse packages into
+// the sandbox instead of installing from the npm registry. Kept out of the executor so the registry
+// install path stays clean and self-contained.
 
 // Writes the packed tarballs into the sandbox and returns name -> absolute sandbox path.
 export async function writeLocalTarballs(context: SdkDeployImageBuildContext, localPackages: LocalPackagesBundle): Promise<Map<string, string>> {
@@ -22,8 +22,8 @@ export async function writeLocalTarballs(context: SdkDeployImageBuildContext, lo
     return paths
 }
 
-// Points the user project's terse-sdk/terse-types at the local tarballs. With the dev flags on, the
-// versions in the project's package.json are ignored in favor of the local build. A direct dependency
+// Points the user project's Terse dependencies at the local tarballs. With the dev flags on, versions
+// in the project's package.json are ignored in favor of the local build.
 export function withTerseOverrides(packageJsonText: string, tarballs: Map<string, string>, packageManager: PackageManager): string {
     type DepRecord = Record<string, string>
     const pkg = JSON.parse(packageJsonText) as {

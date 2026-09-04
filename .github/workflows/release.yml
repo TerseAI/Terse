@@ -190,19 +190,21 @@ jobs:
             - name: Pack tarballs
               run: |
                   mkdir -p dist-tarballs
-                  for pkg in terse-types terse-sdk terse-cli create-terse; do
-                      pnpm --filter "$pkg" pack --pack-destination "$PWD/dist-tarballs"
+                  for directory in terse-types packages/terse-sdk packages/terse-cli packages/create-terse; do
+                      pnpm --dir "$directory" pack --pack-destination "$PWD/dist-tarballs"
                   done
 
             - name: Publish to npm
               env:
                   RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
               run: |
-                  for pkg in terse-types terse-sdk terse-cli create-terse; do
-                      if npm view "$pkg@$RELEASE_VERSION" version >/dev/null 2>&1; then
-                          echo "$pkg@$RELEASE_VERSION already published"
+                  for package in terse-types terse-sdk terse-cli create-terse; do
+                      tarball_name=${package#@}
+                      tarball_name=${tarball_name//\//-}
+                      if npm view "$package@$RELEASE_VERSION" version >/dev/null 2>&1; then
+                          echo "$package@$RELEASE_VERSION already published"
                       else
-                          npm publish "./dist-tarballs/$pkg-$RELEASE_VERSION.tgz" --access public
+                          npm publish "./dist-tarballs/$tarball_name-$RELEASE_VERSION.tgz" --access public
                       fi
                   done
 
@@ -258,16 +260,6 @@ jobs:
                   echo "::error::one or more sandbox packages at $RELEASE_VERSION never became visible on npm"
                   exit 1
 
-            # Modal sandboxes are amd64, so this skips the arm64 pass the control plane takes.
-            # The scaffold pins the same @workflow/core version the CLI depends on, and the image bakes
-            # that project's node_modules, so the two have to agree or every deploy misses the cache.
-            - name: Resolve the @workflow/core version
-              id: workflow
-              run: |
-                  version=$(node -p "require('./packages/terse-cli/package.json').dependencies['@workflow/core'] ?? ''")
-                  test -n "$version" || { echo "::error::terse-cli no longer pins @workflow/core; the sandbox scaffold cannot be baked"; exit 1; }
-                  echo "version=${version}" >> "$GITHUB_OUTPUT"
-
             # The two leaves are identical up to the package manager, so everything they share
             # lives here and is pulled once rather than per image.
             - name: Build and push the shared sandbox base
@@ -299,7 +291,6 @@ jobs:
                       BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
                       DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz
-                      WORKFLOW_CORE_VERSION=${{ steps.workflow.outputs.version }}
                   tags: |
                       ${{ env.SANDBOX_PNPM_IMAGE }}:${{ needs.preflight.outputs.version }}
                       ${{ env.SANDBOX_PNPM_IMAGE }}:latest
@@ -317,13 +308,13 @@ jobs:
                       BASE_IMAGE=${{ env.SANDBOX_BASE_IMAGE }}:${{ needs.preflight.outputs.version }}
                       TERSE_VERSION=${{ needs.preflight.outputs.version }}
                       DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz
-                      WORKFLOW_CORE_VERSION=${{ steps.workflow.outputs.version }}
                   tags: |
                       ${{ env.SANDBOX_NPM_IMAGE }}:${{ needs.preflight.outputs.version }}
                       ${{ env.SANDBOX_NPM_IMAGE }}:latest
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
+    # ── 4 · Prod (retryable) ──────────────────────────────────────────────────
     deploy:
         name: Deploy production
         needs: [preflight, npm, sandbox-image]

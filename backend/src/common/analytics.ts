@@ -160,9 +160,12 @@ export interface SandboxRuntimeLatencyProperties extends BaseEventProperties {
     provider: "containerized" | "local"
     success: boolean
     runtime?: string
+    cliVersion?: string
     jobName?: string
     errorMessage?: string
     executionRegion?: ExecutionRegion | null
+    resumeSignalKind?: "timer" | "input"
+    resumeSignalToCliStartMs?: number
     queueWaitMs?: number
     resumeSchedulerLagMs?: number
     totalWorkerExecutionMs?: number
@@ -175,8 +178,7 @@ export interface SandboxRuntimeLatencyProperties extends BaseEventProperties {
     sandboxReadyMs?: number
     runtimeCommandMs?: number
     resolveRunStatusMs?: number
-    readRunJournalMs?: number
-    snapshotSandboxMs?: number
+    snapshotFailureSandboxMs?: number
     terminateRunSandboxMs?: number
 }
 

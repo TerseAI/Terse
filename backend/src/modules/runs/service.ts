@@ -6,8 +6,18 @@ import { type GetRunHistoryParams, type RunHistoryModelEvent, type RunHistoryRec
 
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../../common/typeConverters"
 import { getRunHistoryModelEventsWithActions } from "../../modules/agents/runHistoryModelEvents"
+import { enqueueRunExecution } from "../../tasks/queues/runExecutionQueue"
 
-import { RunHistoryActionSummary, RunHistoryWhere, countAndListRunHistory, findActionsByIdsInOrg, findAgentInOrg, findAutomationIdsInOrg, findRunRecordForChat } from "./repository"
+import {
+    RunHistoryActionSummary,
+    RunHistoryWhere,
+    countAndListRunHistory,
+    findActionsByIdsInOrg,
+    findAgentInOrg,
+    findAutomationIdsInOrg,
+    findRunForFailureRetry,
+    findRunRecordForChat
+} from "./repository"
 
 const MAX_TRIGGER_PAYLOAD_RESPONSE_CHARS = 256 * 1024
 
@@ -32,6 +42,13 @@ export class RunNotFoundError extends Error {
     constructor() {
         super("Run not found")
         this.name = "RunNotFoundError"
+    }
+}
+
+export class RunNotRetryableError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = "RunNotRetryableError"
     }
 }
 
@@ -235,8 +252,28 @@ export async function fetchChatHistoryForRun(runId: string, organizationId: stri
         triggerEvent,
         triggerEventType,
         isTriggerEventTruncated,
-        isTest: runRecord.is_test
+        isTest: runRecord.is_test,
+        canRetryFromFailure: runRecord.status === RunHistoryStatus.FAILED && runRecord.failure_snapshots.length > 0
     }
+}
+
+export async function retryFailedRunFromSnapshot(runId: string, organizationId: string): Promise<void> {
+    const run = await findRunForFailureRetry(runId, organizationId)
+    if (!run) throw new RunNotFoundError()
+    if (run.status !== RunHistoryStatus.FAILED) throw new RunNotRetryableError("Only failed runs can be retried")
+
+    const snapshot = run.failure_snapshots[0]
+    if (!snapshot) throw new RunNotRetryableError("No failure snapshot is available for this run")
+
+    await enqueueRunExecution({
+        runId,
+        agentId: run.automation.id,
+        orgId: organizationId,
+        userId: run.automation.user_id,
+        jobName: run.automation.name,
+        kind: "sandbox",
+        failureSnapshotId: snapshot.id
+    })
 }
 
 export async function fetchActionsByIds(ids: string[], organizationId: string) {

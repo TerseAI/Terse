@@ -1,6 +1,7 @@
 import type { ExecutionRegion } from "terse-types/ExecutionRegions"
 
 import { db } from "../loaders/prisma"
+import type { ResumeSignal } from "../services/jobExecutors/types"
 
 import { AnalyticsEvent, SandboxRuntimeLatencyProperties, analytics } from "./analytics"
 import { LatencyTelemetry } from "./latencyTelemetry"
@@ -11,6 +12,7 @@ type DurationKey = Extract<
     keyof SandboxRuntimeLatencyProperties,
     | "queueWaitMs"
     | "resumeSchedulerLagMs"
+    | "resumeSignalToCliStartMs"
     | "totalWorkerExecutionMs"
     | "resolveSourceImageMs"
     | "createSandboxTokenMs"
@@ -21,8 +23,7 @@ type DurationKey = Extract<
     | "sandboxReadyMs"
     | "runtimeCommandMs"
     | "resolveRunStatusMs"
-    | "readRunJournalMs"
-    | "snapshotSandboxMs"
+    | "snapshotFailureSandboxMs"
     | "terminateRunSandboxMs"
 >
 
@@ -35,6 +36,7 @@ type SandboxRuntimeTelemetryParams = {
     jobName: string
     mode: "fresh" | "resume"
     provider: "containerized" | "local"
+    resumeSignal?: ResumeSignal
     enqueuedAtMs?: number
     scheduledForMs?: number
     executionRegion: ExecutionRegion | null
@@ -42,9 +44,13 @@ type SandboxRuntimeTelemetryParams = {
 
 export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
     private runtime: string | undefined
+    private cliVersion: string | undefined
+    private resumeCliStartCaptured = false
+    private readonly resumeSignal: ResumeSignal | undefined
 
     constructor(private readonly params: SandboxRuntimeTelemetryParams) {
         super()
+        this.resumeSignal = params.resumeSignal ?? (params.scheduledForMs ? { kind: "timer", receivedAtMs: params.scheduledForMs } : undefined)
         if (params.enqueuedAtMs && !params.scheduledForMs) {
             this.setDuration("queueWaitMs", Date.now() - params.enqueuedAtMs)
         }
@@ -55,6 +61,16 @@ export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
 
     setRuntime(runtime: string): void {
         this.runtime = runtime
+    }
+
+    setCliVersion(cliVersion: string): void {
+        this.cliVersion = cliVersion
+    }
+
+    markResumeCliStarted(): void {
+        if (!this.resumeSignal || this.resumeCliStartCaptured) return
+        this.resumeCliStartCaptured = true
+        this.setDuration("resumeSignalToCliStartMs", Date.now() - this.resumeSignal.receivedAtMs)
     }
 
     capture(success: boolean, error?: unknown): void {
@@ -71,6 +87,8 @@ export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
             success,
             runtime: this.runtime,
             executionRegion: this.params.executionRegion,
+            cliVersion: this.cliVersion,
+            resumeSignalKind: this.resumeSignal?.kind,
             ...(error ? { errorMessage: extractErrorMessage(error).slice(0, 500) } : {}),
             ...this.durations
         }

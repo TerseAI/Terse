@@ -1,4 +1,5 @@
-import { sleep as workflowSleep } from "@workflow/core"
+import { defineWorkflow, sleep as durableSleep, getExecutionPhase } from "little-durable"
+import type { StepStartedEvent, WorkflowDefinition } from "little-durable"
 import ms from "ms"
 import type {
     RunHistoryAction,
@@ -16,6 +17,7 @@ import {
     IntegrationType,
     sdkAgentRunRequestBodySchema,
     sdkStateGetResponseSchema,
+    serializedEventSchema,
     stripZodJsonSchemaMetadata,
     webhookJobChallengeRequestSchema,
     webhookJobTriggerRequestSchema
@@ -27,6 +29,7 @@ import { z } from "zod"
 
 import { buildSdkRequestHeaders, resolveApiBaseUrl, resolveProjectKey, resolveTerseBackendUrl } from "./backendRequest.js"
 import { claimAgentApprovalHandling, releaseAgentApprovalHandling } from "./context.js"
+import { __runDurableStep, runSdkStep } from "./durableExecution.js"
 import { DurableOnlyError, isDurableExecution, isLocalTestRun } from "./execution.js"
 import { computeChallengeSignature, verifyIncomingRequest } from "./hmac.js"
 import { resolveRunIdentity } from "./runIdentity/index.js"
@@ -51,8 +54,9 @@ export { Actor, ActorInvocationError, configureDurableObjects } from "little-dur
 export type { ActorBroadcastOptions, ActorClass, ActorConnection, ActorSocket, ActorSocketMessage, ActorSocketState } from "little-durable-objects"
 
 export { DurableOnlyError } from "./execution.js"
+export { __runDurableStep } from "./durableExecution.js"
 
-export { slack, waitForInput } from "./inputRequest.js"
+export { __inputRequestHook, slack, waitForInput } from "./inputRequest.js"
 export type { InputDelivery, InputMedia, InputOption, InputRespondent, InputResponse, InputTarget, SlackInputTarget, WaitForInputParams } from "./inputRequest.js"
 
 export { isAgentApprovalHandlingClaimed } from "./context.js"
@@ -160,6 +164,10 @@ export function createJob<TTriggers extends readonly TypedTrigger<TriggerLike>[]
         throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
     }
     registerJob<TTriggers>(params)
+    if (params.durable) {
+        __registerDurableWorkflow(__defineTerseWorkflow(params as unknown as CreateJobParameters))
+    }
+    return params
 }
 
 // Process-wide directory of Terse instances. Each `new Terse()` registers itself here on
@@ -167,7 +175,10 @@ export function createJob<TTriggers extends readonly TypedTrigger<TriggerLike>[]
 // Keyed by a process-global Symbol so every copy of this module shares one array.
 // type JobsLike = { jobs: Map<string, CreateJobParameters> }
 const TERSE_INSTANCES_KEY = Symbol.for("jobs.instances")
+const TERSE_DURABLE_WORKFLOWS_KEY = Symbol.for("jobs.durable-workflows")
 type GlobalWithInstances = typeof globalThis & { [TERSE_INSTANCES_KEY]?: Map<string, CreateJobParameters> }
+type TerseWorkflowDefinition = WorkflowDefinition<typeof serializedEventSchema>
+type GlobalWithDurableWorkflows = typeof globalThis & { [TERSE_DURABLE_WORKFLOWS_KEY]?: Map<string, TerseWorkflowDefinition> }
 
 function registerJob<TTriggers extends readonly TypedTrigger<TriggerLike>[]>(job: CreateJobParameters<TTriggers>): void {
     const g = globalThis as GlobalWithInstances
@@ -185,39 +196,73 @@ export function fetchRegisteredJobs(): Map<string, CreateJobParameters> {
     return g[TERSE_INSTANCES_KEY] ?? new Map<string, CreateJobParameters>()
 }
 
+export function __defineTerseWorkflow(job: CreateJobParameters): TerseWorkflowDefinition {
+    return defineWorkflow({
+        name: job.name,
+        input: serializedEventSchema,
+        run: async input => {
+            const event = createSDKTrigger(input)
+            const state = __buildJobStateAccessor(job.states ?? [])
+            await job.onTrigger(event, state)
+        }
+    })
+}
+
+export function __registerDurableWorkflow(workflow: TerseWorkflowDefinition): void {
+    const global = globalThis as GlobalWithDurableWorkflows
+    global[TERSE_DURABLE_WORKFLOWS_KEY] ??= new Map<string, TerseWorkflowDefinition>()
+    global[TERSE_DURABLE_WORKFLOWS_KEY].set(workflow.name, workflow)
+}
+
+export function __fetchRegisteredDurableWorkflow(name: string): TerseWorkflowDefinition | undefined {
+    return (globalThis as GlobalWithDurableWorkflows)[TERSE_DURABLE_WORKFLOWS_KEY]?.get(name)
+}
+
 // Clear the process-global instance registry. The CLI calls this before
 // re-importing an entry file so a second import (e.g. after a retry) starts
 // from a clean slate instead of seeing stale instances from the first pass.
 export function __resetRegisteredTerseInstances(): void {
     const g = globalThis as GlobalWithInstances
     g[TERSE_INSTANCES_KEY] = new Map<string, CreateJobParameters>()
+    const durableGlobal = globalThis as GlobalWithDurableWorkflows
+    durableGlobal[TERSE_DURABLE_WORKFLOWS_KEY] = new Map<string, TerseWorkflowDefinition>()
 }
 
 async function stateGet(key: string): Promise<string | null> {
-    "use step"
-    const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_GET}`, {
-        method: "POST",
-        headers: await buildSdkRequestHeaders(),
-        body: JSON.stringify({ key } satisfies SdkStateGetRequest)
+    return runSdkStep({
+        name: "terse.state.get",
+        input: { key },
+        run: async input => {
+            const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_GET}`, {
+                method: "POST",
+                headers: await buildSdkRequestHeaders(),
+                body: JSON.stringify(input satisfies SdkStateGetRequest)
+            })
+            if (!res.ok) {
+                const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+                throw new Error(`Failed to read state "${input.key}": ${data.error ?? res.statusText}`)
+            }
+            return sdkStateGetResponseSchema.parse(await res.json()).content
+        }
     })
-    if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
-        throw new Error(`Failed to read state "${key}": ${data.error ?? res.statusText}`)
-    }
-    return sdkStateGetResponseSchema.parse(await res.json()).content
 }
 
 async function statePut(key: string, content: string): Promise<void> {
-    "use step"
-    const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_PUT}`, {
-        method: "POST",
-        headers: await buildSdkRequestHeaders(),
-        body: JSON.stringify({ key, content } satisfies SdkStatePutRequest)
+    return runSdkStep({
+        name: "terse.state.put",
+        input: { key, content },
+        run: async input => {
+            const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.STATE_PUT}`, {
+                method: "POST",
+                headers: await buildSdkRequestHeaders(),
+                body: JSON.stringify(input satisfies SdkStatePutRequest)
+            })
+            if (!res.ok) {
+                const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+                throw new Error(`Failed to write state "${input.key}": ${data.error ?? res.statusText}`)
+            }
+        }
     })
-    if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
-        throw new Error(`Failed to write state "${key}": ${data.error ?? res.statusText}`)
-    }
 }
 
 export function __buildJobStateAccessor<TStates extends readonly StateDefinition[]>(states: TStates): StateAccessor<TStates> {
@@ -406,17 +451,22 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
     }
 
     async submitApprovalDecision(params: { runId: string; stepId: string; approved: boolean }): Promise<void> {
-        "use step"
-        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
-            method: "POST",
-            headers: await buildSdkRequestHeaders(),
-            body: JSON.stringify(params satisfies SdkApprovalDecisionRequestBody)
-        })
+        return runSdkStep({
+            name: "terse.agent.submit-approval",
+            input: params,
+            run: async input => {
+                const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.APPROVAL_DECISION}`, {
+                    method: "POST",
+                    headers: await buildSdkRequestHeaders(),
+                    body: JSON.stringify(input satisfies SdkApprovalDecisionRequestBody)
+                })
 
-        if (!res.ok) {
-            const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
-            throw new Error(`Approval decision failed: ${data.error ?? res.statusText}`)
-        }
+                if (!res.ok) {
+                    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+                    throw new Error(`Approval decision failed: ${data.error ?? res.statusText}`)
+                }
+            }
+        })
     }
 
     async runAndWait<OutputSchema extends z.ZodType>(userMessage: string, outputSchema: OutputSchema): Promise<z.infer<OutputSchema>>
@@ -434,48 +484,58 @@ export class TerseAgent<TSkills extends readonly TypedSkill<string>[] = readonly
             toolApprovals: this.toolApprovals,
             message: userMessage,
             skills: this.skills,
-            outputSchema: outputSchema ? stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) : undefined
+            ...(outputSchema ? { outputSchema: stripZodJsonSchemaMetadata(z.toJSONSchema(outputSchema)) } : {})
         })
     }
 
     private static async fetchFinalOutput(requestBody: SdkAgentRunRequestBody): Promise<string> {
-        "use step"
-        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
-            method: "POST",
-            headers: await TerseAgent.buildHeaders(),
-            body: JSON.stringify(requestBody)
+        return runSdkStep({
+            name: "terse.agent.final-output",
+            input: requestBody as StepStartedEvent["input"],
+            run: async input => {
+                const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.AGENT_RUN}`, {
+                    method: "POST",
+                    headers: await TerseAgent.buildHeaders(),
+                    body: JSON.stringify(input)
+                })
+                const contentType = res.headers.get("content-type") ?? ""
+                if (!contentType.includes("text/event-stream")) {
+                    const data: SdkAgentRunResponseBody = await res.json()
+                    const details = data.details?.length ? ` (${data.details.join("; ")})` : ""
+                    if (!res.ok || !data.success) throw new Error(`${data.error ?? "Agent run failed"}${details}`)
+                    throw new Error("Run completed without final output")
+                }
+                if (!res.body) throw new Error("Stream did not provide a response body.")
+                for await (const eventData of iterateSseDataLines(res.body)) {
+                    const parsed = safeParseStreamEvent(eventData)
+                    if (!parsed) continue
+                    if (parsed.type === "error") throw new Error(parsed.message)
+                    if (parsed.type === "done") break
+                    const result = mapStreamEventToResult(parsed)
+                    if (result instanceof FinalOutputResult) return result.finalOutput
+                }
+                throw new Error("Run completed without final output")
+            }
         })
-        const contentType = res.headers.get("content-type") ?? ""
-        if (!contentType.includes("text/event-stream")) {
-            const data: SdkAgentRunResponseBody = await res.json()
-            const details = data.details?.length ? ` (${data.details.join("; ")})` : ""
-            if (!res.ok || !data.success) throw new Error(`${data.error ?? "Agent run failed"}${details}`)
-            throw new Error("Run completed without final output")
-        }
-        if (!res.body) throw new Error("Stream did not provide a response body.")
-        for await (const eventData of iterateSseDataLines(res.body)) {
-            const parsed = safeParseStreamEvent(eventData)
-            if (!parsed) continue
-            if (parsed.type === "error") throw new Error(parsed.message)
-            if (parsed.type === "done") break
-            const result = mapStreamEventToResult(parsed)
-            if (result instanceof FinalOutputResult) return result.finalOutput
-        }
-        throw new Error("Run completed without final output")
     }
 
     static async executeTool<TOutput = unknown>(toolName: string, params: Record<string, unknown> = {}): Promise<TOutput> {
-        "use step"
-        const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
-            method: "POST",
-            headers: await buildSdkRequestHeaders(),
-            body: JSON.stringify({ toolName, params })
+        return runSdkStep({
+            name: "terse.agent.execute-tool",
+            input: { toolName, params } as StepStartedEvent["input"],
+            run: async input => {
+                const res = await fetch(`${resolveApiBaseUrl()}${ApiRoutes.SDK.TOOL_EXECUTE}`, {
+                    method: "POST",
+                    headers: await buildSdkRequestHeaders(),
+                    body: JSON.stringify(input)
+                })
+                const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
+                if (!data.success) {
+                    throw new Error(data.error ?? "Tool execution failed")
+                }
+                return data.result as TOutput
+            }
         })
-        const data = (await res.json()) as { success: boolean; result?: unknown; error?: string }
-        if (!data.success) {
-            throw new Error(data.error ?? "Tool execution failed")
-        }
-        return data.result as TOutput
     }
 
     private static async buildHeaders(): Promise<Record<string, string>> {
@@ -560,30 +620,34 @@ export function jobStep<O>(opts: { outputSchema?: z.ZodType<O>; run: () => Promi
 export function jobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
     // Synchronous guard so an un-awaited jobStep() still throws at the call site
     // instead of floating as an unhandled rejection.
-    if (!Reflect.get(globalThis, Symbol.for("WORKFLOW_USE_STEP"))) {
+    if (getExecutionPhase() !== "workflow") {
         throw new DurableOnlyError("jobStep() is only available in durable jobs. Add `durable: true` to this job.")
     }
     return runJobStep(opts)
 }
 
 async function runJobStep(opts: { input?: unknown; inputSchema?: z.ZodType; outputSchema?: z.ZodType; run: (input?: unknown) => Promise<unknown> }): Promise<unknown> {
-    const input = opts.inputSchema ? opts.inputSchema.parse(opts.input) : undefined
-    const result = await opts.run(input)
-    return opts.outputSchema ? opts.outputSchema.parse(result) : result
+    const input = opts.inputSchema ? opts.inputSchema.parse(opts.input) : null
+    return __runDurableStep({
+        name: "terse.job-step",
+        input: input as StepStartedEvent["input"],
+        run: async storedInput => {
+            const result = await opts.run(opts.inputSchema ? storedInput : undefined)
+            return opts.outputSchema ? opts.outputSchema.parse(result) : result
+        }
+    })
 }
 
 /**
  * Runs the wrapped call as a journaled durable step: `step(client.method(args))`.
- * The durable build hoists the call into a step, so `step()` must wrap the call
- * directly, and its arguments and resolved value must be serializable. Only
- * available in durable jobs.
+ * Terse rewrites the call to an inline durable closure before loading the job,
+ * so `step()` must wrap the call directly, and its arguments and resolved value
+ * must be serializable. Only available in durable jobs.
  */
-// The durable build rewrites every valid step() call site away, so this body only
+// Source preparation rewrites every valid step() call site away, so this body only
 // runs where the transform could not apply. Fail loudly either way.
 export function step<T>(promise: Promise<T>): Promise<T> {
-    throw new DurableOnlyError(
-        "step() is only available in durable jobs. Add `durable: true` and wrap the call directly, e.g. step(client.method(args)). Note it is only transformed inside files that call createJob()."
-    )
+    throw new DurableOnlyError("step() is only available in durable jobs. Add `durable: true` and wrap the call directly, e.g. step(client.method(args)).")
 }
 
 /**
@@ -594,9 +658,21 @@ export function step<T>(promise: Promise<T>): Promise<T> {
  * Inside step bodies and non-durable jobs it simply forwards to `console.log`.
  */
 export async function log(...args: unknown[]): Promise<void> {
-    "use step"
-    const prefix = process.env.NO_COLOR ? "[job]" : "[1m[36m[job][0m"
-    console.log(prefix, ...args)
+    const print = (values: readonly unknown[]) => {
+        const prefix = process.env.NO_COLOR ? "[job]" : "[1m[36m[job][0m"
+        console.log(prefix, ...values)
+    }
+
+    if (getExecutionPhase() !== "workflow") {
+        print(args)
+        return
+    }
+
+    await __runDurableStep({
+        name: "terse.log",
+        input: args as StepStartedEvent["input"],
+        run: values => print(values as readonly unknown[])
+    })
 }
 
 export function sleep(duration: string | number | Date): Promise<void> {
@@ -609,7 +685,13 @@ export function sleep(duration: string | number | Date): Promise<void> {
         console.log(`[terse] Skipping sleep locally — in production this run would suspend and resume after ${describeDuration(duration)}.`)
         return Promise.resolve()
     }
-    return workflowSleep(duration as any)
+    return durableSleep(toDurableDuration(duration))
+}
+
+function toDurableDuration(duration: string | number | Date): Parameters<typeof durableSleep>[0] {
+    if (typeof duration === "string") return duration as Parameters<typeof durableSleep>[0]
+    const milliseconds = duration instanceof Date ? Math.max(0, duration.getTime() - Date.now()) : duration
+    return `${milliseconds}ms` as Parameters<typeof durableSleep>[0]
 }
 
 function describeDuration(duration: string | number | Date): string {

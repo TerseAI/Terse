@@ -43,11 +43,8 @@ jobs:
               run: |
                   version=$(npm view terse-cli version)
                   echo "version=${version}" >> "$GITHUB_OUTPUT"
-                  # Falls back to the umbrella's pin for CLI releases that predate the @workflow/core
-                  # swap; both packages ship under the same version string.
-                  deps=$(npm view "terse-cli@${version}" dependencies --json)
-                  echo "workflow_core=$(node -p "const d = JSON.parse(process.argv[1]); d['@workflow/core'] ?? d.workflow" "$deps")" >> "$GITHUB_OUTPUT"
-                  echo "durable_objects=$(npm view little-durable-objects version)" >> "$GITHUB_OUTPUT"
+                  deps=$(npm view "terse-sdk@${version}" dependencies --json)
+                  echo "durable_objects=$(node -p "JSON.parse(process.argv[1])['little-durable-objects']" "$deps")" >> "$GITHUB_OUTPUT"
 
             # Pushed to the job-local registry so the leaf images can FROM it. BuildKit reaches it
             # over the host network and allows plain HTTP because the host is localhost.
@@ -75,7 +72,6 @@ jobs:
                       BASE_IMAGE=localhost:5000/terse-sandbox-base:pr
                       TERSE_VERSION=${{ steps.published.outputs.version }}
                       DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz
-                      WORKFLOW_CORE_VERSION=${{ steps.published.outputs.workflow_core }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true
 
@@ -89,6 +85,5 @@ jobs:
                       BASE_IMAGE=localhost:5000/terse-sandbox-base:pr
                       TERSE_VERSION=${{ steps.published.outputs.version }}
                       DURABLE_OBJECTS_DEPENDENCY_SPEC=file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz
-                      WORKFLOW_CORE_VERSION=${{ steps.published.outputs.workflow_core }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max,ignore-error=true

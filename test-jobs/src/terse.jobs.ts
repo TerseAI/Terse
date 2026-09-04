@@ -8,6 +8,8 @@ import { z } from "zod"
 
 import { SlackChannel, Triggers, toolbox } from "./terse.generated"
 
+import "./jobs/durable-failure-snapshot-retry"
+
 // `createJob` registers a job with Terse. Each job has a name, one or more
 // triggers, and an `onTrigger` handler. `terse test` and `terse run` execute
 // them locally.
@@ -22,11 +24,7 @@ createJob({
     // The handler runs every time a trigger fires. `event` is typed to match
     // the trigger(s) above.
     onTrigger: async (event, state) => {
-        const response = await generateText({
-            prompt: "Tell me a joke about Lord of the rings. With Gandalf in it",
-            skills: [],
-            outputSchema: z.object({ joke: z.string() })
-        })
+        const response = await step(generateJoke())
 
         await toolbox.slack.sendMessage({
             channelId: SlackChannel.AllTerseInc.channelId,
@@ -36,19 +34,8 @@ createJob({
         const runCount = await state.get("runCount")
         await state.set("runCount", runCount + 1)
 
-        const work = await jobStep({
-            input: runCount,
-            inputSchema: z.number(),
-            outputSchema: z.string(),
-            run: async (runCount: number) => {
-                console.log("Run count: ", runCount)
-                console.log("pretend there is a lot of work happening here.")
-
-                return "work is done " + runCount
-            }
-        })
-
-        // console.log(work)
+        const work = await step(doWork(runCount))
+        await log(work)
 
         const result = await waitForInput({
             via: slack({ channel: SlackChannel.AllTerseInc.channelId }),
@@ -81,11 +68,11 @@ createJob({
             })
         }
 
-        console.log("sleeping for 1 minute")
+        await log("sleeping for 1 minute")
         await sleep("1m")
-        console.log("sleep completed")
+        await log("sleep completed")
 
-        console.log(response.joke)
+        await log(response.joke)
     }
 })
 
@@ -188,7 +175,7 @@ createJob({
 // ─────────────── FS snapshot suspension tests (TER-713) ───────────────
 //
 // Handlers pass plain strings and never touch fs/path/os: Node modules are only
-// legal inside step callees, which run outside the workflow sandbox.
+// legal inside step callees, which run in the runtime's isolated step phase.
 //
 // Every write goes inside step() so it runs exactly once. On resume the step
 // replays from the journal without re-executing, so the file exists after
@@ -344,6 +331,20 @@ createJob({
 // ─────────────── helpers ───────────────
 //
 // Everything below runs inside step functions, where Node modules are available.
+
+async function generateJoke(): Promise<{ joke: string }> {
+    return generateText({
+        prompt: "Tell me a joke about Lord of the rings. With Gandalf in it",
+        skills: [],
+        outputSchema: z.object({ joke: z.string() })
+    })
+}
+
+async function doWork(runCount: number): Promise<string> {
+    console.log("Run count: ", runCount)
+    console.log("pretend there is a lot of work happening here.")
+    return `work is done ${runCount}`
+}
 
 function assertEquals(actual: string | null, expected: string, what: string): void {
     if (actual !== expected) {

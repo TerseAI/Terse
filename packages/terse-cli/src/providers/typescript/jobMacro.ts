@@ -1,148 +1,100 @@
-import path from "node:path"
 import type TS from "typescript"
 
-import { StepCallKind, type StepDef, type StepEdit, findStepImportName, matchStepCall, transformJobStep, transformStep } from "./stepMacro.js"
+import { findStepImportName, matchStepCall, transformStep } from "./stepMacro.js"
 
-export type MacroJob = { name: string; fnName: string }
-export type MacroResult = { code: string; stepsCode: string | null; jobs: MacroJob[] }
-
-// MARK: Rewrite job sources
+export type MacroJob = { name: string }
+export type MacroResult = { code: string; stepsCode: null; jobs: MacroJob[] }
 
 export function transformJobSource(ts: typeof TS, source: string, fileName: string): MacroResult {
-    const { code: withSteps, stepDefs } = extractJobSteps(ts, source, fileName)
-    const sf = ts.createSourceFile(fileName, withSteps, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-    const jobs: MacroJob[] = []
-    const hoisted: string[] = []
-    const edits: StepEdit[] = []
-
-    const isProp = (p: TS.ObjectLiteralElementLike, key: string): p is TS.PropertyAssignment => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === key
-
-    const visit = (node: TS.Node): void => {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "createJob" && node.arguments.length > 0 && ts.isObjectLiteralExpression(node.arguments[0])) {
-            const obj = node.arguments[0]
-            const nameProp = obj.properties.find(p => isProp(p, "name"))
-            const onTrigger = obj.properties.find(p => isProp(p, "onTrigger"))
-            const statesProp = obj.properties.find(p => isProp(p, "states"))
-            const durable = obj.properties.find(p => isProp(p, "durable"))?.initializer.kind === ts.SyntaxKind.TrueKeyword
-            const jobName = nameProp && ts.isStringLiteralLike(nameProp.initializer) ? nameProp.initializer.text : undefined
-            const fn = onTrigger?.initializer
-
-            if (jobName && fn && durable && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) {
-                const fnName = `terseWf_${Buffer.from(jobName).toString("hex")}`
-                const param = fn.parameters.length ? fn.parameters[0].name.getText(sf) : "event"
-                const stateParam = fn.parameters.length > 1 ? fn.parameters[1].name.getText(sf) : "state"
-                const statesText = statesProp ? statesProp.initializer.getText(sf) : "[]"
-                const body = ts.isBlock(fn.body) ? fn.body.getText(sf).slice(1, -1) : `\n  return ${fn.body.getText(sf)}\n`
-                hoisted.push(
-                    `async function ${fnName}(__rawEvent) {\n` +
-                        `  "use workflow"\n` +
-                        `  const ${param} = createSDKTrigger(__rawEvent)\n` +
-                        `  const ${stateParam} = __buildJobStateAccessor(${statesText})\n` +
-                        body +
-                        `}`
-                )
-                edits.push({ start: onTrigger!.getStart(sf), end: onTrigger!.getEnd(), text: `onTrigger: ${fnName}` })
-                jobs.push({ name: jobName, fnName })
-            }
-        }
-        ts.forEachChild(node, visit)
-    }
-    visit(sf)
-
-    if (jobs.length === 0) return { code: withSteps, stepsCode: null, jobs }
-
-    const imports = sf.statements.filter(ts.isImportDeclaration)
-    const lastImportEnd = imports.length ? imports[imports.length - 1].getEnd() : 0
-    edits.push({ start: lastImportEnd, end: lastImportEnd, text: `\n\n${hoisted.join("\n\n")}\n` })
-
-    const importEdit = sdkImportEdit(ts, sf, imports, lastImportEnd, ["createSDKTrigger", "__buildJobStateAccessor"])
-    if (importEdit) edits.push(importEdit)
-
-    if (stepDefs.length > 0) {
-        edits.push({ start: lastImportEnd, end: lastImportEnd, text: `\nimport { ${stepDefs.map(s => s.name).join(", ")} } from "${stepsImportSpecifier(fileName)}"` })
-    }
-
-    let code = withSteps
-    for (const e of edits.sort((a, b) => b.start - a.start)) code = code.slice(0, e.start) + e.text + code.slice(e.end)
-
-    const stepsCode = stepDefs.length > 0 ? buildStepsModule(ts, sf, stepDefs) : null
-    return { code, stepsCode, jobs }
-}
-
-// MARK: Extract job steps
-
-function extractJobSteps(ts: typeof TS, source: string, fileName: string): { code: string; stepDefs: StepDef[] } {
     const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-    const stepDefs: StepDef[] = []
-    const edits: StepEdit[] = []
     const stepName = findStepImportName(ts, sf)
-    let counter = 0
+    const stepEdits: Array<{ start: number; end: number; text: string }> = []
+    let stepIndex = 0
 
     const visit = (node: TS.Node): void => {
         const step = matchStepCall(ts, node, stepName)
         if (step) {
-            switch (step.kind) {
-                case StepCallKind.Step: {
-                    const { stepDef, edit } = transformStep(ts, sf, step, fileName, counter++, stepName)
-                    stepDefs.push(stepDef)
-                    edits.push(edit)
-                    return
-                }
-                case StepCallKind.JobStep: {
-                    const transformed = transformJobStep(ts, sf, step, fileName, counter, stepName)
-                    if (transformed) {
-                        counter++
-                        stepDefs.push(transformed.stepDef)
-                        edits.push(transformed.edit)
-                        return
-                    }
-                    break
-                }
-            }
+            stepEdits.push(transformStep(ts, sf, step, fileName, stepIndex++))
+            return
         }
+
         ts.forEachChild(node, visit)
     }
     visit(sf)
 
-    if (edits.length === 0) return { code: source, stepDefs: [] }
-    let code = source
-    for (const e of edits.sort((a, b) => b.start - a.start)) code = code.slice(0, e.start) + e.text + code.slice(e.end)
-    return { code, stepDefs }
+    let code = applyEdits(source, stepEdits)
+    const hoisted = hoistDurableJobs(ts, code, fileName)
+    code = hoisted.code
+
+    const sdkImports = [...(stepIndex > 0 ? ["__runDurableStep"] : []), ...(hoisted.jobs.length > 0 ? ["__defineTerseWorkflow", "__registerDurableWorkflow"] : [])]
+    code = addSdkImports(ts, code, fileName, sdkImports)
+
+    return { code, stepsCode: null, jobs: hoisted.jobs }
 }
 
-// Steps execute from a separate bundle, so the module scope the hoisted code relies
-// on (clients, env guards, helpers) must exist there too, not just the imports.
-function buildStepsModule(ts: typeof TS, sf: TS.SourceFile, stepDefs: StepDef[]): string {
-    const moduleCode = sf.statements
-        .filter(s => !containsCreateJob(ts, s))
-        .map(s => s.getText(sf))
-        .join("\n")
-    const defs = stepDefs.map(s => s.def).join("\n\n")
-    return `${moduleCode}\n\n${defs}\n`
-}
+function hoistDurableJobs(ts: typeof TS, source: string, fileName: string): { code: string; jobs: MacroJob[] } {
+    const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const edits: Array<{ start: number; end: number; text: string }> = []
+    const jobs: MacroJob[] = []
 
-function containsCreateJob(ts: typeof TS, node: TS.Node): boolean {
-    const walk = (n: TS.Node): true | undefined => (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "createJob" ? true : ts.forEachChild(n, walk))
-    return walk(node) ?? false
-}
+    for (const statement of sf.statements) {
+        if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) continue
+        const name = durableJobName(ts, statement.expression)
+        if (!name) continue
 
-function stepsImportSpecifier(fileName: string): string {
-    return `./${path.basename(fileName).replace(/\.(ts|tsx|mts|cts)$/, "")}.__terse.steps`
-}
-
-// MARK: Imports
-
-function sdkImportEdit(ts: typeof TS, sf: TS.SourceFile, imports: TS.ImportDeclaration[], lastImportEnd: number, names: string[]): { start: number; end: number; text: string } | null {
-    const sdkImport = imports.find(i => ts.isStringLiteralLike(i.moduleSpecifier) && i.moduleSpecifier.text === "terse-sdk")
-    const named = sdkImport?.importClause?.namedBindings
-    if (sdkImport && named && ts.isNamedImports(named)) {
-        const missing = names.filter(n => !named.elements.some(el => el.name.text === n))
-        if (missing.length === 0) return null
-        const lastElement = named.elements[named.elements.length - 1]
-        if (lastElement) {
-            const pos = lastElement.getEnd()
-            return { start: pos, end: pos, text: `, ${missing.join(", ")}` }
-        }
+        const index = jobs.length
+        const jobName = `__terseJob${index}`
+        const workflowName = `__terseWorkflow${index}`
+        edits.push({
+            start: statement.getStart(sf),
+            end: statement.getEnd(),
+            text: `const ${jobName} = ${statement.expression.getText(sf)}\nconst ${workflowName} = __defineTerseWorkflow(${jobName})\n__registerDurableWorkflow(${workflowName})`
+        })
+        jobs.push({ name })
     }
-    return { start: lastImportEnd, end: lastImportEnd, text: `\nimport { ${names.join(", ")} } from "terse-sdk"` }
+
+    return { code: applyEdits(source, edits), jobs }
+}
+
+function durableJobName(ts: typeof TS, node: TS.Node): string | undefined {
+    if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression) || node.expression.text !== "createJob") return undefined
+    const [config] = node.arguments
+    if (!config || !ts.isObjectLiteralExpression(config)) return undefined
+
+    const name = property(ts, config, "name")?.initializer
+    const durable = property(ts, config, "durable")?.initializer
+
+    if (!name || !ts.isStringLiteralLike(name) || durable?.kind !== ts.SyntaxKind.TrueKeyword) return undefined
+    return name.text
+}
+
+function property(ts: typeof TS, object: TS.ObjectLiteralExpression, name: string): TS.PropertyAssignment | undefined {
+    return object.properties.find((candidate): candidate is TS.PropertyAssignment => ts.isPropertyAssignment(candidate) && ts.isIdentifier(candidate.name) && candidate.name.text === name)
+}
+
+function addSdkImports(ts: typeof TS, source: string, fileName: string, names: readonly string[]): string {
+    if (names.length === 0) return source
+    const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const imports = sf.statements.filter(ts.isImportDeclaration)
+    const sdkImport = imports.find(statement => ts.isStringLiteralLike(statement.moduleSpecifier) && statement.moduleSpecifier.text === "terse-sdk")
+    const bindings = sdkImport?.importClause?.namedBindings
+
+    if (bindings && ts.isNamedImports(bindings)) {
+        const importedNames = new Set(bindings.elements.map(element => (element.propertyName ?? element.name).text))
+        const missingNames = names.filter(name => !importedNames.has(name))
+        if (missingNames.length === 0) return source
+        const lastElement = bindings.elements[bindings.elements.length - 1]
+        if (lastElement) return applyEdits(source, [{ start: lastElement.getEnd(), end: lastElement.getEnd(), text: `, ${missingNames.join(", ")}` }])
+    }
+
+    const lastImportEnd = imports.length > 0 ? imports[imports.length - 1]!.getEnd() : 0
+    return applyEdits(source, [{ start: lastImportEnd, end: lastImportEnd, text: `\nimport { ${names.join(", ")} } from "terse-sdk"` }])
+}
+
+function applyEdits(source: string, edits: ReadonlyArray<{ start: number; end: number; text: string }>): string {
+    let code = source
+    for (const edit of [...edits].sort((a, b) => b.start - a.start)) {
+        code = code.slice(0, edit.start) + edit.text + code.slice(edit.end)
+    }
+    return code
 }

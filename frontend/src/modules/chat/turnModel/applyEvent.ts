@@ -1,4 +1,4 @@
-import type { ChatSnippet, ModelEvent, ToolCallExecutionStatus } from "terse-types"
+import { type ChatSnippet, DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL, type ModelEvent, type ToolCallExecutionStatus } from "terse-types"
 import { v4 as uuidv4 } from "uuid"
 
 import type { ProcessOutputUnit, SnippetUnit, ThinkingUnit, ToolCallUnit, Turn, TurnUnit } from "./types"
@@ -221,6 +221,11 @@ export function applyEvent(turns: Turn[], event: ModelEvent, options: { disableA
         }
 
         case "ProcessOutput": {
+            const alreadyShowsDeprecatedRuntimeWarning =
+                event.label === DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL &&
+                next.some(turn => turn.units.some(unit => unit.kind === "process_output" && unit.label === DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL))
+            if (alreadyShowsDeprecatedRuntimeWarning) return next
+
             const existingTailTurn = findLastAssistantTurn(next)
             const tailUnit = existingTailTurn?.units[existingTailTurn.units.length - 1]
             const shouldAppendToTail = !!existingTailTurn && tailUnit?.kind === "process_output" && tailUnit.label === event.label && existingTailTurn.id !== event.response_id

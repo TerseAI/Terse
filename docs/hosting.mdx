@@ -6,10 +6,10 @@ icon: "cloud-upload"
 
 Terse splits into two planes. You can pick where each one runs independently.
 
-| Plane             | What it does                                                                                                | Where it can run                       |
-| ----------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| **Control plane** | The orchestrator. Ingests triggers, stores config, schedules runs, holds run history, serves the dashboard. | Terse Cloud (default) or self-hosted   |
-| **Data plane**    | The runtime that executes your `onTrigger` code, agent runs, and tool calls.                                | Terse Cloud sandboxes or self-hosted   |
+| Plane             | What it does                                                                                                | Where it can run                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| **Control plane** | The orchestrator. Ingests triggers, stores config, schedules runs, holds run history, serves the dashboard. | Terse Cloud (default) or self-hosted |
+| **Data plane**    | The runtime that executes your `onTrigger` code, agent runs, and tool calls.                                | Terse Cloud sandboxes or self-hosted |
 
 ## The three deployments
 
@@ -28,12 +28,13 @@ Most users land on one of these:
 </CardGroup>
 
 <Note>
-    A fourth combination (self-hosted control plane plus Terse Cloud data plane) is technically valid but uncommon. If you've gone to the trouble of running the control plane yourself, you almost always want the data plane local too.
+    A fourth combination (self-hosted control plane plus Terse Cloud data plane) is technically valid but uncommon. If you've gone to the trouble of running the control plane yourself, you almost
+    always want the data plane local too.
 </Note>
 
 ## Managed
 
-The default when you scaffold a project with `terse init`. `terse deploy` zips your code, uploads it, registers every job's triggers on the control plane, and builds a source image on Terse Cloud. Durable workflows get their workflow bundle built during that step, so large projects are not limited by upload size. From then on each run lands on an isolated [Modal](https://modal.com) sandbox in the Terse Cloud data plane, provisioned per execution.
+The default when you scaffold a project with `terse init`. `terse deploy` zips your code, uploads it, registers every job's triggers on the control plane, and builds a source image on Terse Cloud. Durable workflows load transformed TypeScript directly through Terse's journal runtime, with no separate workflow bundle. From then on each run lands on an isolated [Modal](https://modal.com) sandbox in the Terse Cloud data plane, provisioned per execution.
 
 ### Security
 

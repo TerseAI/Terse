@@ -110,8 +110,9 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
                 triggers: job.triggers
             })),
             remoteServerUrl: isUrlMode ? remoteServerUrl : undefined,
-            // Only the durable runtime reads .terse/wf, so the build can skip compiling one.
-            requiresWorkflowBundle: jobs.some(job => provider.runtimeName(job) === "durable"),
+            // New durable jobs load transformed TypeScript directly; keep the wire
+            // field explicit so mixed-version backends never attempt the legacy build.
+            requiresWorkflowBundle: false,
             ...sourceArchive
         })
 
