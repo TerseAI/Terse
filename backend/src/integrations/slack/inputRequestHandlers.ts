@@ -22,6 +22,7 @@ import {
 
 export function registerInputRequestHandlers(slack: SlackApp): void {
     slack.action(new RegExp(`^${INPUT_REQUEST_ACTION_PREFIX}.+$`), async ({ ack, body, action, respond, client }) => {
+        const signalReceivedAtMs = Date.now()
         await ack()
 
         try {
@@ -108,7 +109,8 @@ export function registerInputRequestHandlers(slack: SlackApp): void {
                 response,
                 channelId,
                 messageTs: message.ts,
-                existingBlocks: message.blocks
+                existingBlocks: message.blocks,
+                signalReceivedAtMs
             })
         } catch (error) {
             logger.error("[SlackInputRequest] Error processing input response", { error })
@@ -117,6 +119,7 @@ export function registerInputRequestHandlers(slack: SlackApp): void {
     })
 
     slack.view(INPUT_REQUEST_MODAL_CALLBACK_ID, async ({ ack, body, view, client }) => {
+        const signalReceivedAtMs = Date.now()
         // Slack requires view submissions to be acknowledged within 3 seconds;
         // everything async happens after ack().
         const text = view.state.values[INPUT_REQUEST_FEEDBACK_BLOCK_ID]?.[INPUT_REQUEST_FEEDBACK_ACTION_ID]?.value
@@ -160,7 +163,8 @@ export function registerInputRequestHandlers(slack: SlackApp): void {
                     option,
                     response,
                     channelId: metadata.channel_id,
-                    messageTs: metadata.message_ts
+                    messageTs: metadata.message_ts,
+                    signalReceivedAtMs
                 })
             } catch (error) {
                 logger.error("[SlackInputRequest] Error processing modal response", { error })
@@ -182,10 +186,11 @@ type DeliverResponseParams = {
     channelId: string
     messageTs: string
     existingBlocks?: KnownBlock[]
+    signalReceivedAtMs: number
 }
 
 async function deliverResponse(params: DeliverResponseParams): Promise<void> {
-    const { client, organizationId, runId, token, transport, option, response, channelId, messageTs, existingBlocks } = params
+    const { client, organizationId, runId, token, transport, option, response, channelId, messageTs, existingBlocks, signalReceivedAtMs } = params
 
     const respondedBy = response.respondent.displayName ?? `<@${response.respondent.userId}>`
     const summary = response.text ? `:white_check_mark: *${option.label}* by ${respondedBy}: ${response.text}` : `:white_check_mark: *${option.label}* by ${respondedBy}`
@@ -201,7 +206,7 @@ async function deliverResponse(params: DeliverResponseParams): Promise<void> {
         return
     }
 
-    const outcome = await resolveInputRequest({ organizationId, runId, token, response })
+    const outcome = await resolveInputRequest({ organizationId, runId, token, response, signalReceivedAtMs })
     if (outcome === "resumed") return
 
     const failureLines: Record<Exclude<InputResolveOutcome, "resumed">, string> = {
