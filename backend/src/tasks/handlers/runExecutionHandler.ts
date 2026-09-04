@@ -4,7 +4,7 @@ import logger from "../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
 import { db } from "../../loaders/prisma"
 import { finalizeRunFailure } from "../../loaders/socket"
-import { claimSuspendedRun, finalizeRunStatus, markRunFailed, markRunSkipped } from "../../modules/agents/AgentRunner/runHistory"
+import { claimFailedRunSnapshot, claimSuspendedRun, finalizeRunStatus, markRunFailed, markRunSkipped } from "../../modules/agents/AgentRunner/runHistory"
 import { classifyAgentError } from "../../modules/agents/agentErrorUtils"
 import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { invalidateRunAndChatHistory } from "../../services/CacheInvalidationService"
@@ -30,9 +30,18 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
     const { runId, agentId, orgId, userId, jobName, kind, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs } = data
     let restoreImageId = data.restoreImageId
 
+    if (data.failureSnapshotId) {
+        const claim = await claimFailedRunSnapshot(runId, data.failureSnapshotId)
+        if (!claim.claimed) {
+            logger.info("Failed run retry skipped: snapshot is no longer available", { runId, agentId, failureSnapshotId: data.failureSnapshotId })
+            return
+        }
+        restoreImageId = claim.snapshotImageId
+    }
+
     // A delayed resume may fire after the run was cancelled while suspended; only the caller
     // that flips suspended -> in_progress may execute, so a failed claim means drop the job.
-    if (restoreImageId) {
+    if (restoreImageId && !data.failureSnapshotId) {
         const claim = await claimSuspendedRun(runId)
         if (!claim.claimed) {
             logger.info("Run resumption skipped: run is no longer suspended", { runId, agentId })

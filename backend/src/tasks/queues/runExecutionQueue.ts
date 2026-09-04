@@ -17,7 +17,11 @@ export async function enqueueRunExecution(data: RunExecutionJobData, opts?: { de
         ...(scheduledForMs ? { scheduledForMs } : {}),
         ...(resumeSignal ? { resumeSignal } : {})
     }
-    const singletonKey = data.restoreImageId ? resumeExecutionJobId(data.runId, data.restoreImageId) : runExecutionJobId(data.runId)
+    const singletonKey = data.failureSnapshotId
+        ? retryExecutionJobId(data.runId, data.failureSnapshotId)
+        : data.restoreImageId
+          ? resumeExecutionJobId(data.runId, data.restoreImageId)
+          : runExecutionJobId(data.runId)
     const delay = opts?.delaySeconds ? { startAfter: opts.delaySeconds } : {}
     await Boss.getInstance()
         .getBoss()
@@ -28,6 +32,10 @@ function resumeExecutionJobId(runId: string, restoreImageId: string): string {
     return `resume-${runId}-${restoreImageId}`
 }
 
+function retryExecutionJobId(runId: string, failureSnapshotId: string): string {
+    return `retry-${runId}-${failureSnapshotId}`
+}
+
 export interface RunExecutionJobData {
     runId: string
     agentId: string
@@ -36,6 +44,8 @@ export interface RunExecutionJobData {
     jobName: string
     kind: JobExecutionKind
     restoreImageId?: string
+    /** Failure snapshot row to claim in the worker before restoring its image. */
+    failureSnapshotId?: string
     hookResume?: HookResume
     resumeSignal?: ResumeSignal
     enqueuedAtMs?: number

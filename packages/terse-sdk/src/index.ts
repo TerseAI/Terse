@@ -160,6 +160,9 @@ export function createJob<TTriggers extends readonly TypedTrigger<TriggerLike>[]
         throw new Error(`Job "${params.name}" has ${webhookCount} webhook triggers. Only one webhook trigger per job is allowed.`)
     }
     registerJob<TTriggers>(params)
+    if (params.durable) {
+        __registerDurableWorkflow(__defineTerseWorkflow(params as unknown as CreateJobParameters))
+    }
     return params
 }
 

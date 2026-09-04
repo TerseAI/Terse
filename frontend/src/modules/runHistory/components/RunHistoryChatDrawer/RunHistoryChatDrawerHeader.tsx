@@ -1,4 +1,4 @@
-import { Braces, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2, RefreshCcw } from "lucide-react"
+import { Braces, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2, Play, RotateCcw } from "lucide-react"
 import { RunHistoryRecord, RunHistoryStatus, RunHistoryTrigger } from "terse-types/RunHistoryTypes"
 
 import { Button } from "@/components/ui/button"
@@ -6,6 +6,7 @@ import { CopyCommandButton } from "@/components/ui/copy-command-button"
 import { cn } from "@/lib/utils"
 import { IconForIntegration } from "@/modules/agents/components/Integration"
 import { useReTriggerRun } from "@/modules/runHistory/api/useReTriggerRun"
+import { useRetryFailedRun } from "@/modules/runHistory/api/useRetryFailedRun"
 import { useOpenRunDeepLink } from "@/modules/runHistory/context/RunHistoryChatDrawerContext"
 
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge"
@@ -19,6 +20,7 @@ type Props = {
     runNumber?: number
     totalEvents?: number
     status: RunHistoryStatus
+    canRetryFromFailure: boolean
     filtered: boolean
     isTest?: boolean
     isManuallyTriggered?: boolean
@@ -39,6 +41,7 @@ export default function RunHistoryChatDrawerHeader({
     runId,
     agentId,
     status,
+    canRetryFromFailure,
     isTest,
     isManuallyTriggered,
     triggeredByUserId,
@@ -54,6 +57,7 @@ export default function RunHistoryChatDrawerHeader({
 }: Props) {
     const openRun = useOpenRunDeepLink()
     const { reTriggerRun, isReTriggering } = useReTriggerRun({ agentId, runId })
+    const { retryFailedRun, isRetrying } = useRetryFailedRun(runId)
     const hasRunNavigation = runs !== undefined && currentRunIndex !== undefined
     const canGoPrevious = hasRunNavigation && currentRunIndex > 0
     const canGoNext = hasRunNavigation && currentRunIndex < runs.length - 1
@@ -113,16 +117,30 @@ export default function RunHistoryChatDrawerHeader({
             <div className="mt-3 flex flex-wrap items-center gap-2">
                 <CopyCommandButton command={`terse replay ${runId}`} title="Copy. Then run in your project's terminal" />
 
+                {status === RunHistoryStatus.FAILED && canRetryFromFailure && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={retryFailedRun}
+                        disabled={isRetrying || isReTriggering}
+                        title="Continue this failed run from its last durable checkpoint"
+                        className="h-7 gap-1.5 px-2 text-xs font-medium"
+                    >
+                        <RotateCcw className={cn("h-3.5 w-3.5", isRetrying && "animate-spin")} />
+                        Retry
+                    </Button>
+                )}
+
                 <Button
                     variant="ghost"
                     size="sm"
                     onClick={reTriggerRun}
-                    disabled={isReTriggering}
-                    title="Re-run this job with the same trigger event"
+                    disabled={isReTriggering || isRetrying}
+                    title="Start a new run with the same trigger event and current deployment"
                     className="h-7 gap-1.5 px-2 text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                 >
-                    <RefreshCcw className={cn("h-3.5 w-3.5", isReTriggering && "animate-spin")} />
-                    Retry
+                    <Play className={cn("h-3.5 w-3.5", isReTriggering && "animate-pulse")} />
+                    Run again
                 </Button>
 
                 {hasTriggerPayload && onToggleTriggerPayload && (

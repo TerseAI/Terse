@@ -8,6 +8,8 @@ import { z } from "zod"
 
 import { SlackChannel, Triggers, toolbox } from "./terse.generated"
 
+import "./jobs/durable-failure-snapshot-retry"
+
 // `createJob` registers a job with Terse. Each job has a name, one or more
 // triggers, and an `onTrigger` handler. `terse test` and `terse run` execute
 // them locally.

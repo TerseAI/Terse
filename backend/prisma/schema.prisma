@@ -960,6 +960,7 @@ model run_history_records {
   approval_slack_messages approval_slack_messages[]
   sent_notifications      sent_notifications[]
   suspensions             run_suspensions[]
+  failure_snapshots       run_failure_snapshots[]
 
   @@index([automation_id])
   @@index([project_deploy_id])
@@ -1207,6 +1208,19 @@ model run_suspensions {
   delay_seconds    Int?
   resumed_at       DateTime?
   created_at       DateTime          @default(now())
+
+  run_history_record run_history_records @relation(fields: [run_id], references: [id], onDelete: Cascade)
+
+  @@index([run_id])
+}
+
+model run_failure_snapshots {
+  id                String    @id @default(cuid())
+  run_id            String
+  // Each failed attempt appends a snapshot. A future retry claims the newest un-restored row.
+  snapshot_image_id String
+  restored_at       DateTime?
+  created_at        DateTime  @default(now())
 
   run_history_record run_history_records @relation(fields: [run_id], references: [id], onDelete: Cascade)
 

@@ -150,7 +150,10 @@ export class SandboxJobExecutor implements JobExecutor {
                 })
             )
             telemetrySuccess = outcome.status !== "failed"
-            if (outcome.status === "failed") telemetryError = outcome.cause
+            if (outcome.status === "failed") {
+                telemetryError = outcome.cause
+                await telemetry.measure("snapshotFailureSandboxMs", () => this.captureFailureSnapshot(runId, sb))
+            }
             return outcome
         } catch (error) {
             telemetryError = error
@@ -303,6 +306,29 @@ export class SandboxJobExecutor implements JobExecutor {
             await (runSandbox ? runSandbox.terminate() : this.terminateRunSandboxByName(projectId, runId))
         } catch (error) {
             logger.warn("SDK sandbox: failed to terminate run sandbox", { projectId, runId, error })
+        }
+    }
+
+    private async captureFailureSnapshot(runId: string, sandbox: Sandbox): Promise<void> {
+        const sandboxProvider = getSandboxProvider()
+        let snapshotImageId: string | undefined
+
+        try {
+            snapshotImageId = await sandboxProvider.snapshotForSuspension(sandbox)
+            await db().run_failure_snapshots.create({
+                data: {
+                    run_id: runId,
+                    snapshot_image_id: snapshotImageId
+                }
+            })
+            logger.info("SDK sandbox: captured failure snapshot", { runId, snapshotImageId })
+        } catch (error) {
+            logger.warn("SDK sandbox: failed to capture failure snapshot", { runId, snapshotImageId, error })
+            if (snapshotImageId) {
+                await sandboxProvider.deleteImage(snapshotImageId).catch(deleteError => {
+                    logger.warn("SDK sandbox: failed to delete untracked failure snapshot", { runId, snapshotImageId, error: deleteError })
+                })
+            }
         }
     }
 

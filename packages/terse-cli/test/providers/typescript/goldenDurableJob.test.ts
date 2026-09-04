@@ -70,6 +70,50 @@ createJob({
     )
 })
 
+test("registers durable workflows returned from assigned and exported createJob calls", async t => {
+    const packageDirectory = fileURLToPath(new URL("../../../", import.meta.url))
+    const cwd = await mkdtemp(join(packageDirectory, ".golden-durable-project-"))
+    t.after(() => rm(cwd, { recursive: true, force: true }))
+    await mkdir(join(cwd, "src"), { recursive: true })
+    await writeFile(join(cwd, "package.json"), JSON.stringify({ name: "durable-fixture", type: "module" }))
+    await writeFile(
+        join(cwd, "src", "terse.jobs.ts"),
+        `
+import { createJob as defineJob } from "terse-sdk"
+
+const config = {
+    name: "assigned-job",
+    triggers: [],
+    durable: true,
+    onTrigger: async () => {}
+} as const
+
+export const assignedJob = defineJob(config)
+
+export default defineJob({
+    name: "default-export-job",
+    triggers: [],
+    durable: true,
+    onTrigger: async () => {}
+})
+`
+    )
+
+    const preparedEntry = prepareJobSources({ cwd, entryFile: "src/terse.jobs.ts" })
+    __resetRegisteredTerseInstances()
+    const module = await tsImport(pathToFileURL(preparedEntry).href, pathToFileURL(join(cwd, "package.json")).href)
+
+    const assignedJob = fetchRegisteredJobs().get("assigned-job")
+    assert.ok(assignedJob)
+    assert.equal(module.assignedJob, assignedJob)
+    assert.ok(__fetchRegisteredDurableWorkflow(assignedJob.name))
+
+    const defaultExportJob = fetchRegisteredJobs().get("default-export-job")
+    assert.ok(defaultExportJob)
+    assert.equal(module.default, defaultExportJob)
+    assert.ok(__fetchRegisteredDurableWorkflow(defaultExportJob.name))
+})
+
 function jobContext(): TerseJobContext {
     return {
         sessionId: "session-golden",

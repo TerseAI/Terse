@@ -279,12 +279,49 @@ export async function claimSuspendedRun(runId: string): Promise<SuspendedRunClai
     return claim
 }
 
+export type FailedRunSnapshotClaim = { claimed: false } | { claimed: true; snapshotImageId: string }
+
+// Claims a specific failure snapshot and moves the same run back into progress. Keeping
+// the claim in the worker avoids leaving the run in progress if enqueueing succeeds but
+// the worker is delayed, and prevents two clicks from restoring the same attempt twice.
+export async function claimFailedRunSnapshot(runId: string, failureSnapshotId: string): Promise<FailedRunSnapshotClaim> {
+    const claim = await db().$transaction(async (tx): Promise<FailedRunSnapshotClaim> => {
+        const snapshot = await tx.run_failure_snapshots.findFirst({
+            where: { id: failureSnapshotId, run_id: runId, restored_at: null },
+            select: { snapshot_image_id: true }
+        })
+        if (!snapshot) return { claimed: false }
+
+        const run = await tx.run_history_records.updateMany({
+            where: { id: runId, status: RunHistoryStatus.FAILED },
+            data: { status: RunHistoryStatus.IN_PROGRESS }
+        })
+        if (run.count === 0) return { claimed: false }
+
+        const restored = await tx.run_failure_snapshots.updateMany({
+            where: { id: failureSnapshotId, run_id: runId, restored_at: null },
+            data: { restored_at: new Date() }
+        })
+        if (restored.count === 0) throw new Error(`Failure snapshot ${failureSnapshotId} was claimed concurrently`)
+
+        return { claimed: true, snapshotImageId: snapshot.snapshot_image_id }
+    })
+    if (claim.claimed) {
+        captureRunLifecycleEvent(runId, AnalyticsEvent.JOB_RESUMED)
+        await emitRunHistoryInvalidation(runId)
+    }
+    return claim
+}
+
 async function emitRunHistoryInvalidation(runId: string): Promise<void> {
     const run = await db().run_history_records.findUnique({
         where: { id: runId },
         select: { automation_id: true, automation: { select: { organization_id: true } } }
     })
-    if (run?.automation?.organization_id) emitCacheInvalidationWithWildcard(run.automation.organization_id, "runHistory", run.automation_id)
+    if (run?.automation?.organization_id) {
+        emitCacheInvalidationWithWildcard(run.automation.organization_id, "runHistory", run.automation_id)
+        emitCacheInvalidationWithWildcard(run.automation.organization_id, "chatHistory", runId)
+    }
 }
 
 export type FailureStage = "filter" | "agent"
