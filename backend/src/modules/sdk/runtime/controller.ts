@@ -407,6 +407,9 @@ export async function handleJobSuspension(req: Request, res: Response) {
     }
 
     const { runId } = parsed.data
+    const runContext = await resolveRunContext(runId, user)
+    if (!runContext) return res.status(404).json({ success: false, error: "Run not found" })
+
     const suspension = suspensionDetails(parsed.data)
     const delaySeconds = suspension.kind === "timer" ? suspension.delaySeconds : undefined
     const telemetry = new SandboxSuspendTelemetry({
