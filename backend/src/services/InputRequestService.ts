@@ -82,12 +82,10 @@ async function enqueueInputResume(run: RunForInput, runId: string, token: string
         orderBy: { created_at: "desc" }
     })
 
-    // Suspension refuses to park without a snapshot, so a suspended run missing one is
-    // corrupted state that can never resume; fail it loudly instead of dropping the response.
-    if (!suspension?.suspend_image_id) {
-        logger.error("[InputRequest] Suspended run has no journal snapshot", { runId, token })
+    if (!suspension || (run.durableJournalBackend !== "durable_object" && !suspension.suspend_image_id)) {
+        logger.error("[InputRequest] Suspended run has no resumable journal state", { runId, token, durableJournalBackend: run.durableJournalBackend })
         await claimSuspendedRun(runId)
-        await markRunFailed(runId, "Suspended run has no journal snapshot; the input response could not be delivered", "agent")
+        await markRunFailed(runId, "Suspended run has no resumable journal state; the input response could not be delivered", "agent")
         return "unresumable"
     }
 
@@ -99,7 +97,9 @@ async function enqueueInputResume(run: RunForInput, runId: string, token: string
             userId: run.userId,
             jobName: run.jobName,
             kind: "sandbox",
-            restoreImageId: suspension.suspend_image_id,
+            resumeFrom: "suspension",
+            restoreImageId: suspension.suspend_image_id ?? undefined,
+            resumeKey: suspension.id,
             hookResume: { token, payload: response }
         },
         { resumeSignal: { kind: "input", receivedAtMs: signalReceivedAtMs } }
@@ -116,10 +116,16 @@ function inputResponseKey(organizationId: string, token: string): string {
 async function findRunInOrganization(runId: string, organizationId: string): Promise<RunForInput | null> {
     const run = await db().run_history_records.findFirst({
         where: { id: runId, automation: { organization_id: organizationId } },
-        select: { automation: { select: { id: true, name: true, user_id: true } } }
+        select: { durable_journal_backend: true, automation: { select: { id: true, name: true, user_id: true } } }
     })
     if (!run?.automation) return null
-    return { agentId: run.automation.id, jobName: run.automation.name, userId: run.automation.user_id, organizationId }
+    return {
+        agentId: run.automation.id,
+        jobName: run.automation.name,
+        userId: run.automation.user_id,
+        organizationId,
+        durableJournalBackend: run.durable_journal_backend
+    }
 }
 
 async function readRunStatus(runId: string, organizationId: string) {
@@ -139,4 +145,5 @@ type RunForInput = {
     jobName: string
     userId: string
     organizationId: string
+    durableJournalBackend: string | null
 }

@@ -253,17 +253,19 @@ export async function fetchChatHistoryForRun(runId: string, organizationId: stri
         triggerEventType,
         isTriggerEventTruncated,
         isTest: runRecord.is_test,
-        canRetryFromFailure: runRecord.status === RunHistoryStatus.FAILED && runRecord.failure_snapshots.length > 0
+        canRetryFromFailure:
+            runRecord.status === RunHistoryStatus.FAILED && ((runRecord.is_durable && runRecord.durable_journal_backend === "durable_object") || runRecord.failure_snapshots.length > 0)
     }
 }
 
-export async function retryFailedRunFromSnapshot(runId: string, organizationId: string): Promise<void> {
+export async function retryFailedRunFromJournal(runId: string, organizationId: string): Promise<void> {
     const run = await findRunForFailureRetry(runId, organizationId)
     if (!run) throw new RunNotFoundError()
     if (run.status !== RunHistoryStatus.FAILED) throw new RunNotRetryableError("Only failed runs can be retried")
 
+    const resumesFromDurableObject = run.is_durable && run.durable_journal_backend === "durable_object"
     const snapshot = run.failure_snapshots[0]
-    if (!snapshot) throw new RunNotRetryableError("No failure snapshot is available for this run")
+    if (!resumesFromDurableObject && !snapshot) throw new RunNotRetryableError("No durable journal state is available for this run")
 
     await enqueueRunExecution({
         runId,
@@ -272,7 +274,7 @@ export async function retryFailedRunFromSnapshot(runId: string, organizationId: 
         userId: run.automation.user_id,
         jobName: run.automation.name,
         kind: "sandbox",
-        failureSnapshotId: snapshot.id
+        ...(resumesFromDurableObject ? { resumeFrom: "failure" as const } : { failureSnapshotId: snapshot!.id })
     })
 }
 

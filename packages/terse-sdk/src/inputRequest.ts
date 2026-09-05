@@ -80,7 +80,7 @@ export function waitForInput<const Options extends readonly InputOption[], Targe
 }
 
 // The hook entity this journals is the wait. The durable runtime returns it as an explicit
-// suspension outcome, and the CLI asks the control plane to snapshot and park the sandbox.
+// suspension outcome, and the CLI asks the control plane to park the run.
 async function waitForInputDurable<Options extends readonly InputOption[], Target extends InputTarget>(
     params: WaitForInputParams<Options, Target>
 ): Promise<InputResponse<Options[number]["id"], DeliveryFor<Target>>> {

@@ -1,10 +1,10 @@
-import { FileJournalStore, Runtime } from "little-durable"
+import { Runtime } from "little-durable"
 import assert from "node:assert/strict"
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import test from "node:test"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { __fetchRegisteredDurableWorkflow, __resetRegisteredTerseInstances, fetchRegisteredJobs } from "terse-sdk"
+import { DurableObjectJournalStore, __TerseWorkflowJournal, __fetchRegisteredDurableWorkflow, __resetRegisteredTerseInstances, fetchRegisteredJobs } from "terse-sdk"
 import type { TerseJobContext } from "terse-sdk"
 import { runWithJobContext } from "terse-sdk/dist/runIdentity/jobContextStore.js"
 import type { SerializedEvent } from "terse-types"
@@ -50,7 +50,11 @@ createJob({
     assert.ok(job)
     const workflow = __fetchRegisteredDurableWorkflow(job.name)
     assert.ok(workflow)
-    const journalStore = new FileJournalStore(join(cwd, "journal"))
+    const actor = Reflect.construct(__TerseWorkflowJournal, []) as __TerseWorkflowJournal
+    const journalStore = new DurableObjectJournalStore(runId => {
+        assert.equal(runId, "run-golden")
+        return actor
+    })
     const event = serializedEvent()
     const outcome = await runWithJobContext(jobContext(), () =>
         new Runtime({ journalStore })

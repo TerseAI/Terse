@@ -31,6 +31,7 @@ export interface SdkDeployImageBuildContext {
     cliVersion: string
     baseImage: ResolvedSandboxBaseImage
     requiresWorkflowBundle: boolean
+    requiresDurableWorkflowJournal: boolean
     projectDir: string
     cliCachePath: string
     unpackCommand: string
@@ -74,6 +75,7 @@ export interface DefineDeployImageParams {
     sourceHash: string
     cliVersion: string
     baseImage: ResolvedSandboxBaseImage
+    requiresDurableWorkflowJournal: boolean
     localPackages?: LocalPackagesBundle
 }
 

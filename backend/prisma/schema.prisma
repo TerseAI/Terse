@@ -311,19 +311,22 @@ model organization_settings {
 
 // Automation tables
 model automations {
-  id                   String    @id @default(cuid())
-  user_id              String
-  organization_id      String
-  name                 String
-  is_active            Boolean   @default(true)
-  improvements_enabled Boolean   @default(true)
-  require_approval     Boolean   @default(false)
-  consecutive_failures Int       @default(0)
+  id                      String    @id @default(cuid())
+  user_id                 String
+  organization_id         String
+  name                    String
+  is_active               Boolean   @default(true)
+  improvements_enabled    Boolean   @default(true)
+  is_durable              Boolean   @default(false)
+  // Null means the deployment predates remote workflow journals and uses snapshots.
+  durable_journal_backend String?
+  require_approval        Boolean   @default(false)
+  consecutive_failures    Int       @default(0)
   // Set when the job is first deployed. Null = draft automation created by `terse test`, not yet deployed
   // (inert: no triggers, is_active false, excluded from stale-deploy cleanup, badged "not deployed").
-  deployed_at          DateTime?
-  created_at           DateTime  @default(now())
-  updated_at           DateTime  @updatedAt
+  deployed_at             DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
 
   prompt                     automation_prompts?
   inputs                     automation_inputs[]
@@ -418,8 +421,10 @@ model project_deploys {
 }
 
 model project_deploy_jobs {
-  deploy_id String
-  job_name  String
+  deploy_id               String
+  job_name                String
+  is_durable              Boolean @default(false)
+  durable_journal_backend String?
 
   deploy project_deploys @relation(fields: [deploy_id], references: [id], onDelete: Cascade)
 
@@ -939,42 +944,45 @@ enum RunHistoryChatEventType {
 
 // Run History tables
 model run_history_records {
-  id                    String                   @id @default(cuid())
-  automation_id         String
-  project_deploy_id     String?
+  id                      String                   @id @default(cuid())
+  automation_id           String
+  project_deploy_id       String?
   // Timestamp of the run (when the trigger was processed)
-  timestamp             DateTime                 @default(now())
+  timestamp               DateTime                 @default(now())
   // Trigger details (denormalized onto the record for fast reads)
-  event                 String
-  trigger_integration   IntegrationType
-  trigger_source        String
-  trigger_title         String?
-  trigger_subheader     String?
-  trigger_url           String?
-  trigger_payload       Json?
+  event                   String
+  trigger_integration     IntegrationType
+  trigger_source          String
+  trigger_title           String?
+  trigger_subheader       String?
+  trigger_url             String?
+  trigger_payload         Json?
   // Whether this run was manually triggered (from builder chat or Trigger Now button)
-  is_manually_triggered Boolean                  @default(false)
+  is_manually_triggered   Boolean                  @default(false)
   // Whether this item was filtered out by rules before action
-  filtered              Boolean                  @default(false)
+  filtered                Boolean                  @default(false)
   // Decision summary
-  decision_action       RunHistoryDecisionAction
-  decision_reason       String
+  decision_action         RunHistoryDecisionAction
+  decision_reason         String
   // Run status
-  status                RunHistoryStatus
+  status                  RunHistoryStatus
   // Whether this run ever involved a tool approval request (persists after approval is processed)
-  has_approval_request  Boolean                  @default(false)
+  has_approval_request    Boolean                  @default(false)
   // Whether this run was produced by `terse test` (hidden from run history by default)
-  is_test               Boolean                  @default(false)
+  is_test                 Boolean                  @default(false)
   // WorkOS user id of the human who triggered this run (only set for test/manual runs; resolved to display info at view time)
-  triggered_by_user_id  String?
+  triggered_by_user_id    String?
   // Set when this run is a replay of another run; its memory/state are restored from that run's pre-run snapshot into an isolated namespace
-  replay_of_run_id      String?
+  replay_of_run_id        String?
   // Null only for legacy and self-hosted runs whose placement was not pinned by Terse Cloud.
-  execution_region      String?
+  execution_region        String?
+  // Frozen per run so redeploys cannot change its resume/storage semantics.
+  durable_journal_backend String?
+  is_durable              Boolean                  @default(false)
   // SDK skill configs (SkillConfigData[]) persisted at run time so correction agents can reconstruct tools
-  sdk_skills            Json?
-  created_at            DateTime                 @default(now())
-  updated_at            DateTime                 @updatedAt
+  sdk_skills              Json?
+  created_at              DateTime                 @default(now())
+  updated_at              DateTime                 @updatedAt
 
   automation              automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   project_deploy          project_deploys?          @relation(fields: [project_deploy_id], references: [id], onDelete: SetNull)
@@ -1226,8 +1234,8 @@ model run_suspensions {
   id               String            @id @default(cuid())
   run_id           String
   kind             RunSuspensionKind
-  // Journal snapshot restored on resume; the open row (resumed_at null) is the run's current parked state
-  suspend_image_id String
+  // Present only for snapshot-backed compatibility runs.
+  suspend_image_id String?
   hook_token       String?
   delay_seconds    Int?
   resumed_at       DateTime?
@@ -1241,7 +1249,7 @@ model run_suspensions {
 model run_failure_snapshots {
   id                String    @id @default(cuid())
   run_id            String
-  // Each failed attempt appends a snapshot. A future retry claims the newest un-restored row.
+  // Snapshot-backed compatibility runs append one image per failed attempt.
   snapshot_image_id String
   restored_at       DateTime?
   created_at        DateTime  @default(now())

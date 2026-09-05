@@ -41,7 +41,7 @@ export async function handleSdkTestRunStart(req: Request, res: Response) {
                 ? ((await DurableObjectProjectService.getInstance(settings.durableObjects).issueLocalTestEnvironment(projectId, executionRegion)) ?? null)
                 : null
             : undefined
-        const agentId = await ensureTestAutomation(user, projectId, parsed.data.jobName)
+        const agentId = await ensureTestAutomation(user, projectId, parsed.data.jobName, parsed.data.durable ?? false, parsed.data.durableJournalBackend)
         if (parsed.data.freshState) await resetJobTestState(projectId, agentId)
         const synthetic = new SyntheticTriggerRuntime(parsed.data.event.data)
         const processor = new EventProcessor(synthetic, user, { isManuallyTriggered: true, isTest: parsed.data.isTest ?? true, localDataPlane, replayOfRunId: parsed.data.replayOfRunId })

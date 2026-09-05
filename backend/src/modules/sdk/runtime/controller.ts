@@ -132,7 +132,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 }
 
-type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean }
+type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean; durableJournalBackend: string | null }
 
 async function finalizeFailedProductionRun(runId: string, organizationId: string, user: UserSession, error: unknown): Promise<void> {
     try {
@@ -151,13 +151,19 @@ async function resolveRunContext(headerRunId: string, user: UserSession): Promis
     if (!user.organizationId) return null
     const runRecord = await db().run_history_records.findFirst({
         where: { id: headerRunId, automation: { organization_id: user.organizationId } },
-        select: { id: true, automation_id: true, is_test: true, automation: { select: { organization_id: true } } }
+        select: { id: true, automation_id: true, is_test: true, durable_journal_backend: true, automation: { select: { organization_id: true } } }
     })
     if (!runRecord?.automation.organization_id) {
         logger.warn("[sdk/agent-run] Rejecting cross-tenant x-terse-run-id header", { requestedRunId: headerRunId, userId: user.id, organizationId: user.organizationId })
         return null
     }
-    return { runId: runRecord.id, agentId: runRecord.automation_id, organizationId: runRecord.automation.organization_id, isTest: runRecord.is_test }
+    return {
+        runId: runRecord.id,
+        agentId: runRecord.automation_id,
+        organizationId: runRecord.automation.organization_id,
+        isTest: runRecord.is_test,
+        durableJournalBackend: runRecord.durable_journal_backend
+    }
 }
 
 export async function handleSdkApprovalDecision(req: Request, res: Response) {
@@ -420,8 +426,8 @@ export async function handleJobSuspension(req: Request, res: Response) {
     })
     let parked = false
     try {
-        const imageId = await telemetry.measure("snapshotSandboxMs", () => snapshotSandboxForSuspend(runId))
-        if (!imageId) {
+        const imageId = runContext.durableJournalBackend === "durable_object" ? undefined : await telemetry.measure("snapshotSandboxMs", () => snapshotSandboxForSuspend(runId))
+        if (runContext.durableJournalBackend !== "durable_object" && !imageId) {
             throw new Error("No live sandbox to snapshot; the run cannot be suspended")
         }
         parked = await telemetry.measure("markRunSuspendedMs", () => markRunSuspended(runId, imageId, suspension))
@@ -429,7 +435,7 @@ export async function handleJobSuspension(req: Request, res: Response) {
             const existing = await db().run_history_records.findUnique({ where: { id: runId }, select: { status: true } })
             if (existing?.status !== "suspended") throw new Error("Run is no longer in progress and cannot be suspended")
         } else if (suspension.kind === "timer") {
-            await telemetry.measure("enqueueRunResumptionMs", () => enqueueRunResumption(runId, imageId, suspension.delaySeconds))
+            await telemetry.measure("enqueueRunResumptionMs", () => enqueueRunResumption(runId, imageId, suspension.delaySeconds, parsed.data.idempotencyKey ?? crypto.randomUUID()))
         }
         await telemetry.capture(true)
 
@@ -449,9 +455,9 @@ function suspensionDetails(body: z.infer<typeof sdkJobSuspendRequestBodySchema>)
     return { kind: "input", hookToken: body.hookToken }
 }
 
-// Suspension parks the run as a delayed pg-boss job; when the delay elapses the worker-side
-// dispatcher claims the suspended run and re-executes it from the restored journal snapshot.
-async function enqueueRunResumption(runId: string, restoreImageId: string, delaySeconds: number): Promise<void> {
+// New runs resume from their durable-object journal. Deprecated deployments retain the
+// snapshot image in the same queue payload they used before this storage cutover.
+async function enqueueRunResumption(runId: string, restoreImageId: string | undefined, delaySeconds: number, resumeKey: string): Promise<void> {
     const run = await db().run_history_records.findUnique({
         where: { id: runId },
         select: { automation: { select: { id: true, organization_id: true, user_id: true, name: true } } }
@@ -468,7 +474,9 @@ async function enqueueRunResumption(runId: string, restoreImageId: string, delay
             userId: run.automation.user_id,
             jobName: run.automation.name,
             kind: "sandbox",
-            restoreImageId
+            resumeFrom: "suspension",
+            restoreImageId,
+            resumeKey
         },
         { delaySeconds }
     )

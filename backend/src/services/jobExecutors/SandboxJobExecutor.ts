@@ -31,6 +31,8 @@ type SdkSourceImageRecord = {
     imageId: string
     runtime: SdkProjectRuntime
     cliVersion: string
+    isDurable: boolean
+    durableJournalBackend: string | null
 }
 
 export class SandboxJobExecutor implements JobExecutor {
@@ -50,7 +52,7 @@ export class SandboxJobExecutor implements JobExecutor {
     }
 
     async execute(context: JobExecutionContext): Promise<RunOutcome> {
-        const { runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs, executionRegion } = context
+        const { runId, agent, orgId, userId, user, jobName, executionMode, restoreImageId, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs, executionRegion } = context
         const executionStart = performance.now()
         const sandboxProvider = getSandboxProvider()
         const telemetry = new SandboxRuntimeTelemetry({
@@ -60,7 +62,7 @@ export class SandboxJobExecutor implements JobExecutor {
             jobId: agent.id,
             projectId: agent.project.id,
             jobName,
-            mode: restoreImageId ? "resume" : "fresh",
+            mode: executionMode === "resume" ? "resume" : "fresh",
             provider: sandboxProvider.supportsContainerizedRunners ? "containerized" : "local",
             resumeSignal,
             enqueuedAtMs,
@@ -77,7 +79,8 @@ export class SandboxJobExecutor implements JobExecutor {
         let telemetryError: unknown
 
         try {
-            const sourceImage = await telemetry.measure("resolveSourceImageMs", () => this.resolveSourceImage({ agent, runId }))
+            const sourceImage = await telemetry.measure("resolveSourceImageMs", () => this.resolveSourceImage({ agent, runId, jobName, executionMode }))
+            const durableJournalBackend = sourceImage.durableJournalBackend
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
             telemetry.setRuntime(executor.runtime)
             telemetry.setCliVersion(sourceImage.cliVersion)
@@ -104,9 +107,8 @@ export class SandboxJobExecutor implements JobExecutor {
                 TERSE_API_KEY: sandboxApiKey,
                 TERSE_BACKEND_URL: sandboxBackendUrl,
                 TERSE_RUN_ID: runId,
+                // Kept for deployments that predate durable-object workflow journals.
                 TERSE_JOURNAL_ROOT: JOURNAL_ROOT,
-                // Active deploys built before the Little Durable migration still use
-                // @workflow/world-local and expect a per-run journal directory here.
                 WORKFLOW_LOCAL_DATA_DIR: runJournalDir(runId),
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
@@ -132,6 +134,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 sandboxEnv,
                 sourceImageRecordId: sourceImage.recordId,
                 cliVersion: sourceImage.cliVersion,
+                executionMode,
                 restoreImageId,
                 executionRegion,
                 telemetry
@@ -146,20 +149,23 @@ export class SandboxJobExecutor implements JobExecutor {
                     agent,
                     result,
                     runtimeName: executor.runtime,
+                    durableJournalBackend,
                     sandbox: sb,
                     onLegacyRuntimeDetected: () =>
                         this.emitAndPersistProcessOutput(runId, {
                             label: DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL,
                             stream: "stdout",
                             content:
-                                "[terse] Warning: This deployment uses the deprecated Terse durable runtime. Upgrade terse-sdk and terse-cli, then run terse deploy. Compatibility support will be removed in a future release.\n"
+                                "[terse] Warning: This deployment uses filesystem-backed durability. Upgrade terse-sdk and terse-cli, then run terse deploy. Compatibility support will be removed in a future release.\n"
                         })
                 })
             )
             telemetrySuccess = outcome.status !== "failed"
             if (outcome.status === "failed") {
                 telemetryError = outcome.cause
-                await telemetry.measure("snapshotFailureSandboxMs", () => this.captureFailureSnapshot(runId, sb))
+                if (durableJournalBackend !== "durable_object") {
+                    await telemetry.measure("snapshotFailureSandboxMs", () => this.captureFailureSnapshot(runId, sb))
+                }
             }
             return outcome
         } catch (error) {
@@ -200,26 +206,45 @@ export class SandboxJobExecutor implements JobExecutor {
         }
     }
 
-    private async resolveSourceImage(params: { agent: AgentWithRelations; runId: string }): Promise<SdkSourceImageRecord> {
-        const { agent, runId } = params
-        // Single query — derive both the deploy attachment and the source image from the same snapshot.
-        // If a new deploy lands between queue-time and now, this run executes against it consistently.
-        const activeDeploy = await getActiveDeployForProject(agent.project.id)
-        if (!activeDeploy?.sdk_source_image_id) {
-            throw new Error(`SDK agent "${agent.id}" is missing an active source image`)
+    private async resolveSourceImage(params: { agent: AgentWithRelations; runId: string; jobName: string; executionMode: JobExecutionContext["executionMode"] }): Promise<SdkSourceImageRecord> {
+        const { agent, runId, jobName, executionMode } = params
+        const deploy =
+            executionMode === "resume"
+                ? await db()
+                      .run_history_records.findUnique({ where: { id: runId }, select: { project_deploy: { select: { id: true, sdk_source_image_id: true } } } })
+                      .then(run => run?.project_deploy)
+                : await getActiveDeployForProject(agent.project.id)
+        if (!deploy?.sdk_source_image_id) {
+            throw new Error(executionMode === "resume" ? `Run "${runId}" has no deployed source image to resume` : `SDK agent "${agent.id}" is missing an active source image`)
         }
 
-        const sourceImage = await this.getSourceImageRecord(activeDeploy.sdk_source_image_id)
+        const [sourceImage, deployJob] = await Promise.all([
+            this.getSourceImageRecord(deploy.sdk_source_image_id),
+            db().project_deploy_jobs.findUnique({
+                where: { deploy_id_job_name: { deploy_id: deploy.id, job_name: jobName } },
+                select: { is_durable: true, durable_journal_backend: true }
+            })
+        ])
         if (!sourceImage) {
-            throw new Error(`SDK source image row not found: ${activeDeploy.sdk_source_image_id}`)
+            throw new Error(`SDK source image row not found: ${deploy.sdk_source_image_id}`)
         }
 
         await this.touchSourceImageUsage(sourceImage)
-        await attachProjectDeployToRun(runId, activeDeploy.id)
-        return sourceImage
+        const resolved = {
+            ...sourceImage,
+            isDurable: deployJob?.is_durable ?? false,
+            durableJournalBackend: deployJob?.durable_journal_backend ?? null
+        }
+        if (executionMode === "start") {
+            await attachProjectDeployToRun(runId, deploy.id, {
+                isDurable: resolved.isDurable,
+                durableJournalBackend: resolved.durableJournalBackend
+            })
+        }
+        return resolved
     }
 
-    private async getSourceImageRecord(sourceImageId: string): Promise<SdkSourceImageRecord | null> {
+    private async getSourceImageRecord(sourceImageId: string): Promise<Omit<SdkSourceImageRecord, "isDurable" | "durableJournalBackend"> | null> {
         const record = await db().sdk_source_images.findUnique({
             where: { id: sourceImageId },
             select: {
@@ -259,20 +284,18 @@ export class SandboxJobExecutor implements JobExecutor {
         sandboxEnv: Record<string, string>
         sourceImageRecordId: string
         cliVersion: string
+        executionMode: JobExecutionContext["executionMode"]
         restoreImageId?: string
         executionRegion: JobExecutionContext["executionRegion"]
         telemetry: SandboxRuntimeTelemetry
     }): Promise<{ sb: Sandbox; result: SandboxCommandResult }> {
-        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, restoreImageId, executionRegion, telemetry } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, executionMode, restoreImageId, executionRegion, telemetry } = params
 
-        // Resuming boots the suspension snapshot itself, so the run picks up every filesystem
-        // edit it made before parking. A fresh run boots the active deploy's source image.
-        let sb: Sandbox
-        if (restoreImageId) {
-            sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSandboxFromImage(sandboxService, restoreImageId, projectId, runId, executionRegion, telemetry))
-        } else {
-            sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, executionRegion, telemetry))
-        }
+        const sb = await telemetry.measure("createSourceImageSandboxMs", () =>
+            restoreImageId
+                ? this.createSandboxFromImage(sandboxService, restoreImageId, projectId, runId, executionRegion, telemetry)
+                : this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, executionRegion, telemetry)
+        )
         const executorContext = this.createRuntimeExecutorContext(
             sb,
             sandboxEnv,
@@ -283,10 +306,9 @@ export class SandboxJobExecutor implements JobExecutor {
             sandboxService.getCliCachePath(sb),
             true,
             cliVersion,
-            restoreImageId ? () => telemetry.markResumeCliStarted() : undefined
+            executionMode === "resume" ? () => telemetry.markResumeCliStarted() : undefined
         )
-        // A restored journal means we are resuming an existing run (`terse resume`), not dispatching a new one (`terse run`).
-        const result = await telemetry.measure("runtimeCommandMs", () => (restoreImageId ? executor.resume(executorContext) : executor.execute(executorContext)))
+        const result = await telemetry.measure("runtimeCommandMs", () => (executionMode === "resume" ? executor.resume(executorContext) : executor.execute(executorContext)))
         return { sb, result }
     }
 
@@ -340,14 +362,11 @@ export class SandboxJobExecutor implements JobExecutor {
         try {
             snapshotImageId = await sandboxProvider.snapshotForSuspension(sandbox)
             await db().run_failure_snapshots.create({
-                data: {
-                    run_id: runId,
-                    snapshot_image_id: snapshotImageId
-                }
+                data: { run_id: runId, snapshot_image_id: snapshotImageId }
             })
-            logger.info("SDK sandbox: captured failure snapshot", { runId, snapshotImageId })
+            logger.info("SDK sandbox: captured compatibility failure snapshot", { runId, snapshotImageId })
         } catch (error) {
-            logger.warn("SDK sandbox: failed to capture failure snapshot", { runId, snapshotImageId, error })
+            logger.warn("SDK sandbox: failed to capture compatibility failure snapshot", { runId, snapshotImageId, error })
             if (snapshotImageId) {
                 await sandboxProvider.deleteImage(snapshotImageId).catch(deleteError => {
                     logger.warn("SDK sandbox: failed to delete untracked failure snapshot", { runId, snapshotImageId, error: deleteError })

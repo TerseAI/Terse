@@ -466,7 +466,7 @@ interface BackendService {
         canRetryFromFailure?: boolean
     }>
 
-    /** Continue a failed durable run from its latest unclaimed filesystem snapshot. */
+    /** Continue a failed durable run from its durable-object journal or legacy snapshot. */
     retryFailedRun(runId: string): Promise<RetryFailedRunResponse>
 
     /**

@@ -1,8 +1,7 @@
 import chalk from "chalk"
-import { FileJournalStore, Runtime } from "little-durable"
-import type { JournalStore, RuntimeOutcome, Suspension } from "little-durable"
-import path from "node:path"
-import { __fetchRegisteredDurableWorkflow, __inputRequestHook, fetchRegisteredJobs } from "terse-sdk"
+import { Runtime } from "little-durable"
+import type { RuntimeOutcome, Suspension } from "little-durable"
+import { DurableObjectJournalStore, __fetchRegisteredDurableWorkflow, __inputRequestHook, fetchRegisteredJobs } from "terse-sdk"
 import type { CreateJobParameters, TerseJobContext } from "terse-sdk"
 import { runWithJobContext } from "terse-sdk/dist/runIdentity/jobContextStore.js"
 import type { SdkJobSuspendRequestBody, SdkJobSuspendResponseBody } from "terse-types"
@@ -32,7 +31,7 @@ export const durableJobRuntime: JobRuntime = {
                 pauseUiAround,
                 async sessionId => {
                     if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
-                    const journalStore = createJournalStore()
+                    const journalStore = new DurableObjectJournalStore()
                     const runtime = new Runtime({ journalStore })
                     const context = jobContext({ sessionId, runId, job, projectId: opts?.projectId })
                     const shouldRun = await shouldRunTerseWorkflow({ job, event, context })
@@ -68,7 +67,7 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
 
     try {
         await withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
-            const journalStore = createJournalStore()
+            const journalStore = new DurableObjectJournalStore()
             const runtime = new Runtime({ journalStore })
             const run = await runtime.getRun({ runId })
             const job = fetchRegisteredJobs().get(run.workflowName)
@@ -106,14 +105,6 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
         if (error instanceof CliError) throw error
         throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })
     }
-}
-
-function createJournalStore(): JournalStore {
-    return new FileJournalStore(resolveDataDirectory())
-}
-
-function resolveDataDirectory(): string {
-    return process.env.TERSE_JOURNAL_ROOT ?? path.join(process.cwd(), ".terse", "data")
 }
 
 function jobContext({ sessionId, runId, job, projectId }: { sessionId: string; runId: string; job: CreateJobParameters; projectId?: string }): TerseJobContext {

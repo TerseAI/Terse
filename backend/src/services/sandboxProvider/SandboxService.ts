@@ -25,6 +25,7 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     getCliCachePath(sandbox: S): string
     getScratchPath(sandbox: S, filename: string): string
 
+    /** Compatibility-only filesystem snapshot for deprecated on-disk workflow journals. */
     snapshotForSuspension(sandbox: S): Promise<string>
 }
 

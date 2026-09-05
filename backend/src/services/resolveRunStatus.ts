@@ -11,16 +11,20 @@ import { runJournalDir } from "./sandboxProvider/runJournal"
 import { SandboxCommandResult } from "./sdkRuntimeExecutors/types"
 import { SDK_SANDBOX_APP_NAME, runtimeSandboxUniqueName } from "./sdkSandboxLayerKeys"
 
-// A suspension is explicitly parked through /sdk/suspend before the CLI exits. Process
-// exit therefore normally only needs to preserve that state or classify the command as
-// success/failure. Deploys built before the Little Durable migration are the exception:
-// they exit 0 for both failures and input waits, so their legacy journal remains the verdict.
+// New durable workflows explicitly park through /sdk/suspend and keep their journal in a
+// durable object. Two older filesystem runtimes remain supported until their deployments
+// are replaced: Little Durable's flat event journal and @workflow/world-local's nested state.
 export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<RunOutcome> {
-    const { runId, agent, result, runtimeName, sandbox } = params
-    const legacyJournal = result.exitCode === 0 ? await readLegacyRunJournalState(runId, agent.project.id, sandbox) : null
+    const { runId, agent, result, runtimeName, sandbox, durableJournalBackend } = params
+    const deprecatedJournal = durableJournalBackend === "durable_object" ? null : await readDeprecatedJournalState(runId, agent.project.id, sandbox)
 
-    if (legacyJournal) {
-        logger.warn("SDK sandbox: deprecated durable runtime detected", { runId, agentId: agent.id, runtime: runtimeName })
+    if (deprecatedJournal) {
+        logger.warn("SDK sandbox: deprecated filesystem-backed durable runtime detected", {
+            runId,
+            agentId: agent.id,
+            runtime: runtimeName,
+            journalKind: deprecatedJournal.kind
+        })
         try {
             await params.onLegacyRuntimeDetected?.()
         } catch (error) {
@@ -42,18 +46,19 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
         return { status: "failed", cause: new Error(errorMsg) }
     }
 
-    if (legacyJournal?.status === "failed") {
+    const worldLocal = deprecatedJournal?.kind === "world-local" ? deprecatedJournal.state : null
+    if (worldLocal?.status === "failed") {
         logger.error("SDK sandbox: legacy durable run failed", { runId, agentId: agent.id })
         return { status: "failed", cause: new Error("Durable run failed; see the run output for details") }
     }
 
-    if (legacyJournal?.status === "running" && legacyJournal.awaitingHook) {
+    if (worldLocal?.status === "running" && worldLocal.awaitingHook) {
         const imageId = await snapshotSandboxForSuspend(runId, sandbox)
         if (!imageId) {
             logger.error("SDK sandbox: legacy parked run could not be snapshotted", { runId, agentId: agent.id })
             return { status: "failed", cause: new Error("Could not snapshot the parked run journal") }
         }
-        await markRunSuspended(runId, imageId, { kind: "input", hookToken: legacyJournal.hookToken })
+        await markRunSuspended(runId, imageId, { kind: "input", hookToken: worldLocal.hookToken })
         logger.info("SDK sandbox: legacy run parked waiting for input", { runId, agentId: agent.id })
         return { status: "suspended" }
     }
@@ -62,8 +67,7 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
     return { status: "success" }
 }
 
-// Snapshots a suspending run's filesystem off its live sandbox and returns the resulting
-// image id, which the resuming run boots from. Returns undefined when there is no live sandbox.
+// Snapshots a deprecated run's filesystem and returns the image used by its next sandbox.
 export async function snapshotSandboxForSuspend(runId: string, liveSandbox?: Sandbox): Promise<string | undefined> {
     const provider = getSandboxProvider()
     const sandbox = liveSandbox ?? (await findRunSandbox(runId))
@@ -71,7 +75,6 @@ export async function snapshotSandboxForSuspend(runId: string, liveSandbox?: San
     return provider.snapshotForSuspension(sandbox)
 }
 
-// For callers outside the run's own worker (e.g. /sdk/suspend), which hold no sandbox handle.
 async function findRunSandbox(runId: string): Promise<Sandbox | null> {
     const run = await db().run_history_records.findUnique({ where: { id: runId }, select: { automation: { select: { project_id: true } } } })
     const projectId = run?.automation?.project_id
@@ -82,52 +85,51 @@ async function findRunSandbox(runId: string): Promise<Sandbox | null> {
     return provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
 }
 
-// helpers
-
 type ResolveRunStatusParams = {
     runId: string
     agent: AgentWithRelations
     result: SandboxCommandResult
     runtimeName: string
-    /** The sandbox the run just executed in, avoiding a second lookup for legacy journal reads. */
+    durableJournalBackend: string | null
     sandbox?: Sandbox
     onLegacyRuntimeDetected?: () => Promise<void>
 }
 
-type LegacyRunJournalState = { status: string; awaitingHook: boolean; hookToken?: string }
+type WorldLocalJournalState = { status: string; awaitingHook: boolean; hookToken?: string }
+type DeprecatedJournalState = { kind: "little-durable-file" } | { kind: "world-local"; state: WorldLocalJournalState }
 
-// @workflow/world-local stored run state and unresolved hooks in nested directories.
-// Little Durable stores event files directly under /terse-runs/<runId>, so this is also
-// an authoritative, version-free way to distinguish old deployed images from new ones.
-async function readLegacyRunJournalState(runId: string, projectId: string, liveSandbox?: Sandbox): Promise<LegacyRunJournalState | null> {
-    if (liveSandbox) return readLegacyJournalOrNull(liveSandbox, runId)
+async function readDeprecatedJournalState(runId: string, projectId: string, liveSandbox?: Sandbox): Promise<DeprecatedJournalState | null> {
+    if (liveSandbox) return readDeprecatedJournalOrNull(liveSandbox, runId)
 
     const provider = getSandboxProvider()
     const app = await provider.getOrCreateApp(SDK_SANDBOX_APP_NAME)
     const sandbox = await provider.getExistingSandbox(app, runtimeSandboxUniqueName(projectId, runId))
     if (!sandbox) return null
-    return readLegacyJournalOrNull(sandbox, runId)
+    return readDeprecatedJournalOrNull(sandbox, runId)
 }
 
-async function readLegacyJournalOrNull(sandbox: Sandbox, runId: string): Promise<LegacyRunJournalState | null> {
+async function readDeprecatedJournalOrNull(sandbox: Sandbox, runId: string): Promise<DeprecatedJournalState | null> {
     try {
-        return await readLegacyJournalFromSandbox(sandbox, runId)
+        return await readDeprecatedJournalFromSandbox(sandbox, runId)
     } catch (error) {
-        logger.warn("SDK sandbox: legacy journal read failed", { runId, sandboxId: sandbox.sandboxId, error })
+        logger.warn("SDK sandbox: deprecated journal read failed", { runId, sandboxId: sandbox.sandboxId, error })
         return null
     }
 }
 
-async function readLegacyJournalFromSandbox(sandbox: Sandbox, runId: string): Promise<LegacyRunJournalState | null> {
+async function readDeprecatedJournalFromSandbox(sandbox: Sandbox, runId: string): Promise<DeprecatedJournalState | null> {
     const journalDir = runJournalDir(runId)
-    const command = `grep -ho '"status": *"[a-z_]*"' ${shellQuote(journalDir)}/runs/*.json 2>/dev/null | head -1; echo ---; grep -ho '"token": *"[^"]*"' ${shellQuote(journalDir)}/hooks/*.json 2>/dev/null | head -1`
+    const quotedDir = shellQuote(journalDir)
+    const command = `find ${quotedDir} -maxdepth 1 -type f -name '*.json' -print -quit 2>/dev/null; echo ---; grep -ho '"status": *"[a-z_]*"' ${quotedDir}/runs/*.json 2>/dev/null | head -1; echo ---; grep -ho '"token": *"[^"]*"' ${quotedDir}/hooks/*.json 2>/dev/null | head -1`
     const proc = await sandbox.exec(["sh", "-c", command], { stdout: "pipe", stderr: "pipe" })
     const stdout = await proc.stdout.readText()
     await proc.wait()
 
-    const [statusRaw = "", hookRaw = ""] = stdout.split("---")
+    const [flatFile = "", statusRaw = "", hookRaw = ""] = stdout.split("---")
     const status = statusRaw.match(/"status": *"([a-z_]+)"/)?.[1]
-    if (!status) return null
-    const hookToken = hookRaw.match(/"token": *"([^"]+)"/)?.[1]
-    return { status, awaitingHook: hookToken !== undefined, hookToken }
+    if (status) {
+        const hookToken = hookRaw.match(/"token": *"([^"]+)"/)?.[1]
+        return { kind: "world-local", state: { status, awaitingHook: hookToken !== undefined, hookToken } }
+    }
+    return flatFile.trim() ? { kind: "little-durable-file" } : null
 }

@@ -111,6 +111,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     organizationId,
                     cliVersion,
                     requiresWorkflowBundle,
+                    requiresDurableWorkflowJournal: jobs.some(job => job.durable === true && job.durableJournalBackend === "durable_object"),
                     sourceObjectKey,
                     onProgress: phase => emitStage(toDeployStage(phase)),
                     telemetry
@@ -156,9 +157,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                 const isUpdate = !!existing
                 let agent: AgentWithTriggerRelations
                 try {
-                    agent = isUpdate
-                        ? await updateExistingAutomation(prisma, existing, job.jobName, job.triggers, organizationId, userId)
-                        : await createNewAutomation(prisma, job.jobName, job.triggers, organizationId, userId, projectId)
+                    agent = isUpdate ? await updateExistingAutomation(prisma, existing, job, organizationId, userId) : await createNewAutomation(prisma, job, organizationId, userId, projectId)
                 } catch (error) {
                     logger.error("Failed to create or update automation", { error })
                     await markDeployFailed(prisma, deploy.id, error)
@@ -191,7 +190,11 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         await markDeploySucceeded(
             prisma,
             deploy.id,
-            jobs.map(j => j.jobName),
+            jobs.map(job => ({
+                jobName: job.jobName,
+                durable: job.durable ?? false,
+                durableJournalBackend: job.durableJournalBackend ?? null
+            })),
             jobsAdded,
             removed.length
         )
@@ -260,11 +263,11 @@ function findInvalidCronTrigger(jobs: SdkDeployJob[]): string | null {
 async function updateExistingAutomation(
     prisma: ReturnType<typeof db>,
     existing: AgentWithTriggerRelations,
-    jobName: string,
-    triggers: TriggerConfigData[],
+    job: SdkDeployJob,
     organizationId: string,
     userId: string
 ): Promise<AgentWithTriggerRelations> {
+    const { jobName, triggers, durableJournalBackend } = job
     const automationId = existing.id
     const preservedWebhookTokens = existing.inputs.filter(input => input.webhook_config).map(input => input.webhook_config!.webhook_token)
     const preservedSocketTokens = existing.inputs.filter(input => input.durable_object_config).map(input => input.durable_object_config!.socket_token)
@@ -274,7 +277,16 @@ async function updateExistingAutomation(
         await tx.automation_inputs.deleteMany({ where: { automation_id: automationId } })
         await tx.automation_outputs.deleteMany({ where: { automation_id: automationId } })
         // deployed_at promotes a draft (test-created) automation into a real deployed job.
-        await tx.automations.update({ where: { id: automationId }, data: { name: jobName, is_active: true, deployed_at: new Date() } })
+        await tx.automations.update({
+            where: { id: automationId },
+            data: {
+                name: jobName,
+                is_active: true,
+                is_durable: job.durable ?? false,
+                durable_journal_backend: durableJournalBackend ?? null,
+                deployed_at: new Date()
+            }
+        })
         await createTriggersForAutomation(tx, automationId, triggers, organizationId, userId)
         await seedSdkNotificationSettings(tx, automationId)
 
@@ -296,17 +308,21 @@ async function updateExistingAutomation(
     })
 }
 
-async function createNewAutomation(
-    prisma: ReturnType<typeof db>,
-    jobName: string,
-    triggers: TriggerConfigData[],
-    organizationId: string,
-    userId: string,
-    projectId: string
-): Promise<AgentWithTriggerRelations> {
+async function createNewAutomation(prisma: ReturnType<typeof db>, job: SdkDeployJob, organizationId: string, userId: string, projectId: string): Promise<AgentWithTriggerRelations> {
+    const { jobName, triggers, durableJournalBackend } = job
     return prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
-            data: { user_id: userId, organization_id: organizationId, name: jobName, is_active: true, require_approval: false, project_id: projectId, deployed_at: new Date() }
+            data: {
+                user_id: userId,
+                organization_id: organizationId,
+                name: jobName,
+                is_active: true,
+                is_durable: job.durable ?? false,
+                durable_journal_backend: durableJournalBackend ?? null,
+                require_approval: false,
+                project_id: projectId,
+                deployed_at: new Date()
+            }
         })
 
         await tx.automation_prompts.create({ data: { automation_id: newAgent.id, content: "[SDK]" } })

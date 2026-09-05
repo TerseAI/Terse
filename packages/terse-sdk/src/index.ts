@@ -55,6 +55,7 @@ export type { ActorBroadcastOptions, ActorClass, ActorConnection, ActorSocket, A
 
 export { DurableOnlyError } from "./execution.js"
 export { __runDurableStep } from "./durableExecution.js"
+export { DurableObjectJournalStore, __TerseWorkflowJournal } from "./durableWorkflowJournal.js"
 
 export { __inputRequestHook, slack, waitForInput } from "./inputRequest.js"
 export type { InputDelivery, InputMedia, InputOption, InputRespondent, InputResponse, InputTarget, SlackInputTarget, WaitForInputParams } from "./inputRequest.js"

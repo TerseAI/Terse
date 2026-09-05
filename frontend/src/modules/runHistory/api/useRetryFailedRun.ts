@@ -18,7 +18,7 @@ export function useRetryFailedRun(runId: string) {
             if (status === 404) {
                 toast.error("This run is no longer available")
             } else if (status === 409) {
-                toast.error("This run can no longer be retried from its failure snapshot")
+                toast.error("This run can no longer be retried from its durable state")
             } else {
                 toast.error("Failed to retry run")
             }

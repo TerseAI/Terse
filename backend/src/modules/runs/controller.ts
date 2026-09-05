@@ -14,7 +14,7 @@ import {
     listAllRunHistory,
     listRunHistoryForAgent,
     parseGetRunHistoryParams,
-    retryFailedRunFromSnapshot
+    retryFailedRunFromJournal
 } from "./service"
 
 export async function getAllRunHistory(req: Request, res: Response) {
@@ -108,7 +108,7 @@ export async function retryFailedRun(req: Request, res: Response) {
         const runId = (req.params.runId as string | undefined)?.trim()
         if (!runId) return res.status(400).json({ error: "runId is required" })
 
-        await retryFailedRunFromSnapshot(runId, user.organizationId)
+        await retryFailedRunFromJournal(runId, user.organizationId)
         res.status(202).json({ accepted: true })
     } catch (err) {
         if (err instanceof RunNotFoundError) return res.status(404).json({ error: "Run not found" })

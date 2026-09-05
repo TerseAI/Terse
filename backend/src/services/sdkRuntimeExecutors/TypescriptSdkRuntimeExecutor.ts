@@ -9,6 +9,8 @@ const DEFAULT_PNPM_VERSION = "10.34.1"
 const CLI_VERSION_MARKER = ".terse-cli-version"
 const PNPM_NON_INTERACTIVE = "--config.confirmModulesPurge=false"
 const DURABLE_OBJECTS_PACKAGE_SPEC = "file:/opt/terse-sdk-cache/packages/little-durable-objects.tgz"
+const DURABLE_OBJECT_ENTRYPOINT = "src/durable-objects.ts"
+const WORKFLOW_JOURNAL_ACTOR_EXPORT = 'export { __TerseWorkflowJournal } from "terse-sdk"'
 
 export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
     readonly runtime = "typescript" as const
@@ -24,15 +26,16 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
         return `terse-sandbox-node-${this.detectPackageManager(archive)}`
     }
 
-    defineDeployImage({ archive, organizationId, sourceHash, cliVersion, baseImage, localPackages }: DefineDeployImageParams): SdkDeployImageDefinition {
+    defineDeployImage({ archive, organizationId, sourceHash, cliVersion, baseImage, localPackages, requiresDurableWorkflowJournal }: DefineDeployImageParams): SdkDeployImageDefinition {
         const hashPayload = {
-            version: 5,
+            version: 6,
             runtime: this.runtime,
             organizationId,
             sourceHash,
             baseImage: baseImage.reference,
             packageManager: this.detectPackageManager(archive),
             terseCliSpec: `terse-cli@${cliVersion}`,
+            requiresDurableWorkflowJournal,
             localPackages: localPackages?.contentHash
         }
 
@@ -59,6 +62,10 @@ export class TypescriptSdkRuntimeExecutor implements SdkRuntimeExecutor {
             const runtimePackageJson = usesDurableObjectsRuntime ? withDurableObjectsDependency(packageJson, packageManager) : packageJson
             const effectivePackageJson = localTarballs ? withTerseOverrides(runtimePackageJson, localTarballs, packageManager) : runtimePackageJson
             await context.writeFile(`${context.projectDir}/package.json`, effectivePackageJson)
+            if (usesDurableObjectsRuntime && context.requiresDurableWorkflowJournal) {
+                await context.ensureSandboxCommand("building_project", `mkdir -p ${context.escapeShellArg(`${context.projectDir}/src`)}`)
+                await context.writeFile(`${context.projectDir}/${DURABLE_OBJECT_ENTRYPOINT}`, withWorkflowJournalActor(context.archive.readText(DURABLE_OBJECT_ENTRYPOINT)))
+            }
         }
         if (localPackages && localTarballs) {
             await installLocalCli(context, localTarballs)
@@ -209,4 +216,10 @@ function withDurableObjectsDependency(packageJsonText: string, packageManager: P
         pkg.overrides = { ...pkg.overrides, "little-durable-objects": "$little-durable-objects" }
     }
     return JSON.stringify(pkg, null, 2)
+}
+
+function withWorkflowJournalActor(actorEntrypoint: string | null): string {
+    const existing = actorEntrypoint?.trim()
+    if (existing?.includes(WORKFLOW_JOURNAL_ACTOR_EXPORT)) return `${existing}\n`
+    return `${existing ? `${existing}\n\n` : ""}${WORKFLOW_JOURNAL_ACTOR_EXPORT}\n`
 }

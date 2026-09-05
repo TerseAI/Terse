@@ -1,5 +1,5 @@
 import { Boss } from "../../loaders/pgBoss"
-import { HookResume, JobExecutionKind, ResumeSignal } from "../../services/jobExecutors/types"
+import { HookResume, JobExecutionKind, ResumeSignal, RunResumeReason } from "../../services/jobExecutors/types"
 
 import { QueueName } from "./queueNames"
 
@@ -10,7 +10,7 @@ export function runExecutionJobId(runId: string): string {
 export async function enqueueRunExecution(data: RunExecutionJobData, opts?: { delaySeconds?: number; resumeSignal?: ResumeSignal }): Promise<void> {
     const enqueuedAtMs = Date.now()
     const scheduledForMs = opts?.delaySeconds ? enqueuedAtMs + opts.delaySeconds * 1000 : undefined
-    const resumeSignal = opts?.resumeSignal ?? (scheduledForMs && data.restoreImageId ? { kind: "timer" as const, receivedAtMs: scheduledForMs } : undefined)
+    const resumeSignal = opts?.resumeSignal ?? (scheduledForMs && (data.resumeFrom === "suspension" || data.restoreImageId) ? { kind: "timer" as const, receivedAtMs: scheduledForMs } : undefined)
     const payload: RunExecutionJobData = {
         ...data,
         enqueuedAtMs,
@@ -19,8 +19,8 @@ export async function enqueueRunExecution(data: RunExecutionJobData, opts?: { de
     }
     const singletonKey = data.failureSnapshotId
         ? retryExecutionJobId(data.runId, data.failureSnapshotId)
-        : data.restoreImageId
-          ? resumeExecutionJobId(data.runId, data.restoreImageId)
+        : data.resumeFrom || data.restoreImageId
+          ? resumeExecutionJobId(data.runId, data.resumeKey ?? data.restoreImageId ?? data.resumeFrom ?? "resume")
           : runExecutionJobId(data.runId)
     const delay = opts?.delaySeconds ? { startAfter: opts.delaySeconds } : {}
     await Boss.getInstance()
@@ -28,8 +28,8 @@ export async function enqueueRunExecution(data: RunExecutionJobData, opts?: { de
         .send(QueueName.SdkRunExecution, payload, { singletonKey, ...delay })
 }
 
-function resumeExecutionJobId(runId: string, restoreImageId: string): string {
-    return `resume-${runId}-${restoreImageId}`
+function resumeExecutionJobId(runId: string, resumeKey: string): string {
+    return `resume-${runId}-${resumeKey}`
 }
 
 function retryExecutionJobId(runId: string, failureSnapshotId: string): string {
@@ -43,9 +43,13 @@ export interface RunExecutionJobData {
     userId: string
     jobName: string
     kind: JobExecutionKind
+    resumeFrom?: RunResumeReason
+    /** Snapshot image used only by deprecated filesystem-backed durable runs. */
     restoreImageId?: string
-    /** Failure snapshot row to claim in the worker before restoring its image. */
+    /** Failure snapshot row claimed by a compatibility retry. */
     failureSnapshotId?: string
+    /** Stable wait identifier used to dedupe a specific durable-object resumption. */
+    resumeKey?: string
     hookResume?: HookResume
     resumeSignal?: ResumeSignal
     enqueuedAtMs?: number

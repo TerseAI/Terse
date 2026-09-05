@@ -1,21 +1,15 @@
-import { FileJournalStore, Runtime, waitFor } from "little-durable"
+import { Runtime, waitFor } from "little-durable"
 import assert from "node:assert/strict"
-import { mkdtemp, rm } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import test from "node:test"
-import { __defineTerseWorkflow, __inputRequestHook, __runDurableStep } from "terse-sdk"
+import { DurableObjectJournalStore, __TerseWorkflowJournal, __defineTerseWorkflow, __inputRequestHook, __runDurableStep } from "terse-sdk"
 import type { CreateJobParameters, TerseJobContext } from "terse-sdk"
 import { runWithJobContext } from "terse-sdk/dist/runIdentity/jobContextStore.js"
 import type { SerializedEvent } from "terse-types"
 
 import { shouldRunTerseWorkflow } from "../../../src/providers/typescript/terseWorkflow.js"
 
-test("runs, suspends, and resumes a Terse job directly from its journal", async t => {
-    const journalDirectory = await mkdtemp(join(tmpdir(), "terse-durable-runtime-"))
-    t.after(() => rm(journalDirectory, { recursive: true, force: true }))
-
-    const journalStore = new FileJournalStore(journalDirectory)
+test("runs, suspends, and resumes a Terse job from its durable-object journal", async () => {
+    const journalStore = inMemoryDurableObjectJournalStore("run-123")
     const runtime = new Runtime({ journalStore })
     let stepExecutions = 0
     let voidStepExecutions = 0
@@ -101,6 +95,14 @@ test("runs, suspends, and resumes a Terse job directly from its journal", async 
         ["run.started", "step.started", "step.completed", "step.started", "step.completed", "wait.requested", "wait.resolved", "run.completed"]
     )
 })
+
+function inMemoryDurableObjectJournalStore(expectedRunId: string): DurableObjectJournalStore {
+    const actor = Reflect.construct(__TerseWorkflowJournal, []) as __TerseWorkflowJournal
+    return new DurableObjectJournalStore(runId => {
+        assert.equal(runId, expectedRunId)
+        return actor
+    })
+}
 
 function jobContext(): TerseJobContext {
     return {

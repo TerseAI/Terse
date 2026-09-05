@@ -5,7 +5,7 @@ import dotenv from "dotenv"
 import { zipSync } from "fflate"
 import fs from "node:fs"
 import path from "node:path"
-import { ApiRoutes, SdkDeployStage, SdkSourceUploadResponse, buildRoute, sdkDeployRequestBodySchema, validateSecretName, validateSecretValue } from "terse-types"
+import { ApiRoutes, DURABLE_OBJECT_JOURNAL_BACKEND, SdkDeployStage, SdkSourceUploadResponse, buildRoute, sdkDeployRequestBodySchema, validateSecretName, validateSecretValue } from "terse-types"
 import type { ProjectSecretUpsertRequest, ProjectSecretsImportResponse, ProjectSecretsListResponse, SdkDeployResponseBody, TerseProjectConfig } from "terse-types"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 
@@ -107,6 +107,8 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             cliVersion: getCliVersion(),
             jobs: jobs.map(job => ({
                 jobName: job.name,
+                durable: job.durable === true,
+                durableJournalBackend: job.durable === true ? DURABLE_OBJECT_JOURNAL_BACKEND : undefined,
                 triggers: job.triggers
             })),
             remoteServerUrl: isUrlMode ? remoteServerUrl : undefined,

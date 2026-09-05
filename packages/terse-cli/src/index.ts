@@ -207,7 +207,7 @@ Notes:
 
 program
     .command("resume")
-    .description("Resume an interrupted durable run from its journal in .terse/data")
+    .description("Resume an interrupted durable run from its durable journal")
     .requiredOption("--run-id <id>", "Terse run id of the run to resume")
     .option("-v, --verbose", "Show job stream output", true)
     .option("--no-verbose", "Hide job stream output")
@@ -219,7 +219,7 @@ Examples:
 
 Notes:
   - Pending/running runs resume where they left off; a failed run is re-driven (its failure trimmed, completed steps replayed) under your current code.
-  - The run's journal must be present in .terse/data (e.g. restored from a snapshot).
+  - Terse persists the run's journal in its project-scoped durable-object store.
 `
     )
     .action(async (opts: { runId: string; verbose?: boolean }) => {

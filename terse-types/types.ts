@@ -1023,8 +1023,15 @@ export const terseProjectConfigSchema = z.object({
 })
 export type TerseProjectConfig = z.infer<typeof terseProjectConfigSchema>
 
+export const DURABLE_OBJECT_JOURNAL_BACKEND = "durable_object" as const
+export const durableJournalBackendSchema = z.literal(DURABLE_OBJECT_JOURNAL_BACKEND)
+export type DurableJournalBackend = z.infer<typeof durableJournalBackendSchema>
+
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
+    /** Optional so deploys from older CLIs keep using the snapshot-backed compatibility path. */
+    durable: z.boolean().optional(),
+    durableJournalBackend: durableJournalBackendSchema.optional(),
     triggers: z.array(triggerConfigDataSchema)
 })
 export type SdkDeployJob = z.infer<typeof sdkDeployJobSchema>
@@ -1229,6 +1236,8 @@ export type SdkStateResetResponse = { deleted: number }
 export const sdkTestRunStartRequestSchema = z.object({
     projectId: z.string().min(1),
     jobName: z.string().min(1),
+    durable: z.boolean().optional(),
+    durableJournalBackend: durableJournalBackendSchema.optional(),
     event: serializedEventSchema,
     forceLocal: z.boolean().optional(),
     isTest: z.boolean().optional(),

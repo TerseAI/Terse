@@ -5,7 +5,7 @@ import logger from "../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
 import { db } from "../../loaders/prisma"
 import { finalizeRunFailure } from "../../loaders/socket"
-import { claimFailedRunSnapshot, claimSuspendedRun, finalizeRunStatus, markRunFailed, markRunSkipped } from "../../modules/agents/AgentRunner/runHistory"
+import { claimFailedRun, claimFailedRunSnapshot, claimSuspendedRun, finalizeRunStatus, markRunFailed, markRunSkipped } from "../../modules/agents/AgentRunner/runHistory"
 import { classifyAgentError } from "../../modules/agents/agentErrorUtils"
 import { billingServiceProxyForOrganization, startBillingRun } from "../../services/BillingService"
 import { invalidateRunAndChatHistory } from "../../services/CacheInvalidationService"
@@ -28,7 +28,7 @@ function loadAgentForExecution(agentId: string, orgId: string): Promise<AgentWit
 }
 
 export async function handleRunExecution(data: RunExecutionJobData): Promise<void> {
-    const { runId, agentId, orgId, userId, jobName, kind, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs } = data
+    const { runId, agentId, orgId, userId, jobName, kind, resumeFrom, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs } = data
     let restoreImageId = data.restoreImageId
 
     if (data.failureSnapshotId) {
@@ -38,18 +38,22 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
             return
         }
         restoreImageId = claim.snapshotImageId
+    } else if (resumeFrom === "failure") {
+        const claim = await claimFailedRun(runId)
+        if (!claim.claimed) {
+            logger.info("Failed run retry skipped: run is no longer failed", { runId, agentId })
+            return
+        }
     }
 
     // A delayed resume may fire after the run was cancelled while suspended; only the caller
     // that flips suspended -> in_progress may execute, so a failed claim means drop the job.
-    if (restoreImageId && !data.failureSnapshotId) {
+    if (resumeFrom === "suspension" || (restoreImageId && !data.failureSnapshotId)) {
         const claim = await claimSuspendedRun(runId)
         if (!claim.claimed) {
             logger.info("Run resumption skipped: run is no longer suspended", { runId, agentId })
             return
         }
-        // The suspension row is the source of truth for the snapshot; the payload imageId
-        // only covers suspensions parked before run_suspensions was introduced.
         restoreImageId = claim.suspendImageId ?? restoreImageId
     }
 
@@ -73,18 +77,33 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
         select: { execution_region: true }
     })
     const executionRegion = executionRegionSchema.nullable().parse(runRecord?.execution_region ?? null)
+    const isResume = Boolean(resumeFrom || restoreImageId || data.failureSnapshotId)
 
     try {
         // Single billing choke point: every run is gated + base-charged here, before its executor runs.
         // A denied gate fails the run before any sandbox is created or any webhook is delivered.
         // Resumes skip it: the run was already gated + base-charged at original dispatch.
-        if (!restoreImageId) {
+        if (!isResume) {
             const billing = billingServiceProxyForOrganization(orgId, userId)
             await startBillingRun(billing, { organizationId: orgId, runId })
         }
 
         const executor = jobExecutorRegistry.resolve(kind)
-        const outcome = await executor.execute({ runId, agent, orgId, userId, user, jobName, restoreImageId, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs, executionRegion })
+        const outcome = await executor.execute({
+            runId,
+            agent,
+            orgId,
+            userId,
+            user,
+            jobName,
+            executionMode: isResume ? "resume" : "start",
+            restoreImageId,
+            hookResume,
+            resumeSignal,
+            enqueuedAtMs,
+            scheduledForMs,
+            executionRegion
+        })
         switch (outcome.status) {
             case "success":
                 await finalizeRunStatus(runId, RunHistoryStatus.SUCCESS)

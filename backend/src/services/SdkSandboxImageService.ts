@@ -108,12 +108,14 @@ export class SdkSandboxImageService {
         cliVersion: string
         /** Absent means build one: an older CLI cannot tell us, and a missing bundle breaks durable jobs. */
         requiresWorkflowBundle?: boolean
+        /** True only for deploys whose durable jobs use the remote journal actor. */
+        requiresDurableWorkflowJournal?: boolean
         /** Set when the archive is in object storage, which lets the build read it from a mount. */
         sourceObjectKey?: string
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<PreparedSdkDeployImage> {
-        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, sourceObjectKey, onProgress, telemetry } = params
+        const { zipBuffer, organizationId, cliVersion, requiresWorkflowBundle, requiresDurableWorkflowJournal = false, sourceObjectKey, onProgress, telemetry } = params
         const archive = telemetry ? telemetry.measureSync("buildArchiveMs", () => new ZipSdkProjectArchive(zipBuffer)) : new ZipSdkProjectArchive(zipBuffer)
         const executor = telemetry ? telemetry.measureSync("resolveRuntimeMs", () => sdkRuntimeExecutorRegistry.resolve(archive.entries)) : sdkRuntimeExecutorRegistry.resolve(archive.entries)
         telemetry?.setRuntime(executor.runtime)
@@ -140,11 +142,25 @@ export class SdkSandboxImageService {
         telemetry?.setBaseImageKind(baseImage.kind)
         logger.info("SDK image build: base image resolved", { kind: baseImage.kind, reference: baseImage.reference })
 
-        const defineParams = { archive, organizationId, sourceHash, cliVersion, baseImage, localPackages }
+        const defineParams = { archive, organizationId, sourceHash, cliVersion, baseImage, localPackages, requiresDurableWorkflowJournal }
         const buildHash = (telemetry ? telemetry.measureSync("defineDeployImageMs", () => executor.defineDeployImage(defineParams)) : executor.defineDeployImage(defineParams)).buildHash
 
         onProgress?.("preparing")
-        const ensureParams = { archive, organizationId, buildHash, sourceHash, executor, cliVersion, baseImage, localPackages, zipBuffer, onProgress, requiresWorkflowBundle, sourceObjectKey }
+        const ensureParams = {
+            archive,
+            organizationId,
+            buildHash,
+            sourceHash,
+            executor,
+            cliVersion,
+            baseImage,
+            localPackages,
+            zipBuffer,
+            onProgress,
+            requiresWorkflowBundle,
+            requiresDurableWorkflowJournal,
+            sourceObjectKey
+        }
         const deployImage = await (telemetry ? telemetry.measure("deployImageResolveMs", () => this.ensureDeployImage({ ...ensureParams, telemetry })) : this.ensureDeployImage(ensureParams))
 
         return {
@@ -220,6 +236,7 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
+        requiresDurableWorkflowJournal: boolean
         sourceObjectKey?: string
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
@@ -284,12 +301,27 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
+        requiresDurableWorkflowJournal: boolean
         sourceObjectKey?: string
         zipBuffer: Buffer
         onProgress?: (phase: SdkDeployPhase) => void
         telemetry?: SdkDeployTelemetry
     }): Promise<string> {
-        const { archive, organizationId, buildHash, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, sourceObjectKey, zipBuffer, onProgress, telemetry } = params
+        const {
+            archive,
+            organizationId,
+            buildHash,
+            executor,
+            cliVersion,
+            baseImage,
+            localPackages,
+            requiresWorkflowBundle,
+            requiresDurableWorkflowJournal,
+            sourceObjectKey,
+            zipBuffer,
+            onProgress,
+            telemetry
+        } = params
         const sandboxService = getSandboxProvider()
         const phaseContext: PhaseContext = { onProgress, telemetry }
         const sandboxBaseImage = sandboxService.getImageFromRegistry(baseImage.reference)
@@ -306,7 +338,19 @@ export class SdkSandboxImageService {
 
         try {
             const unpackCommand = await this.prepareSourceArchive({ sb, sandboxService, zipBuffer, mountedArchive: sourceMount ? archiveNameOf(sourceObjectKey) : undefined })
-            const buildContext = this.buildContext({ sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, unpackCommand, phaseContext })
+            const buildContext = this.buildContext({
+                sb,
+                sandboxService,
+                archive,
+                executor,
+                cliVersion,
+                baseImage,
+                localPackages,
+                requiresWorkflowBundle,
+                requiresDurableWorkflowJournal,
+                unpackCommand,
+                phaseContext
+            })
             await executor.buildDeployImage(buildContext)
 
             const image = await this.runPhase(phaseContext, "saving_image", () => sb.snapshotFilesystem())
@@ -325,10 +369,11 @@ export class SdkSandboxImageService {
         baseImage: ResolvedSandboxBaseImage
         localPackages?: LocalPackagesBundle
         requiresWorkflowBundle?: boolean
+        requiresDurableWorkflowJournal: boolean
         unpackCommand: string
         phaseContext: PhaseContext
     }): SdkDeployImageBuildContext {
-        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, unpackCommand, phaseContext } = params
+        const { sb, sandboxService, archive, executor, cliVersion, baseImage, localPackages, requiresWorkflowBundle, requiresDurableWorkflowJournal, unpackCommand, phaseContext } = params
 
         return {
             sb,
@@ -336,6 +381,7 @@ export class SdkSandboxImageService {
             cliVersion,
             baseImage,
             requiresWorkflowBundle: requiresWorkflowBundle ?? true,
+            requiresDurableWorkflowJournal,
             unpackCommand,
             projectDir: sandboxService.getProjectPath(sb),
             cliCachePath: sandboxService.getCliCachePath(sb),

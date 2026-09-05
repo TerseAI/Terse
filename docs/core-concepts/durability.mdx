@@ -23,6 +23,8 @@ createJob({
 
 Without the flag a job runs start to finish in a single execution (the default). With it, the job can suspend and resume.
 
+On Terse Cloud, each durable run keeps its journal in a project-scoped durable object. The journal remains available after its sandbox shuts down, so a resumed run starts from its original deploy image and replays completed work from remote state.
+
 ## Everything in the SDK is already a step
 
 You don't need to change anything to make the built-in SDK calls durable. `toolbox.*`, `generateText()`, `runAndWait()`, and `state.get` / `state.set` are already durable steps. Each one runs once, its result is journaled, and it never runs again on resume.

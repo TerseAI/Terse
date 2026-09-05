@@ -251,7 +251,7 @@ What happens:
 - Workflows removed from your code are removed from Terse
 - For each workflow that includes a webhook trigger, the CLI prints a Webhook URL line after deploy so you can wire up external systems without opening the app
 - For managed projects (Terse Cloud data plane) with a local `.env`, the CLI offers to upload any variables not already stored as project secrets before the deploy runs. Use [`terse secrets`](#terse-secrets) for finer-grained control.
-- Durable workflows (`durable: true`) use Terse's journal runtime directly; there is no separate workflow bundle to compile.
+- Durable workflows (`durable: true`) use Terse's journal runtime directly and persist journals in project-scoped durable objects; there is no separate workflow bundle to compile.
 
 Data plane targets:
 

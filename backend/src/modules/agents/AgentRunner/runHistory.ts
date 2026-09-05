@@ -25,9 +25,11 @@ export async function createRunRecord(params: {
     isTest?: boolean
     triggeredByUserId?: string
     replayOfRunId?: string
+    isDurable: boolean
+    durableJournalBackend: string | null
     executionRegion: ExecutionRegion | null
 }): Promise<string> {
-    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered, isTest, triggeredByUserId, replayOfRunId, executionRegion } = params
+    const { agentId, trigger, serializedTriggerEvent, isManuallyTriggered, isTest, triggeredByUserId, replayOfRunId, isDurable, durableJournalBackend, executionRegion } = params
     const prisma = db()
     const record = await prisma.run_history_records.create({
         data: {
@@ -43,6 +45,8 @@ export async function createRunRecord(params: {
             is_test: isTest ?? false,
             triggered_by_user_id: triggeredByUserId ?? null,
             replay_of_run_id: replayOfRunId ?? null,
+            is_durable: isDurable,
+            durable_journal_backend: durableJournalBackend,
             execution_region: executionRegion,
             filtered: false,
             decision_action: "processed", // placeholder until we decide after filtering
@@ -184,11 +188,19 @@ export async function recordAgentFailureAndMaybePause(agentId: string): Promise<
     })
 }
 
-export async function attachProjectDeployToRun(runId: string, projectDeployId: string): Promise<void> {
+export async function attachProjectDeployToRun(runId: string, projectDeployId: string, durability?: { isDurable: boolean; durableJournalBackend: string | null }): Promise<void> {
     const prisma = db()
     await prisma.run_history_records.update({
         where: { id: runId },
-        data: { project_deploy_id: projectDeployId }
+        data: {
+            project_deploy_id: projectDeployId,
+            ...(durability
+                ? {
+                      is_durable: durability.isDurable,
+                      durable_journal_backend: durability.durableJournalBackend
+                  }
+                : {})
+        }
     })
 }
 
@@ -228,7 +240,7 @@ export async function markRunInProgress(runId: string): Promise<void> {
 
 export type RunSuspensionDetails = { kind: "input"; hookToken?: string } | { kind: "timer"; delaySeconds: number }
 
-export async function markRunSuspended(runId: string, suspendImageId: string, details: RunSuspensionDetails): Promise<boolean> {
+export async function markRunSuspended(runId: string, suspendImageId: string | undefined, details: RunSuspensionDetails): Promise<boolean> {
     const suspended = await db().$transaction(async tx => {
         const result = await tx.run_history_records.updateMany({
             where: { id: runId, status: RunHistoryStatus.IN_PROGRESS },
@@ -239,7 +251,7 @@ export async function markRunSuspended(runId: string, suspendImageId: string, de
             data: {
                 run_id: runId,
                 kind: details.kind,
-                suspend_image_id: suspendImageId,
+                suspend_image_id: suspendImageId ?? null,
                 hook_token: details.kind === "input" ? (details.hookToken ?? null) : null,
                 delay_seconds: details.kind === "timer" ? details.delaySeconds : null
             }
@@ -256,9 +268,8 @@ export async function markRunSuspended(runId: string, suspendImageId: string, de
 export type SuspendedRunClaim = { claimed: false } | { claimed: true; suspendImageId?: string }
 
 // Atomically claims a suspended run for resumption. Only the caller that flips
-// suspended -> in_progress wins, which guarantees a single live sandbox per run
-// when a timer and another resume race. Stamps the open suspension row and returns
-// its snapshot image.
+// suspended -> in_progress wins when a timer and another resume race. Snapshot-backed
+// compatibility runs return their image; durable-object runs intentionally return none.
 export async function claimSuspendedRun(runId: string): Promise<SuspendedRunClaim> {
     const claim = await db().$transaction(async (tx): Promise<SuspendedRunClaim> => {
         const result = await tx.run_history_records.updateMany({
@@ -274,8 +285,21 @@ export async function claimSuspendedRun(runId: string): Promise<SuspendedRunClai
         if (!suspension) return { claimed: true }
 
         await tx.run_suspensions.update({ where: { id: suspension.id }, data: { resumed_at: new Date() } })
-        return { claimed: true, suspendImageId: suspension.suspend_image_id }
+        return { claimed: true, suspendImageId: suspension.suspend_image_id ?? undefined }
     })
+    if (claim.claimed) {
+        captureRunLifecycleEvent(runId, AnalyticsEvent.JOB_RESUMED)
+        await emitRunHistoryInvalidation(runId)
+    }
+    return claim
+}
+
+export async function claimFailedRun(runId: string): Promise<{ claimed: boolean }> {
+    const result = await db().run_history_records.updateMany({
+        where: { id: runId, status: RunHistoryStatus.FAILED },
+        data: { status: RunHistoryStatus.IN_PROGRESS }
+    })
+    const claim = { claimed: result.count > 0 }
     if (claim.claimed) {
         captureRunLifecycleEvent(runId, AnalyticsEvent.JOB_RESUMED)
         await emitRunHistoryInvalidation(runId)
@@ -285,9 +309,7 @@ export async function claimSuspendedRun(runId: string): Promise<SuspendedRunClai
 
 export type FailedRunSnapshotClaim = { claimed: false } | { claimed: true; snapshotImageId: string }
 
-// Claims a specific failure snapshot and moves the same run back into progress. Keeping
-// the claim in the worker avoids leaving the run in progress if enqueueing succeeds but
-// the worker is delayed, and prevents two clicks from restoring the same attempt twice.
+// Compatibility claim for deprecated filesystem-backed durable runs.
 export async function claimFailedRunSnapshot(runId: string, failureSnapshotId: string): Promise<FailedRunSnapshotClaim> {
     const claim = await db().$transaction(async (tx): Promise<FailedRunSnapshotClaim> => {
         const snapshot = await tx.run_failure_snapshots.findFirst({

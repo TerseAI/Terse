@@ -194,6 +194,8 @@ export class EventProcessor {
             isTest: this.isTest,
             triggeredByUserId: this.isManuallyTriggered || this.isTest ? this.user.id : undefined,
             replayOfRunId: this.replayOfRunId,
+            isDurable: agent.is_durable,
+            durableJournalBackend: agent.durable_journal_backend,
             executionRegion
         })
         if (settings.modal && this.replayOfRunId) {

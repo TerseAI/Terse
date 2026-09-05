@@ -12,7 +12,8 @@ export interface JobExecutionContext {
     readonly userId: string
     readonly user: UserSession
     readonly jobName: string
-    /** Filesystem snapshot image to boot when resuming a suspended run. */
+    readonly executionMode: "start" | "resume"
+    /** Snapshot image used only by deprecated filesystem-backed durable runs. */
     readonly restoreImageId?: string
     /** Input response to inject when resuming a run parked on a workflow hook. */
     readonly hookResume?: HookResume
@@ -33,6 +34,8 @@ export type ResumeSignal = {
     readonly kind: "timer" | "input"
     readonly receivedAtMs: number
 }
+
+export type RunResumeReason = "suspension" | "failure"
 
 export type RunOutcome = { status: "success" } | { status: "skipped"; reason: string } | { status: "suspended" } | { status: "failed"; cause: unknown }
 
