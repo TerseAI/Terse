@@ -24,7 +24,7 @@
       "title": "Project secrets allow dangerous runtime env overrides (NODE_OPTIONS etc.) into production sandboxes",
       "location": "terse-types/types.ts validateSecretName; backend/src/services/jobExecutors/SandboxJobExecutor.ts; backend/src/modules/projects/secrets/routes.ts",
       "evidence": [
-        "terse-types/types.ts:958-968 — only rejects TERSE_ prefix",
+        "terse-types/types.ts:961-968 — only rejects TERSE_ prefix",
         "backend/src/services/jobExecutors/SandboxJobExecutor.ts:92-110 — secrets merged into sandbox env; platform only overrides TERSE_*",
         "secrets routes: UserCookie/UserToken, no requireAdmin"
       ],
