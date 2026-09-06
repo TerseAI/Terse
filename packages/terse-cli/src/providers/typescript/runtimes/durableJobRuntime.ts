@@ -14,6 +14,7 @@ import { readProjectConfig } from "../../../projectConfig.js"
 import { shouldRunTerseWorkflow } from "../terseWorkflow.js"
 
 import { type JobRuntime, type ResumeHookInput, type ResumeRunOptions, formatErrorDetail } from "./JobRuntime.js"
+import { withDurableFolder, withDurableFolderSync } from "./durableFolder.js"
 import { withSession } from "./session.js"
 
 export const durableJobRuntime: JobRuntime = {
@@ -29,19 +30,21 @@ export const durableJobRuntime: JobRuntime = {
                 apiKey,
                 isVerbose,
                 pauseUiAround,
-                async sessionId => {
-                    if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
-                    const journalStore = new DurableObjectJournalStore()
-                    const runtime = new Runtime({ journalStore })
-                    const context = jobContext({ sessionId, runId, job, projectId: opts?.projectId })
-                    const shouldRun = await shouldRunTerseWorkflow({ job, event, context })
-                    if (!shouldRun) return
-                    const workflow = __fetchRegisteredDurableWorkflow(job.name)
-                    if (!workflow) throw new Error(`No durable workflow was registered for job "${job.name}".`)
+                async sessionId =>
+                    withDurableFolder(runId, async folder => {
+                        if (isVerbose) console.log(chalk.cyan(`  Job "${job.name}" started`))
+                        if (isVerbose) console.log(chalk.dim(`  Durable folder: ${folder.path} (saved after each successful step)`))
+                        const journalStore = withDurableFolderSync(new DurableObjectJournalStore(), folder.sync)
+                        const runtime = new Runtime({ journalStore })
+                        const context = jobContext({ sessionId, runId, job, projectId: opts?.projectId })
+                        const shouldRun = await shouldRunTerseWorkflow({ job, event, context })
+                        if (!shouldRun) return
+                        const workflow = __fetchRegisteredDurableWorkflow(job.name)
+                        if (!workflow) throw new Error(`No durable workflow was registered for job "${job.name}".`)
 
-                    const outcome = await runWithJobContext(context, () => runtime.start(workflow, { runId, input: event }).waitForOutcome())
-                    await handleOutcome({ runId, outcome, apiKey })
-                },
+                        const outcome = await runWithJobContext(context, () => runtime.start(workflow, { runId, input: event }).waitForOutcome())
+                        await handleOutcome({ runId, outcome, apiKey })
+                    }),
                 opts?.onSessionEvent,
                 opts?.session
             )
@@ -66,41 +69,44 @@ async function driveResume(runId: string, opts: ResumeRunOptions | undefined, in
     const apiKey = readRuntimeKeyOrBail()
 
     try {
-        await withSession(apiKey, isVerbose, pauseUiAround, async sessionId => {
-            const journalStore = new DurableObjectJournalStore()
-            const runtime = new Runtime({ journalStore })
-            const run = await runtime.getRun({ runId })
-            const job = fetchRegisteredJobs().get(run.workflowName)
-            if (!job) throw new Error(`No registered job matches durable workflow "${run.workflowName}".`)
-            const workflow = __fetchRegisteredDurableWorkflow(job.name)
-            if (!workflow) throw new Error(`No durable workflow was registered for job "${job.name}".`)
+        await withSession(apiKey, isVerbose, pauseUiAround, async sessionId =>
+            withDurableFolder(runId, async folder => {
+                const journalStore = withDurableFolderSync(new DurableObjectJournalStore(), folder.sync)
+                const runtime = new Runtime({ journalStore })
+                const run = await runtime.getRun({ runId })
+                const job = fetchRegisteredJobs().get(run.workflowName)
+                if (!job) throw new Error(`No registered job matches durable workflow "${run.workflowName}".`)
+                const workflow = __fetchRegisteredDurableWorkflow(job.name)
+                if (!workflow) throw new Error(`No durable workflow was registered for job "${job.name}".`)
 
-            if (isVerbose) console.log(chalk.cyan(`  Resuming run ${runId}`))
-            const context = jobContext({ sessionId, runId, job, projectId: readProjectConfig()?.projectId })
-            const outcome = await runWithJobContext(context, async (): Promise<RuntimeOutcome> => {
-                const suspension = await runtime.getSuspension({ runId })
+                if (isVerbose) console.log(chalk.cyan(`  Resuming run ${runId}`))
+                if (isVerbose) console.log(chalk.dim(`  Durable folder: ${folder.path} (saved after each successful step)`))
+                const context = jobContext({ sessionId, runId, job, projectId: readProjectConfig()?.projectId })
+                const outcome = await runWithJobContext(context, async (): Promise<RuntimeOutcome> => {
+                    const suspension = await runtime.getSuspension({ runId })
 
-                if (input) {
-                    if (!suspension || suspension.request.name !== __inputRequestHook.name) {
-                        throw new Error(`No unresolved input wait with token "${input.token}" exists in run "${runId}".`)
+                    if (input) {
+                        if (!suspension || suspension.request.name !== __inputRequestHook.name) {
+                            throw new Error(`No unresolved input wait with token "${input.token}" exists in run "${runId}".`)
+                        }
+                        const request = __inputRequestHook.request.safeParse(suspension.request.payload)
+                        if (!request.success || request.data.token !== input.token) {
+                            throw new Error(`No unresolved input wait with token "${input.token}" exists in run "${runId}".`)
+                        }
+                        const resolution = __inputRequestHook.resolution.parse(input.payload)
+                        return runtime.resumeHook(__inputRequestHook, { runId, workflow, waitId: suspension.waitId, resolution }).waitForOutcome()
                     }
-                    const request = __inputRequestHook.request.safeParse(suspension.request.payload)
-                    if (!request.success || request.data.token !== input.token) {
-                        throw new Error(`No unresolved input wait with token "${input.token}" exists in run "${runId}".`)
-                    }
-                    const resolution = __inputRequestHook.resolution.parse(input.payload)
-                    return runtime.resumeHook(__inputRequestHook, { runId, workflow, waitId: suspension.waitId, resolution }).waitForOutcome()
-                }
 
-                return suspension?.request.name === "timer"
-                    ? runtime.resumeTimer(workflow, { runId, waitId: suspension.waitId }).waitForOutcome()
-                    : runtime.resume(workflow, { runId }).waitForOutcome()
+                    return suspension?.request.name === "timer"
+                        ? runtime.resumeTimer(workflow, { runId, waitId: suspension.waitId }).waitForOutcome()
+                        : runtime.resume(workflow, { runId }).waitForOutcome()
+                })
+
+                await handleOutcome({ runId, outcome, apiKey })
+
+                if (isVerbose && outcome.status === "completed") console.log(chalk.green(`  Run ${runId} completed`))
             })
-
-            await handleOutcome({ runId, outcome, apiKey })
-
-            if (isVerbose && outcome.status === "completed") console.log(chalk.green(`  Run ${runId} completed`))
-        })
+        )
     } catch (error) {
         if (error instanceof CliError) throw error
         throw new CliError("run_resume_failed", `Run "${runId}" could not be resumed.`, { detail: formatErrorDetail(error) })

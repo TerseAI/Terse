@@ -36,15 +36,14 @@ jobs:
                   # fail the build check.
                   cache-to: type=gha,mode=max,ignore-error=true
 
-            # This release's packages do not exist yet, so the Dockerfile is proven
-            # against whatever is currently published.
-            - name: Resolve the published CLI version
+            # Use the published CLI with the DO release pinned by this branch.
+            - name: Resolve sandbox package versions
               id: published
               run: |
+                  set -euo pipefail
                   version=$(npm view terse-cli version)
                   echo "version=${version}" >> "$GITHUB_OUTPUT"
-                  deps=$(npm view "terse-sdk@${version}" dependencies --json)
-                  echo "durable_objects=$(node -p "JSON.parse(process.argv[1])['little-durable-objects']" "$deps")" >> "$GITHUB_OUTPUT"
+                  echo "durable_objects=$(node -p "require('./packages/terse-sdk/package.json').dependencies['little-durable-objects']")" >> "$GITHUB_OUTPUT"
 
             # Pushed to the job-local registry so the leaf images can FROM it. BuildKit reaches it
             # over the host network and allows plain HTTP because the host is localhost.

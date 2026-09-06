@@ -623,12 +623,12 @@ importers:
 
   packages/terse-sdk:
     dependencies:
-      little-durable-objects:
-        specifier: 0.1.13
-        version: 0.1.13
       little-durable:
         specifier: 0.1.3
         version: 0.1.3(zod@4.3.6)
+      little-durable-objects:
+        specifier: 0.1.22
+        version: 0.1.22
       ms:
         specifier: 2.1.3
         version: 2.1.3
@@ -1159,6 +1159,10 @@ packages:
   '@date-fns/tz@1.4.1':
     resolution: {integrity: sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA==}
 
+  '@discoveryjs/json-ext@1.1.0':
+    resolution: {integrity: sha512-Xc3VhU02wqZ1HvHRJUwL09HkZSTvidqY5Ya0NXBSYOxAp+Ln9dcJr9fySI+CkONzP3PekQo9WdzCv0PGER/mOA==}
+    engines: {node: '>=14.17.0'}
+
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
 
@@ -1593,8 +1597,8 @@ packages:
     resolution: {integrity: sha512-k9Dj3DV/itK9D06Y8f190Qgop7/Ui+D0njFV3LHMPwPT75DpXLQohE9Wmz0QElrJnzsjB7KPWiKJbOl7IPDArQ==}
     engines: {node: '>=12.10.0'}
 
-  '@grpc/proto-loader@0.8.0':
-    resolution: {integrity: sha512-rc1hOQtjIWGxcxpb9aHAfLpIctjEnsDehj0DAiVfBlmT84uvR0uUtN2hEi/ecvWVjXUGf5qPF4qEgiLOx1YIMQ==}
+  '@grpc/proto-loader@0.8.1':
+    resolution: {integrity: sha512-wtF6h+DY6M3YaDBPAmvuuA6jV8Sif9MjtOI5euKFWRgCDl5PeDpPsHR9u2l6St5ceY8AZgoNDww5+HvEsXFsGg==}
     engines: {node: '>=6'}
     hasBin: true
 
@@ -5551,10 +5555,9 @@ packages:
     resolution: {integrity: sha512-NXYBzinNrblfraPGyrbPoD19C1h9lfI/1mzgWYvXUTe414Gz/X1FD2XBZSZM7rRTrMA8JL3OtAaGifrIKhQ5yQ==}
     engines: {node: '>= 12.0.0'}
 
-  little-durable-objects@0.1.13:
-    resolution: {integrity: sha512-Gebwk22Ulh29h3UhnmhNQ7AYngC81lvfwUtqPcgeUIl0kgI8WbQZY2ycL792ErYr057K96EIvpbEoxVx1iwUkQ==}
+  little-durable-objects@0.1.22:
+    resolution: {integrity: sha512-z0NiSASDAVPzaTPA62djcTKOZIJpC7SzF+S9/ugunT3PJMI16dpb1aq7Aqqh8lB1T+K9K+aFsla1WrZQFkePmg==}
     engines: {node: '>=20'}
-    hasBin: true
 
   little-durable@0.1.3:
     resolution: {integrity: sha512-vhhY1H3fJwXDBKay7EFqlCgeq4AsrxWYphfhcuvPz7Mrq9FSZ+3U/x0xYDKXf/hPv4h1wOpBy3WZbKassnSOGg==}
@@ -8137,6 +8140,8 @@ snapshots:
 
   '@date-fns/tz@1.4.1': {}
 
+  '@discoveryjs/json-ext@1.1.0': {}
+
   '@emnapi/core@1.10.0':
     dependencies:
       '@emnapi/wasi-threads': 1.2.1
@@ -8459,10 +8464,10 @@ snapshots:
 
   '@grpc/grpc-js@1.14.4':
     dependencies:
-      '@grpc/proto-loader': 0.8.0
+      '@grpc/proto-loader': 0.8.1
       '@js-sdsl/ordered-map': 4.4.2
 
-  '@grpc/proto-loader@0.8.0':
+  '@grpc/proto-loader@0.8.1':
     dependencies:
       lodash.camelcase: 4.3.0
       long: 5.3.2
@@ -12388,7 +12393,7 @@ snapshots:
   google-gax@5.0.6:
     dependencies:
       '@grpc/grpc-js': 1.14.4
-      '@grpc/proto-loader': 0.8.0
+      '@grpc/proto-loader': 0.8.1
       duplexify: 4.1.3
       google-auth-library: 10.6.2
       google-logging-utils: 1.1.3
@@ -12404,7 +12409,7 @@ snapshots:
   google-gax@6.0.2:
     dependencies:
       '@grpc/grpc-js': 1.14.4
-      '@grpc/proto-loader': 0.8.0
+      '@grpc/proto-loader': 0.8.1
       duplexify: 4.1.3
       google-auth-library: 11.0.2
       google-logging-utils: 2.0.1
@@ -12863,11 +12868,11 @@ snapshots:
       lightningcss-win32-arm64-msvc: 1.32.0
       lightningcss-win32-x64-msvc: 1.32.0
 
-  little-durable-objects@0.1.13:
+  little-durable-objects@0.1.22:
     dependencies:
+      '@discoveryjs/json-ext': 1.1.0
       '@grpc/grpc-js': 1.14.4
-      modal: 0.10.0
-      protobufjs: 8.6.4
+      '@grpc/proto-loader': 0.8.1
       tsx: 4.21.0
       ws: 8.21.0
       zod: 4.3.6

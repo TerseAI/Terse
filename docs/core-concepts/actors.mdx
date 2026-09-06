@@ -1,28 +1,14 @@
 ---
 title: "Durable actors"
-description: "Keep project-scoped state consistent across workflow runs with typed, serialized actors."
+description: "Share persistent state across workflow runs."
 icon: "boxes"
 ---
 
-Use a durable actor when several workflow runs need to read and change the same piece of state without racing. An actor combines state with the methods allowed to change it. Calls to one actor run one at a time, while calls to actors with different IDs can run concurrently.
+An actor stores shared state for one project, class name, and ID. Calls to the same actor run one at a time. Use workflow `states` for workflow-local values and actors for shared read-modify-write operations.
 
-An actor belongs to a project and is identified by its class name and a stable ID. For example, `AccountCounter.get("acct_123")` always addresses the same `AccountCounter` in that project.
+## Define and call an actor
 
-## Actors, workflow state, and durable steps
-
-These features solve different problems:
-
-| Feature           | Scope                                               | Use it for                                                                         |
-| ----------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Workflow `states` | One workflow                                        | Cursors, cooldowns, and small values used only by that workflow                    |
-| Durable actor     | One actor type and ID across workflows in a project | Per-account state, counters, coordination, and atomic read-modify-write operations |
-| Durable step      | One workflow run                                    | Preventing an external call from repeating when that run resumes                   |
-
-An actor is the right boundary when correctness depends on serializing concurrent changes. A workflow state read followed by a write is not an atomic operation across runs.
-
-## Define an actor
-
-Create `src/durable-objects.ts` and export each actor as a named class:
+Export named classes from `src/durable-objects.ts`:
 
 ```ts
 import { Actor } from "terse-sdk"
@@ -30,41 +16,21 @@ import { Actor } from "terse-sdk"
 export class AccountCounter extends Actor {
     count = 0
 
-    async increment(by = 1): Promise<number> {
-        this.count += by
-        return this.count
-    }
-
-    async current(): Promise<number> {
-        return this.count
+    async increment(): Promise<number> {
+        return ++this.count
     }
 }
 ```
 
-Actor definitions have a deliberately small surface:
+Call `AccountCounter.get(accountId).increment()` from a workflow. Use a stable ID: changing the class name or ID addresses different state.
 
-- Classes must extend `Actor` directly and cannot require constructor arguments.
-- Export actor classes by name from `src/durable-objects.ts`. Do not use a default export or export runtime values that are not actor classes from that file.
-- Public actor methods must be asynchronous.
-- Method arguments, return values, and instance fields must be plain JSON values.
-- Actor class names, IDs, and method names may contain ASCII letters, digits, `.`, `_`, and `-`.
-- Use `this.id` inside an actor method when you need the current actor ID.
+Classes must extend `Actor` directly, take no constructor arguments, and expose async methods. Keep arguments, results, and instance fields as plain JSON values. Export only actor classes from the entrypoint. Names and IDs may contain letters, digits, `.`, `_`, and `-`; `this.id` returns the current actor ID.
 
-Terse saves the actor's enumerable instance fields after a successful method call. A method that throws does not publish its changed state.
+Successful calls persist enumerable fields; thrown errors discard state changes. Existing snapshots replace field initializers, so handle newly added fields with defaults such as `this.limit ?? 10`. Actor-to-actor calls are not supported.
 
-## Call an actor
+## Durable workflows
 
-For a non-durable workflow, call the actor directly:
-
-```ts
-import { AccountCounter } from "../durable-objects"
-
-async function incrementAccount(accountId: string): Promise<number> {
-    return AccountCounter.get(accountId).increment()
-}
-```
-
-Actor calls are external operations. In a workflow with `durable: true`, journal every actor call so a resume does not invoke it again. Because `step()` accepts a plain function call rather than a chained `get(...).method(...)` expression, put the actor call in a module-scope helper:
+Actor calls are not automatically journaled. In a `durable: true` workflow, call through a module-scope helper wrapped in `step()`:
 
 ```ts
 import { createJob, step } from "terse-sdk"
@@ -75,167 +41,59 @@ import { Triggers } from "../terse.generated"
 createJob({
     name: "count-account-events",
     durable: true,
-    triggers: [Triggers.webhook.onRequest<AccountEvent>()],
-    onTrigger: async event => step(incrementAccount(event.body.accountId))
+    triggers: [Triggers.webhook.onRequest<{ accountId: string }>()],
+    onTrigger: async event => {
+        await step(incrementAccount(event.body.accountId))
+    }
 })
 
 async function incrementAccount(accountId: string): Promise<number> {
     return AccountCounter.get(accountId).increment()
 }
-
-type AccountEvent = { accountId: string }
 ```
 
-Use `jobStep()` instead when the actor input or output needs runtime validation at the step boundary.
+The transform rejects `step(AccountCounter.get(id).increment())`; use the helper above.
 
-## Choose stable identities
+`ActorInvocationError` exposes `code` and `requestId`. For `outcome_unknown`, the mutation may have committed. Read state to reconcile, or deduplicate with a stable operation ID; do not blindly retry.
 
-The actor class name and ID are part of its durable identity. Derive IDs from stable domain identifiers such as an Attio record ID, GitHub repository ID, or customer ID. Do not use a random value when later calls must reach the same state.
+## WebSockets
 
-Renaming an actor class creates a different actor type; it does not move the old class's state. Treat class names and ID formats as persistent data contracts.
+Actor hooks `onConnect`, `onMessage`, and `onClose` share the same serialized state as ordinary methods. Use `socket.send()` to reply and `this.broadcast()` to publish to connected clients. Connections receive an initial `state` event.
 
-Actor state also survives code deployments. Add fields defensively because an existing actor snapshot does not acquire a new field's initializer automatically:
-
-```ts
-import { Actor } from "terse-sdk"
-
-export class AccountCounter extends Actor {
-    count = 0
-    lastSource?: string
-
-    async increment(source: string): Promise<number> {
-        this.count = (this.count ?? 0) + 1
-        this.lastSource = source
-        return this.count
-    }
-}
-```
-
-## Errors and retries
-
-`ActorInvocationError` exposes a machine-readable `code` and `requestId`. An `outcome_unknown` error means the caller did not receive a definitive result after dispatch; the method may have committed. Do not blindly apply the mutation again as a new logical operation. Reconcile with a read method or make the actor method accept a stable application-level operation ID and deduplicate it in actor state.
-
-Actor-to-actor calls are not currently supported. A workflow can call several actors, but an actor method cannot call another actor.
-
-## WebSocket sessions
-
-An actor can keep chat state and connection-aware behavior while the workflow sandbox runs the model or agent SDK. Socket lifecycle calls and ordinary actor methods are serialized against the same durable actor state. Every new connection automatically receives a `state` event containing the actor's current durable properties, so `onConnect` is optional.
-
-This room accepts one generation at a time and returns `already_generating` to a client that sends while it is busy:
-
-```ts
-import { Actor } from "terse-sdk"
-import type { ActorSocket } from "terse-sdk"
-
-type Connection = { userId: string }
-type Message = { id: string; role: "user" | "assistant"; text: string; userId?: string }
-
-export class AgentSession extends Actor {
-    isGenerating = false
-    activeMessageId: string | null = null
-    assistantDraft = ""
-    history: Message[] = []
-
-    async onMessage(socket: ActorSocket<Connection>, raw: string | Uint8Array): Promise<void> {
-        if (typeof raw !== "string") return
-        const message = JSON.parse(raw) as { id: string; text: string }
-
-        if (this.isGenerating) {
-            socket.send(JSON.stringify({ type: "error", code: "already_generating" }))
-            return
-        }
-
-        this.isGenerating = true
-        this.activeMessageId = message.id
-        this.history.push({ ...message, role: "user", userId: socket.metadata.userId })
-        this.broadcast(JSON.stringify({ type: "state", state: sessionState(this) }))
-    }
-
-    async currentTurn(messageId: string) {
-        return this.activeMessageId === messageId ? { messageId, history: this.history } : null
-    }
-
-    async appendOutput(messageId: string, chunk: string): Promise<void> {
-        if (this.activeMessageId !== messageId) return
-        this.assistantDraft += chunk
-        this.broadcast(JSON.stringify({ type: "assistant_delta", messageId, chunk }))
-    }
-
-    async finish(messageId: string): Promise<void> {
-        if (this.activeMessageId !== messageId) return
-        this.history.push({ id: `assistant:${messageId}`, role: "assistant", text: this.assistantDraft })
-        this.isGenerating = false
-        this.activeMessageId = null
-        this.assistantDraft = ""
-        this.broadcast(JSON.stringify({ type: "state", state: sessionState(this) }))
-    }
-}
-
-function sessionState(session: AgentSession) {
-    return {
-        isGenerating: session.isGenerating,
-        activeMessageId: session.activeMessageId,
-        assistantDraft: session.assistantDraft,
-        history: session.history
-    }
-}
-```
-
-Register one workflow turn for each socket message:
+To start a workflow for each socket message, add a trigger using your actor class:
 
 ```ts
 import { createJob } from "terse-sdk"
 
-import { AgentSession } from "./durable-objects"
-import { streamAgent } from "./my-agent"
-import { Triggers } from "./terse.generated"
+import { AccountCounter } from "../durable-objects"
+import { Triggers } from "../terse.generated"
 
 createJob({
-    name: "run-chat-agent",
-    triggers: [Triggers.durableObject.onMessage({ actor: AgentSession })],
+    name: "count-socket-messages",
+    triggers: [Triggers.durableObject.onMessage({ actor: AccountCounter })],
     onTrigger: async event => {
-        if (event.message.type !== "text") return
-        const { id } = JSON.parse(event.message.data) as { id: string }
-        const session = AgentSession.get(event.actorId)
-        const turn = await session.currentTurn(id)
-        if (!turn) return
-
-        for await (const chunk of streamAgent(turn.history)) {
-            await session.appendOutput(turn.messageId, chunk)
-        }
-
-        await session.finish(turn.messageId)
+        await AccountCounter.get(event.actorId).increment()
     }
 })
 ```
 
-After deployment, the job details show a socket URL template and a socket key. Trusted server clients replace `{actorId}` with the session ID and send the key as a Bearer token during the WebSocket upgrade.
+After deployment, the workflow details show a socket URL with an `{actorId}` placeholder and a socket key. Trusted servers send the key as a Bearer token during the WebSocket upgrade.
 
-For browser or other untrusted clients, your backend exchanges the project API token for a short-lived connection ticket:
+For browsers, your backend obtains a short-lived ticket using its project API token:
 
 ```http
 POST /durable-objects/socket-tickets
 Authorization: Bearer terse_project_token
 Content-Type: application/json
 
-{
-  "triggerId": "the-trigger-id",
-  "actorId": "session-123",
-  "metadata": { "userId": "user-123" }
-}
+{"triggerId":"trigger-id","actorId":"account-123","metadata":{"userId":"user-123"}}
 ```
 
-The response contains `url`, `protocols`, and `expiresAt`. Pass the first two values directly to the WebSocket constructor:
-
-```ts
-const socket = new WebSocket(ticket.url, ticket.protocols)
-```
-
-The ticket binds the trigger, actor ID, metadata, and expiration. Every authenticated connection can send and receive; actor code decides whether a busy room rejects or queues another message.
+Connect with `new WebSocket(ticket.url, ticket.protocols)`. Authenticate the user and authorize the actor ID in your backend before requesting a ticket; never expose the project API token or socket key to browsers. Actor hooks receive ticket metadata as `socket.metadata`.
 
 ## Deploy and test
 
-Actor hosts load `src/durable-objects.ts` from the project's latest successful deployment. Run the typechecker first, then deploy actor definition changes before testing them:
+Terse injects actor credentials automatically. Deploy actor changes before testing: actor hosts load definitions from the latest successful deployment, not your local files.
 
 ```bash
 pnpm exec tsc --noEmit
@@ -243,6 +101,8 @@ terse deploy
 terse test run "<workflow-name>" --id <sample-id>
 ```
 
-`terse test` uses an isolated actor namespace, so test calls do not read or modify production actor state. It still runs the actor definitions from the latest successful deployment.
+Tests use a separate `test.<projectId>` namespace and do not change production actor state.
 
-<Note>Durable actors are currently available for TypeScript workflows on Terse Cloud. The `create-terse` self-hosted stack does not include the actor control plane.</Note>
+For a custom runtime, set `DURABLE_OBJECT_TOKEN`, `DURABLE_OBJECT_NAMESPACE_ID`, and `DURABLE_OBJECT_CONTROL_PLANE_URL` before the first actor call. Set `DURABLE_OBJECT_SOCKET_GATEWAY_URL` when the gateway is separate. Use a workflow token, never an admin token.
+
+<Note>The `create-terse` self-hosted stack does not include the actor control plane.</Note>

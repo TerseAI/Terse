@@ -23,7 +23,6 @@ Import these from `terse-sdk`:
 - `runWithJobContext`, `getJobContext`, `TerseJobContext`: wrap a handler with `runWithJobContext` to preserve run attribution. Outside of it, set `TERSE_BACKEND_URL` if needed (default `https://api.useterse.ai`) and optionally `TERSE_RUN_ID`
 - `formatTriggerForAgent`, `debugTrigger`: helpers for plain trigger payloads
 - `Actor`, `ActorInvocationError`: define and call project-scoped durable actors. See [Durable actors](/core-concepts/actors)
-- `configureDurableObjects`: configure actor credentials for a custom runtime. Terse Cloud and `terse test` inject these credentials automatically
 
 ## Re-exported types
 
@@ -152,31 +151,7 @@ createJob({
 
 ## Durable actors
 
-Define named `Actor` subclasses in `src/durable-objects.ts`, then address an instance by its stable ID:
-
-```ts
-import { Actor } from "terse-sdk"
-
-export class AccountCounter extends Actor {
-    count = 0
-
-    async increment(): Promise<number> {
-        return ++this.count
-    }
-}
-```
-
-Import the actor into a job file and call it from the workflow:
-
-```ts
-import { AccountCounter } from "../durable-objects"
-
-async function incrementAccount(accountId: string): Promise<number> {
-    return AccountCounter.get(accountId).increment()
-}
-```
-
-Actor methods and state use plain JSON values. Calls to one actor ID are serialized. Inside a durable workflow, wrap actor calls in a journaled step through a module-scope helper. See [Durable actors](/core-concepts/actors) for the complete definition rules, replay guidance, deployment behavior, and testing model.
+Export named `Actor` subclasses from `src/durable-objects.ts` and call them with `ActorType.get(id).method()`. In durable workflows, wrap calls in a journaled helper. See [Durable actors](/core-concepts/actors) for an example, WebSocket authentication, and environment variables.
 
 ## `generateText`
 
@@ -402,13 +377,13 @@ Replay-safe logging: `await log("processed", count)`. In a durable job the call 
 
 Posts an interactive input request and suspends until a human responds. Returns a typed `InputResponse` with `choice`, optional `text` (when the selected option has `freeText: true`), `respondent`, and `delivery`.
 
-| Field     | Type                     | Description                                                                              |
-| --------- | ------------------------ | ---------------------------------------------------------------------------------------- |
-| `via`     | `InputTarget`            | Where to deliver the prompt. Use `slack({ channel })` with a channel id.                 |
-| `prompt`  | `string`                 | The question shown to the respondent.                                                    |
-| `details` | `Record<string, string>` | Optional key/value pairs rendered alongside the prompt.                                  |
+| Field     | Type                     | Description                                                                                                                     |
+| --------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `via`     | `InputTarget`            | Where to deliver the prompt. Use `slack({ channel })` with a channel id.                                                        |
+| `prompt`  | `string`                 | The question shown to the respondent.                                                                                           |
+| `details` | `Record<string, string>` | Optional key/value pairs rendered alongside the prompt.                                                                         |
 | `media`   | `InputMedia[]`           | Optional attachments, max 10. Each is `{ kind: "image" \| "video", url, altText? }`; URLs must be reachable without Terse auth. |
-| `options` | `InputOption[]`          | Action buttons. Each has `id`, `label`, optional `description`, and optional `freeText`. |
+| `options` | `InputOption[]`          | Action buttons. Each has `id`, `label`, optional `description`, and optional `freeText`.                                        |
 
 `result.choice` is typed to the union of your option ids. See [Durability — Waiting for human input](/core-concepts/durability#waiting-for-human-input).
 

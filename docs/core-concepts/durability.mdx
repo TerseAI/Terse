@@ -25,6 +25,46 @@ Without the flag a job runs start to finish in a single execution (the default).
 
 On Terse Cloud, each durable run keeps its journal in a project-scoped durable object. The journal remains available after its sandbox shuts down, so a resumed run starts from its original deploy image and replays completed work from remote state.
 
+## Durable files
+
+Store files in `/terse/durable` to preserve them across sandbox interruptions. Each durable run gets its own folder, which follows that run through retries and resumes. A new run starts with an empty folder.
+
+Terse saves this folder after each successful step, before recording the step as complete. If saving fails, the step remains incomplete. Terse also saves the folder before a workflow waits or finishes. You do not need to call `sync` yourself.
+
+Use `process.env.TERSE_DURABLE_DIR` to access the folder from workflow code. On Terse Cloud, it points to `/terse/durable`. During local tests, it points to a directory under `.terse/runs/` in your project; self-hosted runs use the host's persistent disk.
+
+```ts
+import { readFile, writeFile } from "node:fs/promises"
+import { join } from "node:path"
+import { createJob, sleep, step } from "terse-sdk"
+
+async function saveDraft(text: string) {
+    await writeFile(join(process.env.TERSE_DURABLE_DIR!, "draft.txt"), text)
+}
+
+async function readDraft() {
+    return readFile(join(process.env.TERSE_DURABLE_DIR!, "draft.txt"), "utf8")
+}
+
+createJob({
+    name: "saved-draft",
+    triggers: [],
+    durable: true,
+    onTrigger: async () => {
+        await step(saveDraft("Follow up with the customer tomorrow."))
+        await sleep("1d")
+        const draft = await step(readDraft())
+        // Use the saved draft after the run resumes.
+    }
+})
+```
+
+Await file writes and close or flush buffered streams before returning from a step. Interrupted steps may leave partial changes, including changes to files written by earlier steps. Retrying a step does not roll back the folder. Files outside this folder are not covered by this guarantee.
+
+Files remain available for retries and resumes while the project exists. Deleting the project removes its durable folders. Local files remain on your machine and are not uploaded to Terse Cloud; a resume in the cloud cannot recover files from a local test.
+
+Upgrade `terse-cli` and redeploy your workflows to enable automatic saving in existing deployments.
+
 ## Everything in the SDK is already a step
 
 You don't need to change anything to make the built-in SDK calls durable. `toolbox.*`, `generateText()`, `runAndWait()`, and `state.get` / `state.set` are already durable steps. Each one runs once, its result is journaled, and it never runs again on resume.

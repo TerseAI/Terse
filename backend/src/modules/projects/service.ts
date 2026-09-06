@@ -11,6 +11,7 @@ import { createProjectScopedToken } from "../../modules/auth/helpers/apiTokens"
 import { SecretService } from "../../services/SecretService"
 import { getAuthProvider } from "../../services/authProvider"
 import { purgeProjectMemory } from "../../services/memory/memoryPurge"
+import { getSandboxProvider } from "../../services/sandboxProvider"
 
 import {
     DeployRow,
@@ -94,6 +95,11 @@ export async function deleteProjectForOrganization(projectId: string, organizati
 
     // Purge all persistent memory for this project (best-effort).
     await purgeProjectMemory(projectId)
+    try {
+        await getSandboxProvider().deleteProjectRunStorage(projectId)
+    } catch (error) {
+        logger.error("Durable folder cleanup failed after project delete", { error, projectId })
+    }
 
     emitCacheInvalidationWithKey(organizationId, "agents")
     emitCacheInvalidationWithKey(organizationId, "recentAgents")

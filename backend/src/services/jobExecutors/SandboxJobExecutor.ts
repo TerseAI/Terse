@@ -17,7 +17,7 @@ import { SecretService } from "../SecretService"
 import { resolveRunStatus } from "../resolveRunStatus"
 import { getSandboxProvider } from "../sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
-import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
+import { Sandbox, SandboxRunStorage, SandboxService } from "../sandboxProvider/SandboxService"
 import { JOURNAL_ROOT, runJournalDir } from "../sandboxProvider/runJournal"
 import { readSandboxRegion } from "../sandboxProvider/sandboxRegion"
 import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
@@ -128,6 +128,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 agentId: agent.id,
                 sandboxEnv,
                 sourceImageId: sourceImage.imageId,
+                durableJournalBackend,
                 cliVersion: sourceImage.cliVersion,
                 executionMode,
                 restoreImageId,
@@ -277,15 +278,21 @@ export class SandboxJobExecutor implements JobExecutor {
         projectId: string
         sandboxEnv: Record<string, string>
         sourceImageId: string
+        durableJournalBackend: string | null
         cliVersion: string
         executionMode: JobExecutionContext["executionMode"]
         restoreImageId?: string
         telemetry: SandboxRuntimeTelemetry
     }): Promise<{ sb: Sandbox; result: SandboxCommandResult }> {
-        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageId, cliVersion, executionMode, restoreImageId, telemetry } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageId, durableJournalBackend, cliVersion, executionMode, restoreImageId, telemetry } = params
 
-        const sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSandboxFromImage(sandboxService, restoreImageId ?? sourceImageId, projectId, runId, telemetry))
+        const runStorage = durableJournalBackend === "durable_object" ? await telemetry.measure("prepareRunStorageMs", () => sandboxService.prepareRunStorage(projectId, runId)) : undefined
+        // Runtime-owned settings must take precedence over project secrets.
+        sandboxEnv.TERSE_DURABLE_DIR = runStorage?.path ?? ""
+        sandboxEnv.TERSE_DURABLE_SYNC = runStorage?.syncMode ?? ""
+        const sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSandboxFromImage(sandboxService, restoreImageId ?? sourceImageId, projectId, runId, telemetry, runStorage))
         const modalRegion = await readSandboxRegion(sb)
+        logger.info("SDK sandbox: reported Modal region", { runId, projectId, sandboxId: sb.sandboxId, modalRegion })
         const durableObjectEnvironment = await this.durableObjectEnvironment(projectId, runId, modalRegion)
         Object.assign(sandboxEnv, durableObjectEnvironment)
         const executorContext = this.createRuntimeExecutorContext(
@@ -374,11 +381,18 @@ export class SandboxJobExecutor implements JobExecutor {
         await sandboxService.terminateSandbox(app, runtimeSandboxUniqueName(projectId, runId))
     }
 
-    private async createSandboxFromImage(sandboxService: SandboxService, imageId: string, projectId: string, runId: string, telemetry: SandboxRuntimeTelemetry): Promise<Sandbox> {
+    private async createSandboxFromImage(
+        sandboxService: SandboxService,
+        imageId: string,
+        projectId: string,
+        runId: string,
+        telemetry: SandboxRuntimeTelemetry,
+        runStorage?: SandboxRunStorage
+    ): Promise<Sandbox> {
         const app = await telemetry.measure("sandboxAppReadyMs", () => sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME))
         const image = await telemetry.measure("sourceImageLoadMs", () => sandboxService.getImageFromId(imageId))
         const uniqueName = runtimeSandboxUniqueName(projectId, runId)
-        return telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS))
+        return telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, { ...SANDBOX_DEFAULT_OPTIONS, volumes: runStorage?.volumes }))
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

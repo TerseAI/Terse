@@ -25,6 +25,9 @@ export interface SandboxService<I extends SandboxImage = SandboxImage, S extends
     getCliCachePath(sandbox: S): string
     getScratchPath(sandbox: S, filename: string): string
 
+    prepareRunStorage(projectId: string, runId: string): Promise<SandboxRunStorage>
+    deleteProjectRunStorage(projectId: string): Promise<void>
+
     /** Compatibility-only filesystem snapshot for deprecated on-disk workflow journals. */
     snapshotForSuspension(sandbox: S): Promise<string>
 }
@@ -97,6 +100,12 @@ type SandboxCreateParams = {
 
 /** Opaque per-provider volume handle (Modal Volume / local dir marker). */
 export type SandboxVolume = unknown
+
+export interface SandboxRunStorage {
+    path: string
+    syncMode: "modal" | "local"
+    volumes?: Record<string, SandboxVolume>
+}
 
 /** Opaque per-provider bucket mount handle. */
 export type SandboxBucketMount = unknown

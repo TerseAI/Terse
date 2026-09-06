@@ -9,6 +9,7 @@ import logger from "../../common/logger"
 
 import { ContainerProcess, ReadStream, Sandbox, SandboxApp, SandboxFile, SandboxImage, SandboxService, WriteStream } from "./SandboxService"
 import { clearPidFile, recordChildPid, registerSandbox, sweepOrphanedSandboxProcesses, terminateSandboxDirProcesses, unregisterSandbox } from "./localSandboxLifecycle"
+import { LocalRunStorage } from "./runStorage"
 
 const SANDBOX_ROOT = "/data/sandbox"
 const IMAGES_DIR = path.join(SANDBOX_ROOT, "images")
@@ -39,6 +40,15 @@ const IMAGE_MARKER_FILE = ".terse-image-id"
  */
 export class LocalSandboxService implements SandboxService<SandboxImage, LocalSandbox> {
     readonly supportsContainerizedRunners = false
+    private readonly runStorage = new LocalRunStorage()
+
+    prepareRunStorage(projectId: string, runId: string) {
+        return this.runStorage.prepare(projectId, runId)
+    }
+
+    deleteProjectRunStorage(projectId: string): Promise<void> {
+        return this.runStorage.deleteProject(projectId)
+    }
 
     constructor() {
         // Kill any child processes left alive by a previous backend run before

@@ -1,5 +1,8 @@
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import { readFileSync } from "node:fs"
 import { test } from "node:test"
+import { fileURLToPath } from "node:url"
 
 import { bumpVersion, parsePorcelainPaths } from "./publish-release.mjs"
 import { parseVersion, readReleaseVersion } from "./release.mjs"
@@ -27,6 +30,32 @@ test("release versions must be complete numeric semver versions", () => {
 
 test("all checked-in release manifests agree", () => {
     assert.match(readReleaseVersion(), /^\d+\.\d+\.\d+$/)
+})
+
+test("PR sandbox builds use the checked-in DO version before Terse packages are published", () => {
+    const root = fileURLToPath(new URL("../", import.meta.url))
+    const workflow = readFileSync(new URL("../.github/workflows/docker-build.yml", import.meta.url), "utf8")
+    const script = workflow.split("id: published\n")[1].split("run: |\n")[1].split("\n\n")[0]
+    const manifest = JSON.parse(readFileSync(new URL("../packages/terse-sdk/package.json", import.meta.url), "utf8"))
+    const output = execFileSync(
+        "bash",
+        [
+            "-eu",
+            "-c",
+            `
+        npm() {
+            case "$*" in
+                "view terse-cli version") echo "0.4.7" ;;
+                "view terse-sdk@0.4.7 dependencies --json") echo '{"ms":"2.1.3"}' ;;
+                *) return 1 ;;
+            esac
+        }
+        ${script}
+    `
+        ],
+        { cwd: root, env: { ...process.env, GITHUB_OUTPUT: "/dev/stdout" }, encoding: "utf8" }
+    )
+    assert.ok(output.includes(`durable_objects=${manifest.dependencies["little-durable-objects"]}\n`), output)
 })
 
 test("porcelain parsing preserves a leading dot on the first path", () => {

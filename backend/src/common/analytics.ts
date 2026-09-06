@@ -164,6 +164,7 @@ export interface SandboxRuntimeLatencyProperties extends BaseEventProperties {
     createSourceImageSandboxMs?: number
     sandboxAppReadyMs?: number
     sourceImageLoadMs?: number
+    prepareRunStorageMs?: number
     sandboxReadyMs?: number
     runtimeCommandMs?: number
     resolveRunStatusMs?: number
