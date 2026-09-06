@@ -196,7 +196,7 @@ export class SandboxJobExecutor implements JobExecutor {
 
         const controlPlane = DurableObjectControlPlaneClient.getInstance(config)
         const deadlineUnixMs = Date.now() + (SANDBOX_DEFAULT_OPTIONS.timeoutMs ?? 24 * 60 * 60 * 1000)
-        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, durableObjectStorageRegion(executionRegion ?? DEFAULT_EXECUTION_REGION), deadlineUnixMs, true)
+        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, durableObjectStorageRegion(executionRegion ?? DEFAULT_EXECUTION_REGION), deadlineUnixMs, false)
 
         return {
             DURABLE_OBJECT_TOKEN: workflowToken.token,
