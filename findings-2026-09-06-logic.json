@@ -1,0 +1,45 @@
+{
+  "scan_date_utc": "2026-09-06",
+  "commit_hash": "67aa14f5cb2bccfe774018061e13b056858f6564",
+  "branch": "cursor/persistent-finding-memory-d23e",
+  "focus": "Logic flaws / auth / privilege / API security",
+  "new_validated_findings": [
+    {
+      "severity": "high",
+      "title": "Forged waitForInput registration hijacks or DoS-es suspended production runs (no hook_token binding)",
+      "location": "backend/src/services/InputRequestService.ts; backend/src/modules/sdk/runtime/controller.ts; backend/src/integrations/slack/inputRequests.ts; packages/terse-cli/src/providers/typescript/runtimes/durableJobRuntime.ts",
+      "evidence": [
+        "backend/src/services/InputRequestService.ts:15-23 — registerInputRequest only requires runId in org; no ownership/status/hook_token binding",
+        "backend/src/services/InputRequestService.ts:79-107 — enqueueInputResume never compares suspension.hook_token to response token",
+        "backend/src/modules/agents/AgentRunner/runHistory.ts:258-273 — claimSuspendedRun has no token check",
+        "backend/src/integrations/slack/inputRequests.ts:173 — button value embeds cleartext hook token in Slack blocks",
+        "packages/terse-cli/src/providers/typescript/runtimes/durableJobRuntime.ts:86-91 — wrong token fails only after claim (DoS); matching stolen token = full inject",
+        "backend/src/integrations/slack/inputRequestHandlers.ts:55-62 — any linked Slack workspace member may click"
+      ],
+      "attack_path": "Org member/project token → POST /sdk/input-request for a SUSPENDED production runId with attacker token → Slack click → worker claims suspension without hook_token check → wrong token fails CLI resume (DoS) OR steal T1 from legitimate button value via conversations.history and resume with attacker payload (full hijack).",
+      "why_new": "Not in prior reported list; distinct from ApprovalService and test-run finalize / state put."
+    },
+    {
+      "severity": "medium",
+      "title": "Project secrets allow dangerous runtime env overrides (NODE_OPTIONS etc.) into production sandboxes",
+      "location": "terse-types/types.ts validateSecretName; backend/src/services/jobExecutors/SandboxJobExecutor.ts; backend/src/modules/projects/secrets/routes.ts",
+      "evidence": [
+        "terse-types/types.ts:958-968 — only rejects TERSE_ prefix",
+        "backend/src/services/jobExecutors/SandboxJobExecutor.ts:92-110 — secrets merged into sandbox env; platform only overrides TERSE_*",
+        "secrets routes: UserCookie/UserToken, no requireAdmin"
+      ],
+      "attack_path": "Member PUT secret NODE_OPTIONS=--require … → next production sandbox inherits it → code exec in sandbox with project secrets + sandbox API token, outside deploy audit trail.",
+      "why_new": "Secret allowlist gap not previously filed."
+    }
+  ],
+  "skipped_already_reported": [
+    "Project-scoped API tokens not enforced",
+    "Test-run finalize without is_test",
+    "State put via historical runId",
+    "ApprovalService catch markRunFailed / AGENT_CHAT_APPROVAL",
+    "Slack input-request video URL SSRF",
+    "Job suspension org check (FIXED 2026-09-06)"
+  ],
+  "pr_opened": false,
+  "slack_posted": false
+}
