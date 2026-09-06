@@ -418,6 +418,17 @@ export class GithubIntegrationManager
                     events.push(new GithubTriggerRuntime(eventData, storedFiles))
                 }
             }
+            if (requestedTypes.includes(GitHubEventType.ISSUE_CREATED)) {
+                try {
+                    const octokit = createOctokitForSample(accessToken)
+                    const { data: issues } = await octokit.rest.issues.listForRepo({ owner: repo.owner, repo: repo.name, state: "all", sort: "created", direction: "desc", per_page: 100 })
+                    for (const issue of issues.filter(issue => !issue.pull_request).slice(0, 5)) {
+                        events.push(new GithubTriggerRuntime(createIssueCreatedEventData(issue, repo, installationIdNum), []))
+                    }
+                } catch (error) {
+                    logger.error("Error fetching recent issues for sample", { error, repository: repo.name })
+                }
+            }
             if (wantsIssueComment) {
                 const comments = await fetchRecentIssueCommentsForSample(accessToken, repo.owner, repo.name, 5)
                 for (const comment of comments) {
@@ -483,7 +494,9 @@ export class GithubTriggerRuntime extends TriggerRuntime<GithubTrigger> implemen
         super()
         this.data = data
         this.storedFiles = storedFiles
-        if (data.eventType === GitHubEventType.ISSUE_COMMENT_CREATED) {
+        if (data.eventType === GitHubEventType.ISSUE_CREATED) {
+            this.entityId = `${data.installationId}:${data.repository.id}:issue/${data.issue.number}`
+        } else if (data.eventType === GitHubEventType.ISSUE_COMMENT_CREATED) {
             const targetKind = data.issue.isPullRequest ? "pr" : "issue"
             this.entityId = `${data.installationId}:${data.repository.id}:${targetKind}/${data.issue.number}/comment/${data.comment.id}`
         } else if (data.eventType === GitHubEventType.PR_COMMENT_EDITED) {
@@ -546,6 +559,15 @@ export function buildGithubTriggerMetadata(data: GithubTrigger): RunHistoryTrigg
         integration: IntegrationType.GITHUB,
         source: repositoryName
     } as const
+
+    if (data.eventType === GitHubEventType.ISSUE_CREATED) {
+        return {
+            ...base,
+            title: `#${data.issue.number} ${data.issue.title}`,
+            subheader: `${username} opened an issue in ${repositoryName}`,
+            url: data.issue.url
+        }
+    }
 
     if (data.eventType === GitHubEventType.ISSUE_COMMENT_CREATED || data.eventType === GitHubEventType.PR_COMMENT_EDITED) {
         const snippet = data.comment.body.split("\n")[0].slice(0, 80)
@@ -1099,7 +1121,7 @@ function createIssueCommentEventData(comment: OctokitIssueComment, repo: { id: n
 }
 
 export async function getPullRequestFiles(event: GithubTrigger, token: string, integrationId: string): Promise<StoredFile[]> {
-    if (event.eventType === GitHubEventType.ISSUE_COMMENT_CREATED || event.eventType === GitHubEventType.PR_COMMENT_EDITED || !event.pullRequest) {
+    if (event.eventType === GitHubEventType.ISSUE_CREATED || event.eventType === GitHubEventType.ISSUE_COMMENT_CREATED || event.eventType === GitHubEventType.PR_COMMENT_EDITED || !event.pullRequest) {
         return []
     }
 
@@ -1253,5 +1275,32 @@ async function downloadGithubFile(url: string, token: string): Promise<GithubFil
     } catch (error) {
         logger.error("Error downloading GitHub file", { error, url })
         return null
+    }
+}
+
+/** Normalize a GitHub issue for sample events and hydrated references. */
+export function createIssueCreatedEventData(
+    issue: RestEndpointMethodTypes["issues"]["get"]["response"]["data"],
+    repo: { id: number; owner: string; name: string; defaultBranch: string },
+    installationId: number
+): GithubTrigger {
+    return {
+        integrationType: IntegrationType.GITHUB,
+        username: issue.user?.login ?? "unknown",
+        installationId,
+        repositoryName: `${repo.owner}/${repo.name}`,
+        eventType: GitHubEventType.ISSUE_CREATED,
+        repository: repo,
+        sender: { login: issue.user?.login ?? "unknown" },
+        issue: {
+            id: issue.id,
+            number: issue.number,
+            title: issue.title,
+            body: issue.body ?? undefined,
+            state: issue.state === "closed" ? "closed" : "open",
+            url: issue.html_url,
+            author: { login: issue.user?.login ?? "unknown" },
+            isPullRequest: false
+        }
     }
 }

@@ -240,6 +240,12 @@ export const issueCommentSchema = z.object({
     updatedAt: z.string()
 })
 
+export const GithubIssueCreatedTriggerSchema = GithubTriggerBaseSchema.extend({
+    eventType: z.literal(GitHubEventType.ISSUE_CREATED),
+    issue: issueCommentTargetSchema.extend({ isPullRequest: z.literal(false) })
+})
+export type GithubIssueCreatedTrigger = z.infer<typeof GithubIssueCreatedTriggerSchema>
+
 export const GithubIssueCommentCreatedTriggerSchema = GithubTriggerBaseSchema.extend({
     eventType: z.literal(GitHubEventType.ISSUE_COMMENT_CREATED),
     issue: issueCommentTargetSchema,
@@ -269,7 +275,13 @@ export type GithubPRCommentTrigger = z.infer<typeof GithubPRCommentTriggerSchema
 export const GithubPRTriggerSchema = z.discriminatedUnion("eventType", [GithubPROpenedTriggerSchema, GithubPRSynchronizedTriggerSchema, GithubPRClosedTriggerSchema, GithubPRMergedTriggerSchema])
 export type GithubPRTrigger = z.infer<typeof GithubPRTriggerSchema>
 
-export const GithubTriggerSchema = z.discriminatedUnion("eventType", [GithubPushTriggerSchema, GithubPRTriggerSchema, GithubIssueCommentCreatedTriggerSchema, GithubPRCommentEditedTriggerSchema])
+export const GithubTriggerSchema = z.discriminatedUnion("eventType", [
+    GithubPushTriggerSchema,
+    GithubPRTriggerSchema,
+    GithubIssueCreatedTriggerSchema,
+    GithubIssueCommentCreatedTriggerSchema,
+    GithubPRCommentEditedTriggerSchema
+])
 export type GithubTrigger = z.infer<typeof GithubTriggerSchema>
 
 export const GmailParsedAttachmentSchema = z.object({
@@ -1226,6 +1238,12 @@ export const TriggerDefinitions = {
         eventTypes: [GitHubEventType.PR_MERGED],
         presenter: githubPresenter
     }),
+    GithubIssueCreatedTrigger: defineTrigger({
+        integration: IntegrationType.GITHUB,
+        schema: GithubIssueCreatedTriggerSchema,
+        eventTypes: [GitHubEventType.ISSUE_CREATED],
+        presenter: githubPresenter
+    }),
     GithubIssueCommentCreatedTrigger: defineTrigger({
         integration: IntegrationType.GITHUB,
         schema: GithubIssueCommentCreatedTriggerSchema,
@@ -1254,7 +1272,7 @@ export const TriggerDefinitions = {
     }),
     GithubTrigger: defineTriggerUnion({
         integration: IntegrationType.GITHUB,
-        members: ["GithubPushTrigger", "GithubPRTrigger", "GithubIssueCommentCreatedTrigger", "GithubPRCommentEditedTrigger"],
+        members: ["GithubPushTrigger", "GithubPRTrigger", "GithubIssueCreatedTrigger", "GithubIssueCommentCreatedTrigger", "GithubPRCommentEditedTrigger"],
         presenter: githubPresenter
     }),
     GmailTrigger: defineTrigger({

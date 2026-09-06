@@ -22,6 +22,7 @@ Every event, whatever its trigger, carries `triggeredAt`: a `Date` fixed to the 
 | `Triggers.github.onPRClosed()`       | `GithubPRClosedTrigger`       | A pull request is closed             |
 | `Triggers.github.onPRSynchronized()` | `GithubPRSynchronizedTrigger` | New commits are pushed to a PR       |
 | `Triggers.github.onPR()`             | `GithubPRTrigger`             | Any pull request event               |
+| `Triggers.github.onIssueCreated()` | `GithubIssueCreatedTrigger` | An issue is created |
 | `Triggers.github.onIssueComment()`   | `GithubIssueCommentCreatedTrigger` | A comment is created on an issue or pull request |
 | `Triggers.github.onPRCommentCreated()` | `GithubPRCommentCreatedTrigger` | A comment is created on a pull request |
 | `Triggers.github.onPRCommentEdited()` | `GithubPRCommentEditedTrigger` | A comment is edited on a pull request |
@@ -43,6 +44,8 @@ All GitHub events include:
 - `repository` - `{ id, name, owner, defaultBranch }`
 - `repositoryName`, `username`, `installationId`
 - `sender` - `{ login, email }`
+Push and PR events also include:
+
 - `commits` - array of `{ sha, message, name, fileDiffs: [{ filename, diff }] }`
 
 PR events add:
@@ -53,6 +56,10 @@ PR events add:
 Push events add:
 
 - `branch` - the branch that was pushed to
+
+Issue-created events (`issues.opened`) add:
+
+- `issue` - `{ id, number, title, body?, state, url, author, isPullRequest: false }`
 
 Issue and PR comment events add:
 

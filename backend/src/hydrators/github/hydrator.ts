@@ -3,7 +3,7 @@ import { GitHubEventType, GithubTrigger, GithubTriggerSchema, IntegrationType } 
 
 import logger from "../../common/logger"
 import { getAppInstallationsForUser } from "../../integrations/github/integration"
-import { GithubTriggerRuntime, getPullRequestFiles } from "../../integrations/github/integration"
+import { GithubTriggerRuntime, createIssueCreatedEventData, getPullRequestFiles } from "../../integrations/github/integration"
 import { db } from "../../loaders/prisma"
 import { StoredFile } from "../../services/FileStorageService"
 import { SecretService } from "../../services/SecretService"
@@ -98,6 +98,24 @@ export class GithubEventHydrator extends Hydrator<GithubTriggerRuntime> {
             const [owner, name] = repo.full_name.split("/")
             if (!owner || !name) {
                 return null
+            }
+
+            if (type === "issue" && /^\d+$/.test(identifier)) {
+                const { data: issue } = await octokit.issues.get({ owner, repo: name, issue_number: Number(identifier) })
+                if (issue.pull_request) return null
+                return new GithubTriggerRuntime(
+                    createIssueCreatedEventData(
+                        issue,
+                        {
+                            id: repo.id,
+                            name: repo.name,
+                            owner,
+                            defaultBranch: repo.default_branch ?? "main"
+                        },
+                        installationId
+                    ),
+                    []
+                )
             }
 
             const commentMatch = identifier.match(/^(\d+)\/comment\/(\d+)(?:\/edited\/(.+))?$/)
