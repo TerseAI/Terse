@@ -29,6 +29,10 @@ export const githubTriggers = {
     onPR(opts: { repo: Repos }): TypedTrigger<GithubPRTrigger> {
         return new GitHubConfig("{{escape section.id}}", [opts.repo.repositoryId], [GitHubEventType.PR_OPENED, GitHubEventType.PR_MERGED, GitHubEventType.PR_CLOSED, GitHubEventType.PR_SYNCHRONIZE])
     },
+    /** Trigger when an issue is created */
+    onIssueCreated(opts: { repo: Repos }): TypedTrigger<GithubIssueCreatedTrigger> {
+        return new GitHubConfig("{{escape section.id}}", [opts.repo.repositoryId], [GitHubEventType.ISSUE_CREATED])
+    },
     /** Trigger when a comment is created on an issue or pull request */
     onIssueComment(opts: { repo: Repos }): TypedTrigger<GithubIssueCommentCreatedTrigger> {
         return new GitHubConfig("{{escape section.id}}", [opts.repo.repositoryId], [GitHubEventType.ISSUE_COMMENT_CREATED])

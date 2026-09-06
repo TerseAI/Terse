@@ -1,4 +1,4 @@
-import { Probot } from "probot"
+import { Context, Probot } from "probot"
 
 import { safeErrorFields } from "./utility/safeError.js"
 import { Commit, FileDiff, VectraInterface } from "./vectraInterface.js"
@@ -98,6 +98,31 @@ export default (app: Probot) => {
         console.log("🔔 Pull request closed:", pr?.title)
         const eventType = pr?.merged ? "pull_request.merged" : "pull_request.closed"
         await handleUnifiedPullRequestEvent(context, eventType)
+    })
+
+    app.on("issues.opened", async context => {
+        const { payload } = context
+        // Reuse the issue shape: the installed webhook types narrow issues.opened to never.
+        const issue = payload.issue as Context<"issue_comment.created">["payload"]["issue"]
+        await VectraInterface.githubUnifiedEvent(payload.sender.login, payload.installation?.id || 0, payload.repository.name, "issues.opened", {
+            issue: {
+                id: issue.id,
+                number: issue.number,
+                title: issue.title,
+                body: issue.body,
+                state: issue.state,
+                url: issue.html_url,
+                author: { login: issue.user.login },
+                isPullRequest: false
+            },
+            repository: {
+                id: Number(payload.repository.id),
+                name: payload.repository.name,
+                owner: payload.repository.owner.login,
+                defaultBranch: payload.repository.default_branch
+            },
+            sender: { login: payload.sender.login }
+        })
     })
 
     app.on("issue_comment.created", async context => {

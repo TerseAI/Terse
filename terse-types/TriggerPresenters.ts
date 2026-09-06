@@ -46,6 +46,7 @@ export function formatGithubTrigger(event: GithubTrigger): string {
         "pull_request.closed": "Pull Request Closed",
         "pull_request.merged": "Pull Request Merged",
         "pull_request.comment.edited": "Pull Request Comment Edited",
+        "issues.opened": "Issue Created",
         "issue_comment.created": "Issue Comment Created"
     }
     const eventDescription = event.eventType === "issue_comment.created" && event.issue.isPullRequest ? "Pull Request Comment Created" : eventTypeDescriptions[event.eventType] || event.eventType
@@ -59,11 +60,12 @@ export function formatGithubTrigger(event: GithubTrigger): string {
 
     const senderInfo = [`Actor: ${event.sender.login}`, ...(event.sender.email ? [`Email: ${event.sender.email}`] : [])].join("\n")
     const isCommentEvent = event.eventType === "issue_comment.created" || event.eventType === "pull_request.comment.edited"
-    const branch = isCommentEvent ? undefined : event.branch
+    const isIssueEvent = event.eventType === "issues.opened"
+    const branch = isCommentEvent || isIssueEvent ? undefined : event.branch
     const branchInfo = branch ? `Branch: ${branch}` : null
 
     let prInfo = ""
-    if (!isCommentEvent && event.pullRequest) {
+    if (!isCommentEvent && !isIssueEvent && event.pullRequest) {
         const pr = event.pullRequest
         const author = pr.author ?? pr.user
         const prLines = [
@@ -78,6 +80,17 @@ export function formatGithubTrigger(event: GithubTrigger): string {
             prLines.push(`\nDescription:\n${indentMultiline(pr.body)}`)
         }
         prInfo = prLines.join("\n")
+    }
+
+    if (isIssueEvent) {
+        const issue = event.issue
+        prInfo = [
+            `Issue #${issue.number}: ${issue.title}`,
+            `State: ${issue.state}`,
+            `Author: ${issue.author.login}`,
+            `View: ${issue.url}`,
+            ...(issue.body ? [`Description:\n${indentMultiline(issue.body)}`] : [])
+        ].join("\n")
     }
 
     let commentInfo = ""
@@ -101,7 +114,7 @@ export function formatGithubTrigger(event: GithubTrigger): string {
     }
 
     let commitsInfo = ""
-    const commits = isCommentEvent ? [] : event.commits
+    const commits = isCommentEvent || isIssueEvent ? [] : event.commits
     if (commits.length > 0) {
         const commitLines: string[] = []
         commitLines.push(`Commits (${commits.length}):`)
@@ -122,7 +135,7 @@ export function formatGithubTrigger(event: GithubTrigger): string {
         commitsInfo = commitLines.join("\n")
     }
 
-    const targetSectionLabel = isCommentEvent ? (event.issue.isPullRequest ? "Pull Request Information" : "Issue Information") : "Pull Request Information"
+    const targetSectionLabel = isIssueEvent ? "Issue Information" : isCommentEvent ? (event.issue.isPullRequest ? "Pull Request Information" : "Issue Information") : "Pull Request Information"
 
     return [
         `Incoming GitHub Event: ${eventDescription}`,
@@ -140,6 +153,12 @@ export function debugGithubTrigger(event: GithubTrigger): string {
 }
 
 export function formatGithubDisplay(event: GithubTrigger): TriggerDisplay {
+    if (event.eventType === "issues.opened") {
+        return {
+            title: `#${event.issue.number} ${truncateForDisplay(event.issue.title, 80)}`,
+            subtitle: `${event.repository.owner}/${event.repository.name} · Issue created by ${event.sender.login}`
+        }
+    }
     if (event.eventType === "issue_comment.created" || event.eventType === "pull_request.comment.edited") {
         const kind = event.issue.isPullRequest ? "PR" : "Issue"
         return {

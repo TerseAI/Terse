@@ -363,6 +363,7 @@ export const GitHubEventType = {
     PR_SYNCHRONIZE: "pull_request.synchronize",
     PR_COMMENT_CREATED: "pull_request.comment.created",
     PR_COMMENT_EDITED: "pull_request.comment.edited",
+    ISSUE_CREATED: "issues.opened",
     ISSUE_COMMENT_CREATED: "issue_comment.created"
 } as const
 export const gitHubEventTypeSchema = z.enum(GitHubEventType)
