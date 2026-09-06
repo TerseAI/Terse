@@ -41,5 +41,6 @@
     "Job suspension org check (FIXED 2026-09-06)"
   ],
   "pr_opened": false,
-  "slack_posted": false
+  "slack_posted": false,
+  "slack_note": "SendSlackMessage tool unavailable in this run environment; findings delivered in agent transcript + git branch findings-2026-09-06-logic.json"
 }
