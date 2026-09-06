@@ -15,7 +15,6 @@ type DurationKey = Extract<
     | "resolveSourceImageMs"
     | "createSandboxTokenMs"
     | "fetchProjectSecretsMs"
-    | "prepareRunStorageMs"
     | "createSourceImageSandboxMs"
     | "sandboxAppReadyMs"
     | "sourceImageLoadMs"

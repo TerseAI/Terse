@@ -1,10 +1,9 @@
-import { AlreadyExistsError, CloudBucketMount, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams, Secret } from "modal"
+import { AlreadyExistsError, CloudBucketMount, App as ModalApp, ModalClient, Image as ModalImage, Sandbox as ModalSandbox, NotFoundError, SandboxCreateParams, Secret, Volume } from "modal"
 
 import logger from "../../common/logger"
 import { SettingsDependant } from "../../settings"
 
 import { BucketMountParams, Sandbox, SandboxFile, SandboxService } from "./SandboxService"
-import { ModalRunStorage } from "./runStorage"
 
 export const SANDBOX_DEFAULT_OPTIONS: SandboxCreateParams = {
     idleTimeoutMs: 5 * 60 * 1000,
@@ -37,8 +36,6 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
         tokenSecret: this.config.tokenSecret
     })
 
-    private readonly runStorage = new ModalRunStorage(this.modal)
-
     private constructor() {
         super()
     }
@@ -64,14 +61,6 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
     getScratchPath(_sandbox: Sandbox, filename: string): string {
         // Each Modal sandbox has its own isolated filesystem, so /tmp is per-sandbox.
         return `/tmp/${filename}`
-    }
-
-    prepareRunStorage(projectId: string, runId: string) {
-        return this.runStorage.prepare(projectId, runId)
-    }
-
-    deleteProjectRunStorage(projectId: string): Promise<void> {
-        return this.runStorage.deleteProject(projectId)
     }
 
     async snapshotForSuspension(sandbox: Sandbox): Promise<string> {
