@@ -1,5 +1,7 @@
-import type { DurableObjectStorageRegion } from "terse-types/ExecutionRegions"
 import { z } from "zod"
+
+// Browser sockets and local tests have no Modal sandbox location.
+export const DURABLE_OBJECT_STORAGE_REGION = "north-america-east"
 
 const registerDeploymentResponseSchema = z.object({ changed: z.boolean() })
 const workflowTokenResponseSchema = z.object({
@@ -49,12 +51,12 @@ export class DurableObjectControlPlaneClient implements DurableObjectControlPlan
         )
     }
 
-    async issueWorkflowToken(namespaceId: string, executionId: string, storageRegion: DurableObjectStorageRegion, deadlineUnixMs: number, privateRouting = false): Promise<DurableObjectWorkflowToken> {
+    async issueWorkflowToken(namespaceId: string, executionId: string, storageRegion: string, deadlineUnixMs: number): Promise<DurableObjectWorkflowToken> {
         return this.request(
             `/v1/namespaces/${pathSegment(namespaceId)}/workflow-tokens`,
             {
                 method: "POST",
-                body: JSON.stringify({ executionId, storageRegion, deadlineUnixMs, privateRouting })
+                body: JSON.stringify({ executionId, storageRegion, deadlineUnixMs })
             },
             workflowTokenResponseSchema
         )
@@ -147,7 +149,7 @@ export class DurableObjectControlPlaneError extends Error {
 export interface DurableObjectControlPlane {
     readonly controlPlaneUrl: string
     registerDeployment(namespaceId: string, deployment: DurableObjectDeployment): Promise<{ changed: boolean }>
-    issueWorkflowToken(namespaceId: string, executionId: string, storageRegion: DurableObjectStorageRegion, deadlineUnixMs: number, privateRouting?: boolean): Promise<DurableObjectWorkflowToken>
+    issueWorkflowToken(namespaceId: string, executionId: string, storageRegion: string, deadlineUnixMs: number): Promise<DurableObjectWorkflowToken>
 }
 
 export interface DurableObjectControlPlaneConfig {
@@ -161,7 +163,6 @@ export interface DurableObjectDeployment {
     readonly imageRef: string
     readonly workingDirectory: string
     readonly actorEntrypoint?: string
-    readonly warmRegion?: DurableObjectStorageRegion
 }
 
 export interface DurableObjectWorkflowToken {

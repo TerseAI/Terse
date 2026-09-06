@@ -107,7 +107,6 @@ export async function deploy(provider: LanguageProvider = resolveProvider(), ent
             cliVersion: getCliVersion(),
             jobs: jobs.map(job => ({
                 jobName: job.name,
-                durable: job.durable === true,
                 durableJournalBackend: job.durable === true ? DURABLE_OBJECT_JOURNAL_BACKEND : undefined,
                 triggers: job.triggers
             })),

@@ -1,5 +1,3 @@
-import type { ExecutionRegion } from "terse-types/ExecutionRegions"
-
 import { db } from "../loaders/prisma"
 import type { ResumeSignal } from "../services/jobExecutors/types"
 
@@ -39,7 +37,6 @@ type SandboxRuntimeTelemetryParams = {
     resumeSignal?: ResumeSignal
     enqueuedAtMs?: number
     scheduledForMs?: number
-    executionRegion: ExecutionRegion | null
 }
 
 export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
@@ -86,7 +83,6 @@ export class SandboxRuntimeTelemetry extends LatencyTelemetry<DurationKey> {
             provider: this.params.provider,
             success,
             runtime: this.runtime,
-            executionRegion: this.params.executionRegion,
             cliVersion: this.cliVersion,
             resumeSignalKind: this.resumeSignal?.kind,
             ...(error ? { errorMessage: extractErrorMessage(error).slice(0, 500) } : {}),

@@ -1,4 +1,3 @@
-import type { ExecutionRegion } from "terse-types/ExecutionRegions"
 import { SdkInputResponsePayload, UserSession } from "terse-types/types"
 
 import { AgentWithRelations } from "../../types/prisma"
@@ -22,7 +21,6 @@ export interface JobExecutionContext {
     readonly enqueuedAtMs?: number
     readonly scheduledForMs?: number
     /** Stable region pinned on the run record. Null for legacy and self-hosted runs. */
-    readonly executionRegion: ExecutionRegion | null
 }
 
 export type HookResume = {

@@ -3,9 +3,7 @@ import { Request, Response } from "express"
 import { logoParamsSchema, logoUploadUrlQuerySchema, organizationCreateRequestSchema, organizationSwitchRequestSchema, organizationUpdateRequestSchema } from "terse-types"
 import { Membership, Organization, Role } from "terse-types/types"
 
-import { AnalyticsEvent, analytics } from "../../../common/analytics"
 import logger from "../../../common/logger"
-import { getOrCreateOrganizationExecutionRegion, setOrganizationExecutionRegion } from "../../../services/OrganizationSettingsService"
 import OrganizationProvider from "../../../services/organizationProvider/OrganizationProvider"
 import { SettingsDependant, settings } from "../../../settings"
 import { WORKOS_SESSION_COOKIE_NAME, setSessionCookie } from "../authProvider/service"
@@ -65,7 +63,7 @@ export class WorkOSOrganizationProvider extends SettingsDependant implements Org
             res.status(401).json({ error: "Unauthorized" })
             return
         }
-        const { name, firstName, lastName, executionRegion } = organizationCreateRequestSchema.parse(req.body)
+        const { name, firstName, lastName } = organizationCreateRequestSchema.parse(req.body)
         try {
             const result = await createOrganizationForUser({
                 workos: this.workos,
@@ -76,22 +74,8 @@ export class WorkOSOrganizationProvider extends SettingsDependant implements Org
                 lastName,
                 sealedSessionData: req.cookies[WORKOS_SESSION_COOKIE_NAME]
             })
-            await setOrganizationExecutionRegion(result.organization.id, executionRegion)
-            logger.info("Organization execution region initialized", {
-                organizationId: result.organization.id,
-                userId: user.id,
-                previousExecutionRegion: null,
-                executionRegion
-            })
-            analytics.capture(user.id, AnalyticsEvent.ORGANIZATION_EXECUTION_REGION_SET, {
-                organizationId: result.organization.id,
-                previousExecutionRegion: null,
-                executionRegion,
-                source: "creation"
-            })
-            analytics.groupIdentify(result.organization.id, { executionRegion })
             setSessionCookie(res, result.sealedSession)
-            res.status(201).json({ ...result.organization, executionRegion })
+            res.status(201).json(result.organization)
         } catch (error) {
             if (error instanceof SessionExpiredError) {
                 res.status(500).json({ error: error.message })
@@ -113,8 +97,8 @@ export class WorkOSOrganizationProvider extends SettingsDependant implements Org
             return
         }
         try {
-            const [organization, executionRegion] = await Promise.all([getOrganizationDetails(this.workos, user.organizationId), getOrCreateOrganizationExecutionRegion(user.organizationId)])
-            res.json({ ...organization, executionRegion })
+            const response = await getOrganizationDetails(this.workos, user.organizationId)
+            res.json(response)
         } catch (error) {
             logger.error("Failed to get organization from WorkOS", { error, organizationId: user.organizationId })
             res.status(500).json({ error: "Failed to load organization." })
@@ -222,32 +206,10 @@ export class WorkOSOrganizationProvider extends SettingsDependant implements Org
             return
         }
 
-        const { name, executionRegion } = organizationUpdateRequestSchema.parse(req.body)
+        const { name } = organizationUpdateRequestSchema.parse(req.body)
         try {
-            const [organization, regionResult] = await Promise.all([
-                name === undefined ? getOrganizationDetails(this.workos, user.organizationId) : updateOrganizationName(this.workos, user.organizationId, name, user.id),
-                executionRegion === undefined
-                    ? getOrCreateOrganizationExecutionRegion(user.organizationId).then(region => ({ executionRegion: region, previousExecutionRegion: region, changed: false }))
-                    : setOrganizationExecutionRegion(user.organizationId, executionRegion)
-            ])
-
-            if (regionResult.changed) {
-                logger.info("Organization execution region updated", {
-                    organizationId: user.organizationId,
-                    userId: user.id,
-                    previousExecutionRegion: regionResult.previousExecutionRegion,
-                    executionRegion: regionResult.executionRegion
-                })
-                analytics.capture(user.id, AnalyticsEvent.ORGANIZATION_EXECUTION_REGION_SET, {
-                    organizationId: user.organizationId,
-                    previousExecutionRegion: regionResult.previousExecutionRegion,
-                    executionRegion: regionResult.executionRegion,
-                    source: "settings"
-                })
-                analytics.groupIdentify(user.organizationId, { executionRegion: regionResult.executionRegion })
-            }
-
-            res.json({ ...organization, executionRegion: regionResult.executionRegion })
+            const response = await updateOrganizationName(this.workos, user.organizationId, name, user.id)
+            res.json(response)
         } catch (error) {
             logger.error("Failed to update organization", { error, userId: user.id, organizationId: user.organizationId })
             res.status(500).json({ error: "Failed to update organization" })

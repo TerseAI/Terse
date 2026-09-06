@@ -79,7 +79,6 @@ export interface SandboxImageSettings {
 export interface SandboxBaseImageRequest {
     releaseImageName: string
     genericImage: string
-    usesLocalPackages: boolean
     registryImagesSupported: boolean
 }
 

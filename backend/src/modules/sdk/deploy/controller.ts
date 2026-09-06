@@ -1,7 +1,6 @@
 import { RunHistoryActionType } from "@prisma/client"
 import { Request, Response } from "express"
 import { ConfigType, TriggerConfigData } from "terse-types/Configs"
-import { DEFAULT_EXECUTION_REGION } from "terse-types/ExecutionRegions"
 import { SdkDeployJob, SdkDeployResponseBody, SdkDeployStage, SdkSourceUploadResponse, sdkDeployRequestBodySchema } from "terse-types/types"
 
 import { AnalyticsEvent, analytics } from "../../../common/analytics"
@@ -20,7 +19,6 @@ import { emitSessionEvent } from "../../../modules/agents/SessionEventBus"
 import { buildTriggerMetadata, createTriggerConfig, setupAgentTriggers, tearDownAgentTriggers, validateUserOwnsIntegration } from "../../../modules/agents/controller"
 import { createProjectScopedToken } from "../../../modules/auth/helpers/apiTokens"
 import { DurableObjectProjectService } from "../../../services/DurableObjectProjectService"
-import { getOrCreateOrganizationExecutionRegion } from "../../../services/OrganizationSettingsService"
 import { type PreparedSdkDeployImage, SdkSandboxImageService } from "../../../services/SdkSandboxImageService"
 import { purgeAutomationsMemory } from "../../../services/memory/memoryPurge"
 import { type SdkDeployPhase } from "../../../services/sdkRuntimeExecutors/types"
@@ -111,7 +109,7 @@ export async function handleSdkDeploy(req: Request, res: Response) {
                     organizationId,
                     cliVersion,
                     requiresWorkflowBundle,
-                    requiresDurableWorkflowJournal: jobs.some(job => job.durable === true && job.durableJournalBackend === "durable_object"),
+                    requiresDurableWorkflowJournal: jobs.some(job => job.durableJournalBackend === "durable_object"),
                     sourceObjectKey,
                     onProgress: phase => emitStage(toDeployStage(phase)),
                     telemetry
@@ -184,20 +182,12 @@ export async function handleSdkDeploy(req: Request, res: Response) {
         const deployedNames = new Set(jobs.map(j => j.jobName))
         const removed = await removeStaleAutomations(prisma, organizationId, deployedNames, projectId)
 
-        await registerDurableObjectDeployment(projectId, organizationId, preparedImage)
+        if (preparedImage && settings.durableObjects) {
+            await DurableObjectProjectService.getInstance(settings.durableObjects).registerDeployment(projectId, preparedImage)
+        }
 
         const jobsAdded = results.filter(r => !r.isUpdate).length
-        await markDeploySucceeded(
-            prisma,
-            deploy.id,
-            jobs.map(job => ({
-                jobName: job.jobName,
-                durable: job.durable ?? false,
-                durableJournalBackend: job.durableJournalBackend ?? null
-            })),
-            jobsAdded,
-            removed.length
-        )
+        await markDeploySucceeded(prisma, deploy.id, jobs, jobsAdded, removed.length)
         telemetry.setJobCounts({ jobsAdded, jobsRemoved: removed.length })
 
         emitCacheInvalidationWithKey(organizationId, "recentAgents")
@@ -267,7 +257,7 @@ async function updateExistingAutomation(
     organizationId: string,
     userId: string
 ): Promise<AgentWithTriggerRelations> {
-    const { jobName, triggers, durableJournalBackend } = job
+    const { jobName, triggers } = job
     const automationId = existing.id
     const preservedWebhookTokens = existing.inputs.filter(input => input.webhook_config).map(input => input.webhook_config!.webhook_token)
     const preservedSocketTokens = existing.inputs.filter(input => input.durable_object_config).map(input => input.durable_object_config!.socket_token)
@@ -282,8 +272,6 @@ async function updateExistingAutomation(
             data: {
                 name: jobName,
                 is_active: true,
-                is_durable: job.durable ?? false,
-                durable_journal_backend: durableJournalBackend ?? null,
                 deployed_at: new Date()
             }
         })
@@ -309,7 +297,7 @@ async function updateExistingAutomation(
 }
 
 async function createNewAutomation(prisma: ReturnType<typeof db>, job: SdkDeployJob, organizationId: string, userId: string, projectId: string): Promise<AgentWithTriggerRelations> {
-    const { jobName, triggers, durableJournalBackend } = job
+    const { jobName, triggers } = job
     return prisma.$transaction(async tx => {
         const newAgent = await tx.automations.create({
             data: {
@@ -317,8 +305,6 @@ async function createNewAutomation(prisma: ReturnType<typeof db>, job: SdkDeploy
                 organization_id: organizationId,
                 name: jobName,
                 is_active: true,
-                is_durable: job.durable ?? false,
-                durable_journal_backend: durableJournalBackend ?? null,
                 require_approval: false,
                 project_id: projectId,
                 deployed_at: new Date()
@@ -436,12 +422,4 @@ async function readSourceArchive(params: { sourceZipBase64?: string; sourceObjec
     const store = GcsSourceArchiveStore.getInstance()
     if (!store || !sourceObjectKey) throw new Error("No source archive was provided with this deploy")
     return store.download(sourceObjectKey, organizationId)
-}
-
-async function registerDurableObjectDeployment(projectId: string, organizationId: string, preparedImage: PreparedSdkDeployImage | undefined): Promise<void> {
-    const config = settings.durableObjects
-    if (!preparedImage || !config) return
-
-    const executionRegion = settings.workos ? await getOrCreateOrganizationExecutionRegion(organizationId) : DEFAULT_EXECUTION_REGION
-    await DurableObjectProjectService.getInstance(config).registerProductionDeployment(projectId, preparedImage, executionRegion)
 }

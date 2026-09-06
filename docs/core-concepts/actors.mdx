@@ -233,14 +233,6 @@ const socket = new WebSocket(ticket.url, ticket.protocols)
 
 The ticket binds the trigger, actor ID, metadata, and expiration. Every authenticated connection can send and receive; actor code decides whether a busy room rejects or queues another message.
 
-## Regions
-
-The organization's execution region supplies the initial home region for newly created actors. An actor keeps that home region so later calls reach the same durable state even if the organization's execution region changes.
-
-Admins can change the default from the organization menu at the top of the sidebar: select **Edit Organization**, then choose an **Execution region**.
-
-The execution-region setting controls actor and workflow execution placement. It does not change where Terse stores organization control-plane data.
-
 ## Deploy and test
 
 Actor hosts load `src/durable-objects.ts` from the project's latest successful deployment. Run the typechecker first, then deploy actor definition changes before testing them:

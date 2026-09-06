@@ -1,5 +1,5 @@
 import type { CreateJobParameters, SessionStreamEvent } from "terse-sdk"
-import { DURABLE_OBJECT_JOURNAL_BACKEND, type SerializedEvent } from "terse-types"
+import type { SerializedEvent } from "terse-types"
 
 import { finalizeTestRun, startTestRun } from "./api.js"
 import { withDurableObjectEnvironment } from "./durableObjectEnvironment.js"
@@ -26,8 +26,6 @@ export async function runLocalTestJob(
         {
             projectId: opts.projectId,
             jobName: job.name,
-            durable: job.durable === true,
-            durableJournalBackend: job.durable === true ? DURABLE_OBJECT_JOURNAL_BACKEND : undefined,
             event,
             forceLocal: opts.forceLocal,
             isTest: opts.isTest,

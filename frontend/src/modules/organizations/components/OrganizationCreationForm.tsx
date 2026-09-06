@@ -5,20 +5,16 @@ import { useNavigate } from "react-router-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AxiosError } from "axios"
 import { ImagePlus, Loader2, X } from "lucide-react"
-import { posthog } from "posthog-js"
-import { EXECUTION_REGIONS, executionRegionLabel, executionRegionSchema } from "terse-types/ExecutionRegions"
 import { FrontendRoutes } from "terse-types/FrontendRoutesBuilder"
 import * as z from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { POST_LOGIN_REDIRECT_KEY, isSafeRedirectPath } from "@/constants/storageKeys"
 import { BackendProvider } from "@/lib/http"
 import { useAuth } from "@/modules/auth/context/AuthProvider"
-import { detectBrowserExecutionRegion } from "@/modules/organizations/executionRegion"
 
 export default function OrganizationCreationForm() {
     const [isLoading, setIsLoading] = useState(false)
@@ -27,10 +23,8 @@ export default function OrganizationCreationForm() {
     const [logoFile, setLogoFile] = useState<File | null>(null)
     const [logoPreview, setLogoPreview] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const regionWasManuallySelected = useRef(false)
     const navigate = useNavigate()
     const { user, refreshUser } = useAuth()
-    const detectedExecutionRegion = useMemo(() => detectBrowserExecutionRegion(), [])
 
     const needsName = !user?.firstName?.trim() && !user?.lastName?.trim()
 
@@ -40,8 +34,7 @@ export default function OrganizationCreationForm() {
                 .object({
                     name: z.string().min(1, "Organization name is required"),
                     firstName: z.string().optional(),
-                    lastName: z.string().optional(),
-                    executionRegion: executionRegionSchema
+                    lastName: z.string().optional()
                 })
                 .superRefine((data, ctx) => {
                     if (needsName) {
@@ -68,7 +61,7 @@ export default function OrganizationCreationForm() {
 
     const form = useForm<OrganizationCreationFormValues>({
         resolver: zodResolver(organizationCreationSchema),
-        defaultValues: { name: "", firstName: "", lastName: "", executionRegion: detectedExecutionRegion }
+        defaultValues: { name: "", firstName: "", lastName: "" }
     })
 
     function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -105,11 +98,7 @@ export default function OrganizationCreationForm() {
         setError(null)
         setIsLoading(true)
         try {
-            await BackendProvider.createOrganization(values.name, values.executionRegion, values.firstName, values.lastName)
-            posthog.capture("organization_execution_region_initialized", {
-                executionRegion: values.executionRegion,
-                source: regionWasManuallySelected.current ? "manual" : "browser_timezone"
-            })
+            await BackendProvider.createOrganization(values.name, values.firstName, values.lastName)
             await refreshUser()
 
             // Upload logo if selected (after org is created and user session is refreshed)
@@ -208,38 +197,6 @@ export default function OrganizationCreationForm() {
                                     <FormControl>
                                         <Input type="text" placeholder="e.g. Acme Inc" disabled={isLoading} {...field} />
                                     </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="executionRegion"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Execution region</FormLabel>
-                                    <Select
-                                        value={field.value}
-                                        onValueChange={value => {
-                                            regionWasManuallySelected.current = true
-                                            field.onChange(value)
-                                        }}
-                                        disabled={isLoading}
-                                    >
-                                        <FormControl>
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {EXECUTION_REGIONS.map(region => (
-                                                <SelectItem key={region} value={region}>
-                                                    {executionRegionLabel(region)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormDescription>Controls where workflow runs execute by default.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

@@ -132,12 +132,11 @@ export class SdkSandboxImageService {
         const baseImage = await SandboxBaseImageResolver.getInstance().resolve({
             releaseImageName: executor.releaseImageNameFor(archive),
             genericImage: executor.sandboxImage,
-            usesLocalPackages: localPackages !== undefined,
             // The local provider ignores registry images entirely, so a probe would buy nothing.
             registryImagesSupported: getSandboxProvider().supportsContainerizedRunners
         })
         if (settings.durableObjects && baseImage.kind !== "sandbox") {
-            throw new DurableObjectBaseImageError("Durable Objects requires a published SDK base image; configure Modal and Artifact Registry access before deploying")
+            throw new Error("Durable Objects requires a published SDK base image; configure Modal and Artifact Registry access before deploying")
         }
         telemetry?.setBaseImageKind(baseImage.kind)
         logger.info("SDK image build: base image resolved", { kind: baseImage.kind, reference: baseImage.reference })
@@ -548,13 +547,6 @@ function extractError(error: unknown): string {
 
 function archiveNameOf(objectKey: string | undefined): string | undefined {
     return objectKey?.slice(objectKey.lastIndexOf("/") + 1)
-}
-
-class DurableObjectBaseImageError extends Error {
-    constructor(message: string) {
-        super(message)
-        this.name = "DurableObjectBaseImageError"
-    }
 }
 
 export interface PreparedSdkDeployImage {

@@ -1,7 +1,6 @@
 import * as z from "zod"
 
 import { configDataSchema, configTypeEnum, skillConfigDataSchema, triggerConfigDataSchema } from "./Configs"
-import { DEFAULT_EXECUTION_REGION, executionRegionSchema } from "./ExecutionRegions"
 import { integrationTypeEnum } from "./Integrations"
 import { runHistoryActionBaseSchema, runHistoryActionTypeSchema, runHistoryDecisionActionSchema, runHistoryStatusSchema } from "./RunHistoryTypes"
 import type { RunHistoryAction } from "./RunHistoryTypes"
@@ -58,11 +57,6 @@ export const organizationSchema = z.object({
     name: z.string()
 })
 export type Organization = z.infer<typeof organizationSchema>
-
-export const organizationDetailsSchema = organizationSchema.extend({
-    executionRegion: executionRegionSchema.nullable()
-})
-export type OrganizationDetails = z.infer<typeof organizationDetailsSchema>
 
 export const membershipSchema = z.object({
     organizationId: z.string(),
@@ -421,8 +415,7 @@ export const runHistoryRecordSchema = z.object({
     isManuallyTriggered: z.boolean(),
     isTest: z.boolean().optional(),
     triggeredByUserId: z.string().nullish(),
-    replayOfRunId: z.string().nullish(),
-    executionRegion: executionRegionSchema.nullable()
+    replayOfRunId: z.string().nullish()
 })
 export type RunHistoryRecord = z.infer<typeof runHistoryRecordSchema>
 
@@ -1030,7 +1023,6 @@ export type DurableJournalBackend = z.infer<typeof durableJournalBackendSchema>
 export const sdkDeployJobSchema = z.object({
     jobName: z.string(),
     /** Optional so deploys from older CLIs keep using the snapshot-backed compatibility path. */
-    durable: z.boolean().optional(),
     durableJournalBackend: durableJournalBackendSchema.optional(),
     triggers: z.array(triggerConfigDataSchema)
 })
@@ -1150,8 +1142,7 @@ export const webhookWorkOSTriggerParamsSchema = z.object({
 export const organizationCreateRequestSchema = z.object({
     name: z.string(),
     firstName: z.string().optional(),
-    lastName: z.string().optional(),
-    executionRegion: executionRegionSchema.optional().default(DEFAULT_EXECUTION_REGION)
+    lastName: z.string().optional()
 })
 export type OrganizationCreateRequest = z.infer<typeof organizationCreateRequestSchema>
 
@@ -1160,12 +1151,9 @@ export const organizationSwitchRequestSchema = z.object({
 })
 export type OrganizationSwitchRequest = z.infer<typeof organizationSwitchRequestSchema>
 
-export const organizationUpdateRequestSchema = z
-    .object({
-        name: z.string().optional(),
-        executionRegion: executionRegionSchema.optional()
-    })
-    .refine(value => value.name !== undefined || value.executionRegion !== undefined, { message: "At least one organization setting is required" })
+export const organizationUpdateRequestSchema = z.object({
+    name: z.string()
+})
 export type OrganizationUpdateRequest = z.infer<typeof organizationUpdateRequestSchema>
 
 export const apiTokenCreateRequestSchema = z.object({
@@ -1236,8 +1224,6 @@ export type SdkStateResetResponse = { deleted: number }
 export const sdkTestRunStartRequestSchema = z.object({
     projectId: z.string().min(1),
     jobName: z.string().min(1),
-    durable: z.boolean().optional(),
-    durableJournalBackend: durableJournalBackendSchema.optional(),
     event: serializedEventSchema,
     forceLocal: z.boolean().optional(),
     isTest: z.boolean().optional(),

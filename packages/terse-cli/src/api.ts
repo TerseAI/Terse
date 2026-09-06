@@ -2,16 +2,7 @@ import dotenv from "dotenv"
 import fs from "node:fs"
 import path from "node:path"
 import { ApiRoutes, buildRoute, sdkRunTriggerEventResponseSchema, sdkTestRunStartResponseSchema } from "terse-types"
-import type {
-    AgentsResponse,
-    DurableJournalBackend,
-    GetRunHistoryParams,
-    GetRunHistoryResponse,
-    RunHistoryModelEvent,
-    SdkRunTriggerEventResponse,
-    SdkTestRunStartResponse,
-    SerializedEvent
-} from "terse-types"
+import type { AgentsResponse, GetRunHistoryParams, GetRunHistoryResponse, RunHistoryModelEvent, SdkRunTriggerEventResponse, SdkTestRunStartResponse, SerializedEvent } from "terse-types"
 
 import { CliError, ErrorCode } from "./cliError.js"
 import { BACKEND_URL } from "./config.js"
@@ -204,8 +195,6 @@ export async function startTestRun(
     params: {
         projectId: string
         jobName: string
-        durable: boolean
-        durableJournalBackend?: DurableJournalBackend
         event: SerializedEvent
         forceLocal?: boolean
         isTest?: boolean

@@ -162,9 +162,7 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             name,
             imageId: image.imageId,
             timeoutMs: params?.timeoutMs,
-            idleTimeoutMs: params?.idleTimeoutMs,
-            regions: params?.regions,
-            i6pn: params?.i6pn
+            idleTimeoutMs: params?.idleTimeoutMs
         })
 
         const existing = await this.lookupLiveSandbox(app.name, name, opStart)
@@ -321,8 +319,6 @@ export class ModalSandboxService extends SettingsDependant implements SandboxSer
             imageId: imageRef.imageId,
             timeoutMs: params?.timeoutMs,
             idleTimeoutMs: params?.idleTimeoutMs,
-            regions: params?.regions,
-            i6pn: params?.i6pn,
             attempt
         })
         const sandbox = await this.modal.sandboxes.experimentalCreate(appRef, imageRef, { ...params, name })

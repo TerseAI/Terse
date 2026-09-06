@@ -3,13 +3,12 @@ import { Request, Response } from "express"
 import { JWTPayload, SignJWT, jwtVerify } from "jose"
 import { randomUUID } from "node:crypto"
 import { durableObjectSocketTicketRequestSchema } from "terse-types"
-import { durableObjectStorageRegion } from "terse-types/ExecutionRegions"
 import { z } from "zod"
 
 import { secretsMatch } from "../../common/crypto"
 import { buildDurableObjectSocketUrl } from "../../common/durableObjectSocketUrl"
 import { db } from "../../loaders/prisma"
-import { getOrCreateOrganizationExecutionRegion } from "../../services/OrganizationSettingsService"
+import { DURABLE_OBJECT_STORAGE_REGION } from "../../services/DurableObjectControlPlaneClient"
 import { settings } from "../../settings"
 import { readBearerToken } from "../auth/helpers/authDispatch"
 
@@ -93,12 +92,11 @@ export async function handleAuthorizeDurableObjectSocket(req: Request, res: Resp
         res.status(401).json({ error: "Invalid socket credential" })
         return
     }
-    const executionRegion = await getOrCreateOrganizationExecutionRegion(trigger.automation.organization_id)
     res.status(200).json({
         namespaceId: trigger.automation.project_id,
         actorType: trigger.integration_id,
         actorId: request.actorId,
-        storageRegion: durableObjectStorageRegion(executionRegion),
+        storageRegion: DURABLE_OBJECT_STORAGE_REGION,
         metadata: authorization.metadata,
         expiresAt: authorization.expiresAt
     })

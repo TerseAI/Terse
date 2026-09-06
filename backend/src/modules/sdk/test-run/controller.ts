@@ -1,6 +1,5 @@
 import { Request, Response } from "express"
 import { RunHistoryStatus } from "terse-types"
-import { DEFAULT_EXECUTION_REGION } from "terse-types/ExecutionRegions"
 import { SdkTestRunStartResponse, sdkTestRunFinalizeRequestSchema, sdkTestRunStartRequestSchema } from "terse-types/types"
 
 import logger from "../../../common/logger"
@@ -11,7 +10,6 @@ import { EventProcessor } from "../../../modules/agents/AgentRunner/EventProcess
 import { finalizeRunStatus, markRunFailed } from "../../../modules/agents/AgentRunner/runHistory"
 import { SyntheticTriggerRuntime } from "../../../modules/triggers/syntheticTriggerRuntime"
 import { DurableObjectProjectService } from "../../../services/DurableObjectProjectService"
-import { getOrCreateOrganizationExecutionRegion } from "../../../services/OrganizationSettingsService"
 import { deleteSubtrees } from "../../../services/memory/memorySnapshots"
 import { replayMemorySubtreeKey, replayStateSubtreeKey } from "../../../services/sdkSandboxLayerKeys"
 import { settings } from "../../../settings"
@@ -35,13 +33,11 @@ export async function handleSdkTestRunStart(req: Request, res: Response) {
             return res.status(400).json({ success: false, error: "--fresh-state is not supported for projects with a remote data plane yet." })
         }
 
-        const executionRegion = settings.workos ? await getOrCreateOrganizationExecutionRegion(user.organizationId) : DEFAULT_EXECUTION_REGION
-        const durableObjects = localDataPlane
-            ? settings.durableObjects
-                ? ((await DurableObjectProjectService.getInstance(settings.durableObjects).issueLocalTestEnvironment(projectId, executionRegion)) ?? null)
-                : null
-            : undefined
-        const agentId = await ensureTestAutomation(user, projectId, parsed.data.jobName, parsed.data.durable ?? false, parsed.data.durableJournalBackend)
+        let durableObjects: SdkTestRunStartResponse["durableObjects"] = localDataPlane ? null : undefined
+        if (localDataPlane && settings.durableObjects) {
+            durableObjects = (await DurableObjectProjectService.getInstance(settings.durableObjects).issueLocalTestEnvironment(projectId)) ?? null
+        }
+        const agentId = await ensureTestAutomation(user, projectId, parsed.data.jobName)
         if (parsed.data.freshState) await resetJobTestState(projectId, agentId)
         const synthetic = new SyntheticTriggerRuntime(parsed.data.event.data)
         const processor = new EventProcessor(synthetic, user, { isManuallyTriggered: true, isTest: parsed.data.isTest ?? true, localDataPlane, replayOfRunId: parsed.data.replayOfRunId })

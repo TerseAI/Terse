@@ -1,5 +1,4 @@
 import { RunHistoryStatus } from "terse-types"
-import { executionRegionSchema } from "terse-types/ExecutionRegions"
 
 import logger from "../../common/logger"
 import { getInputConfigInclude, getOutputConfigInclude } from "../../common/prismaIncludes"
@@ -72,11 +71,6 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
         throw new Error("Agent not found for run execution")
     }
 
-    const runRecord = await db().run_history_records.findUnique({
-        where: { id: runId },
-        select: { execution_region: true }
-    })
-    const executionRegion = executionRegionSchema.nullable().parse(runRecord?.execution_region ?? null)
     const isResume = Boolean(resumeFrom || restoreImageId || data.failureSnapshotId)
 
     try {
@@ -101,8 +95,7 @@ export async function handleRunExecution(data: RunExecutionJobData): Promise<voi
             hookResume,
             resumeSignal,
             enqueuedAtMs,
-            scheduledForMs,
-            executionRegion
+            scheduledForMs
         })
         switch (outcome.status) {
             case "success":

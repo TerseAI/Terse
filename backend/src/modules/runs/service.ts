@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { serializedEventSchema } from "terse-types"
 import { type TriggerPayload } from "terse-types"
-import { executionRegionSchema } from "terse-types/ExecutionRegions"
 import { type GetRunHistoryParams, type RunHistoryModelEvent, type RunHistoryRecord, RunHistoryStatus } from "terse-types/RunHistoryTypes"
 
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory, convertPrismaRunHistoryStatusToShared } from "../../common/typeConverters"
@@ -171,8 +170,7 @@ export async function listAllRunHistory(organizationId: string, params: GetRunHi
         isManuallyTriggered: runRecord.is_manually_triggered,
         isTest: runRecord.is_test,
         triggeredByUserId: runRecord.triggered_by_user_id ?? null,
-        replayOfRunId: runRecord.replay_of_run_id ?? null,
-        executionRegion: executionRegionSchema.nullable().parse(runRecord.execution_region)
+        replayOfRunId: runRecord.replay_of_run_id ?? null
     }))
     return { items, total }
 }
@@ -204,8 +202,7 @@ export async function listRunHistoryForAgent(agentId: string, organizationId: st
         isManuallyTriggered: runRecord.is_manually_triggered,
         isTest: runRecord.is_test,
         triggeredByUserId: runRecord.triggered_by_user_id ?? null,
-        replayOfRunId: runRecord.replay_of_run_id ?? null,
-        executionRegion: executionRegionSchema.nullable().parse(runRecord.execution_region)
+        replayOfRunId: runRecord.replay_of_run_id ?? null
     }))
     return { items, total }
 }
@@ -253,8 +250,7 @@ export async function fetchChatHistoryForRun(runId: string, organizationId: stri
         triggerEventType,
         isTriggerEventTruncated,
         isTest: runRecord.is_test,
-        canRetryFromFailure:
-            runRecord.status === RunHistoryStatus.FAILED && ((runRecord.is_durable && runRecord.durable_journal_backend === "durable_object") || runRecord.failure_snapshots.length > 0)
+        canRetryFromFailure: runRecord.status === RunHistoryStatus.FAILED && (runRecord.durable_journal_backend === "durable_object" || runRecord.failure_snapshots.length > 0)
     }
 }
 
@@ -263,7 +259,7 @@ export async function retryFailedRunFromJournal(runId: string, organizationId: s
     if (!run) throw new RunNotFoundError()
     if (run.status !== RunHistoryStatus.FAILED) throw new RunNotRetryableError("Only failed runs can be retried")
 
-    const resumesFromDurableObject = run.is_durable && run.durable_journal_backend === "durable_object"
+    const resumesFromDurableObject = run.durable_journal_backend === "durable_object"
     const snapshot = run.failure_snapshots[0]
     if (!resumesFromDurableObject && !snapshot) throw new RunNotRetryableError("No durable journal state is available for this run")
 

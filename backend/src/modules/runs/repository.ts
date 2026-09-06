@@ -57,7 +57,6 @@ export async function countAndListRunHistory(where: RunHistoryWhere, opts: { ski
                 is_test: true,
                 triggered_by_user_id: true,
                 replay_of_run_id: true,
-                execution_region: true,
                 actions: { select: runHistoryActionSummarySelect },
                 ...(opts.includeAgent ? { automation: { select: { name: true } } } : {})
             },
@@ -79,7 +78,6 @@ export async function findRunRecordForChat(runId: string, organizationId: string
             status: true,
             trigger_payload: true,
             is_test: true,
-            is_durable: true,
             durable_journal_backend: true,
             failure_snapshots: {
                 where: { restored_at: null },
@@ -96,7 +94,6 @@ export async function findRunForFailureRetry(runId: string, organizationId: stri
         where: { id: runId, automation: { organization_id: organizationId } },
         select: {
             status: true,
-            is_durable: true,
             durable_journal_backend: true,
             automation: { select: { id: true, name: true, user_id: true } },
             failure_snapshots: {

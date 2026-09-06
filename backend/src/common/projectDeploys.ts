@@ -1,3 +1,5 @@
+import type { SdkDeployJob } from "terse-types"
+
 import { db } from "../loaders/prisma"
 
 import { extractErrorMessage } from "./strings"
@@ -15,20 +17,13 @@ export async function markDeployFailed(prisma: ReturnType<typeof db>, deployId: 
     })
 }
 
-export async function markDeploySucceeded(
-    prisma: ReturnType<typeof db>,
-    deployId: string,
-    jobs: Array<{ jobName: string; durable: boolean; durableJournalBackend: string | null }>,
-    jobsAdded: number,
-    jobsRemoved: number
-) {
+export async function markDeploySucceeded(prisma: ReturnType<typeof db>, deployId: string, jobs: SdkDeployJob[], jobsAdded: number, jobsRemoved: number) {
     await prisma.$transaction([
         prisma.project_deploy_jobs.createMany({
             data: jobs.map(job => ({
                 deploy_id: deployId,
                 job_name: job.jobName,
-                is_durable: job.durable,
-                durable_journal_backend: job.durableJournalBackend
+                durable_journal_backend: job.durableJournalBackend ?? null
             })),
             skipDuplicates: true
         }),

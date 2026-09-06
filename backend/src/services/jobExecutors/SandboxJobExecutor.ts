@@ -1,5 +1,4 @@
 import { DEPRECATED_DURABLE_RUNTIME_OUTPUT_LABEL } from "terse-types"
-import { DEFAULT_EXECUTION_REGION, durableObjectStorageRegion, executionRegionLabel, modalExecutionRegion } from "terse-types/ExecutionRegions"
 
 import logger from "../../common/logger"
 import { getActiveDeployForProject } from "../../common/projectHelper"
@@ -20,6 +19,7 @@ import { getSandboxProvider } from "../sandboxProvider"
 import { SANDBOX_DEFAULT_OPTIONS } from "../sandboxProvider/ModalSandboxService"
 import { Sandbox, SandboxService } from "../sandboxProvider/SandboxService"
 import { JOURNAL_ROOT, runJournalDir } from "../sandboxProvider/runJournal"
+import { readSandboxRegion } from "../sandboxProvider/sandboxRegion"
 import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExecutorRegistry"
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "../sdkRuntimeExecutors/types"
 import { SDK_SANDBOX_APP_NAME, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
@@ -31,7 +31,6 @@ type SdkSourceImageRecord = {
     imageId: string
     runtime: SdkProjectRuntime
     cliVersion: string
-    isDurable: boolean
     durableJournalBackend: string | null
 }
 
@@ -52,7 +51,7 @@ export class SandboxJobExecutor implements JobExecutor {
     }
 
     async execute(context: JobExecutionContext): Promise<RunOutcome> {
-        const { runId, agent, orgId, userId, user, jobName, executionMode, restoreImageId, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs, executionRegion } = context
+        const { runId, agent, orgId, userId, user, jobName, executionMode, restoreImageId, hookResume, resumeSignal, enqueuedAtMs, scheduledForMs } = context
         const executionStart = performance.now()
         const sandboxProvider = getSandboxProvider()
         const telemetry = new SandboxRuntimeTelemetry({
@@ -66,8 +65,7 @@ export class SandboxJobExecutor implements JobExecutor {
             provider: sandboxProvider.supportsContainerizedRunners ? "containerized" : "local",
             resumeSignal,
             enqueuedAtMs,
-            scheduledForMs,
-            executionRegion
+            scheduledForMs
         })
 
         this.emitter = new StreamEventEmitter(getSocketIO(), { runId, agentId: agent.id, user })
@@ -84,8 +82,6 @@ export class SandboxJobExecutor implements JobExecutor {
             const executor = sdkRuntimeExecutorRegistry.resolveRuntime(sourceImage.runtime)
             telemetry.setRuntime(executor.runtime)
             telemetry.setCliVersion(sourceImage.cliVersion)
-
-            const durableObjectEnvironment = await this.durableObjectEnvironment(agent.project.id, runId, executionRegion)
 
             const { rawToken, tokenId } = await telemetry.measure("createSandboxTokenMs", () => createSandboxToken({ userId, organizationId: orgId, projectId: agent.project.id }))
             sandboxApiKey = rawToken
@@ -113,8 +109,7 @@ export class SandboxJobExecutor implements JobExecutor {
                 /** Exposes `terse run` in the CLI inside Modal sandboxes only (see packages/terse-cli). */
                 TERSE_CLI_ENABLE_RUN: "1",
                 NO_UPDATE_NOTIFIER: "1",
-                IS_SANDBOX: "1",
-                ...durableObjectEnvironment
+                IS_SANDBOX: "1"
             }
             // Interim transport: the response payload rides sandbox env vars because there is no
             // server-side store for it yet. Once the shared Redis cache lands, stash the payload
@@ -132,11 +127,10 @@ export class SandboxJobExecutor implements JobExecutor {
                 projectId: agent.project.id,
                 agentId: agent.id,
                 sandboxEnv,
-                sourceImageRecordId: sourceImage.recordId,
+                sourceImageId: sourceImage.imageId,
                 cliVersion: sourceImage.cliVersion,
                 executionMode,
                 restoreImageId,
-                executionRegion,
                 telemetry
             })
             runSandbox = sb
@@ -190,13 +184,13 @@ export class SandboxJobExecutor implements JobExecutor {
         }
     }
 
-    private async durableObjectEnvironment(namespaceId: string, executionId: string, executionRegion: JobExecutionContext["executionRegion"]): Promise<Record<string, string>> {
+    private async durableObjectEnvironment(namespaceId: string, executionId: string, modalRegion: string): Promise<Record<string, string>> {
         const config = settings.durableObjects
         if (!config) return {}
 
         const controlPlane = DurableObjectControlPlaneClient.getInstance(config)
         const deadlineUnixMs = Date.now() + (SANDBOX_DEFAULT_OPTIONS.timeoutMs ?? 24 * 60 * 60 * 1000)
-        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, durableObjectStorageRegion(executionRegion ?? DEFAULT_EXECUTION_REGION), deadlineUnixMs, false)
+        const workflowToken = await controlPlane.issueWorkflowToken(namespaceId, executionId, modalRegion, deadlineUnixMs)
 
         return {
             DURABLE_OBJECT_TOKEN: workflowToken.token,
@@ -208,22 +202,26 @@ export class SandboxJobExecutor implements JobExecutor {
 
     private async resolveSourceImage(params: { agent: AgentWithRelations; runId: string; jobName: string; executionMode: JobExecutionContext["executionMode"] }): Promise<SdkSourceImageRecord> {
         const { agent, runId, jobName, executionMode } = params
-        const deploy =
+        const run =
             executionMode === "resume"
-                ? await db()
-                      .run_history_records.findUnique({ where: { id: runId }, select: { project_deploy: { select: { id: true, sdk_source_image_id: true } } } })
-                      .then(run => run?.project_deploy)
-                : await getActiveDeployForProject(agent.project.id)
+                ? await db().run_history_records.findUnique({
+                      where: { id: runId },
+                      select: { durable_journal_backend: true, project_deploy: { select: { id: true, sdk_source_image_id: true } } }
+                  })
+                : null
+        const deploy = executionMode === "resume" ? run?.project_deploy : await getActiveDeployForProject(agent.project.id)
         if (!deploy?.sdk_source_image_id) {
             throw new Error(executionMode === "resume" ? `Run "${runId}" has no deployed source image to resume` : `SDK agent "${agent.id}" is missing an active source image`)
         }
 
         const [sourceImage, deployJob] = await Promise.all([
             this.getSourceImageRecord(deploy.sdk_source_image_id),
-            db().project_deploy_jobs.findUnique({
-                where: { deploy_id_job_name: { deploy_id: deploy.id, job_name: jobName } },
-                select: { is_durable: true, durable_journal_backend: true }
-            })
+            executionMode === "start"
+                ? db().project_deploy_jobs.findUnique({
+                      where: { deploy_id_job_name: { deploy_id: deploy.id, job_name: jobName } },
+                      select: { durable_journal_backend: true }
+                  })
+                : null
         ])
         if (!sourceImage) {
             throw new Error(`SDK source image row not found: ${deploy.sdk_source_image_id}`)
@@ -232,19 +230,15 @@ export class SandboxJobExecutor implements JobExecutor {
         await this.touchSourceImageUsage(sourceImage)
         const resolved = {
             ...sourceImage,
-            isDurable: deployJob?.is_durable ?? false,
-            durableJournalBackend: deployJob?.durable_journal_backend ?? null
+            durableJournalBackend: (executionMode === "resume" ? run?.durable_journal_backend : deployJob?.durable_journal_backend) ?? null
         }
         if (executionMode === "start") {
-            await attachProjectDeployToRun(runId, deploy.id, {
-                isDurable: resolved.isDurable,
-                durableJournalBackend: resolved.durableJournalBackend
-            })
+            await attachProjectDeployToRun(runId, deploy.id, resolved.durableJournalBackend)
         }
         return resolved
     }
 
-    private async getSourceImageRecord(sourceImageId: string): Promise<Omit<SdkSourceImageRecord, "isDurable" | "durableJournalBackend"> | null> {
+    private async getSourceImageRecord(sourceImageId: string): Promise<Omit<SdkSourceImageRecord, "durableJournalBackend"> | null> {
         const record = await db().sdk_source_images.findUnique({
             where: { id: sourceImageId },
             select: {
@@ -282,20 +276,18 @@ export class SandboxJobExecutor implements JobExecutor {
         agentId: string
         projectId: string
         sandboxEnv: Record<string, string>
-        sourceImageRecordId: string
+        sourceImageId: string
         cliVersion: string
         executionMode: JobExecutionContext["executionMode"]
         restoreImageId?: string
-        executionRegion: JobExecutionContext["executionRegion"]
         telemetry: SandboxRuntimeTelemetry
     }): Promise<{ sb: Sandbox; result: SandboxCommandResult }> {
-        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageRecordId, cliVersion, executionMode, restoreImageId, executionRegion, telemetry } = params
+        const { executor, jobName, sandboxService, runId, agentId, projectId, sandboxEnv, sourceImageId, cliVersion, executionMode, restoreImageId, telemetry } = params
 
-        const sb = await telemetry.measure("createSourceImageSandboxMs", () =>
-            restoreImageId
-                ? this.createSandboxFromImage(sandboxService, restoreImageId, projectId, runId, executionRegion, telemetry)
-                : this.createSourceImageSandbox(sandboxService, sourceImageRecordId, projectId, runId, executionRegion, telemetry)
-        )
+        const sb = await telemetry.measure("createSourceImageSandboxMs", () => this.createSandboxFromImage(sandboxService, restoreImageId ?? sourceImageId, projectId, runId, telemetry))
+        const modalRegion = await readSandboxRegion(sb)
+        const durableObjectEnvironment = await this.durableObjectEnvironment(projectId, runId, modalRegion)
+        Object.assign(sandboxEnv, durableObjectEnvironment)
         const executorContext = this.createRuntimeExecutorContext(
             sb,
             sandboxEnv,
@@ -382,40 +374,11 @@ export class SandboxJobExecutor implements JobExecutor {
         await sandboxService.terminateSandbox(app, runtimeSandboxUniqueName(projectId, runId))
     }
 
-    private async createSourceImageSandbox(
-        sandboxService: SandboxService,
-        sourceImageRecordId: string,
-        projectId: string,
-        runId: string,
-        executionRegion: JobExecutionContext["executionRegion"],
-        telemetry: SandboxRuntimeTelemetry
-    ): Promise<Sandbox> {
-        const source = await this.getSourceImageRecord(sourceImageRecordId)
-        if (!source) {
-            throw new Error(`SDK source image row not found: ${sourceImageRecordId}`)
-        }
-
-        return this.createSandboxFromImage(sandboxService, source.imageId, projectId, runId, executionRegion, telemetry)
-    }
-
-    private async createSandboxFromImage(
-        sandboxService: SandboxService,
-        imageId: string,
-        projectId: string,
-        runId: string,
-        executionRegion: JobExecutionContext["executionRegion"],
-        telemetry: SandboxRuntimeTelemetry
-    ): Promise<Sandbox> {
+    private async createSandboxFromImage(sandboxService: SandboxService, imageId: string, projectId: string, runId: string, telemetry: SandboxRuntimeTelemetry): Promise<Sandbox> {
         const app = await telemetry.measure("sandboxAppReadyMs", () => sandboxService.getOrCreateApp(SDK_SANDBOX_APP_NAME))
         const image = await telemetry.measure("sourceImageLoadMs", () => sandboxService.getImageFromId(imageId))
         const uniqueName = runtimeSandboxUniqueName(projectId, runId)
-        const options = executionRegion ? { ...SANDBOX_DEFAULT_OPTIONS, regions: [modalExecutionRegion(executionRegion)], i6pn: true } : SANDBOX_DEFAULT_OPTIONS
-        try {
-            return await telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, options))
-        } catch (error) {
-            if (!executionRegion) throw error
-            throw new Error(`Unable to start this workflow in ${executionRegionLabel(executionRegion)}. Terse will not run it in another region.`, { cause: error })
-        }
+        return telemetry.measure("sandboxReadyMs", () => sandboxService.getOrCreateSandbox(app, image, uniqueName, SANDBOX_DEFAULT_OPTIONS))
     }
 
     private async ensureSandboxCommand(sb: Sandbox, label: string, command: string, sandboxEnv: Record<string, string>, runId: string, agentId: string): Promise<void> {

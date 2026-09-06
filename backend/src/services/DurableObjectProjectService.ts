@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto"
-import { type DurableObjectStorageRegion, type ExecutionRegion, durableObjectStorageRegion } from "terse-types/ExecutionRegions"
+import type { SdkDurableObjectEnvironment } from "terse-types"
 
 import { db } from "../loaders/prisma"
 import { settings } from "../settings"
 
-import { DurableObjectControlPlaneClient } from "./DurableObjectControlPlaneClient"
+import { DURABLE_OBJECT_STORAGE_REGION, DurableObjectControlPlaneClient } from "./DurableObjectControlPlaneClient"
 import type { DurableObjectControlPlane, DurableObjectControlPlaneConfig } from "./DurableObjectControlPlaneClient"
 import { SDK_SOURCE_IMAGE_PROJECT_DIR } from "./sdkRuntimeExecutors/types"
 
@@ -23,11 +23,16 @@ class DurableObjectProjectService {
         return DurableObjectProjectService.instance
     }
 
-    async registerProductionDeployment(projectId: string, image: DurableObjectProjectImage, executionRegion: ExecutionRegion): Promise<void> {
-        await this.registerDeployment(projectId, image, durableObjectStorageRegion(executionRegion))
+    async registerDeployment(namespaceId: string, image: DurableObjectProjectImage): Promise<void> {
+        await this.controlPlane.registerDeployment(namespaceId, {
+            codeRevision: image.buildHash,
+            imageRef: image.imageRef,
+            workingDirectory: SDK_SOURCE_IMAGE_PROJECT_DIR,
+            actorEntrypoint: ACTOR_ENTRYPOINT
+        })
     }
 
-    async issueLocalTestEnvironment(projectId: string, executionRegion: ExecutionRegion): Promise<DurableObjectEnvironment | undefined> {
+    async issueLocalTestEnvironment(projectId: string): Promise<SdkDurableObjectEnvironment | undefined> {
         const image = await this.activeProjectImage(projectId)
         if (!image) return undefined
 
@@ -35,7 +40,7 @@ class DurableObjectProjectService {
         await this.registerDeployment(namespaceId, image)
 
         const deadlineUnixMs = Date.now() + LOCAL_EXECUTION_DEADLINE_MS
-        const token = await this.controlPlane.issueWorkflowToken(namespaceId, `local-test.${randomUUID()}`, durableObjectStorageRegion(executionRegion), deadlineUnixMs)
+        const token = await this.controlPlane.issueWorkflowToken(namespaceId, `local-test.${randomUUID()}`, DURABLE_OBJECT_STORAGE_REGION, deadlineUnixMs)
         return {
             token: token.token,
             namespaceId,
@@ -43,16 +48,6 @@ class DurableObjectProjectService {
             socketGatewayUrl: settings.durableObjects?.socketGatewayUrl ?? this.controlPlane.controlPlaneUrl,
             expiresAtMs: token.expiresAtMs
         }
-    }
-
-    private async registerDeployment(namespaceId: string, image: DurableObjectProjectImage, warmRegion?: DurableObjectStorageRegion): Promise<void> {
-        await this.controlPlane.registerDeployment(namespaceId, {
-            codeRevision: image.buildHash,
-            imageRef: image.imageRef,
-            workingDirectory: SDK_SOURCE_IMAGE_PROJECT_DIR,
-            actorEntrypoint: ACTOR_ENTRYPOINT,
-            warmRegion
-        })
     }
 
     private async activeProjectImage(projectId: string): Promise<DurableObjectProjectImage | undefined> {
@@ -78,12 +73,4 @@ export { DurableObjectProjectService }
 export interface DurableObjectProjectImage {
     readonly buildHash: string
     readonly imageRef: string
-}
-
-export interface DurableObjectEnvironment {
-    readonly token: string
-    readonly namespaceId: string
-    readonly controlPlaneUrl: string
-    readonly socketGatewayUrl: string
-    readonly expiresAtMs: number
 }
