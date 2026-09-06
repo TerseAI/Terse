@@ -270,7 +270,7 @@ export async function retryFailedRunFromJournal(runId: string, organizationId: s
         userId: run.automation.user_id,
         jobName: run.automation.name,
         kind: "sandbox",
-        ...(resumesFromDurableObject ? { resumeFrom: "failure" as const } : { failureSnapshotId: snapshot!.id })
+        ...(snapshot ? { failureSnapshotId: snapshot.id } : { resumeFrom: "failure" as const })
     })
 }
 

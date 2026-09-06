@@ -255,8 +255,8 @@ export async function markRunSuspended(runId: string, suspendImageId: string | u
 export type SuspendedRunClaim = { claimed: false } | { claimed: true; suspendImageId?: string }
 
 // Atomically claims a suspended run for resumption. Only the caller that flips
-// suspended -> in_progress wins when a timer and another resume race. Snapshot-backed
-// compatibility runs return their image; durable-object runs intentionally return none.
+// suspended -> in_progress wins when a timer and another resume race. Returns the
+// suspension's filesystem snapshot image when available.
 export async function claimSuspendedRun(runId: string): Promise<SuspendedRunClaim> {
     const claim = await db().$transaction(async (tx): Promise<SuspendedRunClaim> => {
         const result = await tx.run_history_records.updateMany({
@@ -296,7 +296,7 @@ export async function claimFailedRun(runId: string): Promise<{ claimed: boolean 
 
 export type FailedRunSnapshotClaim = { claimed: false } | { claimed: true; snapshotImageId: string }
 
-// Compatibility claim for deprecated filesystem-backed durable runs.
+// Claims a failure snapshot and moves the run back into progress, preventing duplicate retries.
 export async function claimFailedRunSnapshot(runId: string, failureSnapshotId: string): Promise<FailedRunSnapshotClaim> {
     const claim = await db().$transaction(async (tx): Promise<FailedRunSnapshotClaim> => {
         const snapshot = await tx.run_failure_snapshots.findFirst({

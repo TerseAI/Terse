@@ -44,9 +44,9 @@ export interface RunExecutionJobData {
     jobName: string
     kind: JobExecutionKind
     resumeFrom?: RunResumeReason
-    /** Snapshot image used only by deprecated filesystem-backed durable runs. */
+    /** Filesystem snapshot image to restore when resuming a run. */
     restoreImageId?: string
-    /** Failure snapshot row claimed by a compatibility retry. */
+    /** Failure snapshot row claimed when retrying a failed run. */
     failureSnapshotId?: string
     /** Stable wait identifier used to dedupe a specific durable-object resumption. */
     resumeKey?: string

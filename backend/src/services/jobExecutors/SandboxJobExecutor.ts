@@ -157,9 +157,7 @@ export class SandboxJobExecutor implements JobExecutor {
             telemetrySuccess = outcome.status !== "failed"
             if (outcome.status === "failed") {
                 telemetryError = outcome.cause
-                if (durableJournalBackend !== "durable_object") {
-                    await telemetry.measure("snapshotFailureSandboxMs", () => this.captureFailureSnapshot(runId, sb))
-                }
+                await telemetry.measure("snapshotFailureSandboxMs", () => this.captureFailureSnapshot(runId, sb))
             }
             return outcome
         } catch (error) {
@@ -357,9 +355,9 @@ export class SandboxJobExecutor implements JobExecutor {
             await db().run_failure_snapshots.create({
                 data: { run_id: runId, snapshot_image_id: snapshotImageId }
             })
-            logger.info("SDK sandbox: captured compatibility failure snapshot", { runId, snapshotImageId })
+            logger.info("SDK sandbox: captured failure snapshot", { runId, snapshotImageId })
         } catch (error) {
-            logger.warn("SDK sandbox: failed to capture compatibility failure snapshot", { runId, snapshotImageId, error })
+            logger.warn("SDK sandbox: failed to capture failure snapshot", { runId, snapshotImageId, error })
             if (snapshotImageId) {
                 await sandboxProvider.deleteImage(snapshotImageId).catch(deleteError => {
                     logger.warn("SDK sandbox: failed to delete untracked failure snapshot", { runId, snapshotImageId, error: deleteError })

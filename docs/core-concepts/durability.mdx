@@ -23,7 +23,9 @@ createJob({
 
 Without the flag a job runs start to finish in a single execution (the default). With it, the job can suspend and resume.
 
-On Terse Cloud, each durable run keeps its journal in a project-scoped durable object. The journal remains available after its sandbox shuts down, so a resumed run starts from its original deploy image and replays completed work from remote state.
+On Terse Cloud, each durable run keeps its journal in a project-scoped durable object. Terse also snapshots the sandbox's filesystem when the run suspends and attempts a snapshot when it fails. Resuming from a snapshot preserves files, installed packages, and Git configuration while completed steps replay from the journal.
+
+If the sandbox disappears before a snapshot can be saved, the journal still survives, but unsnapshotted filesystem changes do not. Retrying without a snapshot starts from the run's original deploy image.
 
 ## Everything in the SDK is already a step
 

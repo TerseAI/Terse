@@ -67,7 +67,7 @@ export async function resolveRunStatus(params: ResolveRunStatusParams): Promise<
     return { status: "success" }
 }
 
-// Snapshots a deprecated run's filesystem and returns the image used by its next sandbox.
+// Snapshots a run's filesystem and returns the image used by its next sandbox.
 export async function snapshotSandboxForSuspend(runId: string, liveSandbox?: Sandbox): Promise<string | undefined> {
     const provider = getSandboxProvider()
     const sandbox = liveSandbox ?? (await findRunSandbox(runId))

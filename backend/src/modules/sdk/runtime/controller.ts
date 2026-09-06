@@ -132,7 +132,7 @@ export async function handleSdkAgentRun(req: Request, res: Response) {
     }
 }
 
-type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean; durableJournalBackend: string | null }
+type ResolvedRunContext = { runId: string; agentId: string; organizationId: string; isTest: boolean }
 
 async function finalizeFailedProductionRun(runId: string, organizationId: string, user: UserSession, error: unknown): Promise<void> {
     try {
@@ -151,7 +151,7 @@ async function resolveRunContext(headerRunId: string, user: UserSession): Promis
     if (!user.organizationId) return null
     const runRecord = await db().run_history_records.findFirst({
         where: { id: headerRunId, automation: { organization_id: user.organizationId } },
-        select: { id: true, automation_id: true, is_test: true, durable_journal_backend: true, automation: { select: { organization_id: true } } }
+        select: { id: true, automation_id: true, is_test: true, automation: { select: { organization_id: true } } }
     })
     if (!runRecord?.automation.organization_id) {
         logger.warn("[sdk/agent-run] Rejecting cross-tenant x-terse-run-id header", { requestedRunId: headerRunId, userId: user.id, organizationId: user.organizationId })
@@ -161,8 +161,7 @@ async function resolveRunContext(headerRunId: string, user: UserSession): Promis
         runId: runRecord.id,
         agentId: runRecord.automation_id,
         organizationId: runRecord.automation.organization_id,
-        isTest: runRecord.is_test,
-        durableJournalBackend: runRecord.durable_journal_backend
+        isTest: runRecord.is_test
     }
 }
 
@@ -426,8 +425,8 @@ export async function handleJobSuspension(req: Request, res: Response) {
     })
     let parked = false
     try {
-        const imageId = runContext.durableJournalBackend === "durable_object" ? undefined : await telemetry.measure("snapshotSandboxMs", () => snapshotSandboxForSuspend(runId))
-        if (runContext.durableJournalBackend !== "durable_object" && !imageId) {
+        const imageId = await telemetry.measure("snapshotSandboxMs", () => snapshotSandboxForSuspend(runId))
+        if (!imageId) {
             throw new Error("No live sandbox to snapshot; the run cannot be suspended")
         }
         parked = await telemetry.measure("markRunSuspendedMs", () => markRunSuspended(runId, imageId, suspension))
@@ -455,8 +454,7 @@ function suspensionDetails(body: z.infer<typeof sdkJobSuspendRequestBodySchema>)
     return { kind: "input", hookToken: body.hookToken }
 }
 
-// New runs resume from their durable-object journal. Deprecated deployments retain the
-// snapshot image in the same queue payload they used before this storage cutover.
+// The worker restores the filesystem snapshot and resumes from the workflow journal.
 async function enqueueRunResumption(runId: string, restoreImageId: string | undefined, delaySeconds: number, resumeKey: string): Promise<void> {
     const run = await db().run_history_records.findUnique({
         where: { id: runId },
