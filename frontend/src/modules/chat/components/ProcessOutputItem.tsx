@@ -78,7 +78,6 @@ export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
                 <span className="min-w-0 truncate font-medium text-foreground/80">{outputLabel}</span>
                 <span aria-hidden="true">·</span>
                 <span className="shrink-0 tabular-nums">{lineCount === 1 ? "1 line" : `${lineCount} lines`}</span>
-                {hasStderr && <span className="shrink-0 text-danger">Errors</span>}
             </button>
 
             {isExpanded && (
@@ -87,9 +86,7 @@ export default function ProcessOutputItem({ events }: ProcessOutputItemProps) {
                     className="chat-scrollbar m-0 ml-1 mt-1 max-h-72 min-w-0 overflow-auto whitespace-pre-wrap break-words border-l border-border py-2 pl-4 pr-2 font-mono text-xs leading-5 text-foreground/75 [overflow-wrap:anywhere] select-text"
                 >
                     {events.map(event => (
-                        <span key={event.id} className={cn(event.stream === "stderr" && "text-danger")}>
-                            {event.content}
-                        </span>
+                        <span key={event.id}>{event.content}</span>
                     ))}
                 </pre>
             )}

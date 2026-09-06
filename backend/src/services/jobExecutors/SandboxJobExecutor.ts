@@ -24,6 +24,7 @@ import { sdkRuntimeExecutorRegistry } from "../sdkRuntimeExecutors/SdkRuntimeExe
 import { type SandboxCommandResult, type SdkProjectRuntime, type SdkRuntimeExecutor, type SdkRuntimeExecutorContext } from "../sdkRuntimeExecutors/types"
 import { SDK_SANDBOX_APP_NAME, runtimeSandboxUniqueName } from "../sdkSandboxLayerKeys"
 
+import { filterDurableObjectTelemetry } from "./durableObjectTelemetry"
 import { JobExecutionContext, JobExecutionKind, JobExecutor, RunOutcome } from "./types"
 
 type SdkSourceImageRecord = {
@@ -403,7 +404,8 @@ export class SandboxJobExecutor implements JobExecutor {
             stderr: "pipe",
             env: sandboxEnv
         })
-        const [stdout, stderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
+        const [stdout, rawStderr] = await Promise.all([proc.stdout.readText(), proc.stderr.readText()])
+        const stderr = filterDurableObjectTelemetry(rawStderr, event => logger.info("SDK sandbox: DO telemetry", { ...event, runId, agentId }))
         const exitCode = await proc.wait()
 
         logger.info("SDK sandbox: command finished", {
@@ -449,12 +451,17 @@ export class SandboxJobExecutor implements JobExecutor {
         const flushTimers: Partial<Record<"stdout" | "stderr", ReturnType<typeof setTimeout>>> = {}
         let persistQueue = Promise.resolve()
 
-        const flushStream = (stream: "stdout" | "stderr") => {
-            const content = pending[stream]
-            pending[stream] = ""
+        const flushStream = (stream: "stdout" | "stderr", final = false) => {
+            const end = stream === "stderr" && !final ? pending[stream].lastIndexOf("\n") + 1 : pending[stream].length
+            let content = pending[stream].slice(0, end)
+            pending[stream] = pending[stream].slice(end)
+            if (stream === "stderr") {
+                content = filterDurableObjectTelemetry(content, event => logger.info("SDK sandbox: DO telemetry", { ...event, runId, agentId }))
+            }
             if (!content) {
                 return
             }
+            full[stream] += content
 
             persistQueue = persistQueue.then(() =>
                 this.emitAndPersistProcessOutput(runId, {
@@ -491,7 +498,6 @@ export class SandboxJobExecutor implements JobExecutor {
                         continue
                     }
 
-                    full[stream] += chunk
                     pending[stream] += chunk
                     scheduleFlush(stream)
                 }
@@ -500,7 +506,7 @@ export class SandboxJobExecutor implements JobExecutor {
                     clearTimeout(flushTimers[stream])
                     flushTimers[stream] = undefined
                 }
-                flushStream(stream)
+                flushStream(stream, true)
                 reader.releaseLock()
             }
         }
